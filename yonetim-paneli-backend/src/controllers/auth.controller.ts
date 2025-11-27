@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { users, getNextUserId, User } from "../data/users";
+import { users, getNextUserId, User, validRoles } from "../data/users";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
 
@@ -20,12 +20,18 @@ export const register = async (req: Request, res: Response) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // Geçerli rol mü?
+    let selectedRole: User["role"] = "VIEWER";
+    if (role && validRoles.includes(role)) {
+      selectedRole = role;
+    }
+
     const newUser: User = {
       id: getNextUserId(),
       name,
       email,
       passwordHash,
-      role: role === "ADMIN" ? "ADMIN" : "USER", // şimdilik basit
+      role: selectedRole,
       isActive: true,
     };
 
@@ -46,6 +52,7 @@ export const register = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Sunucu hatası" });
   }
 };
+
 
 export const login = async (req: Request, res: Response) => {
   try {

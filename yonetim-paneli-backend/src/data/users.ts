@@ -1,4 +1,6 @@
-export type UserRole = "ADMIN" | "USER";
+export type UserRole = "ADMIN" | "MANAGER" | "EDITOR" | "VIEWER";
+
+export const validRoles: UserRole[] = ["ADMIN", "MANAGER", "EDITOR", "VIEWER"];
 
 export interface User {
   id: number;
@@ -9,9 +11,7 @@ export interface User {
   isActive: boolean;
 }
 
-// Geçici veri
 export const users: User[] = [];
 
-// ID üretmek için basit sayaç
 let currentId = 1;
 export const getNextUserId = () => currentId++;
