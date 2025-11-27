@@ -1,51 +1,65 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { users, getNextUserId, User, validRoles } from "../data/users";
+import prisma from "../config/prisma";
+import type { UserRole } from "@prisma/client";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role } = req.body as {
+      name: string;
+      email: string;
+      password: string;
+      role?: UserRole;
+    };
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "Name, email ve password zorunlu." });
+      return res
+        .status(400)
+        .json({ message: "Name, email ve password zorunlu." });
     }
 
-    const existing = users.find((u) => u.email === email);
+    const existing = await prisma.user.findUnique({
+      where: { email },
+    });
+
     if (existing) {
-      return res.status(400).json({ message: "Bu email ile kayıtlı bir kullanıcı zaten var." });
+      return res
+        .status(400)
+        .json({ message: "Bu email ile kayıtlı bir kullanıcı zaten var." });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Geçerli rol mü?
-    let selectedRole: User["role"] = "VIEWER";
+    const validRoles: UserRole[] = ["ADMIN", "MANAGER", "EDITOR", "VIEWER"];
+    let selectedRole: UserRole = "VIEWER";
+
     if (role && validRoles.includes(role)) {
       selectedRole = role;
     }
 
-    const newUser: User = {
-      id: getNextUserId(),
-      name,
-      email,
-      passwordHash,
-      role: selectedRole,
-      isActive: true,
-    };
-
-    users.push(newUser);
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash,
+        role: selectedRole,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
+    });
 
     return res.status(201).json({
       message: "Kullanıcı oluşturuldu.",
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        isActive: newUser.isActive,
-      },
+      user: newUser,
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -53,16 +67,23 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body as {
+      email: string;
+      password: string;
+    };
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email ve password zorunlu." });
+      return res
+        .status(400)
+        .json({ message: "Email ve password zorunlu." });
     }
 
-    const user = users.find((u) => u.email === email);
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
     if (!user) {
       return res.status(400).json({ message: "Geçersiz email veya şifre." });
     }
@@ -102,13 +123,13 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const me = (req: Request, res: Response) => {
-  // Bu route'a erişmek için auth middleware kullanacağız
-  const user = (req as any).user;
+export const me = async (req: Request, res: Response) => {
+  const authUser = req.user;
 
-  if (!user) {
+  if (!authUser) {
     return res.status(401).json({ message: "Yetkisiz." });
   }
 
-  return res.json({ user });
+  // İstersen DB'den de çekebilirsin ama şimdilik token'dan geleni döndürmek yeterli
+  return res.json({ user: authUser });
 };

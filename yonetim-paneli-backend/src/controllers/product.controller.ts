@@ -1,81 +1,112 @@
 import { Request, Response } from "express";
-import { products, getNextProductId, Product } from "../data/products";
+import prisma from "../config/prisma";
 
-export const getAllProducts = (_req: Request, res: Response) => {
-  return res.json({ products });
+export const getAllProducts = async (_req: Request, res: Response) => {
+  try {
+    const products = await prisma.product.findMany({
+      orderBy: { id: "asc" },
+    });
+    return res.json({ products });
+  } catch (err) {
+    console.error("getAllProducts error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
+  }
 };
 
-export const getProductById = (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const product = products.find((p) => p.id === id);
+export const getProductById = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const product = await prisma.product.findUnique({
+      where: { id },
+    });
 
-  if (!product) {
-    return res.status(404).json({ message: "Ürün bulunamadı." });
+    if (!product) {
+      return res.status(404).json({ message: "Ürün bulunamadı." });
+    }
+
+    return res.json({ product });
+  } catch (err) {
+    console.error("getProductById error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
   }
-
-  return res.json({ product });
 };
 
-export const createProduct = (req: Request, res: Response) => {
-  const { name, price, stock } = req.body;
+export const createProduct = async (req: Request, res: Response) => {
+  try {
+    const { name, price, stock } = req.body;
 
-  if (!name || price == null || stock == null) {
-    return res
-      .status(400)
-      .json({ message: "name, price ve stock zorunludur." });
+    if (!name || price == null || stock == null) {
+      return res
+        .status(400)
+        .json({ message: "name, price ve stock zorunludur." });
+    }
+
+    const newProduct = await prisma.product.create({
+      data: {
+        name,
+        price: Number(price),
+        stock: Number(stock),
+      },
+    });
+
+    return res.status(201).json({
+      message: "Ürün oluşturuldu.",
+      product: newProduct,
+    });
+  } catch (err) {
+    console.error("createProduct error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
   }
-
-  const now = new Date();
-
-  const newProduct: Product = {
-    id: getNextProductId(),
-    name,
-    price: Number(price),
-    stock: Number(stock),
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  products.push(newProduct);
-
-  return res.status(201).json({
-    message: "Ürün oluşturuldu.",
-    product: newProduct,
-  });
 };
 
-export const updateProduct = (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const { name, price, stock } = req.body;
+export const updateProduct = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { name, price, stock } = req.body;
 
-  const product = products.find((p) => p.id === id);
-  if (!product) {
-    return res.status(404).json({ message: "Ürün bulunamadı." });
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
+      return res.status(404).json({ message: "Ürün bulunamadı." });
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        name: name ?? product.name,
+        price: price != null ? Number(price) : product.price,
+        stock: stock != null ? Number(stock) : product.stock,
+      },
+    });
+
+    return res.json({
+      message: "Ürün güncellendi.",
+      product: updated,
+    });
+  } catch (err) {
+    console.error("updateProduct error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
   }
-
-  if (name !== undefined) product.name = name;
-  if (price !== undefined) product.price = Number(price);
-  if (stock !== undefined) product.stock = Number(stock);
-  product.updatedAt = new Date();
-
-  return res.json({
-    message: "Ürün güncellendi.",
-    product,
-  });
 };
 
-export const deleteProduct = (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const index = products.findIndex((p) => p.id === id);
+export const deleteProduct = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
 
-  if (index === -1) {
-    return res.status(404).json({ message: "Ürün bulunamadı." });
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
+      return res.status(404).json({ message: "Ürün bulunamadı." });
+    }
+
+    const deleted = await prisma.product.delete({
+      where: { id },
+    });
+
+    return res.json({
+      message: "Ürün silindi.",
+      product: deleted,
+    });
+  } catch (err) {
+    console.error("deleteProduct error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
   }
-
-  const deleted = products.splice(index, 1)[0];
-
-  return res.json({
-    message: "Ürün silindi.",
-    product: deleted,
-  });
 };
