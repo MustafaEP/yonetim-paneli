@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma";
+import { logActivity } from "../services/activityLog.service";
 import type { UserRole } from "@prisma/client";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
@@ -132,4 +133,94 @@ export const me = async (req: Request, res: Response) => {
 
   // İstersen DB'den de çekebilirsin ama şimdilik token'dan geleni döndürmek yeterli
   return res.json({ user: authUser });
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user;
+    if (!authUser) {
+      return res.status(401).json({ message: "Yetkisiz." });
+    }
+
+    const { name } = req.body as { name: string };
+
+    const updated = await prisma.user.update({
+      where: { id: authUser.id },
+      data: { name },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    await logActivity({
+      userId: authUser.id,
+      action: "PROFILE_UPDATE",
+      entity: "User",
+      entityId: updated.id,
+      details: `Kullanıcı kendi profil adını güncelledi (${updated.email})`,
+    });
+
+    return res.json({
+      message: "Profil güncellendi.",
+      user: updated,
+    });
+  } catch (err) {
+    console.error("updateProfile error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
+  }
+};
+
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user;
+    if (!authUser) {
+      return res.status(401).json({ message: "Yetkisiz." });
+    }
+
+    const { currentPassword, newPassword } = req.body as {
+      currentPassword: string;
+      newPassword: string;
+    };
+
+    const user = await prisma.user.findUnique({
+      where: { id: authUser.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!match) {
+      return res.status(400).json({ message: "Mevcut şifre hatalı." });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: newHash,
+      },
+    });
+
+    await logActivity({
+      userId: authUser.id,
+      action: "PASSWORD_CHANGE",
+      entity: "User",
+      entityId: user.id,
+      details: `Kullanıcı şifresini güncelledi (${user.email})`,
+    });
+
+    return res.json({
+      message: "Şifre başarıyla güncellendi.",
+    });
+  } catch (err) {
+    console.error("changePassword error:", err);
+    return res.status(500).json({ message: "Sunucu hatası" });
+  }
 };

@@ -50,6 +50,23 @@ async function main() {
     console.log("Ürünler zaten var, atlanıyor.");
   }
 
+  const defaultConfigs = [
+    { key: "app_name", value: "Yönetim Paneli" },
+    { key: "theme", value: "light" },
+    { key: "default_page_limit", value: "10" }
+  ];
+
+  for (const config of defaultConfigs) {
+    const exist = await prisma.systemConfig.findUnique({
+      where: { key: config.key },
+    });
+    if (!exist) {
+      await prisma.systemConfig.create({ data: config });
+    }
+  }
+  console.log("Varsayılan sistem ayarları yüklendi.");
+
+
   console.log("Seeding bitti ✅");
 }
 

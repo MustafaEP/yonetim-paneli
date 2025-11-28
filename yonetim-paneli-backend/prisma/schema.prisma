@@ -47,3 +47,36 @@ model ActivityLog {
   createdAt DateTime @default(now())
 }
 
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+model Member {
+  id               Int      @id @default(autoincrement())
+  status           String   // BEKLEME | AKTİF | İSTİFA
+  registrationNo   String?  // ÜYE KAYIT NUMARASI
+  nationalId       String?  @unique // TC KİMLİK NO
+  firstName        String   // ADI
+  lastName         String   // SOYADI
+  province         String?  // ÇALIŞTIĞI İL
+  district         String?  // ÇALIŞTIĞI İLÇE
+  institution      String?  // ÇALIŞTIĞI KURUM
+  motherName       String?  // ANNE ADI
+  fatherName       String?  // BABA ADI
+  birthPlace       String?  // DOĞUM YERİ
+  gender           String?  // CİNSİYET
+  educationStatus  String?  // ÖĞRENİM DURUMU
+  phoneNumber      String?  // TELEFON NUMARASI
+  registrationDate DateTime? // ÜYE KAYIT TARİHİ
+  ledgerNo         String?   // KARA DEFTER NO
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+
+

@@ -6,6 +6,8 @@ import productRoutes from "./routes/product.routes";
 import activityRoutes from "./routes/activity.routes";
 import { errorHandler } from "./middlewares/errorHandler";
 import { AppError } from "./utils/AppError";
+import configRoutes from "./routes/config.routes";
+import memberRoutes from "./routes/member.routes";
 
 const app: Application = express();
 
@@ -18,6 +20,8 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/products", productRoutes);
 app.use("/activity", activityRoutes);
+app.use("/config", configRoutes);
+app.use("/members", memberRoutes);
 
 // 404 yakalama
 app.use((req, _res, next) => {

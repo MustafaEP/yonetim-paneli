@@ -24,6 +24,7 @@ import { Add, Edit, Delete } from "@mui/icons-material";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useConfig } from "../context/ConfigContext";
 
 interface Product {
   id: number;
@@ -43,6 +44,8 @@ interface ProductsResponse {
 
 
 const ProductsPage: React.FC = () => {
+  const { config } = useConfig();
+  
   const [products, setProducts] = useState<Product[]>([]);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -52,9 +55,10 @@ const ProductsPage: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
 
   // pagination & filters
+  const [limit] = useState(() => config.defaultPageLimit || 10);
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
   const [total, setTotal] = useState(0);
+
 
   const [search, setSearch] = useState("");
   const [minPrice, setMinPrice] = useState("");

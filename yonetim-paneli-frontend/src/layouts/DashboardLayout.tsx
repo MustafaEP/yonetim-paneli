@@ -21,6 +21,10 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import SettingsIcon from "@mui/icons-material/Settings";
+import { useConfig } from "../context/ConfigContext";
+import GroupsIcon from "@mui/icons-material/Groups";
 
 const drawerWidth = 240;
 
@@ -41,10 +45,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const isAdmin = user?.role === "ADMIN";
 
+  const { config } = useConfig();
+
   const drawer = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6">Yönetim Paneli</Typography>
+        <Typography variant="h6">
+          {config.appName !== undefined ? config.appName : "Yönetim Paneli"}
+        </Typography>
         {user && (
           <Typography variant="body2" color="text.secondary">
             {user.name} ({user.role})
@@ -54,17 +62,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       <Divider />
 
       <List>
-        {/* İstersen ileride /dashboard yaparız, şimdilik aktif değil */}
-        {/* <ListItemButton
-          selected={location.pathname === "/dashboard"}
-          onClick={() => navigate("/dashboard")}
-        >
-          <ListItemIcon>
-            <DashboardIcon />
-          </ListItemIcon>
-          <ListItemText primary="Genel Bakış" />
-        </ListItemButton> */}
-
         <ListItemButton
           selected={location.pathname === "/products"}
           onClick={() => navigate("/products")}
@@ -86,6 +83,20 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <ListItemText primary="Kullanıcılar" />
           </ListItemButton>
         )}
+
+        {isAdmin && (
+          <ListItemButton
+            selected={location.pathname === "/members"}
+            onClick={() => navigate("/members")}
+          >
+            <ListItemIcon>
+              <GroupsIcon />
+            </ListItemIcon>
+            <ListItemText primary="Üyeler" />
+          </ListItemButton>
+        )}
+
+
         {isAdmin && (
           <ListItemButton
             selected={location.pathname === "/activity"}
@@ -98,7 +109,31 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </ListItemButton>
         )}
 
+        {/* Profil tüm kullanıcılar için */}
+        <ListItemButton
+          selected={location.pathname === "/profile"}
+          onClick={() => navigate("/profile")}
+        >
+          <ListItemIcon>
+            <AccountCircleIcon />
+          </ListItemIcon>
+          <ListItemText primary="Profilim" />
+        </ListItemButton>
+
+        {isAdmin && (
+          <ListItemButton
+            selected={location.pathname === "/settings"}
+            onClick={() => navigate("/settings")}
+          >
+            <ListItemIcon>
+              <SettingsIcon />
+            </ListItemIcon>
+            <ListItemText primary="Sistem Ayarları" />
+          </ListItemButton>
+        )}
+
       </List>
+
 
       <Box sx={{ flexGrow: 1 }} />
 
@@ -135,7 +170,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </IconButton>
           <DashboardIcon sx={{ mr: 1 }} />
           <Typography variant="h6" noWrap component="div">
-            Yönetim Paneli
+            {config.appName !== undefined ? config.appName : "Yönetim Paneli"}
           </Typography>
         </Toolbar>
       </AppBar>

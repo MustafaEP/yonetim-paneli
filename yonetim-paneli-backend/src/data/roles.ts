@@ -16,6 +16,12 @@ const allPermissions: PermissionCode[] = [
   "PRODUCT_UPDATE",
   "PRODUCT_DELETE",
   "ACTIVITY_READ",
+  "SYSTEM_CONFIG_READ",
+  "SYSTEM_CONFIG_UPDATE",
+  "MEMBER_READ",
+  "MEMBER_CREATE",
+  "MEMBER_UPDATE",
+  "MEMBER_DELETE",
 ];
 
 export const roleDefinitions: RoleDefinition[] = [

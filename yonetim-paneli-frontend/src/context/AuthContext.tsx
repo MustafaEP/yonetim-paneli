@@ -4,8 +4,9 @@ import type { AuthUser } from "../types/auth";
 interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
-  login: (user: AuthUser, token: string) => void;
+  login: (token: string, user: AuthUser) => void;
   logout: () => void;
+  setUser: (user: AuthUser | null) => void; // <-- EKLENDİ
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -42,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,10 @@ import ProductsPage from "./pages/ProductsPage";
 import UsersPage from "./pages/UsersPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ActivityLogPage from "./pages/ActivityLogPage"; 
+import ProfilePage from "./pages/ProfilePage";
+import SystemConfigPage from "./pages/SystemConfigPage";
+import MembersPage from "./pages/MembersPage";
+import MemberDetailPage from "./pages/MemberDetailPage";
 
 const App: React.FC = () => {
   return (
@@ -35,6 +39,38 @@ const App: React.FC = () => {
         }
       />
       <Route path="*" element={<Navigate to="/products" replace />} />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SystemConfigPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/members"
+        element={
+          <ProtectedRoute>
+            <MembersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/members/:id"
+        element={
+          <ProtectedRoute>
+            <MemberDetailPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 };

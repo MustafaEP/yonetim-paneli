@@ -23,6 +23,7 @@ import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type { UserRole } from "../types/auth";
 import { useNavigate } from "react-router-dom";
+import { useConfig } from "../context/ConfigContext";
 
 interface UserItem {
   id: number;
@@ -42,6 +43,8 @@ interface UsersResponse {
 const roleOptions: UserRole[] = ["ADMIN", "MANAGER", "EDITOR", "VIEWER"];
 
 const UsersPage: React.FC = () => {
+  const { config } = useConfig();
+
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,9 +54,10 @@ const UsersPage: React.FC = () => {
   const navigate = useNavigate();
 
   // pagination & filters
+  const [limit] = useState(() => config.defaultPageLimit || 10);
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
   const [total, setTotal] = useState(0);
+
 
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState<UserRole | "ALL">("ALL");
