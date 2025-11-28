@@ -16,6 +16,8 @@ import {
   MenuItem,
   type SelectChangeEvent,
   Alert,
+  TextField,
+  Pagination,
 } from "@mui/material";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -32,6 +34,9 @@ interface UserItem {
 
 interface UsersResponse {
   users: UserItem[];
+  page: number;
+  limit: number;
+  total: number;
 }
 
 const roleOptions: UserRole[] = ["ADMIN", "MANAGER", "EDITOR", "VIEWER"];
@@ -45,12 +50,46 @@ const UsersPage: React.FC = () => {
   const { user: currentUser, logout } = useAuth();
   const navigate = useNavigate();
 
-  const fetchUsers = async () => {
+  // pagination & filters
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  const [search, setSearch] = useState("");
+  const [filterRole, setFilterRole] = useState<UserRole | "ALL">("ALL");
+  const [status, setStatus] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+
+  const fetchUsers = async (pageNumber: number = 1) => {
     try {
       setError(null);
       setLoading(true);
-      const res = await api.get<UsersResponse>("/users");
+
+      const params: any = {
+        page: pageNumber,
+        limit,
+      };
+
+      if (search.trim()) {
+        params.search = search.trim();
+      }
+
+      if (filterRole !== "ALL") {
+        params.role = filterRole;
+      }
+
+      if (status === "ACTIVE") {
+        params.status = "active";
+      } else if (status === "INACTIVE") {
+        params.status = "inactive";
+      }
+
+      const res = await api.get<UsersResponse>("/users", { params });
+
       setUsers(res.data.users);
+      setTotal(res.data.total);
+      setPage(res.data.page);
     } catch (err: any) {
       console.error("Kullanıcılar alınırken hata:", err);
       setError(
@@ -62,8 +101,16 @@ const UsersPage: React.FC = () => {
     }
   };
 
+  const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
+    fetchUsers(value);
+  };
+
+  const handleApplyFilters = () => {
+    fetchUsers(1);
+  };
+
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(1);
   }, []);
 
   const handleRoleChange = (id: number, newRole: UserRole) => {
@@ -106,39 +153,134 @@ const UsersPage: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Paper sx={{ mb: 2 }}>
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Box>
-            <Typography variant="h6" component="div">
-              Kullanıcılar ve Roller
-            </Typography>
-            {currentUser && (
-              <Typography variant="body2" color="text.secondary">
-                Giriş yapan: {currentUser.name} ({currentUser.role})
+        <Toolbar
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 2,
+          }}
+        >
+          {/* Üst başlık + butonlar */}
+          <Box
+            sx={{
+              width: "100%",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Box>
+              <Typography variant="h6" component="div">
+                Kullanıcılar ve Roller
               </Typography>
-            )}
+              {currentUser && (
+                <Typography variant="body2" color="text.secondary">
+                  Giriş yapan: {currentUser.name} ({currentUser.role})
+                </Typography>
+              )}
+            </Box>
+            <Box>
+              <Button
+                variant="outlined"
+                sx={{ mr: 1 }}
+                onClick={() => navigate("/products")}
+              >
+                Ürünler
+              </Button>
+              <Button
+                variant="outlined"
+                sx={{ mr: 1 }}
+                onClick={() => fetchUsers(page)}
+                disabled={loading}
+              >
+                Yenile
+              </Button>
+              <Button variant="contained" color="error" onClick={logout}>
+                Çıkış Yap
+              </Button>
+            </Box>
           </Box>
-          <Box>
-            <Button
-              variant="outlined"
-              sx={{ mr: 1 }}
-              onClick={() => navigate("/products")}
+
+          {/* Filtre alanı */}
+          <Box
+            sx={{
+              width: "100%",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+              alignItems: "center",
+            }}
+          >
+            <TextField
+              size="small"
+              label="Ara (isim / email)"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+
+            <Select
+              size="small"
+              value={filterRole}
+              onChange={(e: SelectChangeEvent) =>
+                setFilterRole(e.target.value as UserRole | "ALL")
+              }
             >
-              Ürünler
-            </Button>
+              <MenuItem value="ALL">Tüm Roller</MenuItem>
+              {roleOptions.map((role) => (
+                <MenuItem key={role} value={role}>
+                  {role}
+                </MenuItem>
+              ))}
+            </Select>
+
+            <Select
+              size="small"
+              value={status}
+              onChange={(e: SelectChangeEvent) =>
+                setStatus(e.target.value as "ALL" | "ACTIVE" | "INACTIVE")
+              }
+            >
+              <MenuItem value="ALL">Tümü (Aktif/Pasif)</MenuItem>
+              <MenuItem value="ACTIVE">Sadece Aktif</MenuItem>
+              <MenuItem value="INACTIVE">Sadece Pasif</MenuItem>
+            </Select>
+
             <Button
-              variant="outlined"
-              sx={{ mr: 1 }}
-              onClick={fetchUsers}
+              variant="contained"
+              size="small"
+              onClick={handleApplyFilters}
               disabled={loading}
             >
-              Yenile
+              Filtrele
             </Button>
-            <Button variant="contained" color="error" onClick={logout}>
-              Çıkış Yap
+            <Button
+              variant="text"
+              size="small"
+              onClick={() => {
+                setSearch("");
+                setFilterRole("ALL");
+                setStatus("ALL");
+                fetchUsers(1);
+              }}
+            >
+              Temizle
             </Button>
           </Box>
         </Toolbar>
       </Paper>
+            
+      {pageCount > 1 && (
+        <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
+          <Pagination
+            count={pageCount}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            size="small"
+          />
+        </Box>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

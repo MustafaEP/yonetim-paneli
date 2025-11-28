@@ -1,5 +1,5 @@
 import type { PermissionCode } from "./permissions";
-import type { UserRole } from "../../prisma/generated/client";
+import type { UserRole } from "@prisma/client";
 
 export interface RoleDefinition {
   name: UserRole;
@@ -15,6 +15,7 @@ const allPermissions: PermissionCode[] = [
   "PRODUCT_CREATE",
   "PRODUCT_UPDATE",
   "PRODUCT_DELETE",
+  "ACTIVITY_READ",
 ];
 
 export const roleDefinitions: RoleDefinition[] = [
@@ -29,6 +30,7 @@ export const roleDefinitions: RoleDefinition[] = [
       "PRODUCT_READ",
       "PRODUCT_CREATE",
       "PRODUCT_UPDATE",
+      "ACTIVITY_READ",
     ],
   },
   {

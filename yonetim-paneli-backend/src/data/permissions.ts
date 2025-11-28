@@ -6,7 +6,8 @@ export type PermissionCode =
   | "PRODUCT_READ"
   | "PRODUCT_CREATE"
   | "PRODUCT_UPDATE"
-  | "PRODUCT_DELETE";
+  | "PRODUCT_DELETE"
+  | "ACTIVITY_READ";
 
 export interface Permission {
   code: PermissionCode;
@@ -22,4 +23,5 @@ export const permissions: Permission[] = [
   { code: "PRODUCT_CREATE", description: "Yeni ürün ekleme" },
   { code: "PRODUCT_UPDATE", description: "Ürün güncelleme" },
   { code: "PRODUCT_DELETE", description: "Ürün silme" },
+  { code: "ACTIVITY_READ", description: "Aktivite loglarını görüntüleme" },
 ];

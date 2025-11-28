@@ -2,8 +2,9 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import ProductsPage from "./pages/ProductsPage";
-import ProtectedRoute from "./components/ProtectedRoute";
 import UsersPage from "./pages/UsersPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ActivityLogPage from "./pages/ActivityLogPage"; 
 
 const App: React.FC = () => {
   return (
@@ -22,6 +23,14 @@ const App: React.FC = () => {
         element={
           <ProtectedRoute>
             <UsersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/activity"
+        element={
+          <ProtectedRoute>
+            <ActivityLogPage />
           </ProtectedRoute>
         }
       />

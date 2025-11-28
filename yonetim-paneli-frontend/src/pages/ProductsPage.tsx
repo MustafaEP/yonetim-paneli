@@ -18,6 +18,7 @@ import {
   TextField,
   Alert,
   IconButton,
+  Pagination,
 } from "@mui/material";
 import { Add, Edit, Delete } from "@mui/icons-material";
 import api from "../api/client";
@@ -35,7 +36,11 @@ interface Product {
 
 interface ProductsResponse {
   products: Product[];
+  page: number;
+  limit: number;
+  total: number;
 }
+
 
 const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -45,6 +50,17 @@ const ProductsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // pagination & filters
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  const [search, setSearch] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+
+  const pageCount = Math.max(1, Math.ceil(total / limit));
 
   // Dialog state'leri
   const [createOpen, setCreateOpen] = useState(false);
@@ -62,24 +78,54 @@ const ProductsPage: React.FC = () => {
     setFormStock("");
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (pageNumber: number = 1) => {
     try {
       setError(null);
       setLoading(true);
-      const response = await api.get<ProductsResponse>("/products");
+
+      const params: any = {
+        page: pageNumber,
+        limit,
+      };
+
+      if (search.trim()) {
+        params.search = search.trim();
+      }
+      if (minPrice.trim()) {
+        params.minPrice = Number(minPrice);
+      }
+      if (maxPrice.trim()) {
+        params.maxPrice = Number(maxPrice);
+      }
+
+      const response = await api.get<ProductsResponse>("/products", {
+        params,
+      });
+
       setProducts(response.data.products);
+      setTotal(response.data.total);
+      setPage(response.data.page);
     } catch (err: any) {
       console.error("Ürünler alınırken hata:", err);
       setError(
-        err?.response?.data?.message || "Ürünler alınırken bir hata oluştu."
+        err?.response?.data?.message ||
+          "Ürünler alınırken bir hata oluştu."
       );
     } finally {
       setLoading(false);
     }
   };
 
+  const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
+    fetchProducts(value);
+  };
+
+  const handleApplyFilters = () => {
+    fetchProducts(1); // filtre değişince hep 1. sayfadan başla
+  };
+
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(1);
   }, []);
 
   // Backend'deki role-permission matrisine uygun:
@@ -192,55 +238,108 @@ const ProductsPage: React.FC = () => {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Üst toolbar */}
       <Paper sx={{ mb: 2 }}>
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Box>
-            <Typography variant="h6" component="div">
-              Ürünler
-            </Typography>
-            {user && (
-              <Typography variant="body2" color="text.secondary">
-                Giriş yapan: {user.name} ({user.role})
+        <Toolbar sx={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box sx={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Box>
+              <Typography variant="h6" component="div">
+                Ürünler
               </Typography>
-            )}
-          </Box>
-          <Box>
-            {/* Sadece ADMIN Users sayfasını görsün */}
-            {role === "ADMIN" && (
+              {user && (
+                <Typography variant="body2" color="text.secondary">
+                  Giriş yapan: {user.name} ({user.role})
+                </Typography>
+              )}
+            </Box>
+            <Box>
+              {role === "ADMIN" && (
+                <Button
+                  variant="outlined"
+                  sx={{ mr: 1 }}
+                  onClick={() => navigate("/users")}
+                >
+                  Kullanıcılar
+                </Button>
+              )}
+
+              {canCreateOrUpdate && (
+                <Button
+                  variant="contained"
+                  sx={{ mr: 1 }}
+                  startIcon={<Add />}
+                  onClick={handleOpenCreate}
+                >
+                  Yeni Ürün
+                </Button>
+              )}
+
               <Button
                 variant="outlined"
                 sx={{ mr: 1 }}
-                onClick={() => navigate("/users")}
+                onClick={() => fetchProducts(page)}
+                disabled={loading}
               >
-                Kullanıcılar
+                Yenile
               </Button>
-            )}
-
-            {/* Create butonu sadece create/update yetkisi olanlarda */}
-            {canCreateOrUpdate && (
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                sx={{ mr: 1 }}
-                onClick={handleOpenCreate}
-              >
-                Yeni Ürün
+              <Button variant="contained" color="error" onClick={logout}>
+                Çıkış Yap
               </Button>
-            )}
+            </Box>
+          </Box>
 
+          {/* Filtre Alanı */}
+          <Box
+            sx={{
+              width: "100%",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+              alignItems: "center",
+            }}
+          >
+            <TextField
+              label="Ara (isim)"
+              size="small"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <TextField
+              label="Min Fiyat"
+              size="small"
+              type="number"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+            />
+            <TextField
+              label="Max Fiyat"
+              size="small"
+              type="number"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+            />
             <Button
-              variant="outlined"
-              sx={{ mr: 1 }}
-              onClick={fetchProducts}
+              variant="contained"
+              size="small"
+              onClick={handleApplyFilters}
               disabled={loading}
             >
-              Yenile
+              Filtrele
             </Button>
-            <Button variant="contained" color="error" onClick={logout}>
-              Çıkış Yap
+            <Button
+              variant="text"
+              size="small"
+              onClick={() => {
+                setSearch("");
+                setMinPrice("");
+                setMaxPrice("");
+                fetchProducts(1);
+              }}
+            >
+              Temizle
             </Button>
           </Box>
         </Toolbar>
       </Paper>
+
 
       {/* Hata / Başarı mesajları */}
       {error && (
@@ -314,6 +413,19 @@ const ProductsPage: React.FC = () => {
           </TableBody>
         </Table>
       </Paper>
+      
+      {/* Pagination */}
+      {pageCount > 1 && (
+        <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
+          <Pagination
+            count={pageCount}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            size="small"
+          />
+        </Box>
+      )}
 
       {/* CREATE DIALOG */}
       <Dialog

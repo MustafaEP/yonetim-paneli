@@ -1,17 +1,61 @@
 import { Request, Response } from "express";
 import prisma from "../config/prisma";
+import { logActivity } from "../services/activityLog.service";
 
-export const getAllProducts = async (_req: Request, res: Response) => {
+export const getAllProducts = async (req: Request, res: Response) => {
   try {
-    const products = await prisma.product.findMany({
-      orderBy: { id: "asc" },
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const search = (req.query.search as string | undefined) || "";
+    const minPrice = req.query.minPrice
+      ? Number(req.query.minPrice)
+      : undefined;
+    const maxPrice = req.query.maxPrice
+      ? Number(req.query.maxPrice)
+      : undefined;
+
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    if (search) {
+      where.name = {
+        contains: search,
+      };
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined) {
+        where.price.gte = minPrice;
+      }
+      if (maxPrice !== undefined) {
+        where.price.lte = maxPrice;
+      }
+    }
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { id: "asc" },
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return res.json({
+      page,
+      limit,
+      total,
+      products,
     });
-    return res.json({ products });
   } catch (err) {
     console.error("getAllProducts error:", err);
     return res.status(500).json({ message: "Sunucu hatası" });
   }
 };
+
 
 export const getProductById = async (req: Request, res: Response) => {
   try {
@@ -49,6 +93,15 @@ export const createProduct = async (req: Request, res: Response) => {
       },
     });
 
+    // LOG
+    await logActivity({
+      userId: req.user?.id,
+      action: "PRODUCT_CREATE",
+      entity: "Product",
+      entityId: newProduct.id,
+      details: `Ürün oluşturuldu: ${newProduct.name}`,
+    });
+
     return res.status(201).json({
       message: "Ürün oluşturuldu.",
       product: newProduct,
@@ -78,6 +131,14 @@ export const updateProduct = async (req: Request, res: Response) => {
       },
     });
 
+    await logActivity({
+      userId: req.user?.id,
+      action: "PRODUCT_UPDATE",
+      entity: "Product",
+      entityId: updated.id,
+      details: `Ürün güncellendi: ${updated.name}`,
+    });
+
     return res.json({
       message: "Ürün güncellendi.",
       product: updated,
@@ -87,6 +148,7 @@ export const updateProduct = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Sunucu hatası" });
   }
 };
+
 
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
@@ -101,6 +163,14 @@ export const deleteProduct = async (req: Request, res: Response) => {
       where: { id },
     });
 
+    await logActivity({
+      userId: req.user?.id,
+      action: "PRODUCT_DELETE",
+      entity: "Product",
+      entityId: deleted.id,
+      details: `Ürün silindi: ${deleted.name}`,
+    });
+
     return res.json({
       message: "Ürün silindi.",
       product: deleted,
@@ -110,3 +180,4 @@ export const deleteProduct = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Sunucu hatası" });
   }
 };
+

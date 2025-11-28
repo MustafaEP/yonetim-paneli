@@ -8,6 +8,13 @@ import {
 } from "../controllers/product.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { checkPermission } from "../middlewares/permission.middleware";
+import { validate } from "../middlewares/validate";
+import {
+  createProductValidation,
+  updateProductValidation,
+} from "../validation/product.validation";
+
+
 
 const router = Router();
 
@@ -32,6 +39,7 @@ router.post(
   "/",
   authMiddleware,
   checkPermission("PRODUCT_CREATE"),
+  validate(createProductValidation),
   createProduct
 );
 
@@ -40,6 +48,7 @@ router.put(
   "/:id",
   authMiddleware,
   checkPermission("PRODUCT_UPDATE"),
+  validate(updateProductValidation),
   updateProduct
 );
 
