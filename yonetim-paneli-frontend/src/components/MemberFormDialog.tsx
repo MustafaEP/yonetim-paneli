@@ -14,16 +14,17 @@ import {
   Alert,
   Typography,
   Divider,
+  FormHelperText,
 } from "@mui/material";
 import api from "../api/client";
 import type {
   Member,
   MemberStatus,
   Gender,
-  EducationStatus
+  EducationStatus,
 } from "../types/member";
 import { turkeyCities } from "../data/turkeyCities";
-
+import { WidthFull } from "@mui/icons-material";
 
 interface MemberFormDialogProps {
   open: boolean;
@@ -33,11 +34,7 @@ interface MemberFormDialogProps {
 
 const statusOptions: MemberStatus[] = ["BEKLEME", "AKTİF", "İSTİFA"];
 const genderOptions: Gender[] = ["ERKEK", "KADIN"];
-const educationOptions: EducationStatus[] = [
-  "İLKÖĞRETİM",
-  "LİSE",
-  "YÜKSEKOKUL",
-];
+const educationOptions: EducationStatus[] = ["İLKÖĞRETİM", "LİSE", "YÜKSEKOKUL"];
 
 type FieldErrorMap = {
   [key: string]: string | undefined;
@@ -62,8 +59,9 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
   const [fatherName, setFatherName] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
   const [gender, setGender] = useState<Gender | "">("");
-  const [educationStatus, setEducationStatus] =
-    useState<EducationStatus | "">("");
+  const [educationStatus, setEducationStatus] = useState<EducationStatus | "">(
+    ""
+  );
   const [phoneNumber, setPhoneNumber] = useState("");
   const [registrationDate, setRegistrationDate] = useState("");
   const [ledgerNo, setLedgerNo] = useState("");
@@ -71,6 +69,14 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
+
+  const isNullOrWhiteSpace = (value: string | null | undefined): boolean =>
+    !value || value.trim().length === 0;
+
+  const isValidDate = (value: string): boolean => {
+    const timestamp = Date.parse(value);
+    return !Number.isNaN(timestamp);
+  };
 
   useEffect(() => {
     if (editingMember) {
@@ -120,24 +126,124 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
     }
   }, [editingMember, open]);
 
+  const selectedCity = turkeyCities.find((c) => c.name === province);
+
+  // ----------------- Validation -----------------
+
+  const validateForm = (): boolean => {
+    const errors: FieldErrorMap = {};
+
+    // Üye Kayıt No - zorunlu, 10 hane, sadece rakam
+    if (isNullOrWhiteSpace(registrationNo)) {
+      errors.registrationNo = "Üye kayıt numarası zorunludur.";
+    } else if (!/^\d{10}$/.test(registrationNo.trim())) {
+      errors.registrationNo = "Üye kayıt numarası 10 haneli ve sadece rakam olmalıdır.";
+    }
+
+    // TC Kimlik No - zorunlu, 11 hane, sadece rakam
+    if (isNullOrWhiteSpace(nationalId)) {
+      errors.nationalId = "TC kimlik numarası zorunludur.";
+    } else if (!/^\d{11}$/.test(nationalId.trim())) {
+      errors.nationalId = "TC kimlik numarası 11 haneli ve sadece rakam olmalıdır.";
+    }
+
+    // Kimlik Bilgileri - zorunlu alanlar
+    if (isNullOrWhiteSpace(firstName)) {
+      errors.firstName = "Ad zorunludur.";
+    }
+    if (isNullOrWhiteSpace(lastName)) {
+      errors.lastName = "Soyad zorunludur.";
+    }
+    if (isNullOrWhiteSpace(motherName)) {
+      errors.motherName = "Anne adı zorunludur.";
+    }
+    if (isNullOrWhiteSpace(fatherName)) {
+      errors.fatherName = "Baba adı zorunludur.";
+    }
+    if (isNullOrWhiteSpace(birthPlace)) {
+      errors.birthPlace = "Doğum yeri zorunludur.";
+    }
+
+    // Çalışma Bilgileri - il, ilçe, kurum zorunlu
+    if (isNullOrWhiteSpace(province)) {
+      errors.province = "İl zorunludur.";
+    }
+    if (isNullOrWhiteSpace(district)) {
+      errors.district = "İlçe zorunludur.";
+    }
+
+    if (isNullOrWhiteSpace(institution)) {
+      errors.institution = "Çalıştığı kurum zorunludur.";
+    } else {
+      const trimmedInst = institution.trim();
+      if (trimmedInst.length < 4) {
+        errors.institution = "Çalıştığı kurum en az 4 karakter olmalıdır.";
+      } else if (trimmedInst.length > 25) {
+        errors.institution = "Çalıştığı kurum en fazla 25 karakter olabilir.";
+      }
+    }
+
+    // Diğer Bilgiler - boş bırakılamaz
+    if (!gender) {
+      errors.gender = "Cinsiyet zorunludur.";
+    }
+    if (!educationStatus) {
+      errors.educationStatus = "Öğrenim durumu zorunludur.";
+    }
+
+    // Telefon - zorunlu, en az 10 rakam
+    if (isNullOrWhiteSpace(phoneNumber)) {
+      errors.phoneNumber = "Telefon zorunludur.";
+    } else {
+      const numericPhone = phoneNumber.replace(/\D/g, "");
+      if (numericPhone.length < 10) {
+        errors.phoneNumber = "Telefon numarası en az 10 rakam içermelidir.";
+      }
+    }
+
+    // Üye kayıt tarihi - zorunlu, geçerli tarih, gelecekte olamaz
+    if (isNullOrWhiteSpace(registrationDate)) {
+      errors.registrationDate = "Üye kayıt tarihi zorunludur.";
+    } else if (!isValidDate(registrationDate)) {
+      errors.registrationDate = "Geçerli bir tarih giriniz.";
+    } else {
+      const dateValue = new Date(registrationDate);
+      const today = new Date();
+      dateValue.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      if (dateValue > today) {
+        errors.registrationDate = "Kayıt tarihi gelecekte olamaz.";
+      }
+    }
+
+    // Kara Defter No - zorunlu, 10 hane, sadece rakam
+    if (isNullOrWhiteSpace(ledgerNo)) {
+      errors.ledgerNo = "Kara defter numarası zorunludur.";
+    } else if (!/^\d{10}$/.test(ledgerNo.trim())) {
+      errors.ledgerNo = "Kara defter numarası 10 haneli ve sadece rakam olmalıdır.";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async () => {
+    setError(null);
+
+    const isValid = validateForm();
+    if (!isValid) {
+      return;
+    }
+
     try {
       setSaving(true);
-      setError(null);
-
-      // client-side validation
-      const isValid = validateForm();
-      if (!isValid) {
-        return;
-      }
 
       const payload = {
         status,
         registrationNo: registrationNo || undefined,
         nationalId: nationalId || undefined,
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         province: province || undefined,
         district: district || undefined,
         institution: institution || undefined,
@@ -161,7 +267,6 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
     } catch (err: any) {
       console.error("Üye kaydedilirken hata:", err);
 
-      // Zod validasyon hatalarını da göster
       const resp = err?.response?.data;
       if (resp?.errors && Array.isArray(resp.errors)) {
         const serverErrors: FieldErrorMap = {};
@@ -173,44 +278,14 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
         setFieldErrors((prev) => ({ ...prev, ...serverErrors }));
         setError(resp.message || "Validasyon hatası.");
       } else {
-        setError(
-          resp?.message || "Üye kaydedilirken bir hata oluştu."
-        );
+        setError(resp?.message || "Üye kaydedilirken bir hata oluştu.");
       }
     } finally {
       setSaving(false);
     }
   };
 
-
-  const selectedCity = turkeyCities.find((c) => c.name === province);
-
-  const validateForm = (): boolean => {
-    const errors: FieldErrorMap = {};
-
-    if (!firstName.trim()) {
-      errors.firstName = "Ad zorunludur.";
-    }
-    if (!lastName.trim()) {
-      errors.lastName = "Soyad zorunludur.";
-    }
-
-    if (nationalId && nationalId.length !== 11) {
-      errors.nationalId = "TC kimlik numarası 11 haneli olmalıdır.";
-    }
-
-    if (phoneNumber && phoneNumber.length < 10) {
-      errors.phoneNumber = "Telefon numarası en az 10 haneli olmalıdır.";
-    }
-
-    if (registrationDate && Number.isNaN(Date.parse(registrationDate))) {
-      errors.registrationDate = "Geçerli bir tarih giriniz.";
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
+  // ----------------- Render -----------------
 
   return (
     <Dialog open={open} onClose={() => onClose(false)} maxWidth="md" fullWidth>
@@ -249,7 +324,15 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
               fullWidth
               size="small"
               value={registrationNo}
-              onChange={(e) => setRegistrationNo(e.target.value)}
+              onChange={(e) => {
+                const onlyDigits = e.target.value.replace(/\D/g, "");
+                if (onlyDigits.length <= 10) {
+                  setRegistrationNo(onlyDigits);
+                }
+              }}
+              inputProps={{ maxLength: 10 }}
+              error={!!fieldErrors.registrationNo}
+              helperText={fieldErrors.registrationNo}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -258,7 +341,13 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
               fullWidth
               size="small"
               value={nationalId}
-              onChange={(e) => setNationalId(e.target.value)}
+              onChange={(e) => {
+                const onlyDigits = e.target.value.replace(/\D/g, "");
+                if (onlyDigits.length <= 11) {
+                  setNationalId(onlyDigits);
+                }
+              }}
+              inputProps={{ maxLength: 11 }}
               error={!!fieldErrors.nationalId}
               helperText={fieldErrors.nationalId}
             />
@@ -301,6 +390,8 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
               size="small"
               value={motherName}
               onChange={(e) => setMotherName(e.target.value)}
+              error={!!fieldErrors.motherName}
+              helperText={fieldErrors.motherName}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -310,6 +401,8 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
               size="small"
               value={fatherName}
               onChange={(e) => setFatherName(e.target.value)}
+              error={!!fieldErrors.fatherName}
+              helperText={fieldErrors.fatherName}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -319,6 +412,8 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
               size="small"
               value={birthPlace}
               onChange={(e) => setBirthPlace(e.target.value)}
+              error={!!fieldErrors.birthPlace}
+              helperText={fieldErrors.birthPlace}
             />
           </Grid>
         </Grid>
@@ -331,9 +426,16 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
         </Typography>
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} sm={4}>
-            <FormControl fullWidth size="small">
+            <FormControl
+              fullWidth
+              size="small"
+              error={!!fieldErrors.province}
+              sx={{ minWidth: 200 }}
+            >
               <InputLabel>İl</InputLabel>
               <Select
+                fullWidth
+                size="small"
                 label="İl"
                 value={province}
                 onChange={(e) => {
@@ -347,6 +449,9 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
                   </MenuItem>
                 ))}
               </Select>
+              {fieldErrors.province && (
+                <FormHelperText>{fieldErrors.province}</FormHelperText>
+              )}
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -354,9 +459,13 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
               fullWidth
               size="small"
               disabled={!selectedCity}
+              error={!!fieldErrors.district}
+              sx={{ minWidth: 200 }}
             >
               <InputLabel>İlçe</InputLabel>
               <Select
+                fullWidth
+                size="small"
                 label="İlçe"
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
@@ -367,6 +476,9 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
                   </MenuItem>
                 )) || []}
               </Select>
+              {fieldErrors.district && (
+                <FormHelperText>{fieldErrors.district}</FormHelperText>
+              )}
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -376,6 +488,8 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
               size="small"
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
+              error={!!fieldErrors.institution}
+              helperText={fieldErrors.institution}
             />
           </Grid>
         </Grid>
@@ -388,7 +502,12 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
         </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={4}>
-            <FormControl fullWidth size="small">
+            <FormControl
+              sx={{ minWidth: 200 }}
+              fullWidth
+              size="small"
+              error={!!fieldErrors.gender}
+            >
               <InputLabel>Cinsiyet</InputLabel>
               <Select
                 label="Cinsiyet"
@@ -401,10 +520,18 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
                   </MenuItem>
                 ))}
               </Select>
+              {fieldErrors.gender && (
+                <FormHelperText>{fieldErrors.gender}</FormHelperText>
+              )}
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={4}>
-            <FormControl fullWidth size="small">
+            <FormControl
+              sx={{ minWidth: 200 }}
+              fullWidth
+              size="small"
+              error={!!fieldErrors.educationStatus}
+            >
               <InputLabel>Öğrenim Durumu</InputLabel>
               <Select
                 label="Öğrenim Durumu"
@@ -419,6 +546,9 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
                   </MenuItem>
                 ))}
               </Select>
+              {fieldErrors.educationStatus && (
+                <FormHelperText>{fieldErrors.educationStatus}</FormHelperText>
+              )}
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -435,6 +565,7 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
 
           <Grid item xs={12} sm={6}>
             <TextField
+              sx={{ minWidth: 200 }}
               label="Üye Kayıt Tarihi"
               type="date"
               fullWidth
@@ -446,13 +577,21 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
               helperText={fieldErrors.registrationDate}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={6} sx={{ maxWidth: 200 }}>
             <TextField
               label="Kara Defter No"
               fullWidth
               size="small"
               value={ledgerNo}
-              onChange={(e) => setLedgerNo(e.target.value)}
+              onChange={(e) => {
+                const onlyDigits = e.target.value.replace(/\D/g, "");
+                if (onlyDigits.length <= 10) {
+                  setLedgerNo(onlyDigits);
+                }
+              }}
+              inputProps={{ maxLength: 10 }}
+              error={!!fieldErrors.ledgerNo}
+              helperText={fieldErrors.ledgerNo}
             />
           </Grid>
         </Grid>
@@ -465,7 +604,6 @@ const MemberFormDialog: React.FC<MemberFormDialogProps> = ({
       </DialogActions>
     </Dialog>
   );
-
 };
 
 export default MemberFormDialog;

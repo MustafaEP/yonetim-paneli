@@ -213,6 +213,7 @@ const UsersPage: React.FC = () => {
               display: "flex",
               flexWrap: "wrap",
               gap: 2,
+              marginBottom: 1,
               alignItems: "center",
             }}
           >

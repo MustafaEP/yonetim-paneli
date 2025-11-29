@@ -49,10 +49,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const drawer = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Box sx={{ p: 2 }}>
-        <Typography variant="h6">
-          {config.appName !== undefined ? config.appName : "Yönetim Paneli"}
-        </Typography>
+      <Box sx={{ p: 2, mt: 8}}>
         {user && (
           <Typography variant="body2" color="text.secondary">
             {user.name} ({user.role})

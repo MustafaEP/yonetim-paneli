@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Paper, Typography, TextField, Button, Alert } from "@mui/material";
+import { Box, Paper, Typography, TextField, Button, Alert, Select, MenuItem, InputLabel, FormControl } from "@mui/material";
 import api from "../api/client";
 
 const SystemConfigPage: React.FC = () => {
@@ -63,13 +63,17 @@ const SystemConfigPage: React.FC = () => {
           onChange={(e) => setForm({ ...form, app_name: e.target.value })}
         />
 
-        <TextField
-          label="Tema (light / dark)"
-          fullWidth
-          sx={{ mt: 2 }}
-          value={form.theme}
-          onChange={(e) => setForm({ ...form, theme: e.target.value })}
-        />
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel>Tema Modu</InputLabel>
+          <Select
+            value={form.theme}
+            label="Tema Modu"
+            onChange={(e) => setForm({ ...form, theme: e.target.value })}
+          >
+            <MenuItem value="light">Açık</MenuItem>
+            <MenuItem value="dark">Koyu</MenuItem>
+          </Select>
+        </FormControl>
 
         <TextField
           label="Varsayılan Sayfa Limit"

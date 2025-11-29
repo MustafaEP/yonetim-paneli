@@ -242,7 +242,7 @@ const ProductsPage: React.FC = () => {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Üst toolbar */}
       <Paper sx={{ mb: 2 }}>
-        <Toolbar sx={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start", justifyContent: "space-between" }}>
+        <Toolbar sx={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start", justifyContent: "space-between", padding: 1 }}>
           <Box sx={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Box>
               <Typography variant="h6" component="div">
@@ -298,6 +298,7 @@ const ProductsPage: React.FC = () => {
               flexWrap: "wrap",
               gap: 2,
               alignItems: "center",
+              marginBottom: 1,
             }}
           >
             <TextField
@@ -363,7 +364,6 @@ const ProductsPage: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
               <TableCell>Ad</TableCell>
               <TableCell>Fiyat</TableCell>
               <TableCell>Stok</TableCell>
@@ -381,7 +381,6 @@ const ProductsPage: React.FC = () => {
             ) : (
               products.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell>{p.id}</TableCell>
                   <TableCell>{p.name}</TableCell>
                   <TableCell>{p.price}</TableCell>
                   <TableCell>{p.stock}</TableCell>
