@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MODERATOR
+  GENEL_BASKAN
+  GENEL_BASKAN_YRD
+  GENEL_SEKRETER
+  IL_BASKANI
+  ILCE_TEMSILCISI
+  ISYERI_TEMSILCISI
+  BAYI_YETKILISI
+  UYE
+}
+
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+
+  roles Role[] // Postgres enum[] olarak tutulacak
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scopes UserScope[]
+}
+
+enum MemberStatus {
+  PENDING // başvuru yapıldı, onay bekliyor
+  ACTIVE // aktif üye
+  PASIF // pasif
+  ISTIFA // istifa etmiş
+  IHRAC // ihraç edilmiş
+  REJECTED // başvuru reddedildi
+}
+
+enum MemberSource {
+  DIRECT // panelden direkt başvuru
+  WORKPLACE // işyeri temsilcisi üzerinden
+  DEALER // bayi üzerinden
+  OTHER
+}
+
+model Member {
+  id         String       @id @default(cuid())
+  firstName  String
+  lastName   String
+  nationalId String?      @unique
+  phone      String?
+  email      String?
+  status     MemberStatus @default(PENDING)
+  source     MemberSource @default(DIRECT)
+
+  // Bölge ilişkileri
+  provinceId  String?
+  districtId  String?
+  workplaceId String?
+  dealerId    String?
+
+  province  Province?  @relation(fields: [provinceId], references: [id])
+  district  District?  @relation(fields: [districtId], references: [id])
+  workplace Workplace? @relation(fields: [workplaceId], references: [id])
+  dealer    Dealer?    @relation(fields: [dealerId], references: [id])
+
+  createdByUserId  String?
+  approvedByUserId String?
+  approvedAt       DateTime?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Province {
+  id   String  @id @default(cuid())
+  name String
+  code String? @unique
+
+  districts  District[]
+  workplaces Workplace[]
+  dealers    Dealer[]
+  members    Member[]
+
+  userScopes UserScope[]
+}
+
+model District {
+  id         String   @id @default(cuid())
+  name       String
+  provinceId String
+  province   Province @relation(fields: [provinceId], references: [id])
+
+  workplaces Workplace[]
+  dealers    Dealer[]
+  members    Member[]
+
+  userScopes UserScope[]
+}
+
+model Workplace {
+  id      String  @id @default(cuid())
+  name    String
+  address String?
+
+  provinceId String?
+  districtId String?
+
+  province Province? @relation(fields: [provinceId], references: [id])
+  district District? @relation(fields: [districtId], references: [id])
+
+  members Member[]
+
+  userScopes UserScope[]
+}
+
+model Dealer {
+  id      String  @id @default(cuid())
+  name    String
+  code    String?
+  address String?
+
+  provinceId String?
+  districtId String?
+
+  province Province? @relation(fields: [provinceId], references: [id])
+  district District? @relation(fields: [districtId], references: [id])
+
+  members Member[]
+
+  userScopes UserScope[]
+}
+
+model UserScope {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  provinceId  String?
+  districtId  String?
+  workplaceId String?
+  dealerId    String?
+
+  province  Province?  @relation(fields: [provinceId], references: [id])
+  district  District?  @relation(fields: [districtId], references: [id])
+  workplace Workplace? @relation(fields: [workplaceId], references: [id])
+  dealer    Dealer?    @relation(fields: [dealerId], references: [id])
+
+  createdAt DateTime @default(now())
+}

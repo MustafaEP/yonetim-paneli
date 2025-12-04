@@ -1,121 +1,315 @@
-# Yönetim Paneli (Full‑Stack)
+# Sendika Yönetim Sistemi - RBAC Dokümantasyonu
 
-Kısa açıklama
-----------------
+## 🏗️ Teknoloji Stack
+- **Frontend:** React + TypeScript + Material-UI (MUI)
+- **Backend:** Node.js + NestJS + TypeScript
+- **Database:** Prisma ORM
 
-Kurumsal kullanıma yönelik, rol‑tabanlı yetkilendirme (RBAC) destekli bir yönetim paneli örneğidir. Üyelik, kullanıcı, ürün yönetimi ile aktivite loglama, PDF/Excel export ve yazdırılabilir detay sayfaları gibi özellikler içerir.
+---
 
-Özellikler
-----------------
-- Rol ve izin tabanlı erişim (RBAC)
-- Üye yönetimi (listeleme, filtreleme, detay, export)
-- Kullanıcı ve ürün yönetimi
-- Aktivite logları
-- PDF / Excel export (xlsx, jsPDF)
-- Zod ile sunucu tarafı validasyon
+## 👥 Roller (Hierarchical Structure)
 
-Teknoloji
-----------------
-
-Frontend
-
-- React 18 + TypeScript
-- Material UI (MUI)
-- Axios, React Router
-- Context API (Auth & Config)
-
-Backend
-
-- Node.js + Express + TypeScript
-- Prisma ORM (SQLite geliştirirken, prod için Postgres önerilir)
-- JWT ile kimlik doğrulama
-- Zod ile validasyon
-
-Proje Yapısı (kısaca)
-----------------
-
-`yonetim-paneli-backend/`
-
-`├─ prisma/`
-`├─ src/ (controllers, routes, middlewares, services, ...)`
-`└─ package.json`
-
-`yonetim-paneli-frontend/`
-
-`├─ public/`
-`├─ src/ (components, pages, context, api, ...)`
-`└─ package.json`
-
-Kurulum & Çalıştırma (Windows PowerShell)
-----------------
-
-1) Backend
-
-```powershell
-cd yonetim-paneli-backend
-npm install
-npx prisma migrate dev --name init
-npm run dev
+```
+ADMIN
+├── MODERATOR
+├── GENEL_BASKAN
+│   └── GENEL_BASKAN_YRD
+│       └── GENEL_SEKRETER
+│           └── IL_BASKANI
+│               └── ILCE_TEMSILCISI
+│                   └── ISYERI_TEMSILCISI
+├── BAYI_YETKILISI
+└── UYE
 ```
 
-Varsayılan backend adresi: `http://localhost:5000` (port yapılandırmaya bağlıdır)
+---
 
-2) Frontend
+## 🔧 Sistem Modülleri
 
-```powershell
-cd yonetim-paneli-frontend
-npm install
-npm run dev
-```
+### 1. Kullanıcı Yönetimi (User Management)
+- Kullanıcı CRUD operasyonları
+- Kullanıcı detay görüntüleme
+- Kullanıcı pasifleştirme/aktifleştirme
+- Rol atama ve yönetimi
 
-Varsayılan frontend adresi: `http://localhost:5173` (Vite varsayılanı)
+### 2. Rol & Yetki Yönetimi (Role & Permission Management)
+- Rol tanımlama ve düzenleme
+- İzin seti yönetimi
+- Rol silme ve güncelleme
 
-Seed ve Öntanımlı Admin
-----------------
+### 3. Üye Yönetimi (Member Management)
+- Üye kayıt başvurusu
+- Başvuru onay/red süreçleri
+- Üye bilgi güncelleme
+- İstifa/ihraç/pasifleştirme işlemleri
 
-Seed çalıştırıldıysa örnek admin bilgileri:
+### 4. Aidat & Mali İşler (Dues & Finance)
+- Aidat planı tanımlama
+- Ödeme kayıt yönetimi
+- Borç/gecikme raporları
+- Excel/PDF raporlama
 
-- E‑posta: `admin@example.com`
-- Şifre: `admin123`
-- Rol: `ADMIN`
+### 5. Şube/İl/İlçe Yönetimi (Branch & Region Management)
+- Bölgesel yapı yönetimi
+- Şube CRUD operasyonları
+- Başkan/temsilci atama
 
-API Örnekleri
-----------------
+### 6. İş Yeri Yönetimi (Workplace Management)
+- İş yeri kayıt ve güncelleme
+- Temsilci atama
+- İş yeri üye listesi
 
-Üyeleri listeleme (örnek):
+### 7. Bayilik Sistemi (Dealer Management)
+- Bayi başvuru yönetimi
+- Bayi onay süreçleri
+- Performans ve üye takibi
 
-`GET /members?page=1&limit=10&search=ahmet&status=AKTİF&province=Bursa`
+### 8. İçerik Yönetimi (Content Management)
+- Haber/duyuru/etkinlik yönetimi
+- Yayın durumu kontrolü
+- Taslak sistemi
 
-Üye oluşturma (örnek):
+### 9. Evrak & Doküman (Document Management)
+- Şablon oluşturma
+- Evrak geçmişi
+- PDF üretimi
 
-`POST /members` (Authorization: Bearer <token>)
+### 10. Raporlar & Dashboard
+- Genel istatistikler
+- Bölgesel raporlar
+- Grafiksel analizler
 
-Payload örneği:
+### 11. Bildirim & İletişim (Notifications)
+- Toplu bildirim (Email/SMS/WhatsApp)
+- Bölgesel bildirim
+- Hedefli mesajlaşma
 
-```json
-{
-  "status": "AKTİF",
-  "firstName": "Ahmet",
-  "lastName": "Yılmaz",
-  "nationalId": "12345678901"
-}
-```
+### 12. Sistem Ayarları & Loglar
+- Genel konfigürasyon
+- Entegrasyon ayarları
+- Audit log görüntüleme
 
-Yazdırılabilir (print‑friendly) detay sayfası
-----------------
+---
 
-Detay sayfaları için basit bir `@media print` kuralı kullanılır; yazdırma sırasında sadece ilgili detay alanı görünür.
+## 👑 Rol Bazlı Yetki Matrisi
 
-Lisans
-----------------
+### 🔴 ADMIN (Süper Kullanıcı)
+**Kapsam:** Sistem geneli - Sınırsız erişim
 
-Bu proje MIT lisansı ile lisanslanmıştır.
+**Yetkiler:**
+- ✅ Tüm modüllerde CREATE, READ, UPDATE, DELETE, APPROVE
+- ✅ Sınırsız kullanıcı ve rol yönetimi
+- ✅ Yeni rol tanımlama ve izin seti düzenleme
+- ✅ Sistem ayarları (SMTP, SMS, Logo, Entegrasyonlar)
+- ✅ Tam audit log erişimi
+- ⚠️ Silinemez ve rolü değiştirilemez
 
-Yazar
-----------------
+---
 
-Mustafa Erhan Portakal
+### 🟠 MODERATOR (Operasyon Yöneticisi)
+**Kapsam:** Sistem geneli - Yönetimsel yetkiler
 
-GitHub: https://github.com/MustafaEP
+**Kullanıcı Yönetimi:**
+- ✅ Kullanıcı listeleme, oluşturma, pasifleştirme
+- ✅ Rol atama (ADMIN hariç tüm roller)
+- ❌ ADMIN rolü atayamaz
+- ❌ Kullanıcı silme
 
-LinkedIn: https://www.linkedin.com/in/mustafa-erhan-portakal-2142101ba
+**Üye & Organizasyon:**
+- ✅ Tüm üyeleri yönetme
+- ✅ Üye onay/red işlemleri
+- ✅ Aidat planı ve ödeme yönetimi
+- ✅ Şube/il/ilçe/bayi yönetimi
+
+**İçerik & İletişim:**
+- ✅ Haber/duyuru CRUD
+- ✅ Sistem geneli bildirim gönderme
+- ✅ Tüm raporlara erişim
+
+**Sınırlamalar:**
+- 👁️ Rol izinlerini görür, değiştiremez
+- 👁️ Sistem ayarlarını görür, sınırlı değiştirir
+
+---
+
+### 🟡 GENEL_BASKAN (Genel Başkan)
+**Kapsam:** Politik üst yönetim - Onay mercii
+
+**Yetkiler:**
+- ✅ Tüm üye ve bölge verilerini görüntüleme
+- ✅ Üye kayıt onay/reddi (ülke geneli)
+- ✅ İhraç/istifa süreçlerini onaylama
+- ✅ İl başkanı atama onayı
+- ✅ Bayi açılış onayı
+- ✅ Haber/duyuru yayınlama
+- ✅ Tüm raporlar ve istatistikler
+
+**Sınırlamalar:**
+- 👁️ Teknik sistem ayarlarına erişim yok
+- 👁️ Log görüntüleme (sadece okuma)
+
+---
+
+### 🟢 GENEL_BASKAN_YRD (Genel Başkan Yardımcısı)
+**Kapsam:** Alan bazlı yönetim (Mali, Eğitim vb.)
+
+**Yetkiler:**
+- ✅ Tüm üye ve şube görüntüleme
+- ✅ Üye onay/red (opsiyonel alan kısıtı)
+- ✅ Aidat raporları görüntüleme
+- ✅ Haber/duyuru oluşturma
+- ✅ Bayi başvurularını görüntüleme
+
+**Sınırlamalar:**
+- ⚠️ Aidat planı değiştirme (opsiyonel)
+- ❌ Rol atama yetkisi sınırlı
+- ❌ Sistem ayarlarına erişim yok
+
+---
+
+### 🔵 GENEL_SEKRETER (Genel Sekreter)
+**Kapsam:** Evrak, yazışma ve kayıt işlemleri
+
+**Yetkiler:**
+- ✅ Evrak şablonu oluşturma
+- ✅ Doküman üretimi (PDF)
+- ✅ Haber/duyuru taslağı hazırlama
+- ✅ Üye ve temsilci temel bilgilerini görme
+- ✅ İstatistik raporları görüntüleme
+
+**Sınırlamalar:**
+- ⚠️ Üye onayında sadece öneri hakkı
+- ❌ Mali işlem yetkisi yok
+
+---
+
+### 🟣 IL_BASKANI (İl Başkanı)
+**Kapsam:** İl bazlı tam yetki
+
+**Yetkiler:**
+- ✅ İl bazlı üye yönetimi (onay/red/güncelleme)
+- ✅ İlçe temsilcisi atama
+- ✅ İş yeri temsilcisi atama
+- ✅ İl bazlı aidat yönetimi ve raporlama
+- ✅ İl bazlı haber/etkinlik yayınlama
+- ✅ İl geneli toplu bildirim
+
+**Sınırlamalar:**
+- 🔒 Sadece kendi ili kapsamında yetki
+- ❌ Sistem geneli işlemlere erişim yok
+
+---
+
+### 🟤 ILCE_TEMSILCISI (İlçe Temsilcisi)
+**Kapsam:** İlçe bazlı operasyonel yetki
+
+**Yetkiler:**
+- ✅ İlçe bazlı üye listeleme ve görüntüleme
+- ✅ Üye başvuru formu oluşturma
+- ✅ Üye bilgi güncelleme talebi
+- ✅ İş yeri temsilcisi atama önerisi
+- ✅ İlçe istatistikleri
+- ✅ İlçe geneli bildirim
+
+**Sınırlamalar:**
+- 🔒 Sadece kendi ilçesi
+- ⚠️ Onay yetkisi üst kademede
+
+---
+
+### ⚫ ISYERI_TEMSILCISI (İş Yeri Temsilcisi)
+**Kapsam:** Tek iş yeri bazlı
+
+**Yetkiler:**
+- ✅ İş yeri üyelerini listeleme
+- ✅ Yeni üye başvuru formu oluşturma
+- ✅ İstifa/sorun bildirimi
+- ✅ İş yeri raporu görüntüleme
+- ✅ İş yeri bazlı bildirim
+
+**Sınırlamalar:**
+- 🔒 Sadece kendi iş yeri
+- ❌ Rol/sistem/bölge yetkisi yok
+
+---
+
+### 🟠 BAYI_YETKILISI (Bayi Yetkilisi)
+**Kapsam:** Bayi/temsil ofisi yönetimi
+
+**Yetkiler:**
+- ✅ Bayi bilgilerini görüntüleme
+- ✅ Üye başvuru oluşturma ve düzenleme
+- ✅ Bayi üye aidat durumu görüntüleme
+- ✅ Ödeme bilgisi girişi (onay üstte)
+- ✅ Bayi performans raporları
+- ✅ Bayi kapsamlı bildirim
+
+**Sınırlamalar:**
+- 🔒 Sadece kendi bayi(ler)i
+- ⚠️ Üye onayı üst kademede
+- ❌ Genel sistem verilerine erişim yok
+
+---
+
+### ⚪ UYE (Üye)
+**Kapsam:** Kişisel hesap yönetimi
+
+**Yetkiler:**
+- ✅ Kendi profil görüntüleme ve düzenleme
+- ✅ Kendi aidat geçmişi
+- ✅ Evrak talebi oluşturma
+- ✅ İstifa talebi açma
+- ✅ Şikayet/öneri bildirimi
+
+**Sınırlamalar:**
+- 🔒 Sadece kendi verileri
+- ❌ Başka üyelere erişim yok
+
+---
+
+## 📊 Yetki Matrisi Özeti
+
+| Modül | ADMIN | MOD | GB | GBY | GS | ILB | IT | IYT | BY | UYE |
+|-------|-------|-----|----|----|----|----|----|----|----|----|
+| Kullanıcı Yönetimi | ✅ | ✅¹ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Rol Yönetimi | ✅ | 👁️ | 👁️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Üye Yönetimi | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ✅⁵ | 👁️⁶ |
+| Aidat Yönetimi | ✅ | ✅ | 👁️ | 👁️ | ❌ | ✅² | 👁️³ | 👁️⁴ | ⚠️⁵ | 👁️⁶ |
+| Bölge Yönetimi | ✅ | ✅ | ✅ | ✅ | 👁️ | ✅² | ⚠️³ | ❌ | ❌ | ❌ |
+| İş Yeri Yönetimi | ✅ | ✅ | ✅ | ✅ | 👁️ | ✅² | ✅³ | ✅⁴ | ❌ | ❌ |
+| Bayi Yönetimi | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ❌ | ❌ | ✅⁵ | ❌ |
+| İçerik Yönetimi | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ⚠️⁵ | ❌ |
+| Evrak Yönetimi | ✅ | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| Raporlar | ✅ | ✅ | ✅ | ✅ | ✅ | ✅² | ✅³ | ✅⁴ | ✅⁵ | ❌ |
+| Bildirim | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ✅⁵ | ❌ |
+| Sistem Ayarları | ✅ | ⚠️ | 👁️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Loglar | ✅ | ✅ | 👁️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+**Semboller:**
+- ✅ Tam yetki (CRUD + Onay)
+- ⚠️ Kısıtlı yetki (Oluşturma/Görüntüleme, Onay yok)
+- 👁️ Sadece görüntüleme
+- ❌ Erişim yok
+
+**Notlar:**
+1. ADMIN rolü atayamaz
+2. Sadece kendi ili
+3. Sadece kendi ilçesi
+4. Sadece kendi iş yeri
+5. Sadece kendi bayi(ler)i
+6. Sadece kendi verileri
+
+## 📚 Referanslar
+
+- [NestJS RBAC](https://docs.nestjs.com/security/authorization)
+- [Prisma Best Practices](https://www.prisma.io/docs/guides/performance-and-optimization)
+- [React Authorization](https://blog.logrocket.com/authentication-react-router-v6/)
+- [Material-UI](https://mui.com/material-ui/getting-started/)
+
+---
+
+**📌 Not:** Bu dokümantasyon dinamik bir yapıdır. Sistem gereksinimleri değiştikçe güncellenmelidir.
+
+**Versiyon:** 1.0.0  
+**Son Güncelleme:** Aralık 2024  
+**Hazırlayan:** MEP
