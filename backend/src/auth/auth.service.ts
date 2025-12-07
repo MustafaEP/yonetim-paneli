@@ -24,7 +24,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       roles: user.roles,
-      permissions, // 🔹 JWT içine koyduk
+      permissions, 
     };
   }
 

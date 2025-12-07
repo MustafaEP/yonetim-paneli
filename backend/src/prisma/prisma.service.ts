@@ -8,9 +8,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 
     // Soft delete middleware
     this.$use(async (params, next) => {
-      const softDeleteModels = ['User', 'Member']; // 🔹 buraya Member'ı ekledik
+      const softDeleteModels = ['User', 'Member', 'DuesPlan', 'DuesPayment'];
 
-      if (softDeleteModels.includes(params.model!)) {
+      if (params.model && softDeleteModels.includes(params.model)) {
         // findMany, findFirst, findUnique -> deletedAt null filtrele
         if (['findMany', 'findFirst'].includes(params.action)) {
           params.args = params.args || {};
@@ -51,6 +51,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 
       return next(params);
     });
+
+
 
   }
 

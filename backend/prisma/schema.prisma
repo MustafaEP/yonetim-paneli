@@ -54,6 +54,11 @@ enum MemberSource {
   OTHER
 }
 
+enum DuesPeriod {
+  MONTHLY
+  YEARLY
+}
+
 model Member {
   id         String       @id @default(cuid())
   firstName  String
@@ -64,7 +69,7 @@ model Member {
   status     MemberStatus @default(PENDING)
   source     MemberSource @default(DIRECT)
 
-  // Bölge ilişkileri
+  // Bölge ilişkileri vs...
   provinceId  String?
   districtId  String?
   workplaceId String?
@@ -78,6 +83,13 @@ model Member {
   createdByUserId  String?
   approvedByUserId String?
   approvedAt       DateTime?
+
+  // 🔹 Aidat planı ilişkisi
+  duesPlanId String?
+  duesPlan   DuesPlan? @relation(fields: [duesPlanId], references: [id])
+
+  // Aidat ödemeleri
+  duesPayments DuesPayment[]
 
   isActive  Boolean   @default(true)
   deletedAt DateTime?
@@ -161,4 +173,47 @@ model UserScope {
   dealer    Dealer?    @relation(fields: [dealerId], references: [id])
 
   createdAt DateTime @default(now())
+}
+
+model DuesPlan {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  amount      Decimal    @db.Decimal(10, 2)
+  period      DuesPeriod @default(MONTHLY)
+  isActive    Boolean    @default(true)
+  deletedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments DuesPayment[]
+
+  members Member[]
+}
+
+model DuesPayment {
+  id String @id @default(cuid())
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id])
+
+  planId String?
+  plan   DuesPlan? @relation(fields: [planId], references: [id])
+
+  amount Decimal
+  paidAt DateTime @default(now())
+
+  // İsteğe bağlı: hangi ay/yıl için
+  periodYear  Int?
+  periodMonth Int?
+
+  note            String?
+  createdByUserId String?
+
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

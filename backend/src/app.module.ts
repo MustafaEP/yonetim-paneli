@@ -6,9 +6,18 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
 import { MembersModule } from './members/members.module';
+import { RegionsModule } from './regions/regions.module';
+import { DuesModule } from './dues/dues.module';
 
 @Module({
-  imports: [PrismaModule, UsersModule, AuthModule, MembersModule],
+  imports: [
+    PrismaModule, 
+    UsersModule, 
+    AuthModule, 
+    MembersModule,
+    RegionsModule,
+    DuesModule,
+  ],
   providers: [
     // 1. JWT
     {
