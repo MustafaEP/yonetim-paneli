@@ -5,6 +5,9 @@ import type {
   DuesDebtRow,
   MemberPaymentRow,
   DuesSummary,
+  DuesDebtItem,
+  DuesByMonthItem,
+  MemberPayment,
 } from '../types/dues';
 
 // 🔹 Aidat planları
@@ -142,4 +145,14 @@ export const getDuesSummary = async (): Promise<DuesSummary> => {
   };
 
   return safe;
+};
+
+// GET /dues/reports/debts?since=YYYY-MM-DD
+export const getDebtsReport = async (params?: {
+  since?: string;
+}): Promise<DuesDebtItem[]> => {
+  const res = await httpClient.get<DuesDebtItem[]>('/dues/reports/debts', {
+    params,
+  });
+  return Array.isArray(res.data) ? res.data : [];
 };

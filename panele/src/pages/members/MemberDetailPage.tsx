@@ -28,19 +28,11 @@ import {
 import { useParams } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
-import { hasPermission as hasPermissionUtil } from '../../utils/permissions'; // eğer direkt hook içinde vardıysa buna gerek yok, aşağıda useAuth'tan kullanacağız
 
-import type { MemberDetail } from '../../types/member'; // senin member detail tipin ne ise
-import { getMemberById } from '../../api/membersApi'; // daha önce yazdığımız endpoint'e göre adı uyarlarsın
+import type { MemberDetail } from '../../types/member';
+import { getMemberById, approveMember, rejectMember } from '../../api/membersApi';
 
-import MembersApplicationsPage from './MembersApplicationsPage';
-import { approveMember, rejectMember } from '../../api/membersApi';
-
-
-import type {
-  MemberPaymentRow,
-  DuesPlanRow,
-} from '../../types/dues';
+import type { MemberPaymentRow, DuesPlanRow } from '../../types/dues';
 import {
   getMemberPayments,
   addDuesPayment,
@@ -52,6 +44,8 @@ const MemberDetailPage: React.FC = () => {
 
   const { hasPermission } = useAuth();
   const canAddPayment = hasPermission('DUES_PAYMENT_ADD');
+  const canApprove = hasPermission('MEMBER_APPROVE');
+  const canReject = hasPermission('MEMBER_REJECT');
 
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [loadingMember, setLoadingMember] = useState(true);
@@ -78,11 +72,7 @@ const MemberDetailPage: React.FC = () => {
     note: '',
   });
 
-  const canApprove = hasPermission('MEMBER_APPROVE');
-  const canReject = hasPermission('MEMBER_REJECT');
-
   const [processingStatus, setProcessingStatus] = useState(false);
-
 
   // 🔹 Üye bilgisi
   useEffect(() => {
@@ -211,6 +201,40 @@ const MemberDetailPage: React.FC = () => {
     }
   };
 
+  const handleApproveMember = async () => {
+    if (!id || !canApprove) return;
+    if (!window.confirm('Bu üye başvurusunu onaylamak istediğinize emin misiniz?')) return;
+
+    setProcessingStatus(true);
+    try {
+      await approveMember(id);
+      const updated = await getMemberById(id);
+      setMember(updated);
+    } catch (e) {
+      console.error('Üye onaylanırken hata:', e);
+      window.alert('Üye onaylanırken bir hata oluştu.');
+    } finally {
+      setProcessingStatus(false);
+    }
+  };
+
+  const handleRejectMember = async () => {
+    if (!id || !canReject) return;
+    if (!window.confirm('Bu üye başvurusunu reddetmek istediğinize emin misiniz?')) return;
+
+    setProcessingStatus(true);
+    try {
+      await rejectMember(id);
+      const updated = await getMemberById(id);
+      setMember(updated);
+    } catch (e) {
+      console.error('Üye reddedilirken hata:', e);
+      window.alert('Üye reddedilirken bir hata oluştu.');
+    } finally {
+      setProcessingStatus(false);
+    }
+  };
+
   if (loadingMember) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -230,41 +254,6 @@ const MemberDetailPage: React.FC = () => {
     if (!p.periodMonth) return `${p.periodYear}`;
     return `${p.periodMonth.toString().padStart(2, '0')}/${p.periodYear}`;
   };
-
-  const handleApproveMember = async () => {
-    if (!id || !canApprove) return;
-    if (!window.confirm('Bu üye başvurusunu onaylamak istediğinize emin misiniz?')) return;
-  
-    setProcessingStatus(true);
-    try {
-      await approveMember(id);
-      const updated = await getMemberById(id);
-      setMember(updated);
-    } catch (e) {
-      console.error('Üye onaylanırken hata:', e);
-      window.alert('Üye onaylanırken bir hata oluştu.');
-    } finally {
-      setProcessingStatus(false);
-    }
-  };
-  
-  const handleRejectMember = async () => {
-    if (!id || !canReject) return;
-    if (!window.confirm('Bu üye başvurusunu reddetmek istediğinize emin misiniz?')) return;
-  
-    setProcessingStatus(true);
-    try {
-      await rejectMember(id);
-      const updated = await getMemberById(id);
-      setMember(updated);
-    } catch (e) {
-      console.error('Üye reddedilirken hata:', e);
-      window.alert('Üye reddedilirken bir hata oluştu.');
-    } finally {
-      setProcessingStatus(false);
-    }
-  };
-  
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -289,7 +278,15 @@ const MemberDetailPage: React.FC = () => {
               </Typography>
               <Chip
                 label={member.status}
-                color={member.status === 'ACTIVE' ? 'success' : 'default'}
+                color={
+                  member.status === 'ACTIVE'
+                    ? 'success'
+                    : member.status === 'PENDING'
+                    ? 'warning'
+                    : member.status === 'IHRAC' || member.status === 'REJECTED'
+                    ? 'error'
+                    : 'default'
+                }
                 size="small"
                 sx={{ mt: 0.5 }}
               />
@@ -341,45 +338,58 @@ const MemberDetailPage: React.FC = () => {
       {/* Aidat Ödemeleri */}
       <Card>
         <CardContent>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 2,
-          }}
-        >
-          <Typography variant="h5">
-            Üye Detayı
-          </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2,
+            }}
+          >
+            <Typography variant="h5">
+              Aidat Ödemeleri
+            </Typography>
 
-          {member.status === 'PENDING' && (
             <Box sx={{ display: 'flex', gap: 1 }}>
-              {canApprove && (
+              {member.status === 'PENDING' && (
+                <>
+                  {canApprove && (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="small"
+                      onClick={handleApproveMember}
+                      disabled={processingStatus}
+                    >
+                      Onayla
+                    </Button>
+                  )}
+                  {canReject && (
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={handleRejectMember}
+                      disabled={processingStatus}
+                    >
+                      Reddet
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {canAddPayment && (
                 <Button
                   variant="contained"
-                  color="success"
                   size="small"
-                  onClick={handleApproveMember}
-                  disabled={processingStatus}
+                  onClick={openPaymentDialog}
+                  disabled={loadingPlans}
                 >
-                  Onayla
-                </Button>
-              )}
-              {canReject && (
-                <Button
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  onClick={handleRejectMember}
-                  disabled={processingStatus}
-                >
-                  Reddet
+                  Yeni Ödeme
                 </Button>
               )}
             </Box>
-          )}
-        </Box>
+          </Box>
 
           {loadingPayments ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>

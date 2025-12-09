@@ -33,3 +33,20 @@ export const approveMember = async (id: string): Promise<void> => {
 export const rejectMember = async (id: string): Promise<void> => {
   await httpClient.post(`/members/${id}/reject`, {});
 };
+
+// 🔹 Yeni üye başvurusu oluştur: POST /members/applications
+export const createMemberApplication = async (payload: {
+  firstName: string;
+  lastName: string;
+  nationalId?: string;
+  phone?: string;
+  email?: string;
+  source?: 'DIRECT' | 'WORKPLACE' | 'DEALER' | 'OTHER';
+  provinceId?: string;
+  districtId?: string;
+  workplaceId?: string;
+  dealerId?: string;
+}): Promise<MemberDetail> => {
+  const res = await httpClient.post<MemberDetail>('/members/applications', payload);
+  return res.data;
+};

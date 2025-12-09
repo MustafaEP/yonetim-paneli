@@ -5,15 +5,12 @@ import {
   Box,
   Toolbar,
   Typography,
-  Button,
 } from '@mui/material';
 import { Outlet } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import Sidebar, { drawerWidth } from './Sidebar';
+import Sidebar from './Sidebar';
+import ProfileMenu from './ProfileMenu';
 
 const MainLayout: React.FC = () => {
-  const { user, logout } = useAuth();
-
   return (
     <Box sx={{ display: 'flex' }}>
       {/* AppBar */}
@@ -27,16 +24,7 @@ const MainLayout: React.FC = () => {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             Sendika Yönetim Paneli
           </Typography>
-          {user && (
-            <>
-              <Typography variant="body2" sx={{ mr: 2 }}>
-                {user.firstName} {user.lastName} ({user.roles.join(', ')})
-              </Typography>
-              <Button color="inherit" onClick={logout}>
-                Çıkış
-              </Button>
-            </>
-          )}
+          <ProfileMenu />
         </Toolbar>
       </AppBar>
 

@@ -27,3 +27,17 @@ export interface UserDetail extends UserListItem {
   updatedAt: string;
   deletedAt?: string | null;
 }
+
+// Uygulamada göstereceğimiz tüm roller
+export const ALL_ROLES: { value: Role; label: string }[] = [
+  { value: 'ADMIN', label: 'Admin' },
+  { value: 'MODERATOR', label: 'Moderatör' },
+  { value: 'GENEL_BASKAN', label: 'Genel Başkan' },
+  { value: 'GENEL_BASKAN_YRD', label: 'Genel Başkan Yardımcısı' },
+  { value: 'GENEL_SEKRETER', label: 'Genel Sekreter' },
+  { value: 'IL_BASKANI', label: 'İl Başkanı' },
+  { value: 'ILCE_TEMSILCISI', label: 'İlçe Temsilcisi' },
+  { value: 'ISYERI_TEMSILCISI', label: 'İşyeri Temsilcisi' },
+  { value: 'BAYI_YETKILISI', label: 'Bayi Yetkilisi' },
+  { value: 'UYE', label: 'Üye' },
+];

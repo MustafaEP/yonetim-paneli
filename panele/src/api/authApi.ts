@@ -6,3 +6,4 @@ export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
   const response = await httpClient.post<LoginResponse>('/auth/login', data);
   return response.data;
 };
+

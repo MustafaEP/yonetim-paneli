@@ -22,7 +22,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Stack,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 
@@ -42,9 +46,17 @@ import {
   getWorkplaces,
   getDealers,
   createUserScope,
+  deleteUserScope,
 } from '../../api/regionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { canManageBranches } from '../../utils/permissions';
+
+// src/pages/users/UserDetailPage.tsx (senin path’ine göre)
+import UserRolesDialog from '../../components/users/UserRolesDialog';
+import { updateUserRoles } from '../../api/usersApi';
+import type { Role } from '../../types/user';
+
+import UserPermissionsSection from '../../components/users/UserPermissionsSection';
 
 const UserDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -79,6 +91,22 @@ const UserDetailPage: React.FC = () => {
     dealerId: '',
   });
 
+  const { hasPermission } = useAuth();
+  const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
+  const canAssignRole = hasPermission('USER_ASSIGN_ROLE');
+
+  const handleSaveRoles = async (roles: Role[]) => {
+    if (!user) return;
+    try {
+      const updated = await updateUserRoles(user.id, roles);
+      setUser(updated);
+    } catch (e) {
+      console.error('Kullanıcı rolleri güncellenirken hata:', e);
+      throw e; // Dialog içinde hata için alert gösteriyoruz
+    }
+  };
+  
+  
   // 🔹 Kullanıcı & ilk scope load
   useEffect(() => {
     if (!id) return;
@@ -141,7 +169,6 @@ const UserDetailPage: React.FC = () => {
     }
   };
   
-
   // 🔹 Scope form değişimi
   const handleScopeFormChange = (field: keyof typeof scopeForm, value: string) => {
     setScopeForm((prev) => ({
@@ -265,6 +292,19 @@ const UserDetailPage: React.FC = () => {
     }
   };
 
+  // 🔹 Scope silme
+  const handleDeleteScope = async (scopeId: string) => {
+    if (!window.confirm('Bu yetki alanını silmek istediğinize emin misiniz?')) return;
+
+    try {
+      await deleteUserScope(scopeId);
+      await reloadScopes();
+    } catch (e) {
+      console.error('Scope silinirken hata:', e);
+      window.alert('Scope silinirken bir hata oluştu.');
+    }
+  };
+
   // 🔹 Render kısmı – hook'lardan SONRA koşullu return
   if (loadingUser) {
     return (
@@ -355,17 +395,6 @@ const UserDetailPage: React.FC = () => {
 
             <Grid item xs={12}>
               <Typography variant="subtitle2" color="text.secondary">
-                Roller
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                {user.roles.map((r) => (
-                  <Chip key={r} label={r} size="small" />
-                ))}
-              </Box>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" color="text.secondary">
                 İzinler
               </Typography>
               {user.permissions && user.permissions.length > 0 ? (
@@ -381,6 +410,41 @@ const UserDetailPage: React.FC = () => {
               )}
             </Grid>
           </Grid>
+
+          {/* Roller bölümü */}
+          <Box sx={{ mt: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 1,
+              }}
+            >
+              <Typography variant="subtitle1">Roller</Typography>
+              {canAssignRole && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setRolesDialogOpen(true)}
+                >
+                  Rolleri Düzenle
+                </Button>
+              )}
+            </Box>
+            {user?.roles && user.roles.length > 0 ? (
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {user.roles.map((role) => (
+                  <Chip key={role} label={role} size="small" />
+                ))}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Bu kullanıcıya henüz rol atanmamış.
+              </Typography>
+            )}
+          </Box>
+          <UserPermissionsSection permissions={user?.permissions} />
         </CardContent>
       </Card>
 
@@ -426,6 +490,7 @@ const UserDetailPage: React.FC = () => {
                   <TableRow>
                     <TableCell>Tür</TableCell>
                     <TableCell>Tanım</TableCell>
+                    {isBranchManager && <TableCell align="right">İşlemler</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -435,6 +500,19 @@ const UserDetailPage: React.FC = () => {
                       <TableRow key={s.id}>
                         <TableCell>{formatted.type}</TableCell>
                         <TableCell>{formatted.description}</TableCell>
+                        {isBranchManager && (
+                          <TableCell align="right">
+                            <Tooltip title="Sil">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteScope(s.id)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -562,6 +640,13 @@ const UserDetailPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <UserRolesDialog
+        open={rolesDialogOpen}
+        user={user}
+        onClose={() => setRolesDialogOpen(false)}
+        onSave={handleSaveRoles}
+      />
     </Box>
   );
 };

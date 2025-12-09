@@ -89,3 +89,32 @@ export interface DuesSummary {
     count: number;
   }[];
 }
+
+// 🔹 Aidat summary tipleri
+export interface DuesByMonthItem {
+  month: number; // 1-12
+  year: number;
+  total: number; // toplam tahsilat
+  count: number; // ödeme adedi
+}
+
+export interface DuesSummary {
+  totalPayments: number;
+  totalMembers: number;
+  paidMembers: number;
+  unpaidMembers: number;
+  byMonth: DuesByMonthItem[];
+}
+
+// 🔹 Borçlu üyeler raporu tipi
+export interface DuesDebtItem {
+  memberId: string;
+  member: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  lastPaymentDate: string | null;
+  monthsOverdue: number;
+  totalDebt: number;
+}
