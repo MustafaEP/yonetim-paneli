@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Card,
-  CardContent,
   Typography,
   Button,
   Dialog,
@@ -15,8 +14,17 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  useTheme,
+  alpha,
+  Paper,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import AddIcon from '@mui/icons-material/Add';
+import LocationCityIcon from '@mui/icons-material/LocationCity';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import MapIcon from '@mui/icons-material/Map';
 
 import type { Province, District } from '../../types/region';
 import {
@@ -26,8 +34,10 @@ import {
   updateDistrict,
 } from '../../api/regionsApi';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../hooks/useToast';
 
 const RegionsDistrictsPage: React.FC = () => {
+  const theme = useTheme();
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [rows, setRows] = useState<District[]>([]);
@@ -42,6 +52,7 @@ const RegionsDistrictsPage: React.FC = () => {
   });
 
   const { hasPermission } = useAuth();
+  const toast = useToast();
   const canManageBranch = hasPermission('BRANCH_MANAGE');
 
   const loadProvinces = async () => {
@@ -69,7 +80,7 @@ const RegionsDistrictsPage: React.FC = () => {
 
   useEffect(() => {
     loadProvinces();
-    loadDistricts(); // başta tüm ilçeler
+    loadDistricts();
   }, []);
 
   useEffect(() => {
@@ -112,11 +123,11 @@ const RegionsDistrictsPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      window.alert('İlçe adı zorunludur.');
+      toast.showWarning('İlçe adı zorunludur.');
       return;
     }
     if (!form.provinceId) {
-      window.alert('İl seçimi zorunludur.');
+      toast.showWarning('İl seçimi zorunludur.');
       return;
     }
 
@@ -135,9 +146,10 @@ const RegionsDistrictsPage: React.FC = () => {
 
       await loadDistricts(selectedProvinceId || form.provinceId);
       setDialogOpen(false);
+      toast.showSuccess(editingDistrict ? 'İlçe başarıyla güncellendi.' : 'İlçe başarıyla oluşturuldu.');
     } catch (e) {
       console.error('İlçe kaydedilirken hata:', e);
-      window.alert('İlçe kaydedilirken bir hata oluştu.');
+      toast.showError('İlçe kaydedilirken bir hata oluştu.');
     } finally {
       setSaving(false);
     }
@@ -148,125 +160,356 @@ const RegionsDistrictsPage: React.FC = () => {
       field: 'name',
       headerName: 'İlçe Adı',
       flex: 1,
+      minWidth: 200,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LocationCityIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
+          <Typography sx={{ fontWeight: 500 }}>{params.row.name}</Typography>
+        </Box>
+      ),
     },
     {
       field: 'province',
       headerName: 'İl',
       flex: 1,
+      minWidth: 200,
       valueGetter: (params: { row?: District }) => params?.row?.province?.name ?? '',
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <MapIcon sx={{ color: theme.palette.info.main, fontSize: '1.1rem' }} />
+          <Typography>{params.row.province?.name ?? ''}</Typography>
+        </Box>
+      ),
     },
   ];
 
   return (
-    <Card>
-      <CardContent>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 2,
-          }}
-        >
-          <Box>
-            <Typography variant="h5">İlçeler</Typography>
-            <Typography variant="body2" color="text.secondary">
-              İllere bağlı ilçeleri görüntüleyebilir, yetkiniz varsa ekleyip düzenleyebilirsiniz.
+    <Box>
+      {/* Başlık Bölümü */}
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+            }}
+          >
+            <LocationCityIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
+          </Box>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                color: theme.palette.text.primary,
+                mb: 0.5,
+              }}
+            >
+              İlçeler
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: theme.palette.text.secondary,
+                fontSize: { xs: '0.875rem', sm: '0.9rem' },
+              }}
+            >
+              İllere bağlı ilçeleri görüntüleyin ve yönetin
             </Typography>
           </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>İl Filtresi</InputLabel>
-              <Select
-                label="İl Filtresi"
-                value={selectedProvinceId}
-                onChange={(e) => setSelectedProvinceId(e.target.value as string)}
-              >
-                <MenuItem value="">
-                  <em>Tümü</em>
-                </MenuItem>
-                {provinces.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name} {p.code ? `(${p.code})` : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {canManageBranch && (
-              <Button variant="contained" size="small" onClick={handleOpenNew}>
-                Yeni İlçe
-              </Button>
-            )}
-          </Box>
+          {canManageBranch && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenNew}
+              sx={{
+                display: { xs: 'none', sm: 'flex' },
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+                '&:hover': {
+                  boxShadow: `0 6px 20px 0 ${alpha(theme.palette.primary.main, 0.4)}`,
+                },
+              }}
+            >
+              Yeni İlçe
+            </Button>
+          )}
         </Box>
 
-        <Box sx={{ height: 480 }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            getRowId={(row) => row.id}
-            loading={loading}
-            onRowDoubleClick={(params) => {
-              if (!canManageBranch) return;
-              const d = rows.find((x) => x.id === params.id);
-              if (d) handleOpenEdit(d);
+        {/* Mobile New Button */}
+        {canManageBranch && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            fullWidth
+            onClick={handleOpenNew}
+            sx={{
+              display: { xs: 'flex', sm: 'none' },
+              mt: 2,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              py: 1.5,
+              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
             }}
-            initialState={{
-              pagination: {
-                paginationModel: { pageSize: 25, page: 0 },
+          >
+            Yeni İlçe Ekle
+          </Button>
+        )}
+      </Box>
+
+      {/* Ana Kart */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Filtre Bölümü */}
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3 },
+            backgroundColor: alpha(theme.palette.primary.main, 0.02),
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <FilterListIcon sx={{ color: theme.palette.primary.main }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              Filtreler
+            </Typography>
+          </Box>
+          <FormControl
+            size="small"
+            fullWidth
+            sx={{
+              maxWidth: { sm: 400 },
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#fff',
+                borderRadius: 2,
+                '&:hover': {
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: theme.palette.primary.main,
+                  },
+                },
               },
             }}
-            pageSizeOptions={[10, 25, 50]}
-          />
+          >
+            <InputLabel>İl Filtresi</InputLabel>
+            <Select
+              label="İl Filtresi"
+              value={selectedProvinceId}
+              onChange={(e) => setSelectedProvinceId(e.target.value as string)}
+            >
+              <MenuItem value="">
+                <em>Tümü</em>
+              </MenuItem>
+              {provinces.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.name} {p.code ? `(${p.code})` : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Box>
 
-        {/* İlçe Ekle / Düzenle Dialog */}
-        <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="sm">
-          <DialogTitle>
-            {editingDistrict ? 'İlçe Düzenle' : 'Yeni İlçe'}
-          </DialogTitle>
-          <DialogContent
-            sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
-          >
-            <FormControl fullWidth size="small">
-              <InputLabel>İl</InputLabel>
-              <Select
-                label="İl"
-                value={form.provinceId}
-                onChange={(e) =>
-                  handleFormChange('provinceId', e.target.value as string)
-                }
+        {/* İçerik Bölümü */}
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+          {/* Sonuç Sayısı */}
+          {!loading && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                backgroundColor: alpha(theme.palette.info.main, 0.05),
+                borderRadius: 2,
+                border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: theme.palette.info.main,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
               >
-                {provinces.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name} {p.code ? `(${p.code})` : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                <LocationCityIcon fontSize="small" />
+                Toplam {rows.length} ilçe bulundu
+              </Typography>
+            </Paper>
+          )}
 
-            <TextField
-              label="İlçe Adı"
-              size="small"
-              fullWidth
-              value={form.name}
-              onChange={(e) => handleFormChange('name', e.target.value)}
-              required
+          {/* Tablo */}
+          <Box
+            sx={{
+              height: { xs: 400, sm: 500, md: 600 },
+              minHeight: { xs: 400, sm: 500, md: 600 },
+              '& .MuiDataGrid-root': {
+                border: 'none',
+                borderRadius: 2,
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                borderRadius: 0,
+              },
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontWeight: 700,
+                fontSize: '0.875rem',
+              },
+              '& .MuiDataGrid-row': {
+                cursor: canManageBranch ? 'pointer' : 'default',
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                },
+              },
+              '& .MuiDataGrid-footerContainer': {
+                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                backgroundColor: alpha(theme.palette.background.default, 0.5),
+              },
+            }}
+          >
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              getRowId={(row) => row.id}
+              loading={loading}
+              onRowDoubleClick={(params) => {
+                if (!canManageBranch) return;
+                const d = rows.find((x) => x.id === params.id);
+                if (d) handleOpenEdit(d);
+              }}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 25, page: 0 },
+                },
+              }}
+              pageSizeOptions={[10, 25, 50, 100]}
+              disableRowSelectionOnClick
+              sx={{
+                '& .MuiDataGrid-virtualScroller': {
+                  minHeight: '200px',
+                },
+              }}
             />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog} disabled={saving}>
-              İptal
-            </Button>
-            <Button onClick={handleSave} disabled={saving} variant="contained">
-              Kaydet
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </CardContent>
-    </Card>
+          </Box>
+        </Box>
+      </Card>
+
+      {/* İlçe Ekle / Düzenle Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 700,
+            fontSize: '1.25rem',
+            pb: 1,
+          }}
+        >
+          {editingDistrict ? 'İlçe Düzenle' : 'Yeni İlçe'}
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2.5,
+            mt: 1,
+          }}
+        >
+          <FormControl
+            fullWidth
+            size="small"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              },
+            }}
+          >
+            <InputLabel>İl</InputLabel>
+            <Select
+              label="İl"
+              value={form.provinceId}
+              onChange={(e) => handleFormChange('provinceId', e.target.value as string)}
+            >
+              {provinces.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.name} {p.code ? `(${p.code})` : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            label="İlçe Adı"
+            size="small"
+            fullWidth
+            value={form.name}
+            onChange={(e) => handleFormChange('name', e.target.value)}
+            required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              },
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={handleCloseDialog}
+            disabled={saving}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            İptal
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            variant="contained"
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 100,
+            }}
+          >
+            {saving ? <CircularProgress size={20} color="inherit" /> : 'Kaydet'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 

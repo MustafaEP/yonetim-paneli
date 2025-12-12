@@ -27,23 +27,27 @@ model User {
   firstName    String
   lastName     String
 
-  roles Role[] // Postgres enum[] olarak tutulacak
-
   isActive  Boolean   @default(true)
   deletedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  scopes UserScope[]
+  scopes     UserScope[]
+  customRoles CustomRole[] @relation("UserCustomRoles")
+  
+  // 🔹 Üye ilişkileri
+  createdMembers  Member[] @relation("MemberCreatedBy")
+  approvedMembers Member[] @relation("MemberApprovedBy")
+  cancelledMembers Member[] @relation("MemberCancelledBy")
 }
 
 enum MemberStatus {
   PENDING // başvuru yapıldı, onay bekliyor
   ACTIVE // aktif üye
-  PASIF // pasif
-  ISTIFA // istifa etmiş
-  IHRAC // ihraç edilmiş
+  INACTIVE // pasif
+  RESIGNED // istifa etmiş
+  EXPELLED // ihraç edilmiş
   REJECTED // başvuru reddedildi
 }
 
@@ -83,6 +87,21 @@ model Member {
   createdByUserId  String?
   approvedByUserId String?
   approvedAt       DateTime?
+
+  // 🔹 Kullanıcı ilişkileri
+  createdBy  User? @relation("MemberCreatedBy", fields: [createdByUserId], references: [id])
+  approvedBy User? @relation("MemberApprovedBy", fields: [approvedByUserId], references: [id])
+  cancelledBy User? @relation("MemberCancelledBy", fields: [cancelledByUserId], references: [id])
+
+  // 🔹 Üyelik iptal bilgisi
+  cancellationReason String? // Üyeliğin iptal edilme nedeni
+  cancelledByUserId   String? // Üyeliği iptal eden kullanıcı
+  cancelledAt         DateTime? // Üyeliğin iptal edildiği tarih
+
+  // 🔹 Önceki iptal edilmiş üye bilgisi (yeniden üye olanlar için)
+  previousCancelledMemberId String? // Daha önce iptal edilmiş üyenin ID'si
+  previousCancelledMember   Member? @relation("PreviousCancelledMember", fields: [previousCancelledMemberId], references: [id])
+  reRegisteredMembers       Member[] @relation("PreviousCancelledMember") // Bu üyeden yeniden kayıt olanlar
 
   // 🔹 Aidat planı ilişkisi
   duesPlanId String?
@@ -216,4 +235,31 @@ model DuesPayment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Custom Role Management
+model CustomRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  deletedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  permissions CustomRolePermission[]
+  users       User[]                 @relation("UserCustomRoles")
+}
+
+model CustomRolePermission {
+  id         String     @id @default(cuid())
+  roleId     String
+  role       CustomRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission String // Permission enum değeri
+
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, permission])
+  @@index([roleId])
 }

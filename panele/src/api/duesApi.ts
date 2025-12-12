@@ -94,6 +94,10 @@ export const getMemberPayments = async (
       typeof p.amount === 'number'
         ? p.amount
         : Number((p as any).amount ?? 0),
+    // appliedMonths'ı koru (backend'den geliyorsa)
+    appliedMonths: (p as any).appliedMonths || null,
+    // excessAmount'ı koru (backend'den geliyorsa)
+    excessAmount: (p as any).excessAmount || null,
   }));
 };
 
@@ -131,6 +135,8 @@ export const getDuesSummary = async (): Promise<DuesSummary> => {
     totalMembers: d.totalMembers ?? 0,
     paidMembers: d.paidMembers ?? 0,
     unpaidMembers: d.unpaidMembers ?? 0,
+    newMembersThisMonth: d.newMembersThisMonth ?? 0,
+    cancelledMembersThisMonth: d.cancelledMembersThisMonth ?? 0,
     byMonth: Array.isArray(d.byMonth)
       ? d.byMonth.map((m) => ({
           month: m.month ?? 0,
@@ -154,5 +160,49 @@ export const getDebtsReport = async (params?: {
   const res = await httpClient.get<DuesDebtItem[]>('/dues/reports/debts', {
     params,
   });
+  return Array.isArray(res.data) ? res.data : [];
+};
+
+// 🔹 Üye borç bilgisi: GET /dues/members/:memberId/debt
+export const getMemberDebt = async (
+  memberId: string,
+): Promise<DuesDebtRow> => {
+  const res = await httpClient.get<DuesDebtRow>(
+    `/dues/members/${memberId}/debt`,
+  );
+  return res.data;
+};
+
+// 🔹 Üye aylık borç durumu: GET /dues/members/:memberId/monthly-debts?year=2025
+export interface MonthlyDebtStatus {
+  memberId: string;
+  year: number;
+  planAmount: number;
+  months: Array<{
+    month: number;
+    monthName: string;
+    amount: number;
+    isPaid: boolean;
+    paymentId?: string;
+    paidAt?: string;
+  }>;
+}
+
+export const getMemberMonthlyDebts = async (
+  memberId: string,
+  year?: number,
+): Promise<MonthlyDebtStatus> => {
+  const res = await httpClient.get<MonthlyDebtStatus>(
+    `/dues/members/${memberId}/monthly-debts`,
+    {
+      params: year ? { year } : undefined,
+    },
+  );
+  return res.data;
+};
+
+// 🔹 Aylık tahsilat raporu: GET /dues/reports/monthly
+export const getMonthlyPaymentsReport = async (): Promise<DuesByMonthItem[]> => {
+  const res = await httpClient.get<DuesByMonthItem[]>('/dues/reports/monthly');
   return Array.isArray(res.data) ? res.data : [];
 };

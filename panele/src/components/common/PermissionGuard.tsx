@@ -25,10 +25,20 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
     }
   }
 
-  // Permission check (simplified - you may need to implement permission checking logic)
-  // For now, we'll just check if user is authenticated
-  if (permissions && !user) {
-    return <>{fallback}</>;
+  // Permission check
+  if (permissions) {
+    if (!user) {
+      return <>{fallback}</>;
+    }
+    const permissionArray = Array.isArray(permissions) ? permissions : [permissions];
+    const hasPermission = permissionArray.some((perm) => {
+      // Admin her şeye erişebilir
+      if (user.roles?.includes('ADMIN')) return true;
+      return user.permissions?.includes(perm) ?? false;
+    });
+    if (!hasPermission) {
+      return <>{fallback}</>;
+    }
   }
 
   return <>{children}</>;

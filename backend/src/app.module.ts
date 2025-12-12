@@ -3,20 +3,24 @@ import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { PermissionsGuard } from './auth/permissions.guard';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from './auth/guards/permissions.guard';
 import { MembersModule } from './members/members.module';
 import { RegionsModule } from './regions/regions.module';
 import { DuesModule } from './dues/dues.module';
+import { ConfigModule } from './config/config.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
+    ConfigModule,
     PrismaModule, 
     UsersModule, 
     AuthModule, 
     MembersModule,
     RegionsModule,
     DuesModule,
+    RolesModule,
   ],
   providers: [
     // 1. JWT

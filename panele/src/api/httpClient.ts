@@ -1,5 +1,5 @@
 // src/api/httpClient.ts
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 
 const API_BASE_URL = 'http://localhost:3000';
 
@@ -20,5 +20,22 @@ httpClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor: 401 ise logout / yönlendirme ileride eklenebilir
+// Response interceptor: 401 ise logout / yönlendirme
+httpClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      // Token geçersiz veya süresi dolmuş
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      
+      // Sadece login sayfasında değilsek yönlendir
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default httpClient;

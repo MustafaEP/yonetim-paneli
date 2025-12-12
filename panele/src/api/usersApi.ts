@@ -15,10 +15,10 @@ export const getUserById = async (id: string): Promise<UserDetail> => {
 // 🔹 Kullanıcı rolleri güncelle: PATCH /users/:id/roles
 export const updateUserRoles = async (
   id: string,
-  roles: Role[],
+  customRoleIds: string[],
 ): Promise<UserDetail> => {
   const res = await httpClient.patch<UserDetail>(`/users/${id}/roles`, {
-    roles,
+    customRoleIds,
   });
   return res.data;
 };

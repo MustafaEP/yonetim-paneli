@@ -7,7 +7,6 @@ import {
   Typography,
   Tabs,
   Tab,
-  CircularProgress,
   Button,
   Dialog,
   DialogTitle,
@@ -271,27 +270,22 @@ const RegionsPage: React.FC = () => {
               </Box>
             )}
 
-            {loadingProvinces ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box sx={{ height: 500 }}>
-                <DataGrid
-                  rows={provinces}
-                  columns={provinceColumns}
-                  getRowId={(row) => row.id}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 25, page: 0 } },
-                  }}
-                  pageSizeOptions={[10, 25, 50, 100]}
-                  onRowDoubleClick={(params) =>
-                    isBranchManager && openEditProvinceDialog(params.row)
-                  }
-                  onRowSelectionModelChange={handleProvinceSelectionChange}
-                />
-              </Box>
-            )}
+            <Box sx={{ height: 500, minHeight: 500 }}>
+              <DataGrid
+                rows={provinces}
+                columns={provinceColumns}
+                loading={loadingProvinces}
+                getRowId={(row) => row.id}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 25, page: 0 } },
+                }}
+                pageSizeOptions={[10, 25, 50, 100]}
+                onRowDoubleClick={(params) =>
+                  isBranchManager && openEditProvinceDialog(params.row)
+                }
+                onRowSelectionModelChange={handleProvinceSelectionChange}
+              />
+            </Box>
           </Box>
         )}
 
@@ -301,23 +295,18 @@ const RegionsPage: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Üst listeden bir il seçerseniz, sadece o ile bağlı ilçeler listelenir.
             </Typography>
-            {loadingDistricts ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box sx={{ height: 500 }}>
-                <DataGrid
-                  rows={districts}
-                  columns={districtColumns}
-                  getRowId={(row) => row.id}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 25, page: 0 } },
-                  }}
-                  pageSizeOptions={[10, 25, 50, 100]}
-                />
-              </Box>
-            )}
+            <Box sx={{ height: 500, minHeight: 500 }}>
+              <DataGrid
+                rows={districts}
+                columns={districtColumns}
+                loading={loadingDistricts}
+                getRowId={(row) => row.id}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 25, page: 0 } },
+                }}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            </Box>
           </Box>
         )}
 
@@ -327,23 +316,18 @@ const RegionsPage: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Üst listeden bir il seçerseniz, sadece o ile bağlı işyerleri listelenir.
             </Typography>
-            {loadingWorkplaces ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box sx={{ height: 500 }}>
-                <DataGrid
-                  rows={workplaces}
-                  columns={workplaceColumns}
-                  getRowId={(row) => row.id}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 25, page: 0 } },
-                  }}
-                  pageSizeOptions={[10, 25, 50, 100]}
-                />
-              </Box>
-            )}
+            <Box sx={{ height: 500, minHeight: 500 }}>
+              <DataGrid
+                rows={workplaces}
+                columns={workplaceColumns}
+                loading={loadingWorkplaces}
+                getRowId={(row) => row.id}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 25, page: 0 } },
+                }}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            </Box>
           </Box>
         )}
 
@@ -353,23 +337,18 @@ const RegionsPage: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Üst listeden bir il seçerseniz, sadece o ile bağlı bayiler listelenir.
             </Typography>
-            {loadingDealers ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box sx={{ height: 500 }}>
-                <DataGrid
-                  rows={dealers}
-                  columns={dealerColumns}
-                  getRowId={(row) => row.id}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 25, page: 0 } },
-                  }}
-                  pageSizeOptions={[10, 25, 50, 100]}
-                />
-              </Box>
-            )}
+            <Box sx={{ height: 500, minHeight: 500 }}>
+              <DataGrid
+                rows={dealers}
+                columns={dealerColumns}
+                loading={loadingDealers}
+                getRowId={(row) => row.id}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 25, page: 0 } },
+                }}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            </Box>
           </Box>
         )}
 

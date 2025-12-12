@@ -1,11 +1,11 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { Permission } from './permission.enum'; // backend permission enum'u
+import { Permission } from '../permission.enum';
 
 export interface CurrentUserData {
   userId: string;
   email: string;
   roles: string[];
-  permissions?: Permission[]; // 🔹 yeni alan
+  permissions?: Permission[];
 }
 
 export const CurrentUser = createParamDecorator(
@@ -14,3 +14,4 @@ export const CurrentUser = createParamDecorator(
     return request.user;
   },
 );
+

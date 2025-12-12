@@ -12,6 +12,12 @@ export const getMembers = async (): Promise<MemberListItem[]> => {
   return Array.isArray(res.data) ? res.data : [];
 };
 
+// 🔹 Reddedilen üyeleri listele: GET /members/rejected
+export const getRejectedMembers = async (): Promise<MemberListItem[]> => {
+  const res = await httpClient.get<MemberListItem[]>('/members/rejected');
+  return Array.isArray(res.data) ? res.data : [];
+};
+
 // 🔹 Üye detayı: GET /members/:id
 export const getMemberById = async (id: string): Promise<MemberDetail> => {
   const res = await httpClient.get<MemberDetail>(`/members/${id}`);
@@ -46,7 +52,57 @@ export const createMemberApplication = async (payload: {
   districtId?: string;
   workplaceId?: string;
   dealerId?: string;
+  duesPlanId: string;
+  previousCancelledMemberId?: string;
 }): Promise<MemberDetail> => {
   const res = await httpClient.post<MemberDetail>('/members/applications', payload);
+  return res.data;
+};
+
+// 🔹 Üye aidat planını güncelle: PATCH /members/:id/dues-plan
+export const updateMemberDuesPlan = async (
+  memberId: string,
+  duesPlanId: string,
+): Promise<MemberDetail> => {
+  const res = await httpClient.patch<MemberDetail>(
+    `/members/${memberId}/dues-plan`,
+    { duesPlanId },
+  );
+  return res.data;
+};
+
+// 🔹 TC kimlik numarasına göre iptal edilmiş üye kontrolü: GET /members/check-national-id/:nationalId
+export const checkCancelledMemberByNationalId = async (nationalId: string): Promise<MemberDetail | null> => {
+  if (!nationalId || nationalId.trim().length === 0) {
+    return null;
+  }
+  try {
+    const res = await httpClient.get<MemberDetail>(`/members/check-national-id/${encodeURIComponent(nationalId.trim())}`);
+    return res.data;
+  } catch (e: any) {
+    // 404 veya başka bir hata durumunda null döndür
+    if (e?.response?.status === 404) {
+      return null;
+    }
+    throw e;
+  }
+};
+
+// 🔹 İptal edilen üyeleri listele: GET /members/cancelled
+export const getCancelledMembers = async (): Promise<MemberListItem[]> => {
+  const res = await httpClient.get<MemberListItem[]>('/members/cancelled');
+  return Array.isArray(res.data) ? res.data : [];
+};
+
+// 🔹 Üyeliği iptal et: PATCH /members/:id/cancel
+export const cancelMember = async (
+  memberId: string,
+  cancellationReason: string,
+  status: 'RESIGNED' | 'EXPELLED' | 'INACTIVE',
+): Promise<MemberDetail> => {
+  const res = await httpClient.patch<MemberDetail>(
+    `/members/${memberId}/cancel`,
+    { cancellationReason, status },
+  );
   return res.data;
 };

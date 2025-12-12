@@ -50,11 +50,11 @@ import {
 } from '../../api/regionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { canManageBranches } from '../../utils/permissions';
+import { useToast } from '../../hooks/useToast';
 
 // src/pages/users/UserDetailPage.tsx (senin path’ine göre)
 import UserRolesDialog from '../../components/users/UserRolesDialog';
 import { updateUserRoles } from '../../api/usersApi';
-import type { Role } from '../../types/user';
 
 import UserPermissionsSection from '../../components/users/UserPermissionsSection';
 
@@ -69,6 +69,7 @@ const UserDetailPage: React.FC = () => {
 
   // 🔹 Mevcut user (login olan) & branch manage kontrolü
   const { user: currentUser } = useAuth();
+  const toast = useToast();
   const isBranchManager = canManageBranches(currentUser);
 
   // 🔹 Scope ekleme dialog state'leri
@@ -95,10 +96,10 @@ const UserDetailPage: React.FC = () => {
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const canAssignRole = hasPermission('USER_ASSIGN_ROLE');
 
-  const handleSaveRoles = async (roles: Role[]) => {
+  const handleSaveRoles = async (customRoleIds: string[]) => {
     if (!user) return;
     try {
-      const updated = await updateUserRoles(user.id, roles);
+      const updated = await updateUserRoles(user.id, customRoleIds);
       setUser(updated);
     } catch (e) {
       console.error('Kullanıcı rolleri güncellenirken hata:', e);
@@ -269,7 +270,7 @@ const UserDetailPage: React.FC = () => {
     const { provinceId, districtId, workplaceId, dealerId } = scopeForm;
 
     if (!provinceId && !districtId && !workplaceId && !dealerId) {
-      window.alert('En az bir yetki alanı (il, ilçe, işyeri veya bayi) seçmelisiniz.');
+      toast.showWarning('En az bir yetki alanı (il, ilçe, işyeri veya bayi) seçmelisiniz.');
       return;
     }
 
@@ -284,9 +285,10 @@ const UserDetailPage: React.FC = () => {
       });
       await reloadScopes();
       setScopeDialogOpen(false);
+      toast.showSuccess('Yetki alanı başarıyla eklendi.');
     } catch (e) {
       console.error('Scope eklenirken hata:', e);
-      window.alert('Scope eklenirken bir hata oluştu.');
+      toast.showError('Yetki alanı eklenirken bir hata oluştu.');
     } finally {
       setScopeSaving(false);
     }
@@ -299,9 +301,10 @@ const UserDetailPage: React.FC = () => {
     try {
       await deleteUserScope(scopeId);
       await reloadScopes();
+      toast.showSuccess('Yetki alanı başarıyla silindi.');
     } catch (e) {
       console.error('Scope silinirken hata:', e);
-      window.alert('Scope silinirken bir hata oluştu.');
+      toast.showError('Yetki alanı silinirken bir hata oluştu.');
     }
   };
 

@@ -11,15 +11,19 @@ import {
   Checkbox,
   Typography,
   Box,
+  CircularProgress,
 } from '@mui/material';
 
-import { type Role, ALL_ROLES, type UserDetail } from '../../types/user';
+import { type UserDetail } from '../../types/user';
+import { getRoles } from '../../api/rolesApi';
+import type { RoleListItem, CustomRole } from '../../types/role';
+import { useToast } from '../../hooks/useToast';
 
 interface UserRolesDialogProps {
   open: boolean;
   user: UserDetail | null;
   onClose: () => void;
-  onSave: (roles: Role[]) => Promise<void> | void;
+  onSave: (customRoleIds: string[]) => Promise<void> | void;
 }
 
 const UserRolesDialog: React.FC<UserRolesDialogProps> = ({
@@ -28,20 +32,49 @@ const UserRolesDialog: React.FC<UserRolesDialogProps> = ({
   onClose,
   onSave,
 }) => {
-  const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
+  const toast = useToast();
+  const [availableRoles, setAvailableRoles] = useState<CustomRole[]>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Rolleri yükle
   useEffect(() => {
-    if (user) {
-      setSelectedRoles(user.roles ?? []);
-    } else {
-      setSelectedRoles([]);
+    if (open) {
+      const loadRoles = async () => {
+        setLoading(true);
+        try {
+          const roles = await getRoles();
+          // Sadece CustomRole'leri al (SystemRole'leri hariç tut)
+          const customRoles = roles.filter((r): r is CustomRole => 'id' in r && !('isSystemRole' in r));
+          setAvailableRoles(customRoles);
+        } catch (e) {
+          console.error('Roller yüklenirken hata:', e);
+          toast.showError('Roller yüklenirken bir hata oluştu.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadRoles();
     }
-  }, [user, open]);
+  }, [open]);
 
-  const toggleRole = (role: Role) => {
-    setSelectedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+  // Kullanıcının mevcut rollerini yükle
+  useEffect(() => {
+    if (user && availableRoles.length > 0) {
+      // Kullanıcının role isimlerinden role ID'lerini bul
+      const userRoleIds = availableRoles
+        .filter(role => user.roles?.includes(role.name))
+        .map(role => role.id);
+      setSelectedRoleIds(userRoleIds);
+    } else {
+      setSelectedRoleIds([]);
+    }
+  }, [user, availableRoles]);
+
+  const toggleRole = (roleId: string) => {
+    setSelectedRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId],
     );
   };
 
@@ -49,11 +82,12 @@ const UserRolesDialog: React.FC<UserRolesDialogProps> = ({
     if (!user) return;
     setSaving(true);
     try {
-      await onSave(selectedRoles);
+      await onSave(selectedRoleIds);
       onClose();
+      toast.showSuccess('Roller başarıyla güncellendi.');
     } catch (e) {
       console.error('Roller kaydedilirken hata:', e);
-      window.alert('Roller kaydedilirken bir hata oluştu.');
+      toast.showError('Roller kaydedilirken bir hata oluştu.');
     } finally {
       setSaving(false);
     }
@@ -70,39 +104,45 @@ const UserRolesDialog: React.FC<UserRolesDialogProps> = ({
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Bu kullanıcıya atanacak rolleri seçin. Roller, kullanıcının sahip olduğu
-              izinleri belirler (örneğin ADMIN her şeye erişebilir).
+              izinleri belirler.
             </Typography>
 
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <FormGroup>
-                {ALL_ROLES.slice(0, Math.ceil(ALL_ROLES.length / 2)).map((r) => (
-                  <FormControlLabel
-                    key={r.value}
-                    control={
-                      <Checkbox
-                        checked={selectedRoles.includes(r.value)}
-                        onChange={() => toggleRole(r.value)}
-                      />
-                    }
-                    label={r.label}
-                  />
-                ))}
-              </FormGroup>
-              <FormGroup>
-                {ALL_ROLES.slice(Math.ceil(ALL_ROLES.length / 2)).map((r) => (
-                  <FormControlLabel
-                    key={r.value}
-                    control={
-                      <Checkbox
-                        checked={selectedRoles.includes(r.value)}
-                        onChange={() => toggleRole(r.value)}
-                      />
-                    }
-                    label={r.label}
-                  />
-                ))}
-              </FormGroup>
-            </Box>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <FormGroup>
+                  {availableRoles.slice(0, Math.ceil(availableRoles.length / 2)).map((role) => (
+                    <FormControlLabel
+                      key={role.id}
+                      control={
+                        <Checkbox
+                          checked={selectedRoleIds.includes(role.id)}
+                          onChange={() => toggleRole(role.id)}
+                        />
+                      }
+                      label={role.name}
+                    />
+                  ))}
+                </FormGroup>
+                <FormGroup>
+                  {availableRoles.slice(Math.ceil(availableRoles.length / 2)).map((role) => (
+                    <FormControlLabel
+                      key={role.id}
+                      control={
+                        <Checkbox
+                          checked={selectedRoleIds.includes(role.id)}
+                          onChange={() => toggleRole(role.id)}
+                        />
+                      }
+                      label={role.name}
+                    />
+                  ))}
+                </FormGroup>
+              </Box>
+            )}
           </>
         ) : (
           <Typography>Yükleniyor...</Typography>

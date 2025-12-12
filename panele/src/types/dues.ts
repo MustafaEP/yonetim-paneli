@@ -74,6 +74,8 @@ export interface MemberPaymentRow {
     id: string;
     name: string;
   } | null;
+  appliedMonths?: Array<{ year: number; month: number }> | null;
+  excessAmount?: number | null; // Fazla ödeme miktarı (gelecek aylara uygulanan)
 }
 
 // 🔹 Dashboard ödeme özeti (GET /dues/reports/summary)
@@ -82,6 +84,8 @@ export interface DuesSummary {
   totalMembers: number;
   paidMembers: number;
   unpaidMembers: number;
+  newMembersThisMonth: number; // Bu ay gelen üye sayısı
+  cancelledMembersThisMonth: number; // Bu ay iptal edilen üye sayısı
   byMonth: {
     month: number;
     year: number;

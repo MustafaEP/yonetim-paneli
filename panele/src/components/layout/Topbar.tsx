@@ -1,3 +1,4 @@
+// src/components/layout/Topbar.tsx
 import React from 'react';
 import {
   AppBar,
@@ -5,34 +6,142 @@ import {
   Typography,
   IconButton,
   Box,
+  useTheme,
+  alpha,
+  Avatar,
+  Chip,
+  useMediaQuery,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useAuth } from '../../context/AuthContext';
 
 const Topbar: React.FC = () => {
   const { user, logout } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const initials = user
+    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
+    : '?';
 
   return (
     <AppBar
       position="fixed"
+      elevation={0}
       sx={{
-        width: { md: `calc(100% - 240px)` },
-        ml: { md: '240px' },
+        width: { md: `calc(100% - 260px)` },
+        ml: { md: '260px' },
         zIndex: (theme) => theme.zIndex.drawer + 1,
+        backgroundColor: '#ffffff',
+        color: theme.palette.text.primary,
+        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
       }}
     >
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-          {user?.firstName} {user?.lastName}
-          {user?.roles && user.roles.length > 0 && (
-            <Typography variant="caption" sx={{ ml: 2, opacity: 0.8 }}>
-              ({user.roles.join(', ')})
+      <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
+        {/* Sol Taraf - Kullanıcı Bilgisi */}
+        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+          <Avatar
+            sx={{
+              width: { xs: 32, sm: 36 },
+              height: { xs: 32, sm: 36 },
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              fontWeight: 600,
+              mr: { xs: 1.5, sm: 2 },
+              boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+            }}
+          >
+            {initials}
+          </Avatar>
+
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{
+                fontWeight: 600,
+                fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' },
+                color: theme.palette.text.primary,
+                lineHeight: 1.2,
+              }}
+            >
+              {user?.firstName} {user?.lastName}
             </Typography>
-          )}
-        </Typography>
-        <Box>
-          <IconButton color="inherit" onClick={logout} title="Çıkış Yap">
-            <LogoutIcon />
+
+            {!isMobile && user?.roles && user.roles.length > 0 && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+                {user.roles.slice(0, 2).map((role, index) => (
+                  <Chip
+                    key={index}
+                    label={role}
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                      color: theme.palette.primary.main,
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                      '& .MuiChip-label': {
+                        px: 1,
+                      },
+                    }}
+                  />
+                ))}
+                {user.roles.length > 2 && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: theme.palette.text.secondary,
+                      fontSize: '0.7rem',
+                      ml: 0.5,
+                    }}
+                  >
+                    +{user.roles.length - 2}
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </Box>
+        </Box>
+
+        {/* Sağ Taraf - Aksiyon Butonları */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+          {/* Bildirimler */}
+          <IconButton
+            size="small"
+            sx={{
+              color: theme.palette.text.secondary,
+              backgroundColor: alpha(theme.palette.action.hover, 0.04),
+              transition: 'all 0.2s',
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                color: theme.palette.primary.main,
+                transform: 'scale(1.05)',
+              },
+            }}
+          >
+            <NotificationsIcon fontSize={isMobile ? 'small' : 'medium'} />
+          </IconButton>
+
+          {/* Çıkış Yap */}
+          <IconButton
+            onClick={logout}
+            size="small"
+            sx={{
+              color: theme.palette.error.main,
+              backgroundColor: alpha(theme.palette.error.main, 0.08),
+              transition: 'all 0.2s',
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.error.main, 0.12),
+                transform: 'scale(1.05)',
+              },
+            }}
+            title="Çıkış Yap"
+          >
+            <LogoutIcon fontSize={isMobile ? 'small' : 'medium'} />
           </IconButton>
         </Box>
       </Toolbar>
@@ -41,4 +150,3 @@ const Topbar: React.FC = () => {
 };
 
 export default Topbar;
-

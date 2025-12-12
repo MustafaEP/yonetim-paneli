@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
-import { IS_PUBLIC_KEY } from './public.decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -19,10 +19,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     );
 
     if (isPublic) {
-      // login gibi public endpoint’ler guard’dan muaf
+      // login gibi public endpoint'ler guard'dan muaf
       return true;
     }
 
     return super.canActivate(context);
   }
 }
+

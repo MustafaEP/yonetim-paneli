@@ -3,9 +3,9 @@
 export type MemberStatus =
   | 'PENDING'
   | 'ACTIVE'
-  | 'PASIF'
-  | 'ISTIFA'
-  | 'IHRAC'
+  | 'INACTIVE'
+  | 'RESIGNED'
+  | 'EXPELLED'
   | 'REJECTED';
 
 export interface MemberListItem {
@@ -17,7 +17,26 @@ export interface MemberListItem {
   status: MemberStatus;
   province?: { id: string; name: string } | null;
   district?: { id: string; name: string } | null;
+  duesPlan?: {
+    id: string;
+    name: string;
+    amount: number | string;
+  } | null;
   createdAt?: string;
+  approvedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  cancelledBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
 }
 
 export interface MemberDetail extends MemberListItem {
@@ -29,6 +48,35 @@ export interface MemberDetail extends MemberListItem {
     id: string;
     name: string;
     amount: number | string;
+  } | null;
+  cancellationReason?: string | null;
+  cancelledAt?: string | null;
+  previousCancelledMember?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    cancelledAt: string | null;
+    cancellationReason: string | null;
+    status: MemberStatus;
+  } | null;
+  createdBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  approvedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  approvedAt?: string | null;
+  cancelledBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
   } | null;
   // backend'ten gelen diğer alanlar varsa burada genişletebilirsin
 }
@@ -44,4 +92,10 @@ export interface MemberApplicationRow {
   createdAt: string;
   province?: { id: string; name: string } | null;
   district?: { id: string; name: string } | null;
+  createdBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
 }
