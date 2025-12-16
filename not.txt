@@ -1,0 +1,88 @@
+Üyeler kısmı beğenilmedi önceki tasarımdan feyz alınacak
+
+Üye kayıt bilgileri: 
+    Üyelik bilgisi seçmeli olacak, admin bu seçenekleri değiştirebilecek.
+    Üye kayıt numarası, (Bu bilgiyi admin belirleyebilecek.)(Aynı numara ikinci bir kişiye verilemiyecek addmin istediği zaman değiştirilebilecek)
+    Yönetim kurulu karar tarihi(Admin)
+    Yönetim kurulu karar defter no (Admin)
+    TC Kimlik no
+    Adı, 
+    soyadı
+    çalıştığı il ilçe çalıştığı kurum
+    Anne adı, baba adı, doğum yeri, cinsiyet(seçmeli)
+    öğrenim durumu(seçmeli, ilöğretim, lise, yüksekokul)
+    telefon no(zorunlu değil)
+    kadro ünvanı(zorunlu)
+    kurum sicil(zorunlu değil)
+    görev yaptığı birim ve adresi
+    tevkifat merkezi seçilecek (seçmeli)
+    hangi şubede olduğunu seçme
+
+
+Kurumlar eklenecek.
+    Kurumun Adı
+    Kurumun il ilçesi
+    Hangi şubeye bağlı seçilecek
+
+İstatistiklerde kurum istatistikleri olacak
+tevkifat merkezi(kurum gibi)
+
+Şube bazlı aramada olacak üyeler sayfasında 
+Üyeler sayfasında en başa üye kayıt numaraları konulacak
+İkinci sırada üyelik durumları
+2.5 unvan
+3 üyenin adı soyadı
+4 TC
+5 çalıştığı kurum
+6 kayıt tarihi
+8 düzenle
+
+Red ve iptal sayfası kalkacak. 
+
+Üye listesinin üstünde arama kısmı olacak. Arama kısmı kısa olacak  
+    sadece ad, soyad, il(seçmeli), ilçe(seçmeli), kurum(seçmeli)
+
+Sayfa başında tc - Ad Soyad yazacak
+Üye bilgi sayfasında dökümanlar gözükecek en üstte üyenin adının yanında 
+    Bu tıklanabilir olacak. tıklandığında üyenin dökümanları gözükecek.
+    Üye bilgileri alt alta listelenecek ve güncelleme imkanı olacak. Güncelleme butonu eklenecek bunun izinleri belirlenecek
+Borç bilgisi kalkacak
+Aidat ödemeleri alt alta yazılacak
+
+Aidat planları kalkacak.
+
+İl ilçe başkanlarında kurum ekle hakkı olacak ama adminin onayıyla kurumlara eklenecek.
+Bütün il ilçe başkanlarının hepsi girdikleri her bilgide merkezden onay isteyecek.
+İl bazlı istedikleri zaman sadece excell dosyası olarak ad, soyad, unvan, üyelik aktifmi alınabilecek.
+
+İl, ilçe başkanlarının giriş çıkışları kayıt altında olacak. Yaptıkları işlem, ip adresleri, hepsi kayıt altında olacak, bunları sadece admin görüntüleyebilecek, istediği zaman admin görebilecek.. 
+
+topbara bildirim butonu eklenecek.
+
+Admin ve genel başkan giriş yaptığında eğer bildirimler varsa ekranın ortasına popup atıp bu durumdan kendisi bilgilendirilecek
+
+Muhasebe üyeler sayfası oluşturulacak. İstatik rapor falan
+Muhasebe üye sayfasında görüntülenecek listede üye numarası, ad, soyad, kurum, tevkifat kurumu, aylık liste
+Excel ve pdf çekime izin  ver
+
+Muhasebe kısmında tevkifat(kurum bilgisi gibi) ay başlı dosya ekleme 
+
+tevkifat dosya ekleme bölümü sırasıyla istenilecek bilgileri    
+    tevkikat kurum seçme,
+    gelen tutar toplamı,
+    üye sayısı,
+    ay listesi,
+    yıl listesi,
+    kadro listesi (seçmeli -> 657 kadrolu, 4b sözleşmeli, 663 kadro karşılığı, aile hekimliği, 4924 unvanlı, diğer sağlık personeli  )
+    dosya tipi pdf
+    yükle(admin onaylıyacak)
+
+    Bunların ay ve yıllık bazlı listelemesi
+
+
+Muhasebeye şube payı eklenecek(yüzde 40)
+
+
+Üye başvurularında, gruplandırılmış olarak listelenecek. tevkifat onayı ayrı bir listede olacak
+
+Üye detayda üye güncellemeleri yazacak, ne silinip ne güncellendiği yazılacak.

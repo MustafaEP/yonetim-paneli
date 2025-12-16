@@ -7,9 +7,17 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './auth/guards/permissions.guard';
 import { MembersModule } from './members/members.module';
 import { RegionsModule } from './regions/regions.module';
-import { DuesModule } from './dues/dues.module';
 import { ConfigModule } from './config/config.module';
 import { RolesModule } from './roles/roles.module';
+import { ContentModule } from './content/content.module';
+import { SystemModule } from './system/system.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ReportsModule } from './reports/reports.module';
+import { InstitutionsModule } from './institutions/institutions.module';
+import { ApprovalsModule } from './approvals/approvals.module';
+import { AccountingModule } from './accounting/accounting.module';
+import { PaymentsModule } from './payments/payments.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -19,8 +27,16 @@ import { RolesModule } from './roles/roles.module';
     AuthModule, 
     MembersModule,
     RegionsModule,
-    DuesModule,
     RolesModule,
+    ContentModule,
+    SystemModule,
+    NotificationsModule,
+    ReportsModule,
+    InstitutionsModule,
+    ApprovalsModule,
+    AccountingModule,
+    PaymentsModule,
+    DocumentsModule,
   ],
   providers: [
     // 1. JWT

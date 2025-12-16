@@ -20,6 +20,7 @@ export type Permission =
   | 'MEMBER_REJECT'
   | 'MEMBER_UPDATE'
   | 'MEMBER_STATUS_CHANGE'
+  | 'MEMBER_LIST_BY_PROVINCE'
   | 'DUES_PLAN_MANAGE'
   | 'DUES_PAYMENT_ADD'
   | 'DUES_REPORT_VIEW'
@@ -60,6 +61,18 @@ export interface CustomRole {
   description?: string;
   isActive: boolean;
   permissions: Permission[];
+  provinceId?: string;
+  province?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+  districtId?: string;
+  district?: {
+    id: string;
+    name: string;
+    provinceId: string;
+  };
   createdAt: string;
   updatedAt: string;
   users?: Array<{
@@ -82,12 +95,16 @@ export interface CreateRoleDto {
   name: string;
   description?: string;
   permissions: Permission[];
+  provinceId?: string;
+  districtId?: string;
 }
 
 export interface UpdateRoleDto {
   name?: string;
   description?: string;
   isActive?: boolean;
+  provinceId?: string;
+  districtId?: string;
 }
 
 export interface UpdateRolePermissionsDto {
@@ -120,6 +137,7 @@ export const PERMISSION_GROUPS = {
     'MEMBER_REJECT',
     'MEMBER_UPDATE',
     'MEMBER_STATUS_CHANGE',
+    'MEMBER_LIST_BY_PROVINCE',
   ] as Permission[],
   DUES_MANAGEMENT: [
     'DUES_PLAN_MANAGE',
@@ -190,6 +208,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   MEMBER_REJECT: 'Üyelik Başvurusu Reddet',
   MEMBER_UPDATE: 'Üye Güncelle',
   MEMBER_STATUS_CHANGE: 'Üye Durumu Değiştir',
+  MEMBER_LIST_BY_PROVINCE: 'Belirli İldeki Üyeleri Görüntüleme',
   DUES_PLAN_MANAGE: 'Aidat Planı Yönet',
   DUES_PAYMENT_ADD: 'Aidat Ödemesi Ekle',
   DUES_REPORT_VIEW: 'Aidat Raporu Görüntüle',

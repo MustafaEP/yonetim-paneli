@@ -37,6 +37,11 @@ export const useToast = () => {
     showError,
     showWarning,
     showInfo,
+    // Alias methods for compatibility
+    success: showSuccess,
+    error: showError,
+    warning: showWarning,
+    info: showInfo,
   };
 };
 

@@ -4,58 +4,62 @@ import {
   Box,
   Card,
   Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   useTheme,
   alpha,
   Paper,
-  CircularProgress,
+  Grid,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
-import AddIcon from '@mui/icons-material/Add';
 import MapIcon from '@mui/icons-material/Map';
 import PinDropIcon from '@mui/icons-material/PinDrop';
+import LocationCityIcon from '@mui/icons-material/LocationCity';
 
-import type { Province } from '../../types/region';
+import type { Province, District } from '../../types/region';
 import {
   getProvinces,
-  createProvince,
-  updateProvince,
+  getDistricts,
 } from '../../api/regionsApi';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../hooks/useToast';
 
 const RegionsProvincesPage: React.FC = () => {
   const theme = useTheme();
-  const [rows, setRows] = useState<Province[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editingProvince, setEditingProvince] = useState<Province | null>(null);
-  const [form, setForm] = useState<{ name: string; code: string }>({
-    name: '',
-    code: '',
-  });
-
-  const { hasPermission } = useAuth();
-  const toast = useToast();
-  const canManageBranch = hasPermission('BRANCH_MANAGE');
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(true);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string | null>(null);
+  const [provinceSearch, setProvinceSearch] = useState('');
+  const [districtSearch, setDistrictSearch] = useState('');
 
   const loadProvinces = async () => {
-    setLoading(true);
+    setLoadingProvinces(true);
     try {
       const data = await getProvinces();
-      setRows(Array.isArray(data) ? data : []);
+      setProvinces(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('İller alınırken hata:', e);
-      setRows([]);
+      setProvinces([]);
     } finally {
-      setLoading(false);
+      setLoadingProvinces(false);
+    }
+  };
+
+  const loadDistricts = async (provinceId?: string) => {
+    if (!provinceId) {
+      setDistricts([]);
+      return;
+    }
+    setLoadingDistricts(true);
+    try {
+      const data = await getDistricts(provinceId);
+      setDistricts(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('İlçeler alınırken hata:', e);
+      setDistricts([]);
+    } finally {
+      setLoadingDistricts(false);
     }
   };
 
@@ -63,69 +67,22 @@ const RegionsProvincesPage: React.FC = () => {
     loadProvinces();
   }, []);
 
-  const handleOpenNew = () => {
-    setEditingProvince(null);
-    setForm({ name: '', code: '' });
-    setDialogOpen(true);
-  };
-
-  const handleOpenEdit = (province: Province) => {
-    setEditingProvince(province);
-    setForm({
-      name: province.name,
-      code: province.code ?? '',
-    });
-    setDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    if (saving) return;
-    setDialogOpen(false);
-  };
-
-  const handleFormChange = (field: keyof typeof form, value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      toast.showWarning('İl adı zorunludur.');
-      return;
+  useEffect(() => {
+    if (selectedProvinceId) {
+      loadDistricts(selectedProvinceId);
+      setDistrictSearch('');
+    } else {
+      setDistricts([]);
+      setDistrictSearch('');
     }
+  }, [selectedProvinceId]);
 
-    setSaving(true);
-    try {
-      const payload = {
-        name: form.name.trim(),
-        code: form.code.trim() || undefined,
-      };
-
-      if (editingProvince) {
-        await updateProvince(editingProvince.id, payload);
-      } else {
-        await createProvince(payload);
-      }
-
-      await loadProvinces();
-      setDialogOpen(false);
-      toast.showSuccess(editingProvince ? 'İl başarıyla güncellendi.' : 'İl başarıyla oluşturuldu.');
-    } catch (e) {
-      console.error('İl kaydedilirken hata:', e);
-      toast.showError('İl kaydedilirken bir hata oluştu.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const columns: GridColDef<Province>[] = [
+  const provinceColumns: GridColDef<Province>[] = [
     {
       field: 'name',
       headerName: 'İl Adı',
       flex: 1,
-      minWidth: 200,
+      minWidth: 400,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <MapIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
@@ -135,8 +92,8 @@ const RegionsProvincesPage: React.FC = () => {
     },
     {
       field: 'code',
-      headerName: 'Plaka Kodu',
-      width: 140,
+      headerName: 'Plaka',
+      width: 100,
       valueGetter: (params: { row?: Province }) => params?.row?.code ?? '',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -151,273 +108,478 @@ const RegionsProvincesPage: React.FC = () => {
     },
   ];
 
+  const districtColumns: GridColDef<District>[] = [
+    {
+      field: 'name',
+      headerName: 'İlçe Adı',
+      flex: 1,
+      minWidth: 400,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LocationCityIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
+          <Typography sx={{ fontWeight: 500 }}>{params.row.name}</Typography>
+        </Box>
+      ),
+    },
+  ];
+
+  // Filtrelenmiş iller
+  const filteredProvinces = provinces.filter((province) => {
+    if (!provinceSearch.trim()) return true;
+    const searchLower = provinceSearch.toLowerCase();
+    return (
+      province.name.toLowerCase().includes(searchLower) ||
+      province.code?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Filtrelenmiş ilçeler
+  const filteredDistricts = districts.filter((district) => {
+    if (!districtSearch.trim()) return true;
+    const searchLower = districtSearch.toLowerCase();
+    return district.name.toLowerCase().includes(searchLower);
+  });
+
+  // Seçili il bilgisi
+  const selectedProvince = provinces.find(p => p.id === selectedProvinceId);
+
   return (
     <Box>
       {/* Başlık Bölümü */}
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <MapIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-          </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              İller
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Sistemde tanımlı illeri görüntüleyin ve yönetin
-            </Typography>
-          </Box>
-          {canManageBranch && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenNew}
-              sx={{
-                display: { xs: 'none', sm: 'flex' },
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                '&:hover': {
-                  boxShadow: `0 6px 20px 0 ${alpha(theme.palette.primary.main, 0.4)}`,
-                },
-              }}
-            >
-              Yeni İl
-            </Button>
-          )}
-        </Box>
-
-        {/* Mobile New Button */}
-        {canManageBranch && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            fullWidth
-            onClick={handleOpenNew}
-            sx={{
-              display: { xs: 'flex', sm: 'none' },
-              mt: 2,
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              py: 1.5,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            Yeni İl Ekle
-          </Button>
-        )}
-      </Box>
-
-      {/* Ana Kart */}
       <Card
         elevation={0}
         sx={{
+          mb: 3,
           borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.95)} 0%, ${theme.palette.primary.dark} 100%)`,
+          color: '#fff',
           overflow: 'hidden',
+          position: 'relative',
+          border: 'none',
+          boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
         }}
       >
-        {/* İçerik Bölümü */}
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
-          {/* Sonuç Sayısı */}
-          {!loading && (
-            <Paper
-              elevation={0}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: -50,
+            right: -50,
+            width: 200,
+            height: 200,
+            borderRadius: '50%',
+            background: alpha('#fff', 0.1),
+          }}
+        />
+        <Box sx={{ p: 3, position: 'relative', zIndex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Box
               sx={{
-                p: 2,
-                mb: 2,
-                backgroundColor: alpha(theme.palette.info.main, 0.05),
+                width: 64,
+                height: 64,
                 borderRadius: 2,
-                border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+                background: alpha('#fff', 0.2),
+                backdropFilter: 'blur(10px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: `2px solid ${alpha('#fff', 0.3)}`,
+                boxShadow: `0 4px 20px ${alpha('#000', 0.2)}`,
               }}
             >
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: 600,
-                  color: theme.palette.info.main,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                }}
-              >
-                <MapIcon fontSize="small" />
-                Toplam {rows.length} il bulundu
+              <MapIcon sx={{ fontSize: '2rem' }} />
+            </Box>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                İller ve İlçeler
               </Typography>
-            </Paper>
-          )}
-
-          {/* Tablo */}
-          <Box
-            sx={{
-              height: { xs: 400, sm: 500, md: 600 },
-              minHeight: { xs: 400, sm: 500, md: 600 },
-              '& .MuiDataGrid-root': {
-                border: 'none',
-                borderRadius: 2,
-              },
-              '& .MuiDataGrid-cell': {
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                borderRadius: 0,
-              },
-              '& .MuiDataGrid-columnHeaderTitle': {
-                fontWeight: 700,
-                fontSize: '0.875rem',
-              },
-              '& .MuiDataGrid-row': {
-                cursor: canManageBranch ? 'pointer' : 'default',
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                },
-              },
-              '& .MuiDataGrid-footerContainer': {
-                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                backgroundColor: alpha(theme.palette.background.default, 0.5),
-              },
-            }}
-          >
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={loading}
-              onRowDoubleClick={(params) => {
-                if (!canManageBranch) return;
-                const province = rows.find((p) => p.id === params.id);
-                if (province) handleOpenEdit(province);
-              }}
-              initialState={{
-                pagination: {
-                  paginationModel: { pageSize: 25, page: 0 },
-                },
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
-              disableRowSelectionOnClick
-              sx={{
-                '& .MuiDataGrid-virtualScroller': {
-                  minHeight: '200px',
-                },
-              }}
-            />
+              <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                İlleri seçerek ilçelerini görüntüleyin
+              </Typography>
+            </Box>
           </Box>
         </Box>
       </Card>
 
-      {/* İl Ekle / Düzenle Dialog */}
-      <Dialog
-        open={dialogOpen}
-        onClose={handleCloseDialog}
-        fullWidth
-        maxWidth="sm"
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            fontWeight: 700,
-            fontSize: '1.25rem',
-            pb: 1,
-          }}
-        >
-          {editingProvince ? 'İl Düzenle' : 'Yeni İl'}
-        </DialogTitle>
-        <DialogContent
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2.5,
-            mt: 1,
-          }}
-        >
-          <TextField
-            label="İl Adı"
-            size="small"
-            fullWidth
-            value={form.name}
-            onChange={(e) => handleFormChange('name', e.target.value)}
-            required
+      {/* İki Tablo - Yan Yana Grid Layout */}
+      <Grid container spacing={3}>
+        {/* İller Tablosu */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <Card
+            elevation={0}
             sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          />
-          <TextField
-            label="Plaka Kodu"
-            size="small"
-            fullWidth
-            value={form.code}
-            onChange={(e) => handleFormChange('code', e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            onClick={handleCloseDialog}
-            disabled={saving}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
+              borderRadius: 3,
+              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              overflow: 'hidden',
+              height: '100%',
             }}
           >
-            İptal
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            variant="contained"
+            {/* Kart Başlığı */}
+            <Box
+              sx={{
+                p: 2.5,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+                  }}
+                >
+                  <MapIcon />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                  İller
+                </Typography>
+              </Box>
+
+              {/* Arama Filtresi */}
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="İl ara..."
+                value={provinceSearch}
+                onChange={(e) => setProvinceSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: theme.palette.text.secondary }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  mb: 1.5,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    backgroundColor: '#fff',
+                  },
+                }}
+              />
+
+              {/* İl Sayısı */}
+              {!loadingProvinces && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    backgroundColor: alpha(theme.palette.info.main, 0.08),
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.15)}`,
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      color: theme.palette.info.main,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <MapIcon fontSize="small" />
+                    {provinceSearch 
+                      ? `${filteredProvinces.length} / ${provinces.length} il` 
+                      : `Toplam ${provinces.length} il`}
+                  </Typography>
+                </Paper>
+              )}
+            </Box>
+
+            {/* İller Tablosu */}
+            <Box sx={{ p: 2 }}>
+              <Box
+                sx={{
+                  height: 600,
+                  '& .MuiDataGrid-root': {
+                    border: 'none',
+                    borderRadius: 2,
+                  },
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                    borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                    borderRadius: '8px 8px 0 0',
+                  },
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                  },
+                  '& .MuiDataGrid-row': {
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                    },
+                    '&.Mui-selected': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.16),
+                      },
+                    },
+                  },
+                  '& .MuiDataGrid-footerContainer': {
+                    borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                    backgroundColor: alpha(theme.palette.background.default, 0.5),
+                  },
+                }}
+              >
+                <DataGrid
+                  rows={filteredProvinces}
+                  columns={provinceColumns}
+                  getRowId={(row) => row.id}
+                  loading={loadingProvinces}
+                  onRowClick={(params) => {
+                    setSelectedProvinceId(params.row.id as string);
+                  }}
+                  initialState={{
+                    pagination: { paginationModel: { pageSize: 25, page: 0 } },
+                  }}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  disableRowSelectionOnClick={false}
+                  sx={{
+                    '& .MuiDataGrid-virtualScroller': {
+                      minHeight: '200px',
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
+          </Card>
+        </Grid>
+
+        {/* İlçeler Tablosu */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <Card
+            elevation={0}
             sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 100,
+              borderRadius: 3,
+              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              overflow: 'hidden',
+              height: '100%',
             }}
           >
-            {saving ? <CircularProgress size={20} color="inherit" /> : 'Kaydet'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            {/* Kart Başlığı */}
+            <Box
+              sx={{
+                p: 2.5,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.03)} 0%, ${alpha(theme.palette.success.light, 0.02)} 100%)`,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                  }}
+                >
+                  <LocationCityIcon />
+                </Box>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                    İlçeler
+                  </Typography>
+                  {selectedProvince && (
+                    <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                      {selectedProvince.name}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Arama Filtresi */}
+              {selectedProvinceId && (
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="İlçe ara..."
+                  value={districtSearch}
+                  onChange={(e) => setDistrictSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ color: theme.palette.text.secondary }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    mb: 1.5,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: '#fff',
+                    },
+                  }}
+                />
+              )}
+
+              {/* İlçe Sayısı veya Bilgi */}
+              {selectedProvinceId ? (
+                !loadingDistricts && (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      backgroundColor: alpha(theme.palette.success.main, 0.08),
+                      borderRadius: 2,
+                      border: `1px solid ${alpha(theme.palette.success.main, 0.15)}`,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        color: theme.palette.success.main,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                      }}
+                    >
+                      <LocationCityIcon fontSize="small" />
+                      {districtSearch 
+                        ? `${filteredDistricts.length} / ${districts.length} ilçe` 
+                        : `${districts.length} ilçe bulundu`}
+                    </Typography>
+                  </Paper>
+                )
+              ) : (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.08),
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}`,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                      color: theme.palette.warning.dark,
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    👈 Soldaki listeden bir il seçiniz
+                  </Typography>
+                </Paper>
+              )}
+            </Box>
+
+            {/* İlçeler Tablosu - Her zaman render edilir, loading state'i DataGrid'e geçirilir */}
+            <Box sx={{ p: 2 }}>
+              <Box
+                sx={{
+                  height: 600,
+                  '& .MuiDataGrid-root': {
+                    border: 'none',
+                    borderRadius: 2,
+                  },
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: alpha(theme.palette.success.main, 0.04),
+                    borderBottom: `2px solid ${alpha(theme.palette.success.main, 0.1)}`,
+                    borderRadius: '8px 8px 0 0',
+                  },
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                  },
+                  '& .MuiDataGrid-row': {
+                    cursor: 'default',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.success.main, 0.02),
+                    },
+                  },
+                  '& .MuiDataGrid-footerContainer': {
+                    borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                    backgroundColor: alpha(theme.palette.background.default, 0.5),
+                  },
+                }}
+              >
+                <DataGrid
+                  rows={filteredDistricts}
+                  columns={districtColumns}
+                  getRowId={(row) => row.id}
+                  loading={loadingDistricts}
+                  initialState={{
+                    pagination: { paginationModel: { pageSize: 25, page: 0 } },
+                  }}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  disableRowSelectionOnClick
+                  slots={{
+                    noRowsOverlay: () => (
+                      <Box
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 2,
+                          p: 3,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 80,
+                            height: 80,
+                            borderRadius: '50%',
+                            backgroundColor: alpha(theme.palette.grey[500], 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <LocationCityIcon 
+                            sx={{ 
+                              fontSize: '2.5rem', 
+                              color: theme.palette.grey[400] 
+                            }} 
+                          />
+                        </Box>
+                        <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          {selectedProvinceId ? 'Bu ilde ilçe bulunamadı' : 'İl seçiniz'}
+                        </Typography>
+                      </Box>
+                    ),
+                  }}
+                  sx={{
+                    height: 600,
+                    '& .MuiDataGrid-virtualScroller': {
+                      minHeight: '200px',
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
+          </Card>
+        </Grid>
+      </Grid>
     </Box>
   );
 };

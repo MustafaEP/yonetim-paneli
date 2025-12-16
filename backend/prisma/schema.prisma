@@ -33,13 +33,50 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  scopes     UserScope[]
+  scopes      UserScope[]
   customRoles CustomRole[] @relation("UserCustomRoles")
-  
+
   // 🔹 Üye ilişkileri
-  createdMembers  Member[] @relation("MemberCreatedBy")
-  approvedMembers Member[] @relation("MemberApprovedBy")
+  createdMembers   Member[] @relation("MemberCreatedBy")
+  approvedMembers  Member[] @relation("MemberApprovedBy")
   cancelledMembers Member[] @relation("MemberCancelledBy")
+
+  // 🔹 İçerik ilişkileri
+  authoredContents Content[] @relation("ContentAuthor")
+
+  // 🔹 Doküman ilişkileri
+  generatedDocuments MemberDocument[] @relation("DocumentGeneratedBy")
+
+  // 🔹 Bildirim ilişkileri
+  sentNotifications Notification[] @relation("NotificationSentBy")
+
+  // 🔹 Sistem ayarları ilişkileri
+  updatedSystemSettings SystemSetting[] @relation("SystemSettingUpdatedBy")
+
+  // 🔹 Sistem logları ilişkileri
+  systemLogs SystemLog[] @relation("SystemLogUser")
+
+  // 🔹 Şube ilişkileri
+  branches Branch[] @relation("BranchPresident")
+
+  // 🔹 Üye geçmişi ilişkileri
+  memberHistory MemberHistory[] @relation("MemberHistoryUser")
+
+  // 🔹 Onay ilişkileri
+  requestedApprovals Approval[] @relation("ApprovalRequestedBy")
+  approvedApprovals  Approval[] @relation("ApprovalApprovedBy")
+  rejectedApprovals  Approval[] @relation("ApprovalRejectedBy")
+
+  // 🔹 Tevkifat dosya ilişkileri
+  uploadedTevkifatFiles TevkifatFile[] @relation("TevkifatFileUploadedBy")
+  approvedTevkifatFiles TevkifatFile[] @relation("TevkifatFileApprovedBy")
+
+  // 🔹 Üye ödeme ilişkileri
+  createdMemberPayments MemberPayment[] @relation("MemberPaymentCreatedBy")
+  approvedMemberPayments MemberPayment[] @relation("MemberPaymentApprovedBy")
+
+  // 🔹 Kullanıcı bildirimleri
+  userNotifications UserNotification[] @relation("UserNotifications")
 }
 
 enum MemberStatus {
@@ -58,63 +95,116 @@ enum MemberSource {
   OTHER
 }
 
-enum DuesPeriod {
-  MONTHLY
-  YEARLY
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum EducationStatus {
+  PRIMARY
+  HIGH_SCHOOL
+  COLLEGE
+}
+
+enum PositionTitle {
+  KADRO_657
+  SOZLESMELI_4B
+  KADRO_663
+  AILE_HEKIMLIGI
+  UNVAN_4924
+  DIGER_SAGLIK_PERSONELI
 }
 
 model Member {
   id         String       @id @default(cuid())
   firstName  String
   lastName   String
-  nationalId String?      @unique
+  nationalId String       @unique // TC (zorunlu)
   phone      String?
   email      String?
   status     MemberStatus @default(PENDING)
   source     MemberSource @default(DIRECT)
 
-  // Bölge ilişkileri vs...
+  // 🔹 Üyelik & Yönetim Kurulu Bilgileri
+  membershipInfoOptionId String? // Admin tarafından yönetilen seçmeli bilgi
+  membershipInfoOption   MembershipInfoOption? @relation(fields: [membershipInfoOptionId], references: [id])
+  registrationNumber     String  @unique // Üye kayıt numarası (zorunlu, benzersiz, admin belirler)
+  boardDecisionDate   DateTime? // Yönetim kurulu karar tarihi
+  boardDecisionBookNo String? // Yönetim kurulu karar defter no
+
+  // 🔹 Kimlik & Kişisel Bilgiler
+  motherName String? // Anne adı (seçmeli)
+  fatherName String? // Baba adı (seçmeli)
+  birthplace String? // Doğum yeri (seçmeli)
+  gender     Gender? // Cinsiyet (seçmeli)
+
+  // 🔹 Eğitim & İletişim Bilgileri
+  educationStatus EducationStatus? // Öğrenim durumu (seçmeli)
+
+  // 🔹 Çalışma & Kurum Bilgileri (zorunlu alanlar)
+  workingProvinceId String // Çalıştığı il (zorunlu)
+  workingDistrictId String // Çalıştığı ilçe (zorunlu)
+  institutionId     String // Çalıştığı kurum (zorunlu)
+  positionTitle     PositionTitle // Kadro ünvanı (zorunlu)
+  institutionRegNo  String? // Kurum sicil no (zorunlu değil)
+  workUnit          String? // Görev yaptığı birim
+  workUnitAddress   String?        @db.Text // Birim adresi
+  tevkifatCenterId  String? // Tevkifat merkezi (seçmeli)
+  branchId          String // Bağlı olduğu şube (zorunlu)
+
+  // Bölge ilişkileri (ikamet adresi - çalıştığı yer değil)
   provinceId  String?
   districtId  String?
-  workplaceId String?
-  dealerId    String?
 
-  province  Province?  @relation(fields: [provinceId], references: [id])
-  district  District?  @relation(fields: [districtId], references: [id])
-  workplace Workplace? @relation(fields: [workplaceId], references: [id])
-  dealer    Dealer?    @relation(fields: [dealerId], references: [id])
+  province  Province?  @relation("MemberProvince", fields: [provinceId], references: [id])
+  district  District?  @relation("MemberDistrict", fields: [districtId], references: [id])
+
+  // 🔹 Çalışma ilişkileri (zorunlu)
+  workingProvince Province    @relation("MemberWorkingProvince", fields: [workingProvinceId], references: [id])
+  workingDistrict District    @relation("MemberWorkingDistrict", fields: [workingDistrictId], references: [id])
+  institution     Institution @relation(fields: [institutionId], references: [id])
+  tevkifatCenter  TevkifatCenter? @relation(fields: [tevkifatCenterId], references: [id])
+  branch          Branch      @relation("MemberBranch", fields: [branchId], references: [id])
 
   createdByUserId  String?
   approvedByUserId String?
   approvedAt       DateTime?
 
   // 🔹 Kullanıcı ilişkileri
-  createdBy  User? @relation("MemberCreatedBy", fields: [createdByUserId], references: [id])
-  approvedBy User? @relation("MemberApprovedBy", fields: [approvedByUserId], references: [id])
-  cancelledBy User? @relation("MemberCancelledBy", fields: [cancelledByUserId], references: [id])
+  createdBy   User? @relation("MemberCreatedBy", fields: [createdByUserId], references: [id])
+  approvedBy  User? @relation("MemberApprovedBy", fields: [approvedByUserId], references: [id])
 
-  // 🔹 Üyelik iptal bilgisi
+  // 🔹 Üyelik iptal bilgisi (field önce, relation sonra)
+  cancelledByUserId  String? // Üyeliği iptal eden kullanıcı
   cancellationReason String? // Üyeliğin iptal edilme nedeni
-  cancelledByUserId   String? // Üyeliği iptal eden kullanıcı
-  cancelledAt         DateTime? // Üyeliğin iptal edildiği tarih
+  cancelledAt        DateTime? // Üyeliğin iptal edildiği tarih
+  cancelledBy        User? @relation("MemberCancelledBy", fields: [cancelledByUserId], references: [id])
 
   // 🔹 Önceki iptal edilmiş üye bilgisi (yeniden üye olanlar için)
   previousCancelledMemberId String? // Daha önce iptal edilmiş üyenin ID'si
-  previousCancelledMember   Member? @relation("PreviousCancelledMember", fields: [previousCancelledMemberId], references: [id])
+  previousCancelledMember   Member?  @relation("PreviousCancelledMember", fields: [previousCancelledMemberId], references: [id])
   reRegisteredMembers       Member[] @relation("PreviousCancelledMember") // Bu üyeden yeniden kayıt olanlar
 
-  // 🔹 Aidat planı ilişkisi
-  duesPlanId String?
-  duesPlan   DuesPlan? @relation(fields: [duesPlanId], references: [id])
+  // 🔹 Doküman ilişkileri
+  documents MemberDocument[]
 
-  // Aidat ödemeleri
-  duesPayments DuesPayment[]
+  // 🔹 Üye güncelleme geçmişi
+  history MemberHistory[]
+
+  // 🔹 Ödeme ilişkileri
+  payments MemberPayment[]
 
   isActive  Boolean   @default(true)
   deletedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([institutionId])
+  @@index([branchId])
+  @@index([tevkifatCenterId])
+  @@index([status])
 }
 
 model Province {
@@ -122,12 +212,16 @@ model Province {
   name String
   code String? @unique
 
-  districts  District[]
-  workplaces Workplace[]
-  dealers    Dealer[]
-  members    Member[]
+  districts      District[]
+  workplaces     Workplace[]
+  dealers        Dealer[]
+  members        Member[]    @relation("MemberProvince")
+  workingMembers Member[]    @relation("MemberWorkingProvince")
+  branches       Branch[]
 
-  userScopes UserScope[]
+  userScopes   UserScope[]
+  customRoles  CustomRole[]
+  institutions Institution[]
 }
 
 model District {
@@ -136,11 +230,15 @@ model District {
   provinceId String
   province   Province @relation(fields: [provinceId], references: [id])
 
-  workplaces Workplace[]
-  dealers    Dealer[]
-  members    Member[]
+  workplaces     Workplace[]
+  dealers        Dealer[]
+  members        Member[]    @relation("MemberDistrict")
+  workingMembers Member[]    @relation("MemberWorkingDistrict")
+  branches       Branch[]
 
-  userScopes UserScope[]
+  userScopes   UserScope[]
+  customRoles  CustomRole[]
+  institutions Institution[]
 }
 
 model Workplace {
@@ -153,8 +251,6 @@ model Workplace {
 
   province Province? @relation(fields: [provinceId], references: [id])
   district District? @relation(fields: [districtId], references: [id])
-
-  members Member[]
 
   userScopes UserScope[]
 }
@@ -170,8 +266,6 @@ model Dealer {
 
   province Province? @relation(fields: [provinceId], references: [id])
   district District? @relation(fields: [districtId], references: [id])
-
-  members Member[]
 
   userScopes UserScope[]
 }
@@ -194,56 +288,21 @@ model UserScope {
   createdAt DateTime @default(now())
 }
 
-model DuesPlan {
-  id          String     @id @default(cuid())
-  name        String
-  description String?
-  amount      Decimal    @db.Decimal(10, 2)
-  period      DuesPeriod @default(MONTHLY)
-  isActive    Boolean    @default(true)
-  deletedAt   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  payments DuesPayment[]
-
-  members Member[]
-}
-
-model DuesPayment {
-  id String @id @default(cuid())
-
-  memberId String
-  member   Member @relation(fields: [memberId], references: [id])
-
-  planId String?
-  plan   DuesPlan? @relation(fields: [planId], references: [id])
-
-  amount Decimal
-  paidAt DateTime @default(now())
-
-  // İsteğe bağlı: hangi ay/yıl için
-  periodYear  Int?
-  periodMonth Int?
-
-  note            String?
-  createdByUserId String?
-
-  isActive  Boolean   @default(true)
-  deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 // Custom Role Management
 model CustomRole {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String    @id @default(cuid())
+  name        String    @unique
   description String?
-  isActive    Boolean  @default(true)
+  isActive    Boolean   @default(true)
   deletedAt   DateTime?
+
+  // 🔹 İl ilişkisi (MEMBER_LIST_BY_PROVINCE izni için)
+  provinceId String?
+  province   Province? @relation(fields: [provinceId], references: [id])
+
+  // 🔹 İlçe ilişkisi (MEMBER_LIST_BY_PROVINCE izni için ilçe bazlı)
+  districtId String?
+  district   District? @relation(fields: [districtId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -262,4 +321,426 @@ model CustomRolePermission {
 
   @@unique([roleId, permission])
   @@index([roleId])
+}
+
+// 🔹 İçerik Yönetimi
+enum ContentType {
+  NEWS
+  ANNOUNCEMENT
+  EVENT
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Content {
+  id          String        @id @default(cuid())
+  title       String
+  content     String        @db.Text
+  type        ContentType
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+
+  authorId String
+  author   User   @relation("ContentAuthor", fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([type])
+  @@index([status])
+}
+
+// 🔹 Doküman Yönetimi
+enum DocumentTemplateType {
+  MEMBER_CERTIFICATE
+  MEMBER_CARD
+  LETTER
+  RESIGNATION_LETTER
+  EXPULSION_LETTER
+  APPROVAL_CERTIFICATE
+  INVITATION_LETTER
+  CONGRATULATION_LETTER
+  WARNING_LETTER
+  NOTIFICATION_LETTER
+  MEMBERSHIP_APPLICATION
+  TRANSFER_CERTIFICATE
+  OTHER
+}
+
+model DocumentTemplate {
+  id          String               @id @default(cuid())
+  name        String
+  description String?              @db.Text
+  template    String               @db.Text
+  type        DocumentTemplateType
+  isActive    Boolean              @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents MemberDocument[]
+}
+
+model MemberDocument {
+  id              String            @id @default(cuid())
+  memberId        String
+  member          Member            @relation(fields: [memberId], references: [id])
+  templateId      String?
+  template        DocumentTemplate? @relation(fields: [templateId], references: [id])
+  documentType    String
+  fileName        String
+  fileUrl         String
+  generatedAt     DateTime          @default(now())
+  generatedBy     String
+  generatedByUser User?             @relation("DocumentGeneratedBy", fields: [generatedBy], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
+  @@index([generatedBy])
+}
+
+// 🔹 Bildirimler
+enum NotificationType {
+  EMAIL
+  SMS
+  WHATSAPP
+  IN_APP
+}
+
+enum NotificationTargetType {
+  ALL_MEMBERS
+  REGION
+  SCOPE
+  USER // Belirli kullanıcıya (admin/genel başkan için onay bekleyen işlemler)
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Notification {
+  id             String                 @id @default(cuid())
+  title          String
+  message        String                 @db.Text
+  type           NotificationType
+  targetType     NotificationTargetType
+  targetId       String? // provinceId veya başka bir ID
+  status         NotificationStatus     @default(PENDING)
+  sentAt         DateTime?
+  sentBy         String
+  sentByUser     User?                  @relation("NotificationSentBy", fields: [sentBy], references: [id])
+  recipientCount Int                    @default(0)
+  successCount   Int                    @default(0)
+  failedCount    Int                    @default(0)
+
+  // Kullanıcı bildirimleri (onay bekleyen işlemler için)
+  userNotifications UserNotification[]
+
+  createdAt DateTime @default(now())
+
+  @@index([sentBy])
+  @@index([status])
+  @@index([targetType])
+}
+
+// 🔹 Kullanıcı Bildirimleri (Okundu/Okunmadı takibi)
+model UserNotification {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation("UserNotifications", fields: [userId], references: [id])
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, notificationId])
+  @@index([userId])
+  @@index([isRead])
+  @@index([notificationId])
+}
+
+// 🔹 Sistem Ayarları
+enum SystemSettingCategory {
+  GENERAL
+  EMAIL
+  SMS
+  INTEGRATION
+  OTHER
+}
+
+model SystemSetting {
+  id            String                @id @default(cuid())
+  key           String                @unique
+  value         String                @db.Text
+  description   String?               @db.Text
+  category      SystemSettingCategory
+  isEditable    Boolean               @default(true)
+  updatedAt     DateTime              @updatedAt
+  updatedBy     String?
+  updatedByUser User?                 @relation("SystemSettingUpdatedBy", fields: [updatedBy], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([category])
+  @@index([key])
+}
+
+// 🔹 Sistem Logları
+model SystemLog {
+  id         String  @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String?
+  userId     String
+  user       User?   @relation("SystemLogUser", fields: [userId], references: [id])
+  details    Json? // Ek detaylar
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// 🔹 Şube Yönetimi
+model Branch {
+  id                 String    @id @default(cuid())
+  name               String
+  code               String?   @unique
+  provinceId         String
+  province           Province  @relation(fields: [provinceId], references: [id])
+  districtId         String?
+  district           District? @relation(fields: [districtId], references: [id])
+  presidentId        String?
+  president          User?     @relation("BranchPresident", fields: [presidentId], references: [id])
+  address            String?   @db.Text
+  phone              String?
+  email              String?
+  isActive           Boolean   @default(true)
+  branchSharePercent Decimal   @default(40) @db.Decimal(5, 2) // Şube payı %40
+
+  members      Member[]      @relation("MemberBranch")
+  institutions Institution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provinceId])
+  @@index([districtId])
+  @@index([presidentId])
+}
+
+// 🔹 Kurumlar (Institutions)
+model Institution {
+  id         String    @id @default(cuid())
+  name       String
+  provinceId String
+  districtId String?
+  branchId   String
+  isActive   Boolean   @default(false) // Admin onayı olmadan aktif olmaz
+  approvedAt DateTime? // Admin onay tarihi
+  approvedBy String? // Admin kullanıcı ID
+  createdBy  String? // İl/İlçe başkanı kullanıcı ID
+
+  province Province  @relation(fields: [provinceId], references: [id])
+  district District? @relation(fields: [districtId], references: [id])
+  branch   Branch    @relation(fields: [branchId], references: [id])
+  members  Member[]
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provinceId])
+  @@index([districtId])
+  @@index([branchId])
+  @@index([isActive])
+}
+
+// 🔹 Tevkifat Merkezleri
+model TevkifatCenter {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  code        String? @unique
+  description String? @db.Text
+  isActive    Boolean @default(true)
+
+  members  Member[]
+  files    TevkifatFile[]
+  payments MemberPayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 🔹 Üye Güncelleme Geçmişi
+model MemberHistory {
+  id            String  @id @default(cuid())
+  memberId      String
+  member        Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  action        String // CREATE, UPDATE, DELETE
+  fieldName     String? // Güncellenen alan adı
+  oldValue      String? @db.Text // Eski değer
+  newValue      String? @db.Text // Yeni değer
+  deletedFields Json? // Silinen alanlar (JSON)
+  updatedFields Json? // Güncellenen alanlar (JSON)
+  changedBy     String // İşlemi yapan kullanıcı ID
+  changedByUser User?   @relation("MemberHistoryUser", fields: [changedBy], references: [id])
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
+  @@index([changedBy])
+  @@index([createdAt])
+}
+
+// 🔹 Onay Süreçleri (İl/İlçe başkanları için)
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalEntityType {
+  INSTITUTION
+  MEMBER_CREATE
+  MEMBER_UPDATE
+  MEMBER_DELETE
+}
+
+enum PaymentType {
+  TEVKIFAT // Kurumdan gelen toplu ödeme
+  ELDEN // Elden ödeme
+  HAVALE // Havale/EFT ödemesi
+}
+
+model Approval {
+  id              String             @id @default(cuid())
+  entityType      ApprovalEntityType
+  entityId        String // İlgili entity ID (Institution, Member vb.)
+  status          ApprovalStatus     @default(PENDING)
+  requestedBy     String // İstekte bulunan kullanıcı (İl/İlçe başkanı)
+  requestedByUser User?              @relation("ApprovalRequestedBy", fields: [requestedBy], references: [id])
+  approvedBy      String? // Onaylayan admin kullanıcı
+  approvedByUser  User?              @relation("ApprovalApprovedBy", fields: [approvedBy], references: [id])
+  rejectedBy      String? // Reddeden admin kullanıcı
+  rejectedByUser  User?              @relation("ApprovalRejectedBy", fields: [rejectedBy], references: [id])
+  requestData     Json // İstek verisi (JSON)
+  approvalNote    String?            @db.Text
+  rejectionNote   String?            @db.Text
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([entityType])
+  @@index([status])
+  @@index([requestedBy])
+  @@index([createdAt])
+}
+
+// 🔹 Tevkifat Dosyaları (Muhasebe Modülü)
+model TevkifatFile {
+  id               String         @id @default(cuid())
+  tevkifatCenterId String
+  tevkifatCenter   TevkifatCenter @relation(fields: [tevkifatCenterId], references: [id])
+  totalAmount      Decimal        @db.Decimal(10, 2) // Gelen tutar toplamı
+  memberCount      Int // Üye sayısı
+  month            Int // Ay (1-12)
+  year             Int // Yıl
+  positionTitle    PositionTitle? // Kadro (seçmeli)
+  fileName         String
+  fileUrl          String
+  fileSize         Int? // Dosya boyutu (byte)
+  status           ApprovalStatus @default(PENDING) // Admin onay durumu
+  uploadedBy       String // Yükleyen kullanıcı ID
+  uploadedByUser   User?          @relation("TevkifatFileUploadedBy", fields: [uploadedBy], references: [id])
+  approvedBy       String? // Onaylayan admin kullanıcı
+  approvedByUser   User?          @relation("TevkifatFileApprovedBy", fields: [approvedBy], references: [id])
+  approvedAt       DateTime?
+
+  // 🔹 Tevkifat dosyasına bağlı ödemeler
+  payments MemberPayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tevkifatCenterId])
+  @@index([year, month])
+  @@index([status])
+  @@index([uploadedBy])
+}
+
+// 🔹 Üye Ödemeleri
+model MemberPayment {
+  id                String      @id @default(cuid())
+  memberId          String
+  member            Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  registrationNumber String? // Üye kayıt numarası (member'dan kopyalanır, hızlı erişim için)
+  paymentDate       DateTime    @default(now()) // Ödemenin sisteme işlendiği tarih
+  paymentPeriodMonth Int // Ay (1-12)
+  paymentPeriodYear  Int // Yıl
+  amount            Decimal     @db.Decimal(10, 2) // Ödenen tutar
+  paymentType       PaymentType // TEVKIFAT / ELDEN / HAVALE
+  tevkifatCenterId  String? // Tevkifat merkezi (TEVKIFAT tipinde zorunlu)
+  tevkifatCenter    TevkifatCenter? @relation(fields: [tevkifatCenterId], references: [id])
+  tevkifatFileId    String? // Tevkifat dosyası ile ilişki (varsa)
+  tevkifatFile      TevkifatFile? @relation(fields: [tevkifatFileId], references: [id])
+  description       String?     @db.Text // Serbest açıklama
+  documentUrl       String? // PDF / dekont URL'i
+  isApproved        Boolean     @default(false) // Onay durumu
+  approvedByUserId  String? // Onaylayan kullanıcı (Admin/Muhasebe)
+  approvedByUser    User?       @relation("MemberPaymentApprovedBy", fields: [approvedByUserId], references: [id])
+  approvedAt        DateTime? // Onay zamanı
+  createdByUserId   String // İşlemi yapan kullanıcı
+  createdByUser     User        @relation("MemberPaymentCreatedBy", fields: [createdByUserId], references: [id])
+  ipAddress         String? // İşlem IP adresi
+  userAgent         String? // User agent (log için)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([registrationNumber])
+  @@index([paymentPeriodYear, paymentPeriodMonth])
+  @@index([paymentType])
+  @@index([isApproved])
+  @@index([createdByUserId])
+  @@index([tevkifatCenterId])
+  @@index([tevkifatFileId])
+}
+
+// 🔹 Üyelik Bilgisi Seçenekleri (Admin tarafından yönetilir)
+model MembershipInfoOption {
+  id          String  @id @default(cuid())
+  label       String  @unique // Örn: "Normal Üye", "Fahri Üye", "Onursal Üye"
+  value       String // Sistemde kullanılacak değer
+  description String? @db.Text
+  isActive    Boolean @default(true)
+  order       Int     @default(0) // Sıralama
+
+  members Member[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([order])
 }

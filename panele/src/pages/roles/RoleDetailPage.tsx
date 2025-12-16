@@ -384,6 +384,32 @@ const RoleDetailPage: React.FC = () => {
               {role.description || '-'}
             </Typography>
           </Box>
+          {role.provinceId && role.province && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 600 }}>
+                İl (MEMBER_LIST_BY_PROVINCE İzni)
+              </Typography>
+              <Chip
+                label={role.province.name}
+                color="primary"
+                variant="outlined"
+                sx={{ fontWeight: 500 }}
+              />
+            </Box>
+          )}
+          {role.districtId && role.district && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 600 }}>
+                İlçe (MEMBER_LIST_BY_PROVINCE İzni)
+              </Typography>
+              <Chip
+                label={`${role.district.name} (${role.province?.name || ''})`}
+                color="secondary"
+                variant="outlined"
+                sx={{ fontWeight: 500 }}
+              />
+            </Box>
+          )}
         </Box>
       </Card>
 

@@ -5,7 +5,7 @@ import { Permission } from '../../auth/permission.enum';
 export class UpdateRolePermissionsDto {
   @ApiProperty({
     description: 'Rol izinleri',
-    example: [Permission.DUES_PLAN_MANAGE, Permission.DUES_PAYMENT_ADD],
+    example: [Permission.MEMBER_LIST, Permission.MEMBER_VIEW],
     enum: Permission,
     isArray: true,
   })

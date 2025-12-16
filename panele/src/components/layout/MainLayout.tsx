@@ -46,6 +46,7 @@ const MainLayout: React.FC = () => {
     districts: 'İlçeler',
     workplaces: 'İş Yerleri',
     dealers: 'Bayiler',
+    institutions: 'Kurumlar',
   };
 
   return (
@@ -155,11 +156,13 @@ const MainLayout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          minHeight: '100vh',
+          height: '100vh',
           backgroundColor: '#f8f9fa',
           display: 'flex',
           flexDirection: 'column',
           width: { xs: '100%', md: `calc(100% - 260px)` },
+          overflow: 'hidden',
+          direction: 'ltr',
         }}
       >
         {/* Spacer for AppBar */}
@@ -260,8 +263,10 @@ const MainLayout: React.FC = () => {
           sx={{
             flexGrow: 1,
             p: { xs: 2, sm: 3, md: 4 },
+            width: '100%',
             maxWidth: '100%',
-            mx: 'auto',
+            overflowY: 'auto',
+            overflowX: 'hidden',
           }}
         >
           <Outlet />

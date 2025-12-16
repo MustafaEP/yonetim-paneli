@@ -1,5 +1,5 @@
 // src/components/layout/Topbar.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -11,6 +11,16 @@ import {
   Avatar,
   Chip,
   useMediaQuery,
+  Badge,
+  Popover,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -20,10 +30,38 @@ const Topbar: React.FC = () => {
   const { user, logout } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [notificationAnchor, setNotificationAnchor] = useState<HTMLButtonElement | null>(null);
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
+  const [pendingNotifications, setPendingNotifications] = useState<any[]>([]);
 
   const initials = user
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
     : '?';
+
+  // Admin veya Genel Başkan için popup kontrolü
+  useEffect(() => {
+    const checkNotifications = async () => {
+      // TODO: API'den bekleyen onayları çek
+      // Şimdilik placeholder
+      const isAdminOrGenelBaskan = user?.roles?.some(r => r === 'ADMIN' || r === 'GENEL_BASKAN');
+      if (isAdminOrGenelBaskan && pendingNotifications.length > 0) {
+        setShowWelcomePopup(true);
+      }
+    };
+    checkNotifications();
+  }, [user, pendingNotifications]);
+
+  const handleNotificationClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setNotificationAnchor(event.currentTarget);
+  };
+
+  const handleNotificationClose = () => {
+    setNotificationAnchor(null);
+  };
+
+  const handleCloseWelcomePopup = () => {
+    setShowWelcomePopup(false);
+  };
 
   return (
     <AppBar
@@ -111,6 +149,7 @@ const Topbar: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
           {/* Bildirimler */}
           <IconButton
+            onClick={handleNotificationClick}
             size="small"
             sx={{
               color: theme.palette.text.secondary,
@@ -123,8 +162,46 @@ const Topbar: React.FC = () => {
               },
             }}
           >
+            <Badge badgeContent={pendingNotifications.length} color="error">
             <NotificationsIcon fontSize={isMobile ? 'small' : 'medium'} />
+            </Badge>
           </IconButton>
+
+          <Popover
+            open={Boolean(notificationAnchor)}
+            anchorEl={notificationAnchor}
+            onClose={handleNotificationClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+          >
+            <Box sx={{ p: 2, minWidth: 300, maxWidth: 400 }}>
+              <Typography variant="h6" gutterBottom>
+                Bildirimler
+              </Typography>
+              {pendingNotifications.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Bildirim bulunmuyor
+                </Typography>
+              ) : (
+                <List>
+                  {pendingNotifications.map((notif, index) => (
+                    <ListItem key={index}>
+                      <ListItemText
+                        primary={notif.title || 'Bekleyen Onay'}
+                        secondary={notif.message || 'Bekleyen onay işlemleri var'}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Box>
+          </Popover>
 
           {/* Çıkış Yap */}
           <IconButton
@@ -145,6 +222,38 @@ const Topbar: React.FC = () => {
           </IconButton>
         </Box>
       </Toolbar>
+
+      {/* Hoş Geldin Popup - Admin/Genel Başkan için */}
+      <Dialog
+        open={showWelcomePopup}
+        onClose={handleCloseWelcomePopup}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Bekleyen Bildirimler</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            Bekleyen onay işlemleri bulunmaktadır. Lütfen kontrol ediniz.
+          </Typography>
+          {pendingNotifications.length > 0 && (
+            <List>
+              {pendingNotifications.slice(0, 5).map((notif, index) => (
+                <ListItem key={index}>
+                  <ListItemText
+                    primary={notif.title || 'Bekleyen Onay'}
+                    secondary={notif.message || 'Bekleyen onay işlemleri var'}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseWelcomePopup} variant="contained">
+            Tamam
+          </Button>
+        </DialogActions>
+      </Dialog>
     </AppBar>
   );
 };

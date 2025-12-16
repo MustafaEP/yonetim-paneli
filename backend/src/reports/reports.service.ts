@@ -1,0 +1,415 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { MemberScopeService } from '../members/member-scope.service';
+import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
+
+@Injectable()
+export class ReportsService {
+  constructor(
+    private prisma: PrismaService,
+    private memberScopeService: MemberScopeService,
+  ) {}
+
+  async getGlobalReport(user?: CurrentUserData) {
+    const scopeIds = user ? await this.memberScopeService.getUserScopeIds(user) : {};
+
+    const where: any = {};
+    if (scopeIds.provinceId) {
+      where.provinceId = scopeIds.provinceId;
+    }
+    if (scopeIds.districtId) {
+      where.districtId = scopeIds.districtId;
+    }
+
+    const [
+      totalMembers,
+      activeMembers,
+      cancelledMembers,
+      totalUsers,
+      totalRoles,
+      totalPayments,
+      byProvinceData,
+      byStatusData,
+    ] = await Promise.all([
+      this.prisma.member.count({
+        where: {
+          ...where,
+          status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
+        },
+      }),
+      this.prisma.member.count({
+        where: {
+          ...where,
+          status: 'ACTIVE',
+        },
+      }),
+      this.prisma.member.count({
+        where: {
+          ...where,
+          status: { in: ['RESIGNED', 'EXPELLED'] },
+        },
+      }),
+      this.prisma.user.count({
+        where: {
+          deletedAt: null,
+          isActive: true,
+        },
+      }),
+      this.prisma.customRole.count({
+        where: {
+          deletedAt: null,
+          isActive: true,
+        },
+      }),
+      this.prisma.memberPayment.aggregate({
+        where: {
+          member: where.provinceId || where.districtId ? where : undefined,
+        },
+        _sum: {
+          amount: true,
+        },
+      }),
+      this.prisma.member.groupBy({
+        by: ['provinceId'],
+        where: {
+          ...where,
+          status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
+          provinceId: { not: null },
+        },
+        _count: {
+          id: true,
+        },
+      }),
+      this.prisma.member.groupBy({
+        by: ['status'],
+        where,
+        _count: {
+          id: true,
+        },
+      }),
+    ]);
+
+    // İl bazlı verileri formatla
+    const byProvince = await Promise.all(
+      byProvinceData.map(async (item) => {
+        const province = await this.prisma.province.findUnique({
+          where: { id: item.provinceId! },
+        });
+        return {
+          provinceId: item.provinceId!,
+          provinceName: province?.name || 'Bilinmeyen',
+          memberCount: item._count.id,
+        };
+      }),
+    );
+
+    // Durum bazlı verileri formatla
+    const byStatus = byStatusData.map((item) => ({
+      status: item.status,
+      count: item._count.id,
+    }));
+
+    // Borç hesaplama (basitleştirilmiş - aidat planı olan aktif üyeler için)
+    // TODO: Daha detaylı borç hesaplaması yapılabilir
+    const totalDebt = 0;
+
+    return {
+      totalMembers,
+      activeMembers,
+      cancelledMembers,
+      totalUsers,
+      totalRoles,
+      totalDuesPlans: 0, // DuesPlan modeli yok
+      totalPayments: Number(totalPayments._sum.amount || 0),
+      totalDebt,
+      byProvince,
+      byStatus,
+    };
+  }
+
+  async getRegionReport(regionId?: string, user?: CurrentUserData) {
+    const scopeIds = user ? await this.memberScopeService.getUserScopeIds(user) : {};
+
+    // Eğer regionId verilmişse, sadece o bölge için rapor döndür
+    if (regionId) {
+      // Kullanıcı scope kontrolü
+      if (scopeIds.provinceId && scopeIds.provinceId !== regionId) {
+        throw new Error('Bu bölgeye erişim yetkiniz yok');
+      }
+
+      const province = await this.prisma.province.findUnique({
+        where: { id: regionId },
+      });
+
+      if (!province) {
+        throw new Error('Bölge bulunamadı');
+      }
+
+      const [
+        memberCount,
+        activeMembers,
+        cancelledMembers,
+        totalPayments,
+      ] = await Promise.all([
+        this.prisma.member.count({
+          where: {
+            provinceId: regionId,
+            status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
+          },
+        }),
+        this.prisma.member.count({
+          where: {
+            provinceId: regionId,
+            status: 'ACTIVE',
+          },
+        }),
+        this.prisma.member.count({
+          where: {
+            provinceId: regionId,
+            status: { in: ['RESIGNED', 'EXPELLED'] },
+          },
+        }),
+        this.prisma.memberPayment.aggregate({
+          where: {
+            member: {
+              provinceId: regionId,
+            },
+          },
+          _sum: {
+            amount: true,
+          },
+        }),
+      ]);
+
+      // İşyerlerini getir (workplace'lerin member ilişkisi yok, bu yüzden boş array döndürüyoruz)
+      const workplaces = await this.prisma.workplace.findMany({
+        where: {
+          provinceId: regionId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      // Her işyeri için üye sayısını hesapla
+      const workplacesWithCounts = await Promise.all(
+        workplaces.map(async (wp) => {
+          const memberCount = await this.prisma.member.count({
+            where: {
+              workingProvinceId: regionId,
+              // Workplace ilişkisi yok, bu yüzden sadece province bazlı sayıyoruz
+            },
+          });
+          return {
+            workplaceId: wp.id,
+            workplaceName: wp.name,
+            memberCount: 0, // Workplace-member ilişkisi olmadığı için 0
+          };
+        }),
+      );
+
+      return {
+        regionId: province.id,
+        regionName: province.name,
+        memberCount,
+        activeMembers,
+        cancelledMembers,
+        totalPayments: Number(totalPayments._sum.amount || 0),
+        totalDebt: 0, // TODO: Borç hesaplaması eklenecek
+        workplaces: workplacesWithCounts,
+      };
+    }
+
+    // Tüm bölgeler için rapor döndür
+    const provinces = await this.prisma.province.findMany({
+      orderBy: { name: 'asc' },
+      where: scopeIds.provinceId ? { id: scopeIds.provinceId } : undefined,
+    });
+
+    const regionReports = await Promise.all(
+      provinces.map(async (province) => {
+        const [
+          memberCount,
+          activeMembers,
+          cancelledMembers,
+          totalPayments,
+        ] = await Promise.all([
+          this.prisma.member.count({
+            where: {
+              provinceId: province.id,
+              status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
+            },
+          }),
+          this.prisma.member.count({
+            where: {
+              provinceId: province.id,
+              status: 'ACTIVE',
+            },
+          }),
+          this.prisma.member.count({
+            where: {
+              provinceId: province.id,
+              status: { in: ['RESIGNED', 'EXPELLED'] },
+            },
+          }),
+          this.prisma.memberPayment.aggregate({
+            where: {
+              member: {
+                provinceId: province.id,
+              },
+            },
+            _sum: {
+              amount: true,
+            },
+          }),
+        ]);
+
+        return {
+          regionId: province.id,
+          regionName: province.name,
+          memberCount,
+          activeMembers,
+          cancelledMembers,
+          totalPayments: Number(totalPayments._sum.amount || 0),
+          totalDebt: 0, // TODO: Borç hesaplaması eklenecek
+          workplaces: [],
+        };
+      }),
+    );
+
+    return regionReports;
+  }
+
+  async getMemberStatusReport(user?: CurrentUserData) {
+    const scopeIds = user ? await this.memberScopeService.getUserScopeIds(user) : {};
+
+    const where: any = {};
+    if (scopeIds.provinceId) {
+      where.provinceId = scopeIds.provinceId;
+    }
+    if (scopeIds.districtId) {
+      where.districtId = scopeIds.districtId;
+    }
+
+    const [statusCounts, totalMembers] = await Promise.all([
+      this.prisma.member.groupBy({
+        by: ['status'],
+        where,
+        _count: {
+          id: true,
+        },
+      }),
+      this.prisma.member.count({ where }),
+    ]);
+
+    return statusCounts.map((item) => ({
+      status: item.status,
+      count: item._count.id,
+      percentage: totalMembers > 0 ? (item._count.id / totalMembers) * 100 : 0,
+      members: [], // TODO: Üye listesi eklenebilir
+    }));
+  }
+
+  async getDuesReport(user?: CurrentUserData, params?: { year?: number; month?: number }) {
+    const scopeIds = user ? await this.memberScopeService.getUserScopeIds(user) : {};
+
+    const where: any = {};
+    if (scopeIds.provinceId) {
+      where.member = { provinceId: scopeIds.provinceId };
+    }
+    if (scopeIds.districtId) {
+      where.member = { ...where.member, districtId: scopeIds.districtId };
+    }
+
+    // Tarih filtresi
+    if (params?.year) {
+      where.paymentPeriodYear = params.year;
+    }
+    if (params?.month) {
+      where.paymentPeriodMonth = params.month;
+    }
+
+    // Toplam ödemeler
+    const totalPaymentsResult = await this.prisma.memberPayment.aggregate({
+      where,
+      _sum: {
+        amount: true,
+      },
+    });
+
+    // Ödeme yapan ve yapmayan üye sayıları
+    const memberWhere: any = {};
+    if (scopeIds.provinceId) {
+      memberWhere.provinceId = scopeIds.provinceId;
+    }
+    if (scopeIds.districtId) {
+      memberWhere.districtId = scopeIds.districtId;
+    }
+
+    const [paidMembers, unpaidMembers] = await Promise.all([
+      this.prisma.member.count({
+        where: {
+          ...memberWhere,
+          status: 'ACTIVE',
+          payments: {
+            some: {},
+          },
+        },
+      }),
+      this.prisma.member.count({
+        where: {
+          ...memberWhere,
+          status: 'ACTIVE',
+          payments: {
+            none: {},
+          },
+        },
+      }),
+    ]);
+
+    // Aylık ödemeler
+    const byMonthData = await this.prisma.memberPayment.groupBy({
+      by: ['paymentPeriodYear', 'paymentPeriodMonth'],
+      where,
+      _sum: {
+        amount: true,
+      },
+      _count: {
+        id: true,
+      },
+      orderBy: [
+        { paymentPeriodYear: 'desc' },
+        { paymentPeriodMonth: 'desc' },
+      ],
+    });
+
+    const byMonth = byMonthData.map((item) => ({
+      year: item.paymentPeriodYear,
+      month: item.paymentPeriodMonth,
+      total: Number(item._sum.amount || 0),
+      count: item._count.id,
+    }));
+
+    // Plan bazlı ödemeler (DuesPlan modeli yok, bu yüzden boş array döndürüyoruz)
+    const byPlan: Array<{
+      planId: string;
+      planName: string;
+      totalPayments: number;
+      memberCount: number;
+    }> = [];
+
+    // Borç hesaplama (basitleştirilmiş)
+    const totalDebt = 0;
+
+    return {
+      totalPayments: Number(totalPaymentsResult._sum.amount || 0),
+      totalDebt,
+      paidMembers,
+      unpaidMembers,
+      byMonth,
+      byPlan,
+    };
+  }
+}
+

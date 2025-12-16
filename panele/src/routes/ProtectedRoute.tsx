@@ -5,17 +5,32 @@ import { useAuth } from '../context/AuthContext';
 
 interface ProtectedRouteProps {
   requiredPermission?: string;
+  alternativePermission?: string;
+  alternativePermission2?: string;
+  alternativePermission3?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredPermission }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+  requiredPermission, 
+  alternativePermission,
+  alternativePermission2,
+  alternativePermission3,
+}) => {
   const { isAuthenticated, hasPermission } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredPermission && !hasPermission(requiredPermission)) {
-    return <Navigate to="/forbidden" replace />;
+  if (requiredPermission) {
+    const hasRequired = hasPermission(requiredPermission);
+    const hasAlternative = alternativePermission ? hasPermission(alternativePermission) : false;
+    const hasAlternative2 = alternativePermission2 ? hasPermission(alternativePermission2) : false;
+    const hasAlternative3 = alternativePermission3 ? hasPermission(alternativePermission3) : false;
+    
+    if (!hasRequired && !hasAlternative && !hasAlternative2 && !hasAlternative3) {
+      return <Navigate to="/forbidden" replace />;
+    }
   }
 
   return <Outlet />;

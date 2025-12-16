@@ -31,5 +31,25 @@ export class UpdateRoleDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiProperty({
+    description: 'İl ID (MEMBER_LIST_BY_PROVINCE izni için)',
+    example: 'province-uuid-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  provinceId?: string;
+
+  @ApiProperty({
+    description: 'İlçe ID (MEMBER_LIST_BY_PROVINCE izni için ilçe bazlı)',
+    example: 'district-uuid-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  districtId?: string;
 }
 

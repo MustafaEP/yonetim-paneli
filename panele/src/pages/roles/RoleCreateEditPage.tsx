@@ -19,6 +19,9 @@ import {
   alpha,
   Paper,
   Collapse,
+  Select,
+  MenuItem,
+  InputLabel,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
@@ -28,6 +31,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import InfoIcon from '@mui/icons-material/Info';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 
 import type {
   CustomRole,
@@ -46,6 +51,8 @@ import {
   PERMISSION_LABELS,
   type Permission as PermissionType,
 } from '../../types/role';
+import { getProvinces, getDistricts } from '../../api/regionsApi';
+import type { Province, District } from '../../types/region';
 
 const RoleCreateEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +71,27 @@ const RoleCreateEditPage: React.FC = () => {
     new Set(),
   );
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [provincesLoading, setProvincesLoading] = useState(false);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [districtsLoading, setDistrictsLoading] = useState(false);
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('');
+
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      setProvincesLoading(true);
+      try {
+        const data = await getProvinces();
+        setProvinces(data);
+      } catch (e) {
+        console.error('İller alınırken hata:', e);
+      } finally {
+        setProvincesLoading(false);
+      }
+    };
+    fetchProvinces();
+  }, []);
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -79,8 +107,23 @@ const RoleCreateEditPage: React.FC = () => {
           setDescription(role.description || '');
           setIsActive(role.isActive);
           setSelectedPermissions(new Set(role.permissions));
+          setSelectedProvinceId(role.provinceId || '');
+          setSelectedDistrictId(role.districtId || '');
           // Tüm grupları başlangıçta aç
           setExpandedGroups(new Set(Object.keys(PERMISSION_GROUPS)));
+          
+          // Eğer provinceId varsa ilçeleri yükle
+          if (role.provinceId) {
+            const fetchDistricts = async () => {
+              try {
+                const districtData = await getDistricts(role.provinceId!);
+                setDistricts(districtData);
+              } catch (e) {
+                console.error('İlçeler alınırken hata:', e);
+              }
+            };
+            fetchDistricts();
+          }
         } catch (e) {
           console.error('Rol alınırken hata:', e);
           setError('Rol bilgileri alınamadı');
@@ -153,11 +196,32 @@ const RoleCreateEditPage: React.FC = () => {
     try {
       const permissionsArray = Array.from(selectedPermissions);
 
+      // MEMBER_LIST_BY_PROVINCE izni seçildiyse provinceId zorunlu
+      const hasProvincePermission = permissionsArray.includes('MEMBER_LIST_BY_PROVINCE');
+      if (hasProvincePermission && !selectedProvinceId) {
+        setError('MEMBER_LIST_BY_PROVINCE izni seçildiğinde il seçimi zorunludur');
+        return;
+      }
+      
+      // İlçe seçilmişse il seçilmiş olmalı
+      if (selectedDistrictId && !selectedProvinceId) {
+        setError('İlçe seçmek için önce il seçmelisiniz');
+        return;
+      }
+      
+      // İlçe seçilmişse il seçilmiş olmalı
+      if (selectedDistrictId && !selectedProvinceId) {
+        setError('İlçe seçmek için önce il seçmelisiniz');
+        return;
+      }
+
       if (isEditMode && id) {
         const updateDto: UpdateRoleDto = {
           name: name.trim(),
           description: description.trim() || undefined,
           isActive,
+          provinceId: hasProvincePermission ? selectedProvinceId : undefined,
+          districtId: hasProvincePermission && selectedDistrictId ? selectedDistrictId : undefined,
         };
         await updateRole(id, updateDto);
         await updateRolePermissions(id, { permissions: permissionsArray });
@@ -166,6 +230,8 @@ const RoleCreateEditPage: React.FC = () => {
           name: name.trim(),
           description: description.trim() || undefined,
           permissions: permissionsArray,
+          provinceId: hasProvincePermission ? selectedProvinceId : undefined,
+          districtId: hasProvincePermission && selectedDistrictId ? selectedDistrictId : undefined,
         };
         await createRole(createDto);
       }
@@ -347,6 +413,99 @@ const RoleCreateEditPage: React.FC = () => {
                 },
               }}
             />
+            {selectedPermissions.has('MEMBER_LIST_BY_PROVINCE') && (
+              <Box sx={{ mt: 1 }}>
+                <Alert
+                  severity="info"
+                  icon={<InfoIcon />}
+                  sx={{
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.info.main, 0.08),
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                    '& .MuiAlert-icon': {
+                      color: theme.palette.info.main,
+                    },
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    İl ve İlçe Seçimi
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 1.5 }}>
+                    "Belirli İldeki Üyeleri Görüntüleme" iznini seçtiğiniz için aşağıda il seçmeniz zorunludur. İlçe seçimi opsiyoneldir. 
+                    İlçe seçmezseniz, bu role sahip kullanıcılar seçtiğiniz ilin tüm ilçelerindeki üyeleri görebilir. 
+                    İlçe seçerseniz, sadece o ilçedeki üyeleri görebilirler.
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <FormControl fullWidth required>
+                      <InputLabel>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <LocationOnIcon fontSize="small" />
+                          İl Seçimi *
+                        </Box>
+                      </InputLabel>
+                      <Select
+                        value={selectedProvinceId || ''}
+                        onChange={(e) => setSelectedProvinceId(e.target.value)}
+                        label="İl Seçimi *"
+                        disabled={provincesLoading}
+                        sx={{
+                          borderRadius: 2,
+                          backgroundColor: '#fff',
+                          '&:hover': {
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: theme.palette.primary.main,
+                            },
+                          },
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>İl seçiniz</em>
+                        </MenuItem>
+                        {provinces.map((province) => (
+                          <MenuItem key={province.id} value={province.id}>
+                            {province.name} {province.code ? `(${province.code})` : ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    {selectedProvinceId && (
+                      <FormControl fullWidth>
+                        <InputLabel>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <LocationOnIcon fontSize="small" />
+                            İlçe Seçimi (Opsiyonel)
+                          </Box>
+                        </InputLabel>
+                        <Select
+                          value={selectedDistrictId}
+                          onChange={(e) => setSelectedDistrictId(e.target.value)}
+                          label="İlçe Seçimi (Opsiyonel)"
+                          disabled={districtsLoading || !selectedProvinceId}
+                          sx={{
+                            borderRadius: 2,
+                            backgroundColor: '#fff',
+                            '&:hover': {
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: theme.palette.primary.main,
+                              },
+                            },
+                          }}
+                        >
+                          <MenuItem value="">
+                            <em>İlçe seçmeyin (Tüm ilçeler)</em>
+                          </MenuItem>
+                          {districts.map((district) => (
+                            <MenuItem key={district.id} value={district.id}>
+                              {district.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  </Box>
+                </Alert>
+              </Box>
+            )}
             {isEditMode && (
               <Paper
                 elevation={0}
@@ -508,47 +667,64 @@ const RoleCreateEditPage: React.FC = () => {
                   <FormGroup sx={{ p: 2, pt: 1.5 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                       {permissions.map((permission) => (
-                        <Paper
-                          key={permission}
-                          elevation={0}
-                          sx={{
-                            p: 1,
-                            borderRadius: 1.5,
-                            backgroundColor: selectedPermissions.has(permission)
-                              ? alpha(theme.palette.primary.main, 0.04)
-                              : 'transparent',
-                            border: `1px solid ${
-                              selectedPermissions.has(permission)
-                                ? alpha(theme.palette.primary.main, 0.2)
-                                : 'transparent'
-                            }`,
-                            transition: 'all 0.2s ease',
-                            '&:hover': {
-                              backgroundColor: alpha(theme.palette.primary.main, 0.06),
-                              border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-                            },
-                          }}
-                        >
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                checked={selectedPermissions.has(permission)}
-                                onChange={() => handlePermissionToggle(permission)}
-                                sx={{
-                                  '&.Mui-checked': {
-                                    color: theme.palette.primary.main,
-                                  },
-                                }}
-                              />
-                            }
-                            label={
-                              <Typography sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
-                                {PERMISSION_LABELS[permission]}
-                              </Typography>
-                            }
-                            sx={{ m: 0, width: '100%' }}
-                          />
-                        </Paper>
+                        <React.Fragment key={permission}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 1,
+                              borderRadius: 1.5,
+                              backgroundColor: selectedPermissions.has(permission)
+                                ? alpha(theme.palette.primary.main, 0.04)
+                                : 'transparent',
+                              border: `1px solid ${
+                                selectedPermissions.has(permission)
+                                  ? alpha(theme.palette.primary.main, 0.2)
+                                  : 'transparent'
+                              }`,
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                backgroundColor: alpha(theme.palette.primary.main, 0.06),
+                                border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                              },
+                            }}
+                          >
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={selectedPermissions.has(permission)}
+                                  onChange={() => handlePermissionToggle(permission)}
+                                  sx={{
+                                    '&.Mui-checked': {
+                                      color: theme.palette.primary.main,
+                                    },
+                                  }}
+                                />
+                              }
+                              label={
+                                <Box>
+                                  <Typography sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
+                                    {PERMISSION_LABELS[permission]}
+                                  </Typography>
+                                  {permission === 'MEMBER_LIST_BY_PROVINCE' && (
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        display: 'block',
+                                        mt: 0.5,
+                                        color: theme.palette.text.secondary,
+                                        fontSize: '0.75rem',
+                                        lineHeight: 1.4,
+                                      }}
+                                    >
+                                      Bu izni seçersen, il ve ilçe (opsiyonel) seçmen gerekiyor. Seçmen halinde bu role sahip olan kişi sadece o il ve ilçedeki üyeleri görebilir.
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                              sx={{ m: 0, width: '100%' }}
+                            />
+                          </Paper>
+                        </React.Fragment>
                       ))}
                     </Box>
                   </FormGroup>

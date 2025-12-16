@@ -1,1065 +1,831 @@
-// src/pages/members/MemberDetailPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
   CardContent,
   Typography,
   Chip,
-  CircularProgress,
   Grid,
   Paper,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
   Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
+  Avatar,
+  alpha,
+  useTheme,
+  IconButton,
+  Collapse,
+  Stack,
+  Alert,
+  CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Link,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
 } from '@mui/material';
-import { useParams } from 'react-router-dom';
-
+import { useParams, useNavigate } from 'react-router-dom';
+import DescriptionIcon from '@mui/icons-material/Description';
+import EditIcon from '@mui/icons-material/Edit';
+import PersonIcon from '@mui/icons-material/Person';
+import WorkIcon from '@mui/icons-material/Work';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import WarningIcon from '@mui/icons-material/Warning';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PaymentIcon from '@mui/icons-material/Payment';
+import GetAppIcon from '@mui/icons-material/GetApp';
+import { getMemberById } from '../../api/membersApi';
+import { getMemberPayments, createPayment, type CreateMemberPaymentDto, type PaymentType } from '../../api/paymentsApi';
+import type { MemberDetail } from '../../types/member';
+import type { MemberPayment } from '../../api/paymentsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 
-import type { MemberDetail } from '../../types/member';
-import { getMemberById, approveMember, rejectMember, updateMemberDuesPlan, cancelMember } from '../../api/membersApi';
-
-import type { MemberPaymentRow, DuesDebtRow, DuesPlanRow } from '../../types/dues';
-import {
-  getMemberPayments,
-  addDuesPayment,
-  getMemberDebt,
-  getMemberMonthlyDebts,
-  getDuesPlans,
-  type MonthlyDebtStatus,
-} from '../../api/duesApi';
-
-const MemberDetailPage: React.FC = () => {
+const MemberDetailPage = () => {
+  const theme = useTheme();
   const { id } = useParams<{ id: string }>();
-
+  const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const toast = useToast();
-  const canAddPayment = hasPermission('DUES_PAYMENT_ADD');
-  const canApprove = hasPermission('MEMBER_APPROVE');
-  const canReject = hasPermission('MEMBER_REJECT');
-  const canChangeDuesPlan = hasPermission('MEMBER_STATUS_CHANGE');
-  const canCancelMembership = hasPermission('MEMBER_STATUS_CHANGE');
-
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [loadingMember, setLoadingMember] = useState(true);
-
-  const [payments, setPayments] = useState<MemberPaymentRow[]>([]);
-  const [loadingPayments, setLoadingPayments] = useState(true);
-
-  const [memberDebt, setMemberDebt] = useState<DuesDebtRow | null>(null);
-  const [loadingDebt, setLoadingDebt] = useState(true);
-
-  const [monthlyDebts, setMonthlyDebts] = useState<MonthlyDebtStatus | null>(null);
-  const [loadingMonthlyDebts, setLoadingMonthlyDebts] = useState(true);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-
+  const [payments, setPayments] = useState<MemberPayment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({
+    personal: true,
+    work: true,
+    history: false,
+    payments: true,
+  });
+  
+  // Ödeme ekleme dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [submittingPayment, setSubmittingPayment] = useState(false);
   const [paymentForm, setPaymentForm] = useState<{
+    paymentPeriodMonth: number;
+    paymentPeriodYear: number;
     amount: string;
-    note: string;
+    paymentType: PaymentType;
+    description: string;
   }>({
+    paymentPeriodMonth: new Date().getMonth() + 1,
+    paymentPeriodYear: new Date().getFullYear(),
     amount: '',
-    note: '',
+    paymentType: 'ELDEN',
+    description: '',
   });
+  
+  const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
 
-  const [processingStatus, setProcessingStatus] = useState(false);
-
-  const [duesPlanDialogOpen, setDuesPlanDialogOpen] = useState(false);
-  const [duesPlanSaving, setDuesPlanSaving] = useState(false);
-  const [duesPlans, setDuesPlans] = useState<DuesPlanRow[]>([]);
-  const [selectedDuesPlanId, setSelectedDuesPlanId] = useState<string>('');
-
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [cancelSaving, setCancelSaving] = useState(false);
-  const [cancelForm, setCancelForm] = useState<{
-    reason: string;
-    status: 'RESIGNED' | 'EXPELLED' | 'INACTIVE';
-  }>({
-    reason: '',
-    status: 'RESIGNED',
-  });
-
-  // 🔹 Aidat planlarını yükle
-  useEffect(() => {
-    const loadDuesPlans = async () => {
-      try {
-        const data = await getDuesPlans(false); // Sadece aktif planları getir
-        setDuesPlans(data);
-      } catch (e) {
-        console.error('Aidat planları alınırken hata:', e);
-      }
-    };
-    loadDuesPlans();
-  }, []);
-
-  // 🔹 Üye bilgisi
+  // Member verisini yükle
   useEffect(() => {
     if (!id) return;
 
-    const fetchMember = async () => {
+    const loadMember = async () => {
       setLoadingMember(true);
       try {
         const data = await getMemberById(id);
         setMember(data);
-        setSelectedDuesPlanId(data.duesPlan?.id || '');
-      } catch (e) {
-        console.error('Üye detay alınırken hata:', e);
+      } catch (error) {
+        console.error('Üye detayı alınırken hata:', error);
       } finally {
         setLoadingMember(false);
       }
     };
 
-    fetchMember();
+    loadMember();
   }, [id]);
 
-  // 🔹 Üye ödemeleri
-  const loadPayments = async () => {
+  // Ödemeleri yükle
+  useEffect(() => {
     if (!id) return;
-    setLoadingPayments(true);
-    try {
-      const data = await getMemberPayments(id);
-      console.log('[MemberDetailPage] Payments loaded:', data);
-      if (Array.isArray(data) && data.length > 0) {
-        console.log('[MemberDetailPage] First payment:', data[0]);
-        console.log('[MemberDetailPage] First payment appliedMonths:', data[0]?.appliedMonths);
+
+    const loadPayments = async () => {
+      setLoadingPayments(true);
+      try {
+        const data = await getMemberPayments(id);
+        setPayments(data);
+      } catch (error) {
+        console.error('Ödemeler alınırken hata:', error);
+      } finally {
+        setLoadingPayments(false);
       }
-      setPayments(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error('Üye ödemeleri alınırken hata:', e);
-      setPayments([]);
-    } finally {
-      setLoadingPayments(false);
-    }
-  };
+    };
 
-  useEffect(() => {
     loadPayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // 🔹 Üye borç bilgisi
-  const loadDebt = async () => {
-    if (!id) return;
-    setLoadingDebt(true);
+  // Ödeme ekleme handler
+  const handleSubmitPayment = async () => {
+    if (!id || !member) return;
+    
+    // Validasyon
+    if (!paymentForm.amount || !paymentForm.paymentPeriodMonth || !paymentForm.paymentPeriodYear) {
+      toast.showError('Lütfen tüm zorunlu alanları doldurun');
+      return;
+    }
+
+    // Tutar formatını kontrol et
+    const amountRegex = /^\d+(\.\d{1,2})?$/;
+    const normalizedAmount = paymentForm.amount.replace(',', '.');
+    if (!amountRegex.test(normalizedAmount)) {
+      toast.showError('Tutar formatı geçersiz. Örnek: 250.00');
+      return;
+    }
+
+    setSubmittingPayment(true);
     try {
-      const data = await getMemberDebt(id);
-      setMemberDebt(data);
-    } catch (e) {
-      console.error('Üye borç bilgisi alınırken hata:', e);
-      setMemberDebt(null);
-    } finally {
-      setLoadingDebt(false);
-    }
-  };
-
-  useEffect(() => {
-    loadDebt();
-  }, [id]);
-
-  // 🔹 Üye aylık borç durumu
-  const loadMonthlyDebts = async () => {
-    if (!id || !member || member.status !== 'ACTIVE' || !member.duesPlan) {
-      setMonthlyDebts(null);
-      setLoadingMonthlyDebts(false);
-      return;
-    }
-    setLoadingMonthlyDebts(true);
-    try {
-      const data = await getMemberMonthlyDebts(id, selectedYear);
-      setMonthlyDebts(data);
-    } catch (e) {
-      console.error('Aylık borç durumu alınırken hata:', e);
-      setMonthlyDebts(null);
-    } finally {
-      setLoadingMonthlyDebts(false);
-    }
-  };
-
-  useEffect(() => {
-    if (member && member.status === 'ACTIVE' && member.duesPlan) {
-      loadMonthlyDebts();
-    }
-  }, [id, member, selectedYear]);
-
-
-  // 🔹 Form değişimi
-  const handlePaymentFormChange = (
-    field: keyof typeof paymentForm,
-    value: string,
-  ) => {
-    setPaymentForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const openPaymentDialog = () => {
-    setPaymentDialogOpen(true);
-    setPaymentSaving(false);
-    // Formu temizle - sadece tutar ve not alanları
-    setPaymentForm({
-      amount: '',
-      note: '',
-    });
-  };
-
-  const closePaymentDialog = () => {
-    if (paymentSaving) return;
-    setPaymentDialogOpen(false);
-  };
-
-  const handlePaymentSave = async () => {
-    if (!id) return;
-
-    // Reddedilmiş üyeler için ödeme yapılamaz
-    if (member?.status === 'REJECTED') {
-      toast.showError('Reddedilmiş üyeler için aidat ödemesi yapılamaz.');
-      return;
-    }
-
-    // Üyenin planı olmalı
-    if (!member?.duesPlan) {
-      toast.showError('Üyenin aktif bir aidat planı yok.');
-      return;
-    }
-
-    const amountNum = Number(paymentForm.amount.replace(',', '.'));
-    if (Number.isNaN(amountNum) || amountNum <= 0) {
-      toast.showError('Geçerli bir tutar giriniz.');
-      return;
-    }
-
-    setPaymentSaving(true);
-    try {
-      // Plan ID göndermiyoruz - backend üyeden otomatik alacak
-      // periodYear ve periodMonth göndermiyoruz - FIFO mantığı ile en eski borçlu aylara uygulanacak
-      await addDuesPayment({
+      const payload: CreateMemberPaymentDto = {
         memberId: id,
-        planId: undefined, // Backend üyeden otomatik alacak
-        amount: amountNum,
-        periodYear: undefined, // FIFO mantığı ile uygulanacak
-        periodMonth: undefined, // FIFO mantığı ile uygulanacak
-        note: paymentForm.note || undefined,
+        paymentPeriodMonth: paymentForm.paymentPeriodMonth,
+        paymentPeriodYear: paymentForm.paymentPeriodYear,
+        amount: normalizedAmount,
+        paymentType: paymentForm.paymentType,
+        description: paymentForm.description || undefined,
+      };
+
+      await createPayment(payload);
+      toast.showSuccess('Ödeme başarıyla eklendi');
+      
+      // Formu sıfırla
+      setPaymentForm({
+        paymentPeriodMonth: new Date().getMonth() + 1,
+        paymentPeriodYear: new Date().getFullYear(),
+        amount: '',
+        paymentType: 'ELDEN',
+        description: '',
       });
-
-      await loadPayments();
-      await loadDebt(); // Borç bilgisini yenile
-      await loadMonthlyDebts(); // Aylık borç durumunu yenile
+      
+      // Dialog'u kapat
       setPaymentDialogOpen(false);
-      toast.showSuccess('Ödeme başarıyla eklendi.');
-    } catch (e: any) {
-      console.error('Ödeme eklenirken hata:', e);
-      const errorMessage = e?.response?.data?.message || e?.message || 'Ödeme eklenirken bir hata oluştu.';
-      toast.showError(errorMessage);
+      
+      // Ödemeleri yeniden yükle
+      const data = await getMemberPayments(id);
+      setPayments(data);
+    } catch (error: any) {
+      console.error('Ödeme eklenirken hata:', error);
+      toast.showError(error.response?.data?.message || 'Ödeme eklenirken bir hata oluştu');
     } finally {
-      setPaymentSaving(false);
-    }
-  };
-
-  const handleApproveMember = async () => {
-    if (!id || !canApprove) return;
-    if (!window.confirm('Bu üye başvurusunu onaylamak istediğinize emin misiniz?')) return;
-
-    setProcessingStatus(true);
-    try {
-      await approveMember(id);
-      const updated = await getMemberById(id);
-      setMember(updated);
-      toast.showSuccess('Üye başarıyla onaylandı.');
-    } catch (e) {
-      console.error('Üye onaylanırken hata:', e);
-      toast.showError('Üye onaylanırken bir hata oluştu.');
-    } finally {
-      setProcessingStatus(false);
-    }
-  };
-
-  const handleRejectMember = async () => {
-    if (!id || !canReject) return;
-    if (!window.confirm('Bu üye başvurusunu reddetmek istediğinize emin misiniz?')) return;
-
-    setProcessingStatus(true);
-    try {
-      await rejectMember(id);
-      const updated = await getMemberById(id);
-      setMember(updated);
-      toast.showSuccess('Üye başarıyla reddedildi.');
-    } catch (e) {
-      console.error('Üye reddedilirken hata:', e);
-      toast.showError('Üye reddedilirken bir hata oluştu.');
-    } finally {
-      setProcessingStatus(false);
-    }
-  };
-
-  const openDuesPlanDialog = () => {
-    setDuesPlanDialogOpen(true);
-    setSelectedDuesPlanId(member?.duesPlan?.id || '');
-  };
-
-  const closeDuesPlanDialog = () => {
-    if (duesPlanSaving) return;
-    setDuesPlanDialogOpen(false);
-  };
-
-  const handleDuesPlanSave = async () => {
-    if (!id || !canChangeDuesPlan) return;
-    if (!selectedDuesPlanId) {
-      toast.showWarning('Lütfen bir aidat planı seçiniz.');
-      return;
-    }
-
-    setDuesPlanSaving(true);
-    try {
-      const updated = await updateMemberDuesPlan(id, selectedDuesPlanId);
-      setMember(updated);
-      await loadDebt(); // Borç bilgisini yenile
-      await loadMonthlyDebts(); // Aylık borç durumunu yenile
-      setDuesPlanDialogOpen(false);
-      toast.showSuccess('Aidat planı başarıyla güncellendi.');
-    } catch (e: any) {
-      console.error('Aidat planı güncellenirken hata:', e);
-      const errorMessage = e?.response?.data?.message || e?.message || 'Aidat planı güncellenirken bir hata oluştu.';
-      toast.showError(errorMessage);
-    } finally {
-      setDuesPlanSaving(false);
-    }
-  };
-
-  const openCancelDialog = () => {
-    setCancelDialogOpen(true);
-    setCancelForm({
-      reason: '',
-      status: 'RESIGNED',
-    });
-  };
-
-  const closeCancelDialog = () => {
-    if (cancelSaving) return;
-    setCancelDialogOpen(false);
-  };
-
-  const handleCancelSave = async () => {
-    if (!id || !canCancelMembership) return;
-    if (!cancelForm.reason.trim()) {
-      toast.showWarning('Lütfen iptal nedeni giriniz.');
-      return;
-    }
-
-    setCancelSaving(true);
-    try {
-      const updated = await cancelMember(id, cancelForm.reason, cancelForm.status);
-      setMember(updated);
-      await loadDebt(); // Borç bilgisini yenile
-      await loadMonthlyDebts(); // Aylık borç durumunu yenile
-      setCancelDialogOpen(false);
-      toast.showSuccess('Üyelik başarıyla iptal edildi.');
-    } catch (e: any) {
-      console.error('Üyelik iptal edilirken hata:', e);
-      const errorMessage = e?.response?.data?.message || e?.message || 'Üyelik iptal edilirken bir hata oluştu.';
-      toast.showError(errorMessage);
-    } finally {
-      setCancelSaving(false);
+      setSubmittingPayment(false);
     }
   };
 
   if (loadingMember) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
         <CircularProgress />
       </Box>
     );
   }
 
   if (!member) {
-    return <Typography>Üye bulunamadı.</Typography>;
+    return (
+      <Alert severity="error" sx={{ m: 3 }}>
+        Üye bulunamadı
+      </Alert>
+    );
   }
 
-  const fullName = `${member.firstName} ${member.lastName}`;
-
-  const formatPeriod = (p: MemberPaymentRow) => {
-    // Debug log
-    console.log('[formatPeriod] Payment:', p.id, 'appliedMonths:', p.appliedMonths, 'excessAmount:', p.excessAmount, 'periodYear:', p.periodYear, 'periodMonth:', p.periodMonth);
-    
-    const monthNames = [
-      'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
-      'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara',
-    ];
-    
-    // Eğer belirli bir ay/yıl seçilmişse, onu göster
-    if (p.periodYear && p.periodMonth) {
-      const monthName = monthNames[p.periodMonth - 1] || p.periodMonth.toString();
-      return `${monthName} ${p.periodYear}`;
-    }
-    if (p.periodYear) {
-      return `${p.periodYear}`;
-    }
-
-    // Eğer appliedMonths varsa (FIFO ile uygulanmış), hangi aylara uygulandığını göster
-    if (p.appliedMonths && p.appliedMonths.length > 0) {
-      const monthNames = [
-        'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
-        'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara',
-      ];
-
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth() + 1;
-
-      // Mevcut/geçmiş ayları ve gelecek ayları ayır
-      const pastMonths = p.appliedMonths.filter(m => 
-        m.year < currentYear || (m.year === currentYear && m.month <= currentMonth)
-      );
-      const futureMonths = p.appliedMonths.filter(m => 
-        m.year > currentYear || (m.year === currentYear && m.month > currentMonth)
-      );
-
-      // Ayları formatla
-      const formatMonths = (months: Array<{ year: number; month: number }>) => {
-        if (months.length === 0) return null;
-        
-        const sorted = [...months].sort((a, b) => {
-          if (a.year !== b.year) return a.year - b.year;
-          return a.month - b.month;
-        });
-
-        // Ardışık ayları grupla
-        const groups: Array<{ year: number; months: number[] }> = [];
-        
-        for (const item of sorted) {
-          const existingGroup = groups.find(g => g.year === item.year);
-          if (existingGroup) {
-            existingGroup.months.push(item.month);
-          } else {
-            groups.push({ year: item.year, months: [item.month] });
-          }
-        }
-
-        // Her grup için string oluştur
-        const parts = groups.map(g => {
-          g.months.sort((a, b) => a - b);
-          const monthStrs = g.months.map(m => monthNames[m - 1]);
-          
-          if (g.months.length === 1) {
-            return `${monthStrs[0]} ${g.year}`;
-          } else {
-            // Ardışık ayları kontrol et
-            let consecutive = true;
-            for (let i = 1; i < g.months.length; i++) {
-              if (g.months[i] !== g.months[i - 1] + 1) {
-                consecutive = false;
-                break;
-              }
-            }
-            
-            if (consecutive && g.months.length > 2) {
-              return `${monthStrs[0]}-${monthStrs[monthStrs.length - 1]} ${g.year}`;
-            } else {
-              return `${monthStrs.join(', ')} ${g.year}`;
-            }
-          }
-        });
-
-        return parts.join(', ');
-      };
-
-      const pastStr = formatMonths(pastMonths);
-      const futureStr = formatMonths(futureMonths);
-
-      let result = '';
-      
-      if (pastStr) {
-        result = pastStr;
-      }
-      
-      if (futureStr) {
-        if (result) {
-          result += `, ${futureStr} (gelecek)`;
-        } else {
-          result = `${futureStr} (gelecek)`;
-        }
-      }
-      
-      // Eğer fazla ödeme varsa, bunu da göster
-      if (p.excessAmount && p.excessAmount > 0) {
-        result += ` (+${p.excessAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL fazla)`;
-      }
-      
-      return result || '-';
-    }
-
-    // Hiçbir bilgi yoksa
-    return '-';
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
   };
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Üye temel bilgiler */}
-      <Card>
-        <CardContent>
-          <Typography variant="h5" gutterBottom>
-            Üye Detayı
-          </Typography>
+  const getStatusConfig = (status: string) => {
+    const configs = {
+      ACTIVE: {
+        color: 'success',
+        icon: <CheckCircleIcon fontSize="small" />,
+        label: 'Aktif',
+        bgColor: alpha(theme.palette.success.main, 0.1),
+      },
+      PENDING: {
+        color: 'warning',
+        icon: <WarningIcon fontSize="small" />,
+        label: 'Beklemede',
+        bgColor: alpha(theme.palette.warning.main, 0.1),
+      },
+      REJECTED: {
+        color: 'error',
+        icon: <CancelIcon fontSize="small" />,
+        label: 'Reddedildi',
+        bgColor: alpha(theme.palette.error.main, 0.1),
+      },
+      EXPELLED: {
+        color: 'error',
+        icon: <CancelIcon fontSize="small" />,
+        label: 'İhraç',
+        bgColor: alpha(theme.palette.error.main, 0.1),
+      },
+    };
+    return configs[status] || configs.ACTIVE;
+  };
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Ad Soyad
-              </Typography>
-              <Typography variant="body1">{fullName}</Typography>
-            </Grid>
+  const statusConfig = getStatusConfig(member?.status || 'ACTIVE');
 
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Durum
-              </Typography>
-              <Chip
-                label={member.status}
-                color={
-                  member.status === 'ACTIVE'
-                    ? 'success'
-                    : member.status === 'PENDING'
-                    ? 'warning'
-                    : member.status === 'EXPELLED' || member.status === 'REJECTED'
-                    ? 'error'
-                    : 'default'
-                }
-                size="small"
-                sx={{ mt: 0.5 }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Telefon
-              </Typography>
-              <Typography variant="body1">{member.phone ?? '-'}</Typography>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                E-posta
-              </Typography>
-              <Typography variant="body1">{member.email ?? '-'}</Typography>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Bölge
-              </Typography>
-              <Typography variant="body1">
-                {member.province?.name ?? '-'} / {member.district?.name ?? '-'}
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Aidat Planı
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body1">
-                  {member.duesPlan
-                    ? `${member.duesPlan.name} - ${
-                        typeof member.duesPlan.amount === 'number'
-                          ? member.duesPlan.amount.toLocaleString('tr-TR', {
-                              minimumFractionDigits: 2,
-                            })
-                          : member.duesPlan.amount
-                      } TL`
-                    : '-'}
-                </Typography>
-                {canChangeDuesPlan && member.status !== 'REJECTED' && member.status !== 'RESIGNED' && member.status !== 'EXPELLED' && member.status !== 'INACTIVE' && (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={openDuesPlanDialog}
-                    sx={{ ml: 1 }}
-                  >
-                    Değiştir
-                  </Button>
-                )}
-              </Box>
-            </Grid>
-
-            {/* Başvuruyu Yapan Kullanıcı */}
-            {member.createdBy && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Başvuruyu Yapan
-                </Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <Typography variant="body1" fontWeight={600}>
-                    {member.createdBy.firstName} {member.createdBy.lastName}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {member.createdBy.email}
-                  </Typography>
-                </Box>
-              </Grid>
-            )}
-
-            {/* Başvuruyu Onaylayan Kullanıcı */}
-            {member.approvedBy && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Başvuruyu Onaylayan
-                </Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <Typography variant="body1" fontWeight={600}>
-                    {member.approvedBy.firstName} {member.approvedBy.lastName}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {member.approvedBy.email}
-                  </Typography>
-                  {member.approvedAt && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                      {new Date(member.approvedAt).toLocaleDateString('tr-TR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Typography>
-                  )}
-                </Box>
-              </Grid>
-            )}
-
-            {/* İptal Bilgisi - Sadece iptal edilmiş üyeler için */}
-            {(member.status === 'RESIGNED' || member.status === 'EXPELLED' || member.status === 'INACTIVE') && member.cancellationReason && (
-              <>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    İptal Nedeni
-                  </Typography>
-                  <Typography variant="body1" sx={{ mt: 0.5 }}>
-                    {member.cancellationReason}
-                  </Typography>
-                </Grid>
-                {member.cancelledAt && (
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      İptal Tarihi
-                    </Typography>
-                    <Typography variant="body1" sx={{ mt: 0.5 }}>
-                      {new Date(member.cancelledAt).toLocaleDateString('tr-TR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Typography>
-                  </Grid>
-                )}
-              </>
-            )}
-
-            {/* Önceki İptal Bilgisi - Yeniden Üye Olanlar İçin */}
-            {member.previousCancelledMember && member.previousCancelledMember.cancelledAt && (
-              <Grid item xs={12}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2,
-                    bgcolor: 'warning.light',
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'warning.main',
-                  }}
-                >
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom color="warning.dark">
-                    Önceki Üyelik İptal Bilgisi
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Bu üye daha önce{' '}
-                    <strong>
-                      {new Date(member.previousCancelledMember.cancelledAt).toLocaleDateString('tr-TR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </strong>{' '}
-                    tarihinde üyeliğini iptal etmiş ve{' '}
-                    <strong>
-                      {member.approvedAt
-                        ? new Date(member.approvedAt).toLocaleDateString('tr-TR', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                        : member.createdAt
-                        ? new Date(member.createdAt).toLocaleDateString('tr-TR', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                        : '-'}
-                    </strong>{' '}
-                    tarihinde yeniden üye olmuştur.
-                    {member.previousCancelledMember.cancellationReason && (
-                      <>
-                        {' '}
-                        Önceki iptal nedeni: <strong>{member.previousCancelledMember.cancellationReason}</strong>
-                      </>
-                    )}
-                  </Typography>
-                </Paper>
-              </Grid>
-            )}
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* Borç Bilgisi */}
-      {member.status === 'ACTIVE' && member.duesPlan && (
-        <Card sx={{ mt: 2 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Borç Bilgisi
-            </Typography>
-            {loadingDebt ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : memberDebt && memberDebt.totalDebt > 0 ? (
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Geciken Ay
-                  </Typography>
-                  <Typography variant="h6" color="error">
-                    {memberDebt.monthsOverdue} ay
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Toplam Borç
-                  </Typography>
-                  <Typography variant="h6" color="error">
-                    {memberDebt.totalDebt.toLocaleString('tr-TR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{' '}
-                    TL
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Son Ödeme Tarihi
-                  </Typography>
-                  <Typography variant="body1">
-                    {memberDebt.lastPaymentDate
-                      ? new Date(memberDebt.lastPaymentDate).toLocaleDateString('tr-TR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })
-                      : 'Ödeme yok'}
-                  </Typography>
-                </Grid>
-              </Grid>
-            ) : (
-              <Typography variant="body2" color="success.main">
-                Bu üyenin borcu bulunmamaktadır.
-              </Typography>
-            )}
-          </CardContent>
-        </Card>
+  const InfoRow = ({ label, value, icon }: { 
+    label: string; 
+    value: string | number | null | undefined; 
+    icon?: React.ReactNode;
+  }) => (
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, py: 1.5 }}>
+      {icon && (
+        <Box sx={{ 
+          color: theme.palette.primary.main, 
+          mt: 0.25,
+          opacity: 0.7,
+        }}>
+          {icon}
+        </Box>
       )}
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            color: theme.palette.text.secondary,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+            fontSize: '0.7rem',
+          }}
+        >
+          {label}
+        </Typography>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            mt: 0.25,
+            fontWeight: 500,
+            color: theme.palette.text.primary,
+          }}
+        >
+          {value || '-'}
+        </Typography>
+      </Box>
+    </Box>
+  );
 
-      {/* Aidat Ödemeleri */}
-      <Card>
-        <CardContent>
+  const SectionCard = ({ title, icon, children, sectionKey, actions }: { 
+    title: string; 
+    icon: React.ReactNode; 
+    children: React.ReactNode; 
+    sectionKey?: string; 
+    actions?: React.ReactNode;
+  }) => (
+    <Card 
+      elevation={0}
+      sx={{ 
+        borderRadius: 3,
+        border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+        overflow: 'hidden',
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.08)}`,
+          borderColor: alpha(theme.palette.primary.main, 0.2),
+        },
+      }}
+    >
+      <Box
+        sx={{
+          p: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
+          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+          cursor: sectionKey ? 'pointer' : 'default',
+        }}
+        onClick={() => sectionKey && toggleSection(sectionKey)}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box
             sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 2,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
               display: 'flex',
-              justifyContent: 'space-between',
               alignItems: 'center',
-              mb: 2,
+              justifyContent: 'center',
+              color: '#fff',
+              boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
             }}
           >
-            <Typography variant="h5">
-              Aidat Ödemeleri
-            </Typography>
+            {icon}
+          </Box>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 700,
+              fontSize: '1.1rem',
+              color: theme.palette.text.primary,
+            }}
+          >
+            {title}
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {actions}
+          {sectionKey && (
+            <IconButton size="small">
+              {expandedSections[sectionKey] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          )}
+        </Box>
+      </Box>
+      <Collapse in={!sectionKey || expandedSections[sectionKey]}>
+        <CardContent sx={{ p: 3 }}>
+          {children}
+        </CardContent>
+      </Collapse>
+    </Card>
+  );
 
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {member.status === 'PENDING' && (
-                <>
-                  {canApprove && (
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      onClick={handleApproveMember}
-                      disabled={processingStatus}
-                    >
-                      Onayla
-                    </Button>
-                  )}
-                  {canReject && (
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      size="small"
-                      onClick={handleRejectMember}
-                      disabled={processingStatus}
-                    >
-                      Reddet
-                    </Button>
-                  )}
-                </>
-              )}
-              {member.status === 'ACTIVE' && canCancelMembership && (
-                <Button
-                  variant="outlined"
-                  color="warning"
-                  size="small"
-                  onClick={openCancelDialog}
-                >
-                  Üyeliği İptal Et
-                </Button>
-              )}
-
-              {canAddPayment && member.status !== 'REJECTED' && (
+  return (
+    <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
+      {/* Header Card */}
+      <Card 
+        elevation={0}
+        sx={{ 
+          mb: 3,
+          borderRadius: 3,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.95)} 0%, ${theme.palette.primary.dark} 100%)`,
+          color: '#fff',
+          overflow: 'hidden',
+          position: 'relative',
+          border: 'none',
+          boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
+        }}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: -50,
+            right: -50,
+            width: 200,
+            height: 200,
+            borderRadius: '50%',
+            background: alpha('#fff', 0.1),
+          }}
+        />
+        <CardContent sx={{ p: 3, position: 'relative', zIndex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2 }}>
+            <Avatar
+              sx={{
+                width: 80,
+                height: 80,
+                fontSize: '2rem',
+                fontWeight: 700,
+                bgcolor: alpha('#fff', 0.2),
+                border: `3px solid ${alpha('#fff', 0.3)}`,
+                boxShadow: `0 4px 20px ${alpha('#000', 0.2)}`,
+              }}
+            >
+              {member?.firstName?.[0] || ''}{member?.lastName?.[0] || ''}
+            </Avatar>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                {member?.firstName || ''} {member?.lastName || ''}
+              </Typography>
+              <Typography variant="body1" sx={{ opacity: 0.9, mb: 1 }}>
+                {member?.nationalId && `TC: ${member.nationalId}`}
+                {member?.nationalId && member?.registrationNumber && ' • '}
+                {member?.registrationNumber && `Kayıt No: ${member.registrationNumber}`}
+              </Typography>
+              <Chip
+                icon={statusConfig.icon}
+                label={statusConfig.label}
+                sx={{
+                  bgcolor: alpha('#fff', 0.2),
+                  color: '#fff',
+                  fontWeight: 600,
+                  border: `1px solid ${alpha('#fff', 0.3)}`,
+                  '& .MuiChip-icon': { color: '#fff' },
+                }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/members/${id}/update`)}
+                sx={{
+                  bgcolor: alpha('#fff', 0.2),
+                  color: '#fff',
+                  fontWeight: 600,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha('#fff', 0.3)}`,
+                  '&:hover': {
+                    bgcolor: alpha('#fff', 0.3),
+                  },
+                }}
+              >
+                Güncelle
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<DescriptionIcon />}
+                onClick={() => navigate(`/documents/members/${id}`)}
+                sx={{
+                  bgcolor: alpha('#fff', 0.2),
+                  color: '#fff',
+                  fontWeight: 600,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha('#fff', 0.3)}`,
+                  '&:hover': {
+                    bgcolor: alpha('#fff', 0.3),
+                  },
+                }}
+              >
+                Dökümanlar
+              </Button>
+              {canAddPayment && (
                 <Button
                   variant="contained"
-                  size="small"
-                  onClick={openPaymentDialog}
-                  disabled={loadingMember}
+                  startIcon={<PaymentIcon />}
+                  onClick={() => setPaymentDialogOpen(true)}
+                  sx={{
+                    bgcolor: alpha('#fff', 0.2),
+                    color: '#fff',
+                    fontWeight: 600,
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${alpha('#fff', 0.3)}`,
+                    '&:hover': {
+                      bgcolor: alpha('#fff', 0.3),
+                    },
+                  }}
                 >
-                  Yeni Ödeme
+                  Ödeme Ekle
                 </Button>
               )}
             </Box>
           </Box>
-
-          {loadingPayments ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : payments.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Bu üyeye ait kayıtlı ödeme bulunmuyor.
-            </Typography>
-          ) : (
-            <Paper sx={{ width: '100%', overflowX: 'auto', mt: 1 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Tarih</TableCell>
-                    <TableCell>Plan</TableCell>
-                    <TableCell>Dönem</TableCell>
-                    <TableCell align="right">Tutar (TL)</TableCell>
-                    <TableCell>Not</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {payments.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        {new Date(p.paidAt).toLocaleDateString('tr-TR', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                        })}
-                      </TableCell>
-                      <TableCell>{p.plan?.name ?? '-'}</TableCell>
-                      <TableCell>{formatPeriod(p)}</TableCell>
-                      <TableCell align="right">
-                        {p.amount.toLocaleString('tr-TR', {
-                          minimumFractionDigits: 2,
-                        })}
-                      </TableCell>
-                      <TableCell>{p.note ?? '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          )}
         </CardContent>
       </Card>
 
-      {/* Ödeme Ekle Dialog */}
-      <Dialog
-        open={paymentDialogOpen}
-        onClose={closePaymentDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Yeni Aidat Ödemesi</DialogTitle>
-        <DialogContent
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
-        >
-          {/* Üyenin Aidat Planı (Readonly) */}
-          <TextField
-            label="Aidat Planı"
-            size="small"
-            value={
-              member?.duesPlan
-                ? `${member.duesPlan.name} - ${(
-                    typeof member.duesPlan.amount === 'number'
-                      ? member.duesPlan.amount
-                      : Number(member.duesPlan.amount) || 0
-                  ).toLocaleString('tr-TR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })} TL (${member.duesPlan.period === 'MONTHLY' ? 'Aylık' : 'Yıllık'})`
-                : 'Plan atanmamış'
-            }
-            InputProps={{
-              readOnly: true,
-            }}
-            fullWidth
-            helperText="Ödeme, üyenin mevcut aidat planına göre en eski borçlu aylara otomatik olarak uygulanacaktır."
-          />
-
-          <TextField
-            label="Tutar (TL) *"
-            size="small"
-            type="number"
-            inputProps={{ min: 0, step: 0.01 }}
-            value={paymentForm.amount}
-            onChange={(e) => handlePaymentFormChange('amount', e.target.value)}
-            fullWidth
-            required
-            helperText="Ödeme tutarı. Bu tutar en eski borçlu aylara FIFO (First-In, First-Out) mantığı ile uygulanacaktır."
-          />
-
-          <TextField
-            label="Not (opsiyonel)"
-            size="small"
-            multiline
-            minRows={2}
-            value={paymentForm.note}
-            onChange={(e) => handlePaymentFormChange('note', e.target.value)}
-            fullWidth
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closePaymentDialog} disabled={paymentSaving}>
-            İptal
-          </Button>
-          <Button
-            onClick={handlePaymentSave}
-            disabled={paymentSaving}
-            variant="contained"
+      <Grid container spacing={3}>
+        {/* Kişisel Bilgiler - Tam Genişlik */}
+        <Grid item xs={12}>
+          <SectionCard 
+            title="Kişisel Bilgiler" 
+            icon={<PersonIcon />}
+            sectionKey="personal"
+            actions={undefined}
           >
-            Kaydet
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow label="Anne Adı" value={member?.motherName || '-'} />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow label="Baba Adı" value={member?.fatherName || '-'} />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow label="Doğum Yeri" value={member?.birthplace || '-'} />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow 
+                  label="Cinsiyet" 
+                  value={member?.gender === 'MALE' ? 'Erkek' : member?.gender === 'FEMALE' ? 'Kadın' : '-'} 
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow 
+                  label="Öğrenim Durumu" 
+                  value={member?.educationStatus === 'COLLEGE' ? 'Yüksekokul' : member?.educationStatus === 'HIGH_SCHOOL' ? 'Lise' : member?.educationStatus === 'PRIMARY' ? 'İlkokul' : member?.educationStatus || '-'} 
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow label="Telefon" value={member?.phone || '-'} />
+              </Grid>
+              <Grid item xs={12}>
+                <InfoRow label="E-posta" value={member?.email || '-'} />
+              </Grid>
+              <Grid item xs={12}>
+                <InfoRow 
+                  label="Kayıtlı Bölge" 
+                  value={member?.province?.name && member?.district?.name 
+                    ? `${member.province.name} / ${member.district.name}` 
+                    : '-'} 
+                />
+              </Grid>
+            </Grid>
+          </SectionCard>
+        </Grid>
 
-      {/* Aidat Planı Değiştir Dialog */}
-      <Dialog
-        open={duesPlanDialogOpen}
-        onClose={closeDuesPlanDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Aidat Planını Değiştir</DialogTitle>
-        <DialogContent
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+        {/* İş Bilgileri - Tam Genişlik */}
+        <Grid item xs={12}>
+          <SectionCard 
+            title="İş Bilgileri" 
+            icon={<WorkIcon />}
+            sectionKey="work"
+            actions={undefined}
+          >
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <InfoRow label="Kurum" value={member?.institution?.name || '-'} />
+              </Grid>
+              <Grid item xs={12}>
+                <InfoRow 
+                  label="Çalıştığı İl/İlçe" 
+                  value={member?.workingProvince?.name && member?.workingDistrict?.name
+                    ? `${member.workingProvince.name} / ${member.workingDistrict.name}`
+                    : '-'} 
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow label="Şube" value={member?.branch?.name || '-'} />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow 
+                  label="Kadro Ünvanı" 
+                  value={member?.positionTitle 
+                    ? member.positionTitle.replace(/_/g, ' ').replace(/KADRO/g, 'Kadro').replace(/SOZLESMELI/g, 'Sözleşmeli')
+                    : '-'} 
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow label="Sicil No" value={member?.institutionRegNo || '-'} />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <InfoRow label="Tevkifat Merkezi" value={member?.tevkifatCenter?.name || '-'} />
+              </Grid>
+              <Grid item xs={12}>
+                <InfoRow label="Görev Birimi" value={member?.workUnit || '-'} />
+              </Grid>
+              <Grid item xs={12}>
+                <InfoRow label="Birim Adresi" value={member?.workUnitAddress || '-'} />
+              </Grid>
+            </Grid>
+          </SectionCard>
+        </Grid>
+
+        {/* Ödemeler */}
+        <Grid item xs={12}>
+          <SectionCard 
+            title="Aidat / Ödeme" 
+            icon={<PaymentIcon />}
+            sectionKey="payments"
+            actions={undefined}
+          >
+            {loadingPayments ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : payments.length === 0 ? (
+              <Alert severity="info" sx={{ borderRadius: 2 }}>
+                Bu üye için henüz ödeme kaydı bulunmamaktadır.
+              </Alert>
+            ) : (
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                      <TableCell sx={{ fontWeight: 700 }}>Ay</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Yıl</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Tutar</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Tür</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Onay Durumu</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Belge</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {payments.map((payment) => {
+                      const monthNames = [
+                        'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+                        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+                      ];
+                      const monthName = monthNames[payment.paymentPeriodMonth - 1];
+                      
+                      const paymentTypeLabels = {
+                        TEVKIFAT: 'Tevkifat',
+                        ELDEN: 'Elden',
+                        HAVALE: 'Havale',
+                      };
+
+                      return (
+                        <TableRow key={payment.id} hover>
+                          <TableCell>{monthName}</TableCell>
+                          <TableCell>{payment.paymentPeriodYear}</TableCell>
+                          <TableCell>
+                            {parseFloat(payment.amount).toLocaleString('tr-TR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })} TL
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={paymentTypeLabels[payment.paymentType]}
+                              size="small"
+                              color={
+                                payment.paymentType === 'TEVKIFAT' ? 'primary' :
+                                payment.paymentType === 'ELDEN' ? 'secondary' : 'default'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {payment.isApproved ? (
+                              <Chip
+                                icon={<CheckCircleIcon />}
+                                label="Onaylı"
+                                color="success"
+                                size="small"
+                              />
+                            ) : (
+                              <Chip
+                                icon={<WarningIcon />}
+                                label="Beklemede"
+                                color="warning"
+                                size="small"
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {payment.documentUrl ? (
+                              <Link
+                                href={payment.documentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                              >
+                                <GetAppIcon fontSize="small" />
+                                Görüntüle
+                              </Link>
+                            ) : (
+                              '-'
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </SectionCard>
+        </Grid>
+
+        {/* Ödeme Ekleme Dialog */}
+        <Dialog 
+          open={paymentDialogOpen} 
+          onClose={() => !submittingPayment && setPaymentDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
         >
-          <FormControl fullWidth required>
-            <InputLabel>Aidat Planı</InputLabel>
-            <Select
-              label="Aidat Planı"
-              value={selectedDuesPlanId}
-              onChange={(e) => setSelectedDuesPlanId(e.target.value)}
+          <DialogTitle>Yeni Ödeme Ekle</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Ödeme Dönemi Ay</InputLabel>
+                    <Select
+                      value={paymentForm.paymentPeriodMonth}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, paymentPeriodMonth: Number(e.target.value) })}
+                      label="Ödeme Dönemi Ay"
+                      disabled={submittingPayment}
+                    >
+                      {[
+                        { value: 1, label: 'Ocak' },
+                        { value: 2, label: 'Şubat' },
+                        { value: 3, label: 'Mart' },
+                        { value: 4, label: 'Nisan' },
+                        { value: 5, label: 'Mayıs' },
+                        { value: 6, label: 'Haziran' },
+                        { value: 7, label: 'Temmuz' },
+                        { value: 8, label: 'Ağustos' },
+                        { value: 9, label: 'Eylül' },
+                        { value: 10, label: 'Ekim' },
+                        { value: 11, label: 'Kasım' },
+                        { value: 12, label: 'Aralık' },
+                      ].map((month) => (
+                        <MenuItem key={month.value} value={month.value}>
+                          {month.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth
+                    label="Ödeme Dönemi Yıl"
+                    type="number"
+                    value={paymentForm.paymentPeriodYear}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, paymentPeriodYear: Number(e.target.value) })}
+                    disabled={submittingPayment}
+                    inputProps={{ min: 2020, max: 2100 }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Tutar"
+                    type="text"
+                    value={paymentForm.amount}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9.,]/g, '');
+                      setPaymentForm({ ...paymentForm, amount: value });
+                    }}
+                    disabled={submittingPayment}
+                    placeholder="250.00"
+                    helperText="Örnek: 250.00"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Ödeme Türü</InputLabel>
+                    <Select
+                      value={paymentForm.paymentType}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, paymentType: e.target.value as PaymentType })}
+                      label="Ödeme Türü"
+                      disabled={submittingPayment}
+                    >
+                      <MenuItem value="ELDEN">Elden Ödeme</MenuItem>
+                      <MenuItem value="HAVALE">Havale/EFT</MenuItem>
+                      <MenuItem value="TEVKIFAT">Tevkifat</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Açıklama"
+                    multiline
+                    rows={3}
+                    value={paymentForm.description}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
+                    disabled={submittingPayment}
+                    placeholder="Ödeme açıklaması (opsiyonel)"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => setPaymentDialogOpen(false)} 
+              disabled={submittingPayment}
             >
-              {duesPlans.map((plan) => (
-                <MenuItem key={plan.id} value={plan.id}>
-                  {plan.name} - {plan.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL ({plan.period === 'MONTHLY' ? 'Aylık' : 'Yıllık'})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Typography variant="body2" color="text.secondary">
-            Üyenin aidat planı değiştirildiğinde, mevcut ödemeler ve borç durumu korunur. Yeni plan gelecekteki ödemeler için geçerli olacaktır.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeDuesPlanDialog} disabled={duesPlanSaving}>
-            İptal
-          </Button>
-          <Button
-            onClick={handleDuesPlanSave}
-            disabled={duesPlanSaving || !selectedDuesPlanId}
-            variant="contained"
-          >
-            {duesPlanSaving ? 'Kaydediliyor...' : 'Kaydet'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Üyelik İptal Dialog */}
-      <Dialog
-        open={cancelDialogOpen}
-        onClose={closeCancelDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Üyeliği İptal Et</DialogTitle>
-        <DialogContent
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
-        >
-          <FormControl fullWidth required>
-            <InputLabel>İptal Durumu</InputLabel>
-            <Select
-              value={cancelForm.status}
-              label="İptal Durumu"
-              onChange={(e) => setCancelForm({ ...cancelForm, status: e.target.value as 'RESIGNED' | 'EXPELLED' | 'INACTIVE' })}
+              İptal
+            </Button>
+            <Button
+              onClick={handleSubmitPayment}
+              variant="contained"
+              disabled={submittingPayment || !paymentForm.amount || !paymentForm.paymentPeriodMonth || !paymentForm.paymentPeriodYear}
+              startIcon={submittingPayment ? <CircularProgress size={16} /> : <PaymentIcon />}
             >
-              <MenuItem value="RESIGNED">İstifa</MenuItem>
-              <MenuItem value="EXPELLED">İhraç</MenuItem>
-              <MenuItem value="INACTIVE">Pasif</MenuItem>
-            </Select>
-          </FormControl>
+              {submittingPayment ? 'Ekleniyor...' : 'Ödeme Ekle'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-          <TextField
-            label="İptal Nedeni *"
-            size="small"
-            multiline
-            minRows={4}
-            value={cancelForm.reason}
-            onChange={(e) => setCancelForm({ ...cancelForm, reason: e.target.value })}
-            fullWidth
-            required
-            helperText="Üyeliğin iptal edilme nedeni zorunludur"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeCancelDialog} disabled={cancelSaving}>
-            İptal
-          </Button>
-          <Button
-            onClick={handleCancelSave}
-            disabled={cancelSaving || !cancelForm.reason.trim()}
-            variant="contained"
-            color="warning"
-          >
-            İptal Et
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {/* Onay Bilgileri */}
+        {member?.approvedBy && member?.approvedAt && (
+          <Grid item xs={12}>
+            <Alert 
+              severity="success"
+              icon={<CheckCircleIcon />}
+              sx={{ 
+                borderRadius: 2,
+                '& .MuiAlert-icon': {
+                  fontSize: '1.5rem',
+                },
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Üyelik Onayı
+              </Typography>
+              <Typography variant="body2">
+                <strong>{member.approvedBy.firstName} {member.approvedBy.lastName}</strong> tarafından{' '}
+                <strong>
+                  {new Date(member.approvedAt).toLocaleDateString('tr-TR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </strong>{' '}
+                tarihinde onaylanmıştır.
+              </Typography>
+            </Alert>
+          </Grid>
+        )}
+      </Grid>
+
     </Box>
   );
 };

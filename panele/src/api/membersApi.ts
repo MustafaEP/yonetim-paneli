@@ -94,6 +94,7 @@ export const getCancelledMembers = async (): Promise<MemberListItem[]> => {
   return Array.isArray(res.data) ? res.data : [];
 };
 
+
 // 🔹 Üyeliği iptal et: PATCH /members/:id/cancel
 export const cancelMember = async (
   memberId: string,
@@ -104,5 +105,43 @@ export const cancelMember = async (
     `/members/${memberId}/cancel`,
     { cancellationReason, status },
   );
+  return res.data;
+};
+
+// 🔹 Üye bilgilerini güncelle: PATCH /members/:id
+export const updateMember = async (
+  memberId: string,
+  data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+    membershipInfo?: string;
+    registrationNumber?: string;
+    boardDecisionDate?: string;
+    boardDecisionBookNo?: string;
+    motherName?: string;
+    fatherName?: string;
+    birthplace?: string;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER';
+    educationStatus?: 'PRIMARY' | 'HIGH_SCHOOL' | 'COLLEGE';
+    workingProvinceId?: string;
+    workingDistrictId?: string;
+    institutionId?: string;
+    positionTitle?: 'KADRO_657' | 'SOZLESMELI_4B' | 'KADRO_663' | 'AILE_HEKIMLIGI' | 'UNVAN_4924' | 'DIGER_SAGLIK_PERSONELI';
+    institutionRegNo?: string;
+    workUnit?: string;
+    workUnitAddress?: string;
+    tevkifatCenterId?: string;
+    branchId?: string;
+  },
+): Promise<MemberDetail> => {
+  const res = await httpClient.patch<MemberDetail>(`/members/${memberId}`, data);
+  return res.data;
+};
+
+// 🔹 Üye güncelleme geçmişini getir: GET /members/:id/history
+export const getMemberHistory = async (memberId: string) => {
+  const res = await httpClient.get(`/members/${memberId}/history`);
   return res.data;
 };

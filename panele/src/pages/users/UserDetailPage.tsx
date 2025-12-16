@@ -32,6 +32,8 @@ import axios from 'axios';
 
 import type { UserDetail } from '../../types/user';
 import { getUserById } from '../../api/usersApi';
+import { getRoles } from '../../api/rolesApi';
+import type { CustomRole } from '../../types/role';
 import type {
   UserScope,
   Province,
@@ -66,6 +68,7 @@ const UserDetailPage: React.FC = () => {
   const [scopes, setScopes] = useState<UserScope[]>([]);
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingScopes, setLoadingScopes] = useState(true);
+  const [roles, setRoles] = useState<CustomRole[]>([]);
 
   // 🔹 Mevcut user (login olan) & branch manage kontrolü
   const { user: currentUser } = useAuth();
@@ -117,6 +120,19 @@ const UserDetailPage: React.FC = () => {
       try {
         const data = await getUserById(id);
         setUser(data);
+        
+        // Rolleri detaylı olarak çek
+        if (data.roles && data.roles.length > 0) {
+          try {
+            const allRoles = await getRoles();
+            const userRoleDetails = allRoles
+              .filter((r): r is CustomRole => 'id' in r && data.roles.includes(r.name))
+              .map(r => r as CustomRole);
+            setRoles(userRoleDetails);
+          } catch (e) {
+            console.error('Roller alınırken hata:', e);
+          }
+        }
       } catch (e) {
         console.error('Kullanıcı detay alınırken hata:', e);
       } finally {
@@ -436,10 +452,32 @@ const UserDetailPage: React.FC = () => {
               )}
             </Box>
             {user?.roles && user.roles.length > 0 ? (
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {user.roles.map((role) => (
-                  <Chip key={role} label={role} size="small" />
-                ))}
+              <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                {user.roles.map((roleName) => {
+                  const roleDetail = roles.find(r => r.name === roleName);
+                  return (
+                    <Box key={roleName} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Chip label={roleName} size="small" />
+                      {roleDetail?.districtId && roleDetail?.district ? (
+                        <Chip
+                          label={`${roleDetail.district.name} (İlçe)`}
+                          size="small"
+                          color="secondary"
+                          variant="outlined"
+                          sx={{ fontSize: '0.7rem' }}
+                        />
+                      ) : roleDetail?.provinceId && roleDetail?.province ? (
+                        <Chip
+                          label={`${roleDetail.province.name} (İl)`}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          sx={{ fontSize: '0.7rem' }}
+                        />
+                      ) : null}
+                    </Box>
+                  );
+                })}
               </Stack>
             ) : (
               <Typography variant="body2" color="text.secondary">

@@ -25,6 +25,8 @@ export class RolesService {
       },
       include: {
         permissions: true,
+        province: true,
+        district: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -48,6 +50,18 @@ export class RolesService {
         description: role.description ?? undefined,
         isActive: role.isActive,
         permissions,
+        provinceId: role.provinceId ?? undefined,
+        province: role.province ? {
+          id: role.province.id,
+          name: role.province.name,
+          code: role.province.code ?? undefined,
+        } : undefined,
+        districtId: role.districtId ?? undefined,
+        district: role.district ? {
+          id: role.district.id,
+          name: role.district.name,
+          provinceId: role.district.provinceId,
+        } : undefined,
         createdAt: role.createdAt,
         updatedAt: role.updatedAt,
       };
@@ -64,6 +78,8 @@ export class RolesService {
       },
       include: {
         permissions: true,
+        province: true,
+        district: true,
         users: {
           where: {
             deletedAt: null,
@@ -94,6 +110,18 @@ export class RolesService {
       description: role.description ?? undefined,
       isActive: role.isActive,
       permissions,
+      provinceId: role.provinceId ?? undefined,
+      province: role.province ? {
+        id: role.province.id,
+        name: role.province.name,
+        code: role.province.code ?? undefined,
+      } : undefined,
+      districtId: role.districtId ?? undefined,
+      district: role.district ? {
+        id: role.district.id,
+        name: role.district.name,
+        provinceId: role.district.provinceId,
+      } : undefined,
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
       users: role.users.map(u => ({
@@ -131,6 +159,8 @@ export class RolesService {
       data: {
         name: dto.name,
         description: dto.description,
+        provinceId: dto.provinceId,
+        districtId: dto.districtId,
         permissions: {
           create: dto.permissions.map((permission) => ({
             permission,
@@ -139,6 +169,8 @@ export class RolesService {
       },
       include: {
         permissions: true,
+        province: true,
+        district: true,
       },
     });
 
@@ -148,6 +180,18 @@ export class RolesService {
       description: role.description ?? undefined,
       isActive: role.isActive,
       permissions: role.permissions.map((p) => p.permission as Permission),
+      provinceId: role.provinceId ?? undefined,
+      province: role.province ? {
+        id: role.province.id,
+        name: role.province.name,
+        code: role.province.code ?? undefined,
+      } : undefined,
+      districtId: role.districtId ?? undefined,
+      district: role.district ? {
+        id: role.district.id,
+        name: role.district.name,
+        provinceId: role.district.provinceId,
+      } : undefined,
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
     };
@@ -196,9 +240,13 @@ export class RolesService {
         name: dto.name,
         description: dto.description,
         isActive: dto.isActive,
+        provinceId: dto.provinceId,
+        districtId: dto.districtId,
       },
       include: {
         permissions: true,
+        province: true,
+        district: true,
       },
     });
 
@@ -208,6 +256,18 @@ export class RolesService {
       description: updatedRole.description ?? undefined,
       isActive: updatedRole.isActive,
       permissions: updatedRole.permissions.map((p) => p.permission as Permission),
+      provinceId: updatedRole.provinceId ?? undefined,
+      province: updatedRole.province ? {
+        id: updatedRole.province.id,
+        name: updatedRole.province.name,
+        code: updatedRole.province.code ?? undefined,
+      } : undefined,
+      districtId: updatedRole.districtId ?? undefined,
+      district: updatedRole.district ? {
+        id: updatedRole.district.id,
+        name: updatedRole.district.name,
+        provinceId: updatedRole.district.provinceId,
+      } : undefined,
       createdAt: updatedRole.createdAt,
       updatedAt: updatedRole.updatedAt,
     };

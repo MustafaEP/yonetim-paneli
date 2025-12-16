@@ -41,7 +41,7 @@ const LoginPage: React.FC = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedField, setCopiedField] = useState<'email-admin' | 'email-genel' | 'email-il' | 'email-ilce' | null>(null);
+  const [copiedField, setCopiedField] = useState<'email-admin' | 'email-genel' | 'email-bursa' | 'email-ankara' | 'email-bursa-mudanya' | 'email-ankara-cankaya' | null>(null);
 
   // Zaten login olmuşsa dashboard'a at
   useEffect(() => {
@@ -434,10 +434,10 @@ const LoginPage: React.FC = () => {
                   </Box>
                 </Box>
 
-                {/* İl Başkanı */}
+                {/* Bursa İl Başkanı */}
                 <Box>
                   <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: theme.palette.text.secondary, fontWeight: 500 }}>
-                    🏛️ İl Başkanı
+                    🏛️ Bursa İl Başkanı
                   </Typography>
                   <Box
                     sx={{
@@ -455,23 +455,23 @@ const LoginPage: React.FC = () => {
                       },
                     }}
                     onClick={() => {
-                      navigator.clipboard.writeText('il.baskani@sendika.local');
-                      setCopiedField('email-il');
+                      navigator.clipboard.writeText('bursa.il.baskani@sendika.local');
+                      setCopiedField('email-bursa');
                       setTimeout(() => setCopiedField(null), 2000);
-                      setEmail('il.baskani@sendika.local');
+                      setEmail('bursa.il.baskani@sendika.local');
                       setPassword('123456');
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
                       <EmailIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
                       <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                        il.baskani@sendika.local
+                        bursa.il.baskani@sendika.local
                       </Typography>
                       <Typography variant="caption" sx={{ color: theme.palette.text.secondary, ml: 0.5 }}>
                         / 123456
                       </Typography>
                     </Box>
-                    {copiedField === 'email-il' ? (
+                    {copiedField === 'email-bursa' ? (
                       <CheckIcon sx={{ fontSize: 18, color: theme.palette.success.main }} />
                     ) : (
                       <ContentCopyIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
@@ -479,10 +479,10 @@ const LoginPage: React.FC = () => {
                   </Box>
                 </Box>
 
-                {/* İlçe Temsilcisi */}
+                {/* Ankara İl Başkanı */}
                 <Box>
                   <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: theme.palette.text.secondary, fontWeight: 500 }}>
-                    📍 İlçe Temsilcisi
+                    🏛️ Ankara İl Başkanı
                   </Typography>
                   <Box
                     sx={{
@@ -500,23 +500,113 @@ const LoginPage: React.FC = () => {
                       },
                     }}
                     onClick={() => {
-                      navigator.clipboard.writeText('ilce.temsilcisi@sendika.local');
-                      setCopiedField('email-ilce');
+                      navigator.clipboard.writeText('ankara.il.baskani@sendika.local');
+                      setCopiedField('email-ankara');
                       setTimeout(() => setCopiedField(null), 2000);
-                      setEmail('ilce.temsilcisi@sendika.local');
+                      setEmail('ankara.il.baskani@sendika.local');
                       setPassword('123456');
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
                       <EmailIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
                       <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                        ilce.temsilcisi@sendika.local
+                        ankara.il.baskani@sendika.local
                       </Typography>
                       <Typography variant="caption" sx={{ color: theme.palette.text.secondary, ml: 0.5 }}>
                         / 123456
                       </Typography>
                     </Box>
-                    {copiedField === 'email-ilce' ? (
+                    {copiedField === 'email-ankara' ? (
+                      <CheckIcon sx={{ fontSize: 18, color: theme.palette.success.main }} />
+                    ) : (
+                      <ContentCopyIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                    )}
+                  </Box>
+                </Box>
+
+                {/* Bursa Mudanya İlçe Başkanı */}
+                <Box>
+                  <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: theme.palette.text.secondary, fontWeight: 500 }}>
+                    📍 Bursa Mudanya İlçe Başkanı
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 1.5,
+                      borderRadius: 1.5,
+                      backgroundColor: alpha(theme.palette.common.white, 0.6),
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.common.white, 0.8),
+                        transform: 'translateX(4px)',
+                      },
+                    }}
+                    onClick={() => {
+                      navigator.clipboard.writeText('bursa.mudanya.ilce.baskani@sendika.local');
+                      setCopiedField('email-bursa-mudanya');
+                      setTimeout(() => setCopiedField(null), 2000);
+                      setEmail('bursa.mudanya.ilce.baskani@sendika.local');
+                      setPassword('123456');
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                      <EmailIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                        bursa.mudanya.ilce.baskani@sendika.local
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, ml: 0.5 }}>
+                        / 123456
+                      </Typography>
+                    </Box>
+                    {copiedField === 'email-bursa-mudanya' ? (
+                      <CheckIcon sx={{ fontSize: 18, color: theme.palette.success.main }} />
+                    ) : (
+                      <ContentCopyIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                    )}
+                  </Box>
+                </Box>
+
+                {/* Ankara Çankaya İlçe Başkanı */}
+                <Box>
+                  <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: theme.palette.text.secondary, fontWeight: 500 }}>
+                    📍 Ankara Çankaya İlçe Başkanı
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 1.5,
+                      borderRadius: 1.5,
+                      backgroundColor: alpha(theme.palette.common.white, 0.6),
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.common.white, 0.8),
+                        transform: 'translateX(4px)',
+                      },
+                    }}
+                    onClick={() => {
+                      navigator.clipboard.writeText('ankara.cankaya.ilce.baskani@sendika.local');
+                      setCopiedField('email-ankara-cankaya');
+                      setTimeout(() => setCopiedField(null), 2000);
+                      setEmail('ankara.cankaya.ilce.baskani@sendika.local');
+                      setPassword('123456');
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                      <EmailIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                        ankara.cankaya.ilce.baskani@sendika.local
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, ml: 0.5 }}>
+                        / 123456
+                      </Typography>
+                    </Box>
+                    {copiedField === 'email-ankara-cankaya' ? (
                       <CheckIcon sx={{ fontSize: 18, color: theme.palette.success.main }} />
                     ) : (
                       <ContentCopyIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />

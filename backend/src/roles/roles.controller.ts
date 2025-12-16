@@ -29,7 +29,7 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @Permissions(Permission.ROLE_LIST)
+  @Permissions(Permission.ROLE_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @ApiOperation({
     summary: 'Tüm rolleri listele',
     description: 'Sistem rolleri ve custom rolleri birlikte listeler',

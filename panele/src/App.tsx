@@ -1,30 +1,39 @@
 // src/App.tsx
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { SnackbarProvider } from 'notistack';
 import LoginPage from './pages/auth/LoginPage';
 import MembersListPage from './pages/members/MembersListPage';
 import MemberDetailPage from './pages/members/MemberDetailPage';
-import DuesPlansPage from './pages/dues/DuesPlansPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ProtectedRoute from './routes/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
-import DuesDebtsPage from './pages/dues/DuesDebtsPage';
-import DuesMonthlyReportPage from './pages/dues/DuesMonthlyReportPage';
 import UsersListPage from './pages/users/UsersListPage';
 import UserDetailPage from './pages/users/UserDetailPage';
 import MembersApplicationsPage from './pages/members/MembersApplicationsPage';
 import MemberApplicationCreatePage from './pages/members/MemberApplicationCreatePage';
-import MembersRejectedPage from './pages/members/MembersRejectedPage';
-import MembersCancelledPage from './pages/members/MembersCancelledPage';
+import MemberUpdatePage from './pages/members/MemberUpdatePage';
 import RegionsProvincesPage from './pages/regions/RegionsProvincesPage';
-import RegionsDistrictsPage from './pages/regions/RegionsDistrictsPage';
 import RegionsWorkplacesPage from './pages/regions/RegionsWorkplacesPage';
 import RegionsDealersPage from './pages/regions/RegionsDealersPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import RolesListPage from './pages/roles/RolesListPage';
 import RoleDetailPage from './pages/roles/RoleDetailPage';
 import RoleCreateEditPage from './pages/roles/RoleCreateEditPage';
+import ContentListPage from './pages/content/ContentListPage';
+import DocumentTemplatesPage from './pages/documents/DocumentTemplatesPage';
+import MemberDocumentsPage from './pages/documents/MemberDocumentsPage';
+import ReportsPage from './pages/reports/ReportsPage';
+import NotificationsPage from './pages/notifications/NotificationsPage';
+import SystemSettingsPage from './pages/system/SystemSettingsPage';
+import SystemLogsPage from './pages/system/SystemLogsPage';
+import BranchesPage from './pages/regions/BranchesPage';
+import TevkifatCentersPage from './pages/accounting/TevkifatCentersPage';
+import TevkifatCenterDetailPage from './pages/accounting/TevkifatCenterDetailPage';
+import PaymentsListPage from './pages/payments/PaymentsListPage';
+import PaymentDetailPage from './pages/payments/PaymentDetailPage';
+import BranchDetailPage from './pages/regions/BranchDetailPage';
+import InstitutionsPage from './pages/institutions/InstitutionsPage';
 import { Box, Typography, Button, Container, Paper, alpha, useTheme } from '@mui/material';
 import BlockIcon from '@mui/icons-material/Block';
 import HomeIcon from '@mui/icons-material/Home';
@@ -100,10 +109,15 @@ const App: React.FC = () => {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
 
-          {/* Üyeler: MEMBER_LIST */}
-          <Route element={<ProtectedRoute requiredPermission="MEMBER_LIST" />}>
+          {/* Üyeler: MEMBER_LIST veya MEMBER_LIST_BY_PROVINCE */}
+          <Route element={<ProtectedRoute requiredPermission="MEMBER_LIST" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
             <Route path="/members" element={<MembersListPage />} />
             <Route path="/members/:id" element={<MemberDetailPage />} />
+          </Route>
+
+          {/* Üye Güncelleme: MEMBER_UPDATE */}
+          <Route element={<ProtectedRoute requiredPermission="MEMBER_UPDATE" />}>
+            <Route path="/members/:id/update" element={<MemberUpdatePage />} />
           </Route>
 
           {/* Üye Başvuruları */}
@@ -114,12 +128,6 @@ const App: React.FC = () => {
           {/* Üye Başvurusu Oluşturma: MEMBER_CREATE_APPLICATION */}
           <Route element={<ProtectedRoute requiredPermission="MEMBER_CREATE_APPLICATION" />}>
             <Route path="/members/applications/new" element={<MemberApplicationCreatePage />} />
-          </Route>
-
-          {/* Reddedilen Üyeler: MEMBER_LIST */}
-          <Route element={<ProtectedRoute requiredPermission="MEMBER_LIST" />}>
-            <Route path="/members/rejected" element={<MembersRejectedPage />} />
-            <Route path="/members/cancelled" element={<MembersCancelledPage />} />
           </Route>
 
           {/* Users: USER_LIST */}
@@ -136,25 +144,10 @@ const App: React.FC = () => {
             <Route path="/roles/:id/edit" element={<RoleCreateEditPage />} />
           </Route>
 
-          {/* Aidat Planları: DUES_PLAN_MANAGE */}
-          <Route element={<ProtectedRoute requiredPermission="DUES_PLAN_MANAGE" />}>
-            <Route path="/dues/plans" element={<DuesPlansPage />} />
-          </Route>
-
-          {/* Borçlu Üyeler: DUES_DEBT_LIST_VIEW */}
-          <Route element={<ProtectedRoute requiredPermission="DUES_DEBT_LIST_VIEW" />}>
-            <Route path="/dues/debts" element={<DuesDebtsPage />} />
-          </Route>
-
-          {/* Aylık Tahsilat Raporu: DUES_REPORT_VIEW */}
-          <Route element={<ProtectedRoute requiredPermission="DUES_REPORT_VIEW" />}>
-            <Route path="/dues/monthly-report" element={<DuesMonthlyReportPage />} />
-          </Route>
-
           {/* Bölge Yönetimi: REGION_LIST ile görüntüleme */}
           <Route element={<ProtectedRoute requiredPermission="REGION_LIST" />}>
+            <Route path="/regions" element={<Navigate to="/regions/provinces" replace />} />
             <Route path="/regions/provinces" element={<RegionsProvincesPage />} />
-            <Route path="/regions/districts" element={<RegionsDistrictsPage />} />
           </Route>
 
           {/* İşyeri: WORKPLACE_LIST */}
@@ -165,6 +158,68 @@ const App: React.FC = () => {
           {/* Bayi: DEALER_LIST */}
           <Route element={<ProtectedRoute requiredPermission="DEALER_LIST" />}>
             <Route path="/regions/dealers" element={<RegionsDealersPage />} />
+          </Route>
+
+          {/* Şube Yönetimi: BRANCH_MANAGE */}
+          <Route element={<ProtectedRoute requiredPermission="BRANCH_MANAGE" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
+            <Route path="/regions/branches" element={<BranchesPage />} />
+            <Route path="/regions/branches/:id" element={<BranchDetailPage />} />
+          </Route>
+
+          {/* Kurumlar: INSTITUTION_LIST */}
+          <Route element={<ProtectedRoute requiredPermission="INSTITUTION_LIST" />}>
+            <Route path="/institutions" element={<InstitutionsPage />} />
+          </Route>
+
+          {/* İçerik Yönetimi: CONTENT_MANAGE */}
+          <Route element={<ProtectedRoute requiredPermission="CONTENT_MANAGE" />}>
+            <Route path="/content" element={<ContentListPage />} />
+          </Route>
+
+          {/* Doküman Yönetimi: DOCUMENT_TEMPLATE_MANAGE */}
+          <Route element={<ProtectedRoute requiredPermission="DOCUMENT_TEMPLATE_MANAGE" />}>
+            <Route path="/documents/templates" element={<DocumentTemplatesPage />} />
+          </Route>
+
+          {/* Üye Doküman Geçmişi: DOCUMENT_MEMBER_HISTORY_VIEW */}
+          <Route element={<ProtectedRoute requiredPermission="DOCUMENT_MEMBER_HISTORY_VIEW" />}>
+            <Route path="/documents/members" element={<MemberDocumentsPage />} />
+            <Route path="/documents/members/:memberId" element={<MemberDocumentsPage />} />
+          </Route>
+
+          {/* Raporlar: REPORT_GLOBAL_VIEW, REPORT_REGION_VIEW, REPORT_MEMBER_STATUS_VIEW, REPORT_DUES_VIEW */}
+          <Route element={<ProtectedRoute requiredPermission="REPORT_GLOBAL_VIEW" alternativePermission="REPORT_REGION_VIEW" alternativePermission2="REPORT_MEMBER_STATUS_VIEW" alternativePermission3="REPORT_DUES_VIEW" />}>
+            <Route path="/reports" element={<ReportsPage />} />
+          </Route>
+
+          {/* Bildirimler: NOTIFY_ALL_MEMBERS, NOTIFY_REGION, NOTIFY_OWN_SCOPE */}
+          <Route element={<ProtectedRoute requiredPermission="NOTIFY_ALL_MEMBERS" alternativePermission="NOTIFY_REGION" alternativePermission2="NOTIFY_OWN_SCOPE" />}>
+            <Route path="/notifications" element={<NotificationsPage />} />
+          </Route>
+
+          {/* Sistem Ayarları: SYSTEM_SETTINGS_VIEW */}
+          <Route element={<ProtectedRoute requiredPermission="SYSTEM_SETTINGS_VIEW" />}>
+            <Route path="/system/settings" element={<SystemSettingsPage />} />
+          </Route>
+
+          {/* Sistem Logları: LOG_VIEW_ALL, LOG_VIEW_OWN_SCOPE */}
+          <Route element={<ProtectedRoute requiredPermission="LOG_VIEW_ALL" alternativePermission="LOG_VIEW_OWN_SCOPE" />}>
+            <Route path="/system/logs" element={<SystemLogsPage />} />
+          </Route>
+
+          {/* Muhasebe: ACCOUNTING_VIEW */}
+          <Route element={<ProtectedRoute requiredPermission="ACCOUNTING_VIEW" />}>
+            <Route path="/accounting/tevkifat-centers" element={<TevkifatCentersPage />} />
+            <Route path="/accounting/tevkifat-centers/:id" element={<TevkifatCenterDetailPage />} />
+          </Route>
+
+          {/* Ödemeler: MEMBER_PAYMENT_LIST */}
+          <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_LIST" />}>
+            <Route path="/payments" element={<PaymentsListPage />} />
+          </Route>
+          {/* Ödeme Detay: MEMBER_PAYMENT_VIEW */}
+          <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_VIEW" />}>
+            <Route path="/payments/:id" element={<PaymentDetailPage />} />
           </Route>
 
           {/* Profil: Herkes erişebilir */}

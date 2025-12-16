@@ -14,9 +14,16 @@ export interface MemberListItem {
   lastName: string;
   phone?: string | null;
   email?: string | null;
+  nationalId?: string | null;
   status: MemberStatus;
+  registrationNumber?: string | null;
+  positionTitle?: string | null;
   province?: { id: string; name: string } | null;
   district?: { id: string; name: string } | null;
+  workingProvince: { id: string; name: string };
+  workingDistrict: { id: string; name: string };
+  institution: { id: string; name: string };
+  branch: { id: string; name: string; code?: string | null };
   duesPlan?: {
     id: string;
     name: string;
@@ -40,10 +47,20 @@ export interface MemberListItem {
 }
 
 export interface MemberDetail extends MemberListItem {
-  nationalId?: string | null;
+  nationalId: string;
   source?: 'DIRECT' | 'WORKPLACE' | 'DEALER' | 'OTHER';
-  workplace?: { id: string; name: string } | null;
-  dealer?: { id: string; name: string } | null;
+  membershipInfoOption?: { id: string; label: string; value: string } | null;
+  boardDecisionDate?: string | null;
+  boardDecisionBookNo?: string | null;
+  motherName?: string | null;
+  fatherName?: string | null;
+  birthplace?: string | null;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER' | null;
+  educationStatus?: 'PRIMARY' | 'HIGH_SCHOOL' | 'COLLEGE' | null;
+  institutionRegNo?: string | null;
+  workUnit?: string | null;
+  workUnitAddress?: string | null;
+  tevkifatCenter?: { id: string; name: string } | null;
   duesPlan?: {
     id: string;
     name: string;
@@ -78,7 +95,27 @@ export interface MemberDetail extends MemberListItem {
     lastName: string;
     email: string;
   } | null;
-  // backend'ten gelen diğer alanlar varsa burada genişletebilirsin
+}
+
+export interface MemberHistory {
+  id: string;
+  memberId: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  fieldName?: string | null;
+  oldValue?: string | null;
+  newValue?: string | null;
+  deletedFields?: string[] | null;
+  updatedFields?: Record<string, { old: any; new: any }> | null;
+  changedBy: string;
+  changedByUser?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
 }
 
 // 🔹 Üye başvurusu listesi (GET /members/applications)

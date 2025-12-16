@@ -1,5 +1,5 @@
 // src/components/layout/Sidebar.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Drawer,
   List,
@@ -8,7 +8,6 @@ import {
   ListItemText,
   Toolbar,
   Divider,
-  Collapse,
   Box,
   Typography,
   useTheme,
@@ -23,17 +22,20 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import MapIcon from '@mui/icons-material/Map';
-import ExpandLess from '@mui/icons-material/ExpandLess';
-import ExpandMore from '@mui/icons-material/ExpandMore';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import BusinessIcon from '@mui/icons-material/Business';
 import StoreIcon from '@mui/icons-material/Store';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import CancelIcon from '@mui/icons-material/Cancel';
-import BlockIcon from '@mui/icons-material/Block';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ArticleIcon from '@mui/icons-material/Article';
+import DescriptionIcon from '@mui/icons-material/Description';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ListAltIcon from '@mui/icons-material/ListAlt';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -51,26 +53,27 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
   const { hasPermission } = useAuth();
   
   const showUsers = hasPermission('USER_LIST');
-  const showMembers = hasPermission('MEMBER_LIST');
+  const showMembers = hasPermission('MEMBER_LIST') || hasPermission('MEMBER_LIST_BY_PROVINCE');
   const showMemberApplications =
     hasPermission('MEMBER_APPROVE') ||
     hasPermission('MEMBER_REJECT') ||
-    hasPermission('MEMBER_LIST');
-  const showDuesPlans =
-    hasPermission('DUES_PLAN_MANAGE') || hasPermission('DUES_REPORT_VIEW');
-  const showDuesDebts = hasPermission('DUES_DEBT_LIST_VIEW');
-  const showDuesMonthlyReport = hasPermission('DUES_REPORT_VIEW');
+    hasPermission('MEMBER_LIST') ||
+    hasPermission('MEMBER_LIST_BY_PROVINCE');
   const showRegions =
     hasPermission('REGION_LIST') || hasPermission('BRANCH_MANAGE');
   const showRoles = hasPermission('ROLE_LIST');
+  const showContent = hasPermission('CONTENT_MANAGE');
+  const showDocuments = hasPermission('DOCUMENT_TEMPLATE_MANAGE') || hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
+  const showReports = hasPermission('REPORT_GLOBAL_VIEW') || hasPermission('REPORT_REGION_VIEW') || hasPermission('REPORT_MEMBER_STATUS_VIEW') || hasPermission('REPORT_DUES_VIEW');
+  const showNotifications = hasPermission('NOTIFY_ALL_MEMBERS') || hasPermission('NOTIFY_REGION') || hasPermission('NOTIFY_OWN_SCOPE');
+  const showSystemSettings = hasPermission('SYSTEM_SETTINGS_VIEW');
+  const showSystemLogs = hasPermission('LOG_VIEW_ALL') || hasPermission('LOG_VIEW_OWN_SCOPE');
+  const showBranches = hasPermission('BRANCH_MANAGE');
+  const showAccounting = hasPermission('ACCOUNTING_VIEW');
+  const showPayments = hasPermission('MEMBER_PAYMENT_LIST');
+  const showInstitutions = hasPermission('INSTITUTION_LIST');
 
   const isActive = (path: string) => location.pathname === path;
-  const isRegionsActive = location.pathname.startsWith('/regions');
-  const [regionsOpen, setRegionsOpen] = useState(isRegionsActive);
-
-  const handleRegionsClick = () => {
-    setRegionsOpen(!regionsOpen);
-  };
 
   const handleLinkClick = () => {
     if (isMobile && onDrawerToggle) {
@@ -227,78 +230,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
           </ListItemButton>
         )}
 
-        {showMembers && (
-          <>
-            <ListItemButton
-              component={Link}
-              to="/members/rejected"
-              selected={location.pathname === '/members/rejected'}
-              onClick={handleLinkClick}
-              sx={{
-                borderRadius: 2,
-                mb: 0.5,
-                '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.error.main, 0.08),
-                  color: theme.palette.error.main,
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.error.main, 0.12),
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: theme.palette.error.main,
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <CancelIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Reddedilen Üyeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            <ListItemButton
-              component={Link}
-              to="/members/cancelled"
-              selected={location.pathname === '/members/cancelled'}
-              onClick={handleLinkClick}
-              sx={{
-                borderRadius: 2,
-                mb: 0.5,
-                '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.warning.main, 0.08),
-                  color: theme.palette.warning.main,
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.warning.main, 0.12),
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: theme.palette.warning.main,
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <BlockIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="İptal Edilen Üyeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-          </>
-        )}
 
         {showUsers && (
           <ListItemButton
@@ -388,16 +319,386 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             px: 2,
           }}
         >
-          FİNANSAL
+          LOKASYON
         </Typography>
       </Box>
 
       <List sx={{ px: 1 }}>
-        {showDuesPlans && (
+        {showRegions && (
+          <>
+            <ListItemButton
+              component={Link}
+              to="/regions/provinces"
+              selected={location.pathname.startsWith('/regions/provinces')}
+              onClick={handleLinkClick}
+              sx={{
+                borderRadius: 2,
+                mb: 0.5,
+                '&.Mui-selected': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                  },
+                  '& .MuiListItemIcon-root': {
+                    color: theme.palette.primary.main,
+                  },
+                },
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <LocationCityIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="İller & İlçeler" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            
+            <ListItemButton
+              component={Link}
+              to="/regions/workplaces"
+              selected={location.pathname.startsWith('/regions/workplaces')}
+              onClick={handleLinkClick}
+              sx={{
+                borderRadius: 2,
+                mb: 0.5,
+                '&.Mui-selected': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                  },
+                  '& .MuiListItemIcon-root': {
+                    color: theme.palette.primary.main,
+                  },
+                },
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <BusinessIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="İş Yeri" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            
+            <ListItemButton
+              component={Link}
+              to="/regions/dealers"
+              selected={location.pathname.startsWith('/regions/dealers')}
+              onClick={handleLinkClick}
+              sx={{
+                borderRadius: 2,
+                mb: 0.5,
+                '&.Mui-selected': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                  },
+                  '& .MuiListItemIcon-root': {
+                    color: theme.palette.primary.main,
+                  },
+                },
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <StoreIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Bayiler" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            
+            {showBranches && (
+              <ListItemButton
+                component={Link}
+                to="/regions/branches"
+                selected={location.pathname.startsWith('/regions/branches')}
+                onClick={handleLinkClick}
+                sx={{
+                  borderRadius: 2,
+                  mb: 0.5,
+                  '&.Mui-selected': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: theme.palette.primary.main,
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <BusinessIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Şubeler" 
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
+
+            {showInstitutions && (
+              <ListItemButton
+                component={Link}
+                to="/institutions"
+                selected={location.pathname.startsWith('/institutions')}
+                onClick={handleLinkClick}
+                sx={{
+                  borderRadius: 2,
+                  mb: 0.5,
+                  '&.Mui-selected': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: theme.palette.primary.main,
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <BusinessIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Kurumlar" 
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
+          </>
+        )}
+      </List>
+
+      <Divider sx={{ my: 2, mx: 2 }} />
+
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: theme.palette.text.secondary,
+            letterSpacing: '0.08em',
+            px: 2,
+          }}
+        >
+          İÇERİK & DOKÜMAN
+        </Typography>
+      </Box>
+
+      <List sx={{ px: 1 }}>
+        {showContent && (
           <ListItemButton
             component={Link}
-            to="/dues/plans"
-            selected={location.pathname.startsWith('/dues/plans')}
+            to="/content"
+            selected={location.pathname.startsWith('/content')}
+            onClick={handleLinkClick}
+            sx={{
+              borderRadius: 2,
+              mb: 0.5,
+              '&.Mui-selected': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                },
+                '& .MuiListItemIcon-root': {
+                  color: theme.palette.primary.main,
+                },
+              },
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.action.hover, 0.04),
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <ArticleIcon />
+            </ListItemIcon>
+            <ListItemText 
+              primary="İçerik Yönetimi" 
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            />
+          </ListItemButton>
+        )}
+
+        {showDocuments && (
+          <>
+            <ListItemButton
+              component={Link}
+              to="/documents/templates"
+              selected={location.pathname.startsWith('/documents/templates')}
+              onClick={handleLinkClick}
+              sx={{
+                borderRadius: 2,
+                mb: 0.5,
+                '&.Mui-selected': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                  },
+                  '& .MuiListItemIcon-root': {
+                    color: theme.palette.primary.main,
+                  },
+                },
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <DescriptionIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Doküman Şablonları" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            {hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW') && (
+              <ListItemButton
+                component={Link}
+                to="/documents/members"
+                selected={location.pathname.startsWith('/documents/members')}
+                onClick={handleLinkClick}
+                sx={{
+                  borderRadius: 2,
+                  mb: 0.5,
+                  '&.Mui-selected': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: theme.palette.primary.main,
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <DescriptionIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Üye Doküman Geçmişi" 
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
+          </>
+        )}
+      </List>
+
+      <Divider sx={{ my: 2, mx: 2 }} />
+
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: theme.palette.text.secondary,
+            letterSpacing: '0.08em',
+            px: 2,
+          }}
+        >
+          RAPORLAR & BİLDİRİMLER
+        </Typography>
+      </Box>
+
+      <List sx={{ px: 1 }}>
+        {showAccounting && (
+          <ListItemButton
+            component={Link}
+            to="/accounting/tevkifat-centers"
+            selected={location.pathname.startsWith('/accounting')}
+            onClick={handleLinkClick}
+            sx={{
+              borderRadius: 2,
+              mb: 0.5,
+              '&.Mui-selected': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                },
+                '& .MuiListItemIcon-root': {
+                  color: theme.palette.primary.main,
+                },
+              },
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.action.hover, 0.04),
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <BusinessIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Tevkifat Merkezleri"
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            />
+          </ListItemButton>
+        )}
+
+        {showPayments && (
+          <ListItemButton
+            component={Link}
+            to="/payments"
+            selected={location.pathname.startsWith('/payments')}
             onClick={handleLinkClick}
             sx={{
               borderRadius: 2,
@@ -420,8 +721,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             <ListItemIcon sx={{ minWidth: 40 }}>
               <PaymentIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Aidat Planları" 
+            <ListItemText
+              primary="Ödemeler"
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
@@ -430,11 +731,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
           </ListItemButton>
         )}
 
-        {showDuesDebts && (
+        {showReports && (
           <ListItemButton
             component={Link}
-            to="/dues/debts"
-            selected={location.pathname.startsWith('/dues/debts')}
+            to="/reports"
+            selected={location.pathname.startsWith('/reports')}
             onClick={handleLinkClick}
             sx={{
               borderRadius: 2,
@@ -455,10 +756,10 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
-              <SummarizeIcon />
+              <AssessmentIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Borçlu Üyeler" 
+            <ListItemText
+              primary="Raporlar"
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
@@ -467,11 +768,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
           </ListItemButton>
         )}
 
-        {showDuesMonthlyReport && (
+        {showNotifications && (
           <ListItemButton
             component={Link}
-            to="/dues/monthly-report"
-            selected={location.pathname.startsWith('/dues/monthly-report')}
+            to="/notifications"
+            selected={location.pathname.startsWith('/notifications')}
             onClick={handleLinkClick}
             sx={{
               borderRadius: 2,
@@ -492,10 +793,10 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
-              <TrendingUpIcon />
+              <NotificationsIcon />
             </ListItemIcon>
             <ListItemText 
-              primary="Aylık Tahsilat Raporu" 
+              primary="Bildirimler" 
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
@@ -518,199 +819,83 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             px: 2,
           }}
         >
-          LOKASYON
+          SİSTEM
         </Typography>
       </Box>
 
       <List sx={{ px: 1 }}>
-        {showRegions && (
-          <>
-            <ListItemButton
-              onClick={handleRegionsClick}
-              selected={isRegionsActive}
-              sx={{
-                borderRadius: 2,
-                mb: 0.5,
-                '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  color: theme.palette.primary.main,
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: theme.palette.primary.main,
-                  },
-                },
+        {showSystemSettings && (
+          <ListItemButton
+            component={Link}
+            to="/system/settings"
+            selected={location.pathname.startsWith('/system/settings')}
+            onClick={handleLinkClick}
+            sx={{
+              borderRadius: 2,
+              mb: 0.5,
+              '&.Mui-selected': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                color: theme.palette.primary.main,
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                  backgroundColor: alpha(theme.palette.primary.main, 0.12),
                 },
+                '& .MuiListItemIcon-root': {
+                  color: theme.palette.primary.main,
+                },
+              },
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.action.hover, 0.04),
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <SettingsIcon />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Sistem Ayarları" 
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
               }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <MapIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Bölgeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-              {regionsOpen ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-            
-            <Collapse in={regionsOpen} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                <ListItemButton
-                  component={Link}
-                  to="/regions/provinces"
-                  selected={location.pathname.startsWith('/regions/provinces')}
-                  onClick={handleLinkClick}
-                  sx={{
-                    pl: 4,
-                    borderRadius: 2,
-                    mb: 0.5,
-                    ml: 1,
-                    '&.Mui-selected': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                      color: theme.palette.primary.main,
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                      },
-                      '& .MuiListItemIcon-root': {
-                        color: theme.palette.primary.main,
-                      },
-                    },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.action.hover, 0.04),
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <LocationCityIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="İller" 
-                    primaryTypographyProps={{
-                      fontSize: '0.85rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-                
-                <ListItemButton
-                  component={Link}
-                  to="/regions/districts"
-                  selected={location.pathname.startsWith('/regions/districts')}
-                  onClick={handleLinkClick}
-                  sx={{
-                    pl: 4,
-                    borderRadius: 2,
-                    mb: 0.5,
-                    ml: 1,
-                    '&.Mui-selected': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                      color: theme.palette.primary.main,
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                      },
-                      '& .MuiListItemIcon-root': {
-                        color: theme.palette.primary.main,
-                      },
-                    },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.action.hover, 0.04),
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <LocationCityIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="İlçeler" 
-                    primaryTypographyProps={{
-                      fontSize: '0.85rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-                
-                <ListItemButton
-                  component={Link}
-                  to="/regions/workplaces"
-                  selected={location.pathname.startsWith('/regions/workplaces')}
-                  onClick={handleLinkClick}
-                  sx={{
-                    pl: 4,
-                    borderRadius: 2,
-                    mb: 0.5,
-                    ml: 1,
-                    '&.Mui-selected': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                      color: theme.palette.primary.main,
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                      },
-                      '& .MuiListItemIcon-root': {
-                        color: theme.palette.primary.main,
-                      },
-                    },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.action.hover, 0.04),
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <BusinessIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="İş Yeri" 
-                    primaryTypographyProps={{
-                      fontSize: '0.85rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-                
-                <ListItemButton
-                  component={Link}
-                  to="/regions/dealers"
-                  selected={location.pathname.startsWith('/regions/dealers')}
-                  onClick={handleLinkClick}
-                  sx={{
-                    pl: 4,
-                    borderRadius: 2,
-                    mb: 0.5,
-                    ml: 1,
-                    '&.Mui-selected': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                      color: theme.palette.primary.main,
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                      },
-                      '& .MuiListItemIcon-root': {
-                        color: theme.palette.primary.main,
-                      },
-                    },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.action.hover, 0.04),
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <StoreIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Bayiler" 
-                    primaryTypographyProps={{
-                      fontSize: '0.85rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-              </List>
-            </Collapse>
-          </>
+            />
+          </ListItemButton>
+        )}
+
+        {showSystemLogs && (
+          <ListItemButton
+            component={Link}
+            to="/system/logs"
+            selected={location.pathname.startsWith('/system/logs')}
+            onClick={handleLinkClick}
+            sx={{
+              borderRadius: 2,
+              mb: 0.5,
+              '&.Mui-selected': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                },
+                '& .MuiListItemIcon-root': {
+                  color: theme.palette.primary.main,
+                },
+              },
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.action.hover, 0.04),
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <ListAltIcon />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Sistem Logları" 
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            />
+          </ListItemButton>
         )}
       </List>
 

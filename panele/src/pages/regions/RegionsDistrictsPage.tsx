@@ -4,12 +4,6 @@ import {
   Box,
   Card,
   Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   FormControl,
   InputLabel,
   Select,
@@ -17,11 +11,8 @@ import {
   useTheme,
   alpha,
   Paper,
-  Alert,
-  CircularProgress,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
-import AddIcon from '@mui/icons-material/Add';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MapIcon from '@mui/icons-material/Map';
@@ -30,11 +21,7 @@ import type { Province, District } from '../../types/region';
 import {
   getProvinces,
   getDistricts,
-  createDistrict,
-  updateDistrict,
 } from '../../api/regionsApi';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../hooks/useToast';
 
 const RegionsDistrictsPage: React.FC = () => {
   const theme = useTheme();
@@ -42,18 +29,6 @@ const RegionsDistrictsPage: React.FC = () => {
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [rows, setRows] = useState<District[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
-  const [form, setForm] = useState<{ name: string; provinceId: string }>({
-    name: '',
-    provinceId: '',
-  });
-
-  const { hasPermission } = useAuth();
-  const toast = useToast();
-  const canManageBranch = hasPermission('BRANCH_MANAGE');
 
   const loadProvinces = async () => {
     try {
@@ -90,70 +65,6 @@ const RegionsDistrictsPage: React.FC = () => {
       loadDistricts();
     }
   }, [selectedProvinceId]);
-
-  const handleOpenNew = () => {
-    setEditingDistrict(null);
-    setForm({
-      name: '',
-      provinceId: selectedProvinceId || '',
-    });
-    setDialogOpen(true);
-  };
-
-  const handleOpenEdit = (district: District) => {
-    setEditingDistrict(district);
-    setForm({
-      name: district.name,
-      provinceId: district.provinceId,
-    });
-    setDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    if (saving) return;
-    setDialogOpen(false);
-  };
-
-  const handleFormChange = (field: keyof typeof form, value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      toast.showWarning('İlçe adı zorunludur.');
-      return;
-    }
-    if (!form.provinceId) {
-      toast.showWarning('İl seçimi zorunludur.');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const payload = {
-        name: form.name.trim(),
-        provinceId: form.provinceId,
-      };
-
-      if (editingDistrict) {
-        await updateDistrict(editingDistrict.id, payload);
-      } else {
-        await createDistrict(payload);
-      }
-
-      await loadDistricts(selectedProvinceId || form.provinceId);
-      setDialogOpen(false);
-      toast.showSuccess(editingDistrict ? 'İlçe başarıyla güncellendi.' : 'İlçe başarıyla oluşturuldu.');
-    } catch (e) {
-      console.error('İlçe kaydedilirken hata:', e);
-      toast.showError('İlçe kaydedilirken bir hata oluştu.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const columns: GridColDef<District>[] = [
     {
@@ -221,51 +132,10 @@ const RegionsDistrictsPage: React.FC = () => {
                 fontSize: { xs: '0.875rem', sm: '0.9rem' },
               }}
             >
-              İllere bağlı ilçeleri görüntüleyin ve yönetin
+              İllere bağlı ilçeleri görüntüleyin
             </Typography>
           </Box>
-          {canManageBranch && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenNew}
-              sx={{
-                display: { xs: 'none', sm: 'flex' },
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                '&:hover': {
-                  boxShadow: `0 6px 20px 0 ${alpha(theme.palette.primary.main, 0.4)}`,
-                },
-              }}
-            >
-              Yeni İlçe
-            </Button>
-          )}
         </Box>
-
-        {/* Mobile New Button */}
-        {canManageBranch && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            fullWidth
-            onClick={handleOpenNew}
-            sx={{
-              display: { xs: 'flex', sm: 'none' },
-              mt: 2,
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              py: 1.5,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            Yeni İlçe Ekle
-          </Button>
-        )}
       </Box>
 
       {/* Ana Kart */}
@@ -378,7 +248,7 @@ const RegionsDistrictsPage: React.FC = () => {
                 fontSize: '0.875rem',
               },
               '& .MuiDataGrid-row': {
-                cursor: canManageBranch ? 'pointer' : 'default',
+                cursor: 'default',
                 '&:hover': {
                   backgroundColor: alpha(theme.palette.primary.main, 0.02),
                 },
@@ -394,11 +264,6 @@ const RegionsDistrictsPage: React.FC = () => {
               columns={columns}
               getRowId={(row) => row.id}
               loading={loading}
-              onRowDoubleClick={(params) => {
-                if (!canManageBranch) return;
-                const d = rows.find((x) => x.id === params.id);
-                if (d) handleOpenEdit(d);
-              }}
               initialState={{
                 pagination: {
                   paginationModel: { pageSize: 25, page: 0 },
@@ -415,100 +280,6 @@ const RegionsDistrictsPage: React.FC = () => {
           </Box>
         </Box>
       </Card>
-
-      {/* İlçe Ekle / Düzenle Dialog */}
-      <Dialog
-        open={dialogOpen}
-        onClose={handleCloseDialog}
-        fullWidth
-        maxWidth="sm"
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            fontWeight: 700,
-            fontSize: '1.25rem',
-            pb: 1,
-          }}
-        >
-          {editingDistrict ? 'İlçe Düzenle' : 'Yeni İlçe'}
-        </DialogTitle>
-        <DialogContent
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2.5,
-            mt: 1,
-          }}
-        >
-          <FormControl
-            fullWidth
-            size="small"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          >
-            <InputLabel>İl</InputLabel>
-            <Select
-              label="İl"
-              value={form.provinceId}
-              onChange={(e) => handleFormChange('provinceId', e.target.value as string)}
-            >
-              {provinces.map((p) => (
-                <MenuItem key={p.id} value={p.id}>
-                  {p.name} {p.code ? `(${p.code})` : ''}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="İlçe Adı"
-            size="small"
-            fullWidth
-            value={form.name}
-            onChange={(e) => handleFormChange('name', e.target.value)}
-            required
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            onClick={handleCloseDialog}
-            disabled={saving}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            variant="contained"
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 100,
-            }}
-          >
-            {saving ? <CircularProgress size={20} color="inherit" /> : 'Kaydet'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
