@@ -32,7 +32,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 
 import type { MemberListItem, MemberStatus } from '../../types/member';
-import { getMembers } from '../../api/membersApi';
+import { getMembers, exportMembersToPdf } from '../../api/membersApi';
 import { getBranches } from '../../api/branchesApi';
 import { getInstitutions } from '../../api/institutionsApi';
 import type { Province, District } from '../../types/region';
@@ -751,6 +751,22 @@ const MembersListPage: React.FC = () => {
                   variant="outlined"
                   size="small"
                   startIcon={<PictureAsPdfIcon />}
+                  onClick={async () => {
+                    try {
+                      await exportMembersToPdf();
+                    } catch (error) {
+                      console.error('PDF export hatası:', error);
+                      alert('PDF export sırasında bir hata oluştu');
+                    }
+                  }}
+                  sx={{ textTransform: 'none' }}
+                >
+                  PDF
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<FileDownloadIcon />}
                   onClick={() => {
                     const exportColumns: ExportColumn[] = columns.map((col) => ({
                       field: col.field,
@@ -762,7 +778,7 @@ const MembersListPage: React.FC = () => {
                   }}
                   sx={{ textTransform: 'none' }}
                 >
-                  PDF
+                  HTML
                 </Button>
               </Box>
             </Box>

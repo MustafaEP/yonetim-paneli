@@ -30,10 +30,11 @@ import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PersonIcon from '@mui/icons-material/Person';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import Autocomplete from '@mui/material/Autocomplete';
 
-import type { MemberDocument } from '../../api/documentsApi';
-import { getMemberDocuments, uploadMemberDocument, downloadDocument, viewDocument } from '../../api/documentsApi';
+import type { MemberDocument, DocumentTemplate, GenerateDocumentDto } from '../../api/documentsApi';
+import { getMemberDocuments, uploadMemberDocument, downloadDocument, viewDocument, generateDocument, getDocumentTemplates } from '../../api/documentsApi';
 import { getMembers } from '../../api/membersApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
@@ -52,14 +53,20 @@ const MemberDocumentsPage: React.FC = () => {
   const [rows, setRows] = useState<MemberDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<string>('UPLOADED');
   const [description, setDescription] = useState<string>('');
   const [customFileName, setCustomFileName] = useState<string>('');
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const canView = hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
   const canUpload = hasPermission('DOCUMENT_GENERATE_PDF');
+  const canGenerate = hasPermission('DOCUMENT_GENERATE_PDF');
 
   // Üyeleri yükle (sayfa ilk açıldığında veya paramMemberId değiştiğinde)
   const loadMembers = async () => {
@@ -146,6 +153,47 @@ const MemberDocumentsPage: React.FC = () => {
       toast.showError(e.response?.data?.message || 'Doküman yüklenirken bir hata oluştu');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const loadTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const data = await getDocumentTemplates();
+      setTemplates(data.filter(t => t.isActive));
+    } catch (e: any) {
+      console.error('Şablonlar yüklenirken hata:', e);
+      toast.showError('Şablonlar yüklenirken bir hata oluştu');
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const handleOpenGenerateDialog = () => {
+    setGenerateDialogOpen(true);
+    setSelectedTemplate(null);
+    loadTemplates();
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedMember || !selectedTemplate) return;
+
+    setGenerating(true);
+    try {
+      const payload: GenerateDocumentDto = {
+        memberId: selectedMember.id,
+        templateId: selectedTemplate.id,
+      };
+      await generateDocument(payload);
+      toast.showSuccess('PDF doküman başarıyla oluşturuldu');
+      setGenerateDialogOpen(false);
+      setSelectedTemplate(null);
+      loadDocuments();
+    } catch (e: any) {
+      console.error('PDF oluşturulurken hata:', e);
+      toast.showError(e.response?.data?.message || 'PDF oluşturulurken bir hata oluştu');
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -325,20 +373,40 @@ const MemberDocumentsPage: React.FC = () => {
             </Button>
           )}
           {canUpload && selectedMember && (
-            <Button
-              variant="contained"
-              startIcon={<UploadFileIcon />}
-              onClick={() => setUploadDialogOpen(true)}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              Doküman Yükle
-            </Button>
+            <>
+              <Button
+                variant="contained"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={handleOpenGenerateDialog}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.error.main, 0.3)}`,
+                  bgcolor: theme.palette.error.main,
+                  '&:hover': {
+                    bgcolor: theme.palette.error.dark,
+                  },
+                }}
+              >
+                PDF Oluştur
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<UploadFileIcon />}
+                onClick={() => setUploadDialogOpen(true)}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+                }}
+              >
+                Doküman Yükle
+              </Button>
+            </>
           )}
         </Box>
       </Box>
@@ -482,6 +550,84 @@ const MemberDocumentsPage: React.FC = () => {
             startIcon={uploading ? <CircularProgress size={16} /> : <UploadFileIcon />}
           >
             {uploading ? 'Yükleniyor...' : 'Yükle'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Generate PDF Dialog */}
+      <Dialog 
+        open={generateDialogOpen} 
+        onClose={() => {
+          if (!generating) {
+            setGenerateDialogOpen(false);
+            setSelectedTemplate(null);
+          }
+        }} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>PDF Doküman Oluştur</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+            {loadingTemplates ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <FormControl fullWidth>
+                <InputLabel>Şablon Seç</InputLabel>
+                <Select
+                  value={selectedTemplate?.id || ''}
+                  onChange={(e) => {
+                    const template = templates.find(t => t.id === e.target.value);
+                    setSelectedTemplate(template || null);
+                  }}
+                  label="Şablon Seç"
+                >
+                  {templates.map((template) => (
+                    <MenuItem key={template.id} value={template.id}>
+                      {template.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {templates.length === 0 && (
+                  <FormHelperText>
+                    Aktif şablon bulunamadı. Önce bir şablon oluşturun.
+                  </FormHelperText>
+                )}
+              </FormControl>
+            )}
+            {selectedTemplate && (
+              <Alert severity="info">
+                <Typography variant="body2" fontWeight={600} gutterBottom>
+                  Seçilen Şablon: {selectedTemplate.name}
+                </Typography>
+                {selectedTemplate.description && (
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedTemplate.description}
+                  </Typography>
+                )}
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setGenerateDialogOpen(false);
+              setSelectedTemplate(null);
+            }}
+            disabled={generating}
+          >
+            İptal
+          </Button>
+          <Button
+            onClick={handleGenerate}
+            variant="contained"
+            disabled={!selectedTemplate || generating}
+            startIcon={generating ? <CircularProgress size={16} /> : <PictureAsPdfIcon />}
+          >
+            {generating ? 'Oluşturuluyor...' : 'PDF Oluştur'}
           </Button>
         </DialogActions>
       </Dialog>

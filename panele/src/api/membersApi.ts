@@ -145,3 +145,41 @@ export const getMemberHistory = async (memberId: string) => {
   const res = await httpClient.get(`/members/${memberId}/history`);
   return res.data;
 };
+
+// 🔹 Üyeleri PDF olarak export et: GET /members/export/pdf
+export const exportMembersToPdf = async (): Promise<void> => {
+  const res = await httpClient.get('/members/export/pdf', {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `uyeler_${new Date().toISOString().split('T')[0]}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+// 🔹 Üye detayını PDF olarak export et: GET /members/:id/export/pdf
+export const exportMemberDetailToPdf = async (memberId: string): Promise<void> => {
+  const res = await httpClient.get(`/members/${memberId}/export/pdf`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  const contentDisposition = res.headers['content-disposition'];
+  let filename = `uye_detay_${memberId}.pdf`;
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+    if (filenameMatch) {
+      filename = filenameMatch[1];
+    }
+  }
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};

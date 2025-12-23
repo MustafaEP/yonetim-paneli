@@ -29,6 +29,7 @@ import { useToast } from '../../hooks/useToast';
 import { getAccountingMembers } from '../../api/accountingApi';
 import type { AccountingMember } from '../../api/accountingApi';
 import { getBranches } from '../../api/branchesApi';
+import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 
 const AccountingMembersPage: React.FC = () => {
   const theme = useTheme();
@@ -78,13 +79,46 @@ const AccountingMembersPage: React.FC = () => {
   };
 
   const handleExportExcel = () => {
-    // TODO: Excel export implementasyonu
-    toast.showInfo('Excel export özelliği yakında eklenecek');
+    try {
+      const exportColumns: ExportColumn[] = columns.map((col) => ({
+        field: col.field,
+        headerName: col.headerName || col.field,
+        width: col.width || col.flex ? (col.flex as number) * 10 : 15,
+        valueGetter: col.valueGetter,
+      }));
+      const monthNames = [
+        'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+      ];
+      const filename = `muhasebe-uyeleri-${yearFilter}-${monthNames[monthFilter - 1]}-${new Date().getTime()}`;
+      exportToExcel(members, exportColumns, filename);
+      toast.showSuccess('Excel dosyası indirildi');
+    } catch (error: any) {
+      console.error('Excel export hatası:', error);
+      toast.showError('Excel export sırasında bir hata oluştu');
+    }
   };
 
   const handleExportPDF = () => {
-    // TODO: PDF export implementasyonu
-    toast.showInfo('PDF export özelliği yakında eklenecek');
+    try {
+      const exportColumns: ExportColumn[] = columns.map((col) => ({
+        field: col.field,
+        headerName: col.headerName || col.field,
+        width: col.width || col.flex ? (col.flex as number) * 10 : 15,
+        valueGetter: col.valueGetter,
+      }));
+      const monthNames = [
+        'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+      ];
+      const filename = `muhasebe-uyeleri-${yearFilter}-${monthNames[monthFilter - 1]}-${new Date().getTime()}`;
+      const title = `Muhasebe Üyeleri - ${monthNames[monthFilter - 1]} ${yearFilter}`;
+      exportToPDF(members, exportColumns, filename, title);
+      toast.showSuccess('PDF dosyası indirildi');
+    } catch (error: any) {
+      console.error('PDF export hatası:', error);
+      toast.showError('PDF export sırasında bir hata oluştu');
+    }
   };
 
   const columns: GridColDef<AccountingMember>[] = [

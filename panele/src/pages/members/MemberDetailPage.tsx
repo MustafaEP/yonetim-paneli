@@ -45,7 +45,10 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PaymentIcon from '@mui/icons-material/Payment';
 import GetAppIcon from '@mui/icons-material/GetApp';
-import { getMemberById } from '../../api/membersApi';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import { getMemberById, exportMemberDetailToPdf } from '../../api/membersApi';
+import { exportToExcel, type ExportColumn } from '../../utils/exportUtils';
 import { getMemberPayments, createPayment, type CreateMemberPaymentDto, type PaymentType } from '../../api/paymentsApi';
 import type { MemberDetail } from '../../types/member';
 import type { MemberPayment } from '../../api/paymentsApi';
@@ -417,7 +420,7 @@ const MemberDetailPage = () => {
                 }}
               />
             </Box>
-            <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
               <Button
                 variant="contained"
                 startIcon={<EditIcon />}
@@ -471,6 +474,74 @@ const MemberDetailPage = () => {
                   Ödeme Ekle
                 </Button>
               )}
+              <Button
+                variant="contained"
+                startIcon={<FileDownloadIcon />}
+                onClick={() => {
+                  if (!member) return;
+                  const exportColumns: ExportColumn[] = [
+                    { field: 'label', headerName: 'Alan', width: 150 },
+                    { field: 'value', headerName: 'Değer', width: 200 },
+                  ];
+                  const exportData = [
+                    { label: 'Ad', value: member.firstName || '-' },
+                    { label: 'Soyad', value: member.lastName || '-' },
+                    { label: 'TC Kimlik No', value: member.nationalId || '-' },
+                    { label: 'Kayıt No', value: member.registrationNumber || '-' },
+                    { label: 'Telefon', value: member.phone || '-' },
+                    { label: 'E-posta', value: member.email || '-' },
+                    { label: 'Anne Adı', value: member.motherName || '-' },
+                    { label: 'Baba Adı', value: member.fatherName || '-' },
+                    { label: 'Doğum Yeri', value: member.birthplace || '-' },
+                    { label: 'Cinsiyet', value: member.gender === 'MALE' ? 'Erkek' : member.gender === 'FEMALE' ? 'Kadın' : '-' },
+                    { label: 'Öğrenim Durumu', value: member.educationStatus || '-' },
+                    { label: 'Kayıtlı Bölge', value: member.province?.name && member.district?.name ? `${member.province.name} / ${member.district.name}` : '-' },
+                    { label: 'Kurum', value: member.institution?.name || '-' },
+                    { label: 'Çalıştığı İl/İlçe', value: member.workingProvince?.name && member.workingDistrict?.name ? `${member.workingProvince.name} / ${member.workingDistrict.name}` : '-' },
+                    { label: 'Şube', value: member.branch?.name || '-' },
+                    { label: 'Kadro Ünvanı', value: member.positionTitle || '-' },
+                  ];
+                  exportToExcel(exportData, exportColumns, `uye_${member.firstName}_${member.lastName}`);
+                }}
+                sx={{
+                  bgcolor: alpha('#fff', 0.2),
+                  color: '#fff',
+                  fontWeight: 600,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha('#fff', 0.3)}`,
+                  '&:hover': {
+                    bgcolor: alpha('#fff', 0.3),
+                  },
+                }}
+              >
+                Excel
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={async () => {
+                  if (!id) return;
+                  try {
+                    await exportMemberDetailToPdf(id);
+                    toast.showSuccess('PDF dosyası indirildi');
+                  } catch (error) {
+                    console.error('PDF export hatası:', error);
+                    toast.showError('PDF export sırasında bir hata oluştu');
+                  }
+                }}
+                sx={{
+                  bgcolor: alpha('#fff', 0.2),
+                  color: '#fff',
+                  fontWeight: 600,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha('#fff', 0.3)}`,
+                  '&:hover': {
+                    bgcolor: alpha('#fff', 0.3),
+                  },
+                }}
+              >
+                PDF
+              </Button>
             </Box>
           </Box>
         </CardContent>

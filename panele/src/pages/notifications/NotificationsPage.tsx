@@ -29,9 +29,11 @@ import SendIcon from '@mui/icons-material/Send';
 import type { Notification } from '../../api/notificationsApi';
 import { sendNotification, getNotifications } from '../../api/notificationsApi';
 import { getProvinces } from '../../api/regionsApi';
+import { getUsers } from '../../api/usersApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import type { Province } from '../../types/region';
+import type { UserListItem } from '../../types/user';
 
 const NotificationsPage: React.FC = () => {
   const theme = useTheme();
@@ -46,12 +48,15 @@ const NotificationsPage: React.FC = () => {
 
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
+  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<UserListItem[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
     message: '',
     type: 'EMAIL' as 'EMAIL' | 'SMS' | 'WHATSAPP' | 'IN_APP',
-    targetType: 'ALL_MEMBERS' as 'ALL_MEMBERS' | 'REGION' | 'SCOPE',
+    targetType: 'USER' as 'ALL_MEMBERS' | 'REGION' | 'SCOPE' | 'USER',
   });
 
   const canNotifyAll = hasPermission('NOTIFY_ALL_MEMBERS');
@@ -62,6 +67,7 @@ const NotificationsPage: React.FC = () => {
 
   useEffect(() => {
     loadNotifications();
+    loadUsers();
     if (canNotifyRegion || canNotifyScope) {
       loadProvinces();
     }
@@ -89,14 +95,28 @@ const NotificationsPage: React.FC = () => {
     }
   };
 
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const data = await getUsers();
+      setUsers(data);
+    } catch (e: any) {
+      console.error('Kullanıcılar yüklenirken hata:', e);
+      toast.error('Kullanıcılar yüklenirken bir hata oluştu');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   const handleOpenDialog = () => {
     setFormData({
       title: '',
       message: '',
-      type: 'EMAIL',
-      targetType: canNotifyAll ? 'ALL_MEMBERS' : canNotifyRegion ? 'REGION' : 'SCOPE',
+      type: 'IN_APP',
+      targetType: 'USER',
     });
     setSelectedProvince(null);
+    setSelectedUsers([]);
     setError(null);
     setDialogOpen(true);
   };
@@ -107,30 +127,96 @@ const NotificationsPage: React.FC = () => {
   };
 
   const handleSend = async () => {
+    setError(null);
+
+    // Başlık ve mesaj kontrolü
     if (!formData.title.trim() || !formData.message.trim()) {
       setError('Başlık ve mesaj gereklidir');
       return;
     }
 
-    if (formData.targetType !== 'ALL_MEMBERS' && !selectedProvince) {
-      setError('Hedef bölge seçimi gereklidir');
+    // Hedef kontrolü
+    if (formData.targetType === 'REGION' || formData.targetType === 'SCOPE') {
+      if (!selectedProvince) {
+        setError(`${formData.targetType === 'REGION' ? 'Bölge' : 'Kapsam'} seçimi gereklidir`);
+        return;
+      }
+      if (!selectedProvince.id) {
+        setError('Geçerli bir il seçiniz');
+        return;
+      }
+    }
+
+    if (formData.targetType === 'USER') {
+      if (selectedUsers.length === 0) {
+        setError('En az bir kullanıcı seçmelisiniz');
+        return;
+      }
+    }
+
+    // Birden fazla kullanıcı seçildiyse her birine ayrı bildirim gönder
+    if (formData.targetType === 'USER' && selectedUsers.length > 0) {
+      setSending(true);
+      let successCount = 0;
+      let failCount = 0;
+
+      try {
+        // Her kullanıcı için ayrı bildirim gönder
+        for (const user of selectedUsers) {
+          try {
+            const payload: any = {
+              ...formData,
+              targetType: 'USER',
+              targetId: user.id,
+            };
+            await sendNotification(payload);
+            successCount++;
+          } catch (e: any) {
+            console.error(`Kullanıcı ${user.firstName} ${user.lastName} için bildirim gönderilirken hata:`, e);
+            failCount++;
+          }
+        }
+
+        if (successCount > 0) {
+          toast.success(`${successCount} kullanıcıya bildirim başarıyla gönderildi${failCount > 0 ? `, ${failCount} kullanıcıya gönderilemedi` : ''}`);
+        } else {
+          toast.error('Bildirimler gönderilemedi');
+        }
+
+        handleCloseDialog();
+        await loadNotifications();
+      } catch (e: any) {
+        console.error('Bildirimler gönderilirken hata:', e);
+        const errorMessage = e.response?.data?.message || e.message || 'Bildirimler gönderilirken bir hata oluştu';
+        setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setSending(false);
+      }
       return;
     }
 
+    // Diğer hedef tipleri için normal gönderim
+    const payload: any = {
+      ...formData,
+    };
+
+    if (formData.targetType !== 'ALL_MEMBERS' && selectedProvince?.id) {
+      payload.targetId = selectedProvince.id;
+    }
+
     setSending(true);
-    setError(null);
 
     try {
-      await sendNotification({
-        ...formData,
-        targetId: selectedProvince?.id,
-      });
+      await sendNotification(payload);
       toast.success('Bildirim başarıyla gönderildi');
       handleCloseDialog();
-      loadNotifications();
+      await loadNotifications();
     } catch (e: any) {
       console.error('Bildirim gönderilirken hata:', e);
-      setError(e.response?.data?.message || 'Bildirim gönderilirken bir hata oluştu');
+      const errorMessage = e.response?.data?.message || e.message || 'Bildirim gönderilirken bir hata oluştu';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSending(false);
     }
@@ -163,13 +249,14 @@ const NotificationsPage: React.FC = () => {
       width: 150,
       renderCell: (params) => {
         const targetLabels: Record<string, string> = {
-          ALL_MEMBERS: 'Tüm Üyeler',
-          REGION: 'Bölge',
-          SCOPE: 'Kapsam',
-        };
-        return <Chip label={targetLabels[params.value] || params.value} size="small" color="primary" />;
-      },
-    },
+                  ALL_MEMBERS: 'Tüm Üyeler',
+                  REGION: 'Bölge',
+                  SCOPE: 'Kapsam',
+                  USER: 'Panel Kullanıcıları',
+                };
+                return <Chip label={targetLabels[params.value] || params.value} size="small" color="primary" />;
+              },
+            },
     {
       field: 'status',
       headerName: 'Durum',
@@ -234,7 +321,7 @@ const NotificationsPage: React.FC = () => {
                 mb: 0.5,
               }}
             >
-              Bildirimler
+              Bildirim Gönder
             </Typography>
             <Typography
               variant="body2"
@@ -243,7 +330,7 @@ const NotificationsPage: React.FC = () => {
                 fontSize: { xs: '0.875rem', sm: '0.9rem' },
               }}
             >
-              Üyelere bildirim gönderin
+              Panel kullanıcılarına ve üyelere bildirim gönderin
             </Typography>
           </Box>
         </Box>
@@ -341,20 +428,60 @@ const NotificationsPage: React.FC = () => {
                 </Select>
               </FormControl>
               <FormControl fullWidth>
-                <InputLabel>Hedef</InputLabel>
+                <InputLabel>Hedef Tip</InputLabel>
                 <Select
                   value={formData.targetType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, targetType: e.target.value as any })
-                  }
-                  label="Hedef"
+                  onChange={(e) => {
+                    setFormData({ ...formData, targetType: e.target.value as any });
+                    if (e.target.value !== 'USER') {
+                      setSelectedUsers([]);
+                    }
+                    if (e.target.value !== 'REGION' && e.target.value !== 'SCOPE') {
+                      setSelectedProvince(null);
+                    }
+                  }}
+                  label="Hedef Tip"
                 >
+                  <MenuItem value="USER">Panel Kullanıcıları</MenuItem>
                   {canNotifyAll && <MenuItem value="ALL_MEMBERS">Tüm Üyeler</MenuItem>}
                   {canNotifyRegion && <MenuItem value="REGION">Bölge</MenuItem>}
                   {canNotifyScope && <MenuItem value="SCOPE">Kapsam</MenuItem>}
                 </Select>
               </FormControl>
             </Box>
+            {formData.targetType === 'USER' && (
+              <Autocomplete
+                multiple
+                options={users}
+                loading={loadingUsers}
+                getOptionLabel={(option) => `${option.firstName} ${option.lastName}${option.email ? ` (${option.email})` : ''}`}
+                value={selectedUsers}
+                onChange={(_, newValue) => setSelectedUsers(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kullanıcı Seçin"
+                    placeholder="Kullanıcıları seçin..."
+                    required
+                    helperText={
+                      selectedUsers.length > 0
+                        ? `${selectedUsers.length} kullanıcı seçildi`
+                        : 'Bildirim göndermek istediğiniz kullanıcıları seçin (kendiniz dahil)'
+                    }
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={`${option.firstName} ${option.lastName}`}
+                      size="small"
+                    />
+                  ))
+                }
+              />
+            )}
             {(formData.targetType === 'REGION' || formData.targetType === 'SCOPE') && (
               <Autocomplete
                 options={provinces}

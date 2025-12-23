@@ -168,6 +168,14 @@ export const viewDocument = async (documentId: string): Promise<void> => {
   });
 };
 
+// PDF oluştur
+export const generateDocument = async (
+  payload: GenerateDocumentDto,
+): Promise<MemberDocument> => {
+  const res = await httpClient.post<MemberDocument>('/documents/generate', payload);
+  return res.data;
+};
+
 // PDF indir
 export const downloadDocument = async (documentId: string, fileName?: string): Promise<void> => {
   const token = localStorage.getItem('accessToken');

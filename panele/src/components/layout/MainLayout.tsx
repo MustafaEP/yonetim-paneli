@@ -15,6 +15,7 @@ import {
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ProfileMenu from './ProfileMenu';
+import NotificationCenter from '../notifications/NotificationCenter';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import MenuIcon from '@mui/icons-material/Menu';
 
@@ -36,7 +37,7 @@ const MainLayout: React.FC = () => {
     members: 'Üyeler',
     applications: 'Başvurular',
     new: 'Yeni Başvuru',
-    users: 'Kullanıcılar',
+    users: 'Panel Kullanıcıları',
     roles: 'Roller',
     dues: 'Aidat',
     plans: 'Planlar',
@@ -144,6 +145,7 @@ const MainLayout: React.FC = () => {
               </Typography>
             </Box>
           </Box>
+          <NotificationCenter />
           <ProfileMenu />
         </Toolbar>
       </AppBar>
@@ -308,48 +310,36 @@ const MainLayout: React.FC = () => {
                 gap: { xs: 2, sm: 3 },
               }}
             >
-              <MuiLink
-                href="#"
-                underline="hover"
+              <Typography
+                variant="body2"
                 sx={{
                   color: theme.palette.text.secondary,
                   fontSize: { xs: '0.8rem', sm: '0.875rem' },
                   whiteSpace: 'nowrap',
-                  '&:hover': {
-                    color: theme.palette.primary.main,
-                  },
                 }}
               >
                 Gizlilik
-              </MuiLink>
-              <MuiLink
-                href="#"
-                underline="hover"
+              </Typography>
+              <Typography
+                variant="body2"
                 sx={{
                   color: theme.palette.text.secondary,
                   fontSize: { xs: '0.8rem', sm: '0.875rem' },
                   whiteSpace: 'nowrap',
-                  '&:hover': {
-                    color: theme.palette.primary.main,
-                  },
                 }}
               >
                 Koşullar
-              </MuiLink>
-              <MuiLink
-                href="#"
-                underline="hover"
+              </Typography>
+              <Typography
+                variant="body2"
                 sx={{
                   color: theme.palette.text.secondary,
                   fontSize: { xs: '0.8rem', sm: '0.875rem' },
                   whiteSpace: 'nowrap',
-                  '&:hover': {
-                    color: theme.palette.primary.main,
-                  },
                 }}
               >
                 Destek
-              </MuiLink>
+              </Typography>
             </Box>
           </Box>
         </Box>

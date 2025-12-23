@@ -1,19 +1,17 @@
 // src/pages/system/SystemLogsPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Card,
   Typography,
   TextField,
   Button,
-  CircularProgress,
   useTheme,
   alpha,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Chip,
   IconButton,
   Tooltip,
   Dialog,
@@ -58,13 +56,18 @@ const SystemLogsPage: React.FC = () => {
 
   const canView = canViewAll || canViewOwn;
 
-  useEffect(() => {
-    if (canView) {
-      loadLogs();
-    }
-  }, [page, pageSize, filters]);
+  // Filters'ı serialize ederek dependency olarak kullanmak için
+  const filtersKey = useMemo(() => {
+    return JSON.stringify({
+      userId: filters.userId,
+      entityType: filters.entityType,
+      action: filters.action,
+      startDate: filters.startDate ? filters.startDate.toISOString().split('T')[0] : null,
+      endDate: filters.endDate ? filters.endDate.toISOString().split('T')[0] : null,
+    });
+  }, [filters.userId, filters.entityType, filters.action, filters.startDate, filters.endDate]);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
       const params: any = {
@@ -87,7 +90,14 @@ const SystemLogsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, filters.userId, filters.entityType, filters.action, filters.startDate, filters.endDate, toast]);
+
+  useEffect(() => {
+    if (canView) {
+      loadLogs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canView, page, pageSize, filtersKey]);
 
   const handleView = async (id: string) => {
     try {
@@ -231,6 +241,21 @@ const SystemLogsPage: React.FC = () => {
                   <MenuItem value="MEMBER">Üye</MenuItem>
                   <MenuItem value="ROLE">Rol</MenuItem>
                   <MenuItem value="DUES">Aidat</MenuItem>
+                  <MenuItem value="AUTH">Kimlik Doğrulama</MenuItem>
+                  <MenuItem value="REGION">Bölge</MenuItem>
+                  <MenuItem value="PROVINCE">İl</MenuItem>
+                  <MenuItem value="DISTRICT">İlçe</MenuItem>
+                  <MenuItem value="WORKPLACE">İş Yeri</MenuItem>
+                  <MenuItem value="BRANCH">Şube</MenuItem>
+                  <MenuItem value="DEALER">Bayi</MenuItem>
+                  <MenuItem value="CONTENT">İçerik</MenuItem>
+                  <MenuItem value="NOTIFICATION">Bildirim</MenuItem>
+                  <MenuItem value="PAYMENT">Ödeme</MenuItem>
+                  <MenuItem value="DOCUMENT">Doküman</MenuItem>
+                  <MenuItem value="INSTITUTION">Kurum</MenuItem>
+                  <MenuItem value="APPROVAL">Onay</MenuItem>
+                  <MenuItem value="ACCOUNTING">Muhasebe</MenuItem>
+                  <MenuItem value="SYSTEM_SETTING">Sistem Ayarı</MenuItem>
                 </Select>
               </FormControl>
               <FormControl size="small" sx={{ minWidth: 150 }}>
@@ -246,6 +271,9 @@ const SystemLogsPage: React.FC = () => {
                   <MenuItem value="CREATE">Oluştur</MenuItem>
                   <MenuItem value="UPDATE">Güncelle</MenuItem>
                   <MenuItem value="DELETE">Sil</MenuItem>
+                  <MenuItem value="VIEW">Görüntüle</MenuItem>
+                  <MenuItem value="LOGIN">Giriş</MenuItem>
+                  <MenuItem value="LOGIN_FAILED">Başarısız Giriş</MenuItem>
                 </Select>
               </FormControl>
               <TextField
@@ -277,8 +305,7 @@ const SystemLogsPage: React.FC = () => {
             disableRowSelectionOnClick
             paginationMode="server"
             rowCount={total}
-            page={page}
-            pageSize={pageSize}
+            paginationModel={{ page, pageSize }}
             onPaginationModelChange={(model) => {
               setPage(model.page);
               setPageSize(model.pageSize);
@@ -314,14 +341,28 @@ const SystemLogsPage: React.FC = () => {
                     <strong>Varlık ID:</strong> {viewingLog.entityId}
                   </Typography>
                 )}
-                {viewingLog.user && (
+                {viewingLog.user ? (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     <strong>Kullanıcı:</strong> {viewingLog.user.firstName} {viewingLog.user.lastName} ({viewingLog.user.email})
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <strong>Kullanıcı:</strong> <em>Bilinmeyen (Sistem işlemi veya başarısız giriş)</em>
                   </Typography>
                 )}
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   <strong>Tarih:</strong> {new Date(viewingLog.createdAt).toLocaleString('tr-TR')}
                 </Typography>
+                {viewingLog.ipAddress && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <strong>IP Adresi:</strong> {viewingLog.ipAddress}
+                  </Typography>
+                )}
+                {viewingLog.userAgent && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <strong>Tarayıcı:</strong> {viewingLog.userAgent}
+                  </Typography>
+                )}
                 {viewingLog.details && (
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>

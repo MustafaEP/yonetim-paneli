@@ -1,14 +1,20 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentTemplateDto, UpdateDocumentTemplateDto, GenerateDocumentDto } from './dto';
 import { DocumentTemplateType } from '@prisma/client';
 import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PdfService } from './services/pdf.service';
 
 @Injectable()
 export class DocumentsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(DocumentsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private pdfService: PdfService,
+  ) {}
 
   // Şablonlar
   async findAllTemplates() {
@@ -130,9 +136,6 @@ export class DocumentsService {
       throw new NotFoundException(`Üye bulunamadı: ${dto.memberId}`);
     }
 
-    // Şablon içindeki değişkenleri değiştir
-    let documentContent = template.template;
-    
     // Tarih formatları
     const now = new Date();
     const joinDate = member.approvedAt 
@@ -181,16 +184,32 @@ export class DocumentsService {
       ...dto.variables,
     };
 
-    // Değişkenleri değiştir ({{variable}} formatında)
-    Object.entries(variables).forEach(([key, value]) => {
-      const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-      documentContent = documentContent.replace(regex, value);
-    });
+    // Şablon içindeki değişkenleri değiştir
+    const htmlContent = this.pdfService.replaceTemplateVariables(template.template, variables);
 
-    // Şimdilik basit bir dosya adı ve URL oluştur
-    // Gerçek implementasyonda PDF oluşturma kütüphanesi kullanılmalı (pdfkit, puppeteer vb.)
+    // Dosya adı ve yolu oluştur
     const fileName = `${template.type}_${member.registrationNumber || member.id}_${Date.now()}.pdf`;
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
+    const filePath = path.join(uploadsDir, fileName);
     const fileUrl = `/uploads/documents/${fileName}`;
+
+    // Uploads dizinini oluştur
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    try {
+      // HTML'i PDF'e dönüştür
+      await this.pdfService.generatePdfFromHtml(htmlContent, filePath, {
+        format: 'A4',
+        printBackground: true,
+      });
+
+      this.logger.log(`PDF document generated: ${filePath}`);
+    } catch (error) {
+      this.logger.error(`Failed to generate PDF: ${error.message}`, error.stack);
+      throw new BadRequestException(`PDF oluşturma hatası: ${error.message}`);
+    }
 
     // Doküman kaydını oluştur
     const document = await this.prisma.memberDocument.create({

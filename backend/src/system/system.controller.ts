@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SystemService } from './system.service';
@@ -82,6 +83,8 @@ export class SystemController {
     @Query('userId') userId?: string,
     @Query('entityType') entityType?: string,
     @Query('action') action?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
     @CurrentUser() user?: CurrentUserData,
   ) {
     // Eğer sadece LOG_VIEW_OWN_SCOPE izni varsa, sadece kendi loglarını göster
@@ -94,7 +97,29 @@ export class SystemController {
       userId: finalUserId,
       entityType,
       action,
+      startDate,
+      endDate,
     });
+  }
+
+  @Permissions(Permission.LOG_VIEW_ALL, Permission.LOG_VIEW_OWN_SCOPE)
+  @Get('logs/:id')
+  @ApiOperation({ summary: 'Sistem log detayı' })
+  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 404, description: 'Log bulunamadı' })
+  async getLogById(
+    @Param('id') id: string,
+    @CurrentUser() user?: CurrentUserData,
+  ) {
+    const log = await this.systemService.getLogById(id);
+    
+    // Eğer sadece LOG_VIEW_OWN_SCOPE izni varsa, sadece kendi loglarını görebilir
+    const hasViewAll = user?.permissions?.includes(Permission.LOG_VIEW_ALL);
+    if (!hasViewAll && log.userId !== user?.userId) {
+      throw new NotFoundException('Log bulunamadı');
+    }
+
+    return log;
   }
 }
 

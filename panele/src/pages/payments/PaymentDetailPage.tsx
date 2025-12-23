@@ -28,6 +28,7 @@ import { useToast } from '../../hooks/useToast';
 import {
   getPaymentById,
   approvePayment,
+  deletePayment,
   type MemberPayment,
   type PaymentType,
 } from '../../api/paymentsApi';
@@ -83,8 +84,21 @@ const PaymentDetailPage: React.FC = () => {
   };
 
   const handleReject = async () => {
-    // TODO: Backend'de reject endpoint'i eklenmeli
-    toast.showInfo('Reddetme özelliği yakında eklenecek');
+    if (!payment || !id) return;
+    if (!window.confirm('Bu ödemeyi silmek istediğinizden emin misiniz?')) {
+      return;
+    }
+    setRejecting(true);
+    try {
+      await deletePayment(id);
+      toast.showSuccess('Ödeme başarıyla silindi');
+      navigate('/payments');
+    } catch (e: any) {
+      console.error('Ödeme silinirken hata:', e);
+      toast.showError(e.response?.data?.message || 'Ödeme silinirken bir hata oluştu');
+    } finally {
+      setRejecting(false);
+    }
   };
 
   const monthNames = [
@@ -432,8 +446,9 @@ const PaymentDetailPage: React.FC = () => {
                 <Button
                   variant="outlined"
                   startIcon={<EditIcon />}
-                  onClick={() => navigate(`/payments/${payment.id}/edit`)}
+                  disabled
                   sx={{ borderRadius: 2, textTransform: 'none' }}
+                  title="Düzenleme sayfası henüz mevcut değil"
                 >
                   Düzeltme İste
                 </Button>

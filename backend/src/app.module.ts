@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -18,6 +18,7 @@ import { ApprovalsModule } from './approvals/approvals.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DocumentsModule } from './documents/documents.module';
+import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
 
 @Module({
   imports: [
@@ -48,6 +49,11 @@ import { DocumentsModule } from './documents/documents.module';
     {
       provide: APP_GUARD,
       useClass: PermissionsGuard,
+    },
+    // 3. System Log Interceptor
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SystemLogInterceptor,
     },
   ],
 })
