@@ -18,6 +18,13 @@ import {
   Alert,
   useTheme,
   alpha,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
+  CircularProgress,
+  Autocomplete,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
@@ -26,16 +33,21 @@ import EditIcon from '@mui/icons-material/Edit';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import PaymentIcon from '@mui/icons-material/Payment';
+import AddIcon from '@mui/icons-material/Add';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import {
   getPayments,
+  createPayment,
   type MemberPayment,
   type PaymentListFilters,
   type PaymentType,
+  type CreateMemberPaymentDto,
 } from '../../api/paymentsApi';
 import { getTevkifatCenters } from '../../api/accountingApi';
 import { getBranches } from '../../api/branchesApi';
+import { getMembers } from '../../api/membersApi';
+import type { MemberListItem } from '../../types/member';
 import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 
 const PaymentsListPage: React.FC = () => {
@@ -54,10 +66,33 @@ const PaymentsListPage: React.FC = () => {
   const [showAllYear, setShowAllYear] = useState(false);
   const [tevkifatCenters, setTevkifatCenters] = useState<Array<{ id: string; name: string }>>([]);
   const [branches, setBranches] = useState<Array<{ id: string; name: string }>>([]);
+  const [members, setMembers] = useState<MemberListItem[]>([]);
+  
+  // Ödeme ekleme dialog state
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [paymentForm, setPaymentForm] = useState<{
+    memberId: string;
+    paymentPeriodMonth: number;
+    paymentPeriodYear: number;
+    amount: string;
+    paymentType: PaymentType;
+    tevkifatCenterId: string;
+    description: string;
+  }>({
+    memberId: '',
+    paymentPeriodMonth: new Date().getMonth() + 1,
+    paymentPeriodYear: new Date().getFullYear(),
+    amount: '',
+    paymentType: 'ELDEN',
+    tevkifatCenterId: '',
+    description: '',
+  });
 
   const canView = hasPermission('MEMBER_PAYMENT_LIST');
   const canApprove = hasPermission('MEMBER_PAYMENT_APPROVE');
   const canExport = hasPermission('ACCOUNTING_EXPORT');
+  const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
 
   useEffect(() => {
     if (canView) {
@@ -65,7 +100,10 @@ const PaymentsListPage: React.FC = () => {
       loadTevkifatCenters();
       loadBranches();
     }
-  }, [canView, filters, showAllYear]);
+    if (canAddPayment) {
+      loadMembers();
+    }
+  }, [canView, canAddPayment, filters, showAllYear]);
 
   const loadPayments = async () => {
     setLoading(true);
@@ -98,6 +136,15 @@ const PaymentsListPage: React.FC = () => {
       setBranches(data.map((b) => ({ id: b.id, name: b.name })));
     } catch (e) {
       console.error('Şubeler yüklenirken hata:', e);
+    }
+  };
+
+  const loadMembers = async () => {
+    try {
+      const data = await getMembers();
+      setMembers(data);
+    } catch (e) {
+      console.error('Üyeler yüklenirken hata:', e);
     }
   };
 
@@ -135,6 +182,65 @@ const PaymentsListPage: React.FC = () => {
     } catch (error) {
       console.error('PDF export hatası:', error);
       toast.showError('PDF export sırasında bir hata oluştu');
+    }
+  };
+
+  const handleSubmitPayment = async () => {
+    // Validasyon
+    if (!paymentForm.memberId || !paymentForm.amount || !paymentForm.paymentPeriodMonth || !paymentForm.paymentPeriodYear) {
+      toast.showError('Lütfen tüm zorunlu alanları doldurun');
+      return;
+    }
+
+    // Tevkifat seçilmişse tevkifat merkezi zorunlu
+    if (paymentForm.paymentType === 'TEVKIFAT' && !paymentForm.tevkifatCenterId) {
+      toast.showError('Tevkifat ödemesi için tevkifat merkezi seçilmelidir');
+      return;
+    }
+
+    // Tutar formatını kontrol et
+    const amountRegex = /^\d+(\.\d{1,2})?$/;
+    const normalizedAmount = paymentForm.amount.replace(',', '.');
+    if (!amountRegex.test(normalizedAmount)) {
+      toast.showError('Tutar formatı geçersiz. Örnek: 250.00');
+      return;
+    }
+
+    setSubmittingPayment(true);
+    try {
+      const payload: CreateMemberPaymentDto = {
+        memberId: paymentForm.memberId,
+        paymentPeriodMonth: paymentForm.paymentPeriodMonth,
+        paymentPeriodYear: paymentForm.paymentPeriodYear,
+        amount: normalizedAmount,
+        paymentType: paymentForm.paymentType,
+        description: paymentForm.description || undefined,
+        tevkifatCenterId: paymentForm.paymentType === 'TEVKIFAT' ? paymentForm.tevkifatCenterId : undefined,
+      };
+
+      await createPayment(payload);
+      toast.showSuccess('Ödeme başarıyla eklendi');
+      
+      // Formu sıfırla
+      setPaymentForm({
+        memberId: '',
+        paymentPeriodMonth: new Date().getMonth() + 1,
+        paymentPeriodYear: new Date().getFullYear(),
+        amount: '',
+        paymentType: 'ELDEN',
+        tevkifatCenterId: '',
+        description: '',
+      });
+      
+      setPaymentDialogOpen(false);
+      
+      // Listeyi yenile
+      await loadPayments();
+    } catch (e: any) {
+      console.error('Ödeme eklenirken hata:', e);
+      toast.showError(e?.response?.data?.message || 'Ödeme eklenirken bir hata oluştu');
+    } finally {
+      setSubmittingPayment(false);
     }
   };
 
@@ -265,11 +371,11 @@ const PaymentsListPage: React.FC = () => {
               </IconButton>
             </Tooltip>
             {canApprove && !payment.isApproved && (
-              <Tooltip title="Düzenle">
+              <Tooltip title="Düzenleme sayfası henüz mevcut değil">
                 <IconButton
                   size="small"
-                  onClick={() => navigate(`/payments/${payment.id}/edit`)}
-                  sx={{ color: theme.palette.primary.main }}
+                  disabled
+                  sx={{ color: theme.palette.text.disabled }}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -441,6 +547,16 @@ const PaymentsListPage: React.FC = () => {
               <MenuItem value="PENDING">Onay Bekliyor</MenuItem>
             </Select>
           </FormControl>
+          {canAddPayment && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setPaymentDialogOpen(true)}
+              sx={{ borderRadius: 2, textTransform: 'none' }}
+            >
+              Yeni Ödeme Ekle
+            </Button>
+          )}
           {canExport && (
             <>
               <Button
@@ -496,6 +612,164 @@ const PaymentsListPage: React.FC = () => {
           }}
         />
       </Card>
+
+      {/* Ödeme Ekleme Dialog */}
+      <Dialog 
+        open={paymentDialogOpen} 
+        onClose={() => !submittingPayment && setPaymentDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Yeni Ödeme Ekle</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Autocomplete
+                  options={members}
+                  getOptionLabel={(option) => 
+                    `${option.firstName} ${option.lastName}${option.registrationNumber ? ` (${option.registrationNumber})` : ''}`
+                  }
+                  value={members.find(m => m.id === paymentForm.memberId) || null}
+                  onChange={(_, newValue) => {
+                    setPaymentForm({ ...paymentForm, memberId: newValue?.id || '' });
+                  }}
+                  disabled={submittingPayment}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Üye"
+                      required
+                      placeholder="Üye seçin..."
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Ödeme Dönemi Ay</InputLabel>
+                  <Select
+                    value={paymentForm.paymentPeriodMonth}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, paymentPeriodMonth: Number(e.target.value) })}
+                    label="Ödeme Dönemi Ay"
+                    disabled={submittingPayment}
+                  >
+                    {monthNames.map((month, index) => (
+                      <MenuItem key={index} value={index + 1}>
+                        {month}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Ödeme Dönemi Yıl"
+                  type="number"
+                  value={paymentForm.paymentPeriodYear}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, paymentPeriodYear: Number(e.target.value) })}
+                  disabled={submittingPayment}
+                  required
+                  inputProps={{ min: 2020, max: 2100 }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Tutar"
+                  type="text"
+                  value={paymentForm.amount}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.,]/g, '');
+                    setPaymentForm({ ...paymentForm, amount: value });
+                  }}
+                  disabled={submittingPayment}
+                  required
+                  placeholder="250.00"
+                  helperText="Örnek: 250.00"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth required>
+                  <InputLabel>Ödeme Türü</InputLabel>
+                  <Select
+                    value={paymentForm.paymentType}
+                    onChange={(e) => {
+                      const newType = e.target.value as PaymentType;
+                      setPaymentForm({ 
+                        ...paymentForm, 
+                        paymentType: newType,
+                        tevkifatCenterId: newType === 'TEVKIFAT' ? paymentForm.tevkifatCenterId : '',
+                      });
+                    }}
+                    label="Ödeme Türü"
+                    disabled={submittingPayment}
+                  >
+                    <MenuItem value="ELDEN">Elden Ödeme</MenuItem>
+                    <MenuItem value="HAVALE">Havale/EFT</MenuItem>
+                    <MenuItem value="TEVKIFAT">Tevkifat</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              {paymentForm.paymentType === 'TEVKIFAT' && (
+                <Grid item xs={12}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Tevkifat Merkezi</InputLabel>
+                    <Select
+                      value={paymentForm.tevkifatCenterId}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, tevkifatCenterId: e.target.value })}
+                      label="Tevkifat Merkezi"
+                      disabled={submittingPayment}
+                    >
+                      {tevkifatCenters.map((center) => (
+                        <MenuItem key={center.id} value={center.id}>
+                          {center.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Açıklama"
+                  multiline
+                  rows={3}
+                  value={paymentForm.description}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
+                  disabled={submittingPayment}
+                  placeholder="Ödeme açıklaması (opsiyonel)"
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setPaymentDialogOpen(false)} 
+            disabled={submittingPayment}
+          >
+            İptal
+          </Button>
+          <Button
+            onClick={handleSubmitPayment}
+            variant="contained"
+            disabled={
+              submittingPayment || 
+              !paymentForm.memberId || 
+              !paymentForm.amount || 
+              !paymentForm.paymentPeriodMonth || 
+              !paymentForm.paymentPeriodYear ||
+              (paymentForm.paymentType === 'TEVKIFAT' && !paymentForm.tevkifatCenterId)
+            }
+            startIcon={submittingPayment ? <CircularProgress size={16} /> : <PaymentIcon />}
+          >
+            {submittingPayment ? 'Ekleniyor...' : 'Ödeme Ekle'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

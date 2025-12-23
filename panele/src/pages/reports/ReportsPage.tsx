@@ -25,6 +25,7 @@ import {
   Skeleton,
   Fade,
   useMediaQuery,
+  Button,
 } from '@mui/material';
 
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -33,6 +34,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 import {
   ResponsiveContainer,
@@ -55,6 +58,14 @@ import {
   getRegionReport,
   getMemberStatusReport,
   getDuesReport,
+  exportGlobalReportToExcel,
+  exportGlobalReportToPdf,
+  exportRegionReportToExcel,
+  exportRegionReportToPdf,
+  exportDuesReportToExcel,
+  exportDuesReportToPdf,
+  exportMemberStatusReportToExcel,
+  exportMemberStatusReportToPdf,
   type GlobalReport,
   type RegionReport,
   type MemberStatusReport,
@@ -219,6 +230,41 @@ function EmptyState({
   );
 }
 
+// Export Butonları Komponenti
+function ExportButtons({
+  onExportExcel,
+  onExportPdf,
+  loading = false,
+}: {
+  onExportExcel: () => void;
+  onExportPdf: () => void;
+  loading?: boolean;
+}) {
+  return (
+    <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+      <Button
+        variant="outlined"
+        startIcon={<FileDownloadIcon />}
+        onClick={onExportExcel}
+        disabled={loading}
+        size="small"
+      >
+        Excel
+      </Button>
+      <Button
+        variant="outlined"
+        startIcon={<PictureAsPdfIcon />}
+        onClick={onExportPdf}
+        disabled={loading}
+        size="small"
+        color="error"
+      >
+        PDF
+      </Button>
+    </Box>
+  );
+}
+
 const ReportsPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -228,6 +274,7 @@ const ReportsPage: React.FC = () => {
 
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const [globalReport, setGlobalReport] = useState<GlobalReport | null>(null);
   const [regionReports, setRegionReports] = useState<RegionReport[]>([]);
@@ -538,6 +585,31 @@ const ReportsPage: React.FC = () => {
                     <EmptyState title="Genel rapor verisi bulunamadı." />
                   ) : (
                     <Stack spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+                      <ExportButtons
+                        onExportExcel={async () => {
+                          setExporting(true);
+                          try {
+                            await exportGlobalReportToExcel();
+                            toast.success('Excel dosyası indirildi');
+                          } catch (error) {
+                            toast.error('Excel export sırasında bir hata oluştu');
+                          } finally {
+                            setExporting(false);
+                          }
+                        }}
+                        onExportPdf={async () => {
+                          setExporting(true);
+                          try {
+                            await exportGlobalReportToPdf();
+                            toast.success('PDF dosyası indirildi');
+                          } catch (error) {
+                            toast.error('PDF export sırasında bir hata oluştu');
+                          } finally {
+                            setExporting(false);
+                          }
+                        }}
+                        loading={exporting}
+                      />
                       {/* KPI */}
                       <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                         {/* @ts-expect-error */}
@@ -637,7 +709,7 @@ const ReportsPage: React.FC = () => {
                                   />
                                   <YAxis tick={axisTickStyle} width={isMobile ? 40 : 60} />
                                   <Tooltip 
-                                    contentStyle={{
+                                    wrapperStyle={{
                                       borderRadius: 8,
                                       border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
                                     }}
@@ -720,7 +792,7 @@ const ReportsPage: React.FC = () => {
                                     ))}
                                   </Pie>
                                   <Tooltip 
-                                    contentStyle={{
+                                    wrapperStyle={{
                                       borderRadius: 8,
                                       border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
                                     }}
@@ -818,6 +890,31 @@ const ReportsPage: React.FC = () => {
               {canViewRegion && (
                 <TabPanel value={safeTabValue} index={tabs.findIndex((t) => t.type === 'region')}>
                   <Stack spacing={{ xs: 2, sm: 2.5 }}>
+                    <ExportButtons
+                      onExportExcel={async () => {
+                        setExporting(true);
+                        try {
+                          await exportRegionReportToExcel(selectedProvinceId || undefined);
+                          toast.success('Excel dosyası indirildi');
+                        } catch (error) {
+                          toast.error('Excel export sırasında bir hata oluştu');
+                        } finally {
+                          setExporting(false);
+                        }
+                      }}
+                      onExportPdf={async () => {
+                        setExporting(true);
+                        try {
+                          await exportRegionReportToPdf(selectedProvinceId || undefined);
+                          toast.success('PDF dosyası indirildi');
+                        } catch (error) {
+                          toast.error('PDF export sırasında bir hata oluştu');
+                        } finally {
+                          setExporting(false);
+                        }
+                      }}
+                      loading={exporting}
+                    />
                     {/* Filter Bar */}
                     <Paper
                       elevation={0}
@@ -1036,6 +1133,31 @@ const ReportsPage: React.FC = () => {
                     <EmptyState title="Üye durum raporu verisi bulunamadı." />
                   ) : (
                     <Stack spacing={{ xs: 2, sm: 2.5 }}>
+                      <ExportButtons
+                        onExportExcel={async () => {
+                          setExporting(true);
+                          try {
+                            await exportMemberStatusReportToExcel();
+                            toast.success('Excel dosyası indirildi');
+                          } catch (error) {
+                            toast.error('Excel export sırasında bir hata oluştu');
+                          } finally {
+                            setExporting(false);
+                          }
+                        }}
+                        onExportPdf={async () => {
+                          setExporting(true);
+                          try {
+                            await exportMemberStatusReportToPdf();
+                            toast.success('PDF dosyası indirildi');
+                          } catch (error) {
+                            toast.error('PDF export sırasında bir hata oluştu');
+                          } finally {
+                            setExporting(false);
+                          }
+                        }}
+                        loading={exporting}
+                      />
                       <Paper
                         elevation={0}
                         sx={{
@@ -1148,6 +1270,31 @@ const ReportsPage: React.FC = () => {
                     <EmptyState title="Aidat raporu verisi bulunamadı." />
                   ) : (
                     <Stack spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+                      <ExportButtons
+                        onExportExcel={async () => {
+                          setExporting(true);
+                          try {
+                            await exportDuesReportToExcel();
+                            toast.success('Excel dosyası indirildi');
+                          } catch (error) {
+                            toast.error('Excel export sırasında bir hata oluştu');
+                          } finally {
+                            setExporting(false);
+                          }
+                        }}
+                        onExportPdf={async () => {
+                          setExporting(true);
+                          try {
+                            await exportDuesReportToPdf();
+                            toast.success('PDF dosyası indirildi');
+                          } catch (error) {
+                            toast.error('PDF export sırasında bir hata oluştu');
+                          } finally {
+                            setExporting(false);
+                          }
+                        }}
+                        loading={exporting}
+                      />
                       {/* KPI */}
                       <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                         {/* @ts-expect-error */}

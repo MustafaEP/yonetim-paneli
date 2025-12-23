@@ -43,7 +43,7 @@ const ProfileMenu: React.FC = () => {
 
   const handleSettings = () => {
     handleClose();
-    navigate('/settings');
+    navigate('/notifications/settings');
   };
 
   const handleLogout = () => {

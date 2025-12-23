@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsOptional, ValidateIf } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { NotificationType, NotificationTargetType } from '@prisma/client';
 
@@ -21,9 +21,10 @@ export class CreateNotificationDto {
   @IsEnum(NotificationTargetType)
   targetType: NotificationTargetType;
 
-  @ApiProperty({ description: 'Hedef ID (bölge veya scope için)', required: false })
+  @ApiProperty({ description: 'Hedef ID (REGION veya SCOPE için zorunlu)', required: false })
+  @ValidateIf((o) => o.targetType === NotificationTargetType.REGION || o.targetType === NotificationTargetType.SCOPE)
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   targetId?: string;
 }
 

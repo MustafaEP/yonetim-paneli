@@ -6,8 +6,10 @@ export interface SystemSetting {
   key: string;
   value: string;
   description?: string;
-  category: 'GENERAL' | 'EMAIL' | 'SMS' | 'INTEGRATION' | 'OTHER';
+  category: 'GENERAL' | 'EMAIL' | 'SMS' | 'MEMBERSHIP' | 'DUES' | 'SECURITY' | 'NOTIFICATION' | 'UI' | 'INTEGRATION' | 'OTHER';
   isEditable: boolean;
+  isCritical?: boolean;
+  requiresApproval?: boolean;
   updatedAt: string;
   updatedBy?: string;
 }
@@ -21,7 +23,7 @@ export interface SystemLog {
   action: string;
   entityType: string;
   entityId?: string;
-  userId: string;
+  userId?: string; // Nullable - başarısız login gibi durumlar için
   user?: {
     id: string;
     firstName: string;
@@ -49,7 +51,7 @@ export const updateSystemSetting = async (
   key: string,
   payload: UpdateSystemSettingDto,
 ): Promise<SystemSetting> => {
-  const res = await httpClient.put<SystemSetting>(
+  const res = await httpClient.patch<SystemSetting>(
     `/system/settings/${key}`,
     payload,
   );

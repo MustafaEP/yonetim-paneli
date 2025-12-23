@@ -1,5 +1,5 @@
 // src/pages/members/MemberApplicationCreatePage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Card,
@@ -276,6 +276,27 @@ const MemberApplicationCreatePage: React.FC = () => {
     };
     loadWorkingDistricts();
   }, [form.workingProvinceId]);
+
+  // Seçilen çalışma il / ilçe bilgisine göre kurumları filtrele
+  const filteredInstitutions = useMemo(() => {
+    if (!form.workingProvinceId) {
+      return [];
+    }
+
+    return institutions.filter((inst) => {
+      if (inst.provinceId !== form.workingProvinceId) {
+        return false;
+      }
+
+      // Eğer çalışma ilçesi seçilmemişse sadece ile göre filtrele
+      if (!form.workingDistrictId) {
+        return true;
+      }
+
+      // Hem il hem ilçe seçilmişse, ilçe de eşleşmeli
+      return inst.districtId === form.workingDistrictId;
+    });
+  }, [institutions, form.workingProvinceId, form.workingDistrictId]);
 
   useEffect(() => {
     const loadForProvince = async () => {
@@ -1098,6 +1119,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                   label="Kurum"
                   value={form.institutionId}
                   onChange={(e) => handleChange('institutionId', e.target.value)}
+                  disabled={!form.workingProvinceId}
                   startAdornment={
                     <InputAdornment position="start">
                       <AccountBalanceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
@@ -1105,7 +1127,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                   }
                 >
                   <MenuItem value="">Seçilmedi</MenuItem>
-                  {institutions.map((inst) => (
+                  {filteredInstitutions.map((inst) => (
                     <MenuItem key={inst.id} value={inst.id}>
                       {inst.name}
                     </MenuItem>
@@ -1292,7 +1314,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                     </InputAdornment>
                   }
                 >
-                  <MenuItem value="">Seçilmedi (Yakında eklenecek)</MenuItem>
+                  <MenuItem value="">Seçilmedi</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

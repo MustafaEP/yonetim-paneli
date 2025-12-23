@@ -7,23 +7,12 @@ export class JwtConfigService {
   constructor(private configService: ConfigService) {}
 
   createJwtOptions(): JwtModuleOptions {
-    const secret = process.env.JWT_SECRET || 'dev-secret';
-    const expiresIn = process.env.JWT_EXPIRES_IN || '15m';
-
+    const expiresIn = this.configService.jwtExpiresIn;
     return {
-      secret,
+      secret: this.configService.jwtSecret,
       signOptions: {
-        expiresIn: expiresIn as any,
+        expiresIn: expiresIn as any, // JWT accepts string values like "24h", "7d" etc.
       },
     };
   }
-
-  get jwtSecret(): string {
-    return process.env.JWT_SECRET || 'dev-secret';
-  }
-
-  get jwtExpiresIn(): string {
-    return process.env.JWT_EXPIRES_IN || '15m';
-  }
 }
-

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Delete,
@@ -20,7 +21,26 @@ import { NotificationStatus, NotificationTargetType } from '@prisma/client';
 @ApiBearerAuth('JWT-auth')
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+  ) {}
+
+  @Get('me')
+  @ApiOperation({ summary: 'Kullanıcının kendi bildirimlerini getir' })
+  @ApiResponse({ status: 200 })
+  async getMyNotifications(
+    @CurrentUser() user: CurrentUserData,
+    @Query('isRead') isRead?: string,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+  ) {
+    return this.notificationsService.findUserNotifications({
+      userId: user.userId,
+      isRead: isRead === 'true' ? true : isRead === 'false' ? false : undefined,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+  }
 
   @Permissions(
     Permission.NOTIFY_ALL_MEMBERS,
@@ -76,11 +96,46 @@ export class NotificationsController {
     Permission.NOTIFY_REGION,
     Permission.NOTIFY_OWN_SCOPE,
   )
+  @Post('send')
+  @ApiOperation({ summary: 'Bildirim oluştur ve hemen gönder' })
+  @ApiResponse({ status: 201 })
+  async createAndSend(
+    @Body() dto: CreateNotificationDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    const notification = await this.notificationsService.create(dto, user.userId);
+    return this.notificationsService.send(notification.id);
+  }
+
+  @Permissions(
+    Permission.NOTIFY_ALL_MEMBERS,
+    Permission.NOTIFY_REGION,
+    Permission.NOTIFY_OWN_SCOPE,
+  )
   @Post(':id/send')
   @ApiOperation({ summary: 'Bildirimi gönder' })
   @ApiResponse({ status: 200 })
   async send(@Param('id') id: string) {
     return this.notificationsService.send(id);
+  }
+
+  @Patch('me/:id/read')
+  @ApiOperation({ summary: 'Bildirimi okundu olarak işaretle' })
+  @ApiResponse({ status: 200 })
+  async markAsRead(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id') id: string,
+  ) {
+    // id hem userNotificationId hem de notificationId olabilir
+    // Önce userNotificationId olarak deneyelim, bulamazsak notificationId olarak deneyelim
+    return this.notificationsService.markAsRead(user.userId, id);
+  }
+
+  @Patch('me/read-all')
+  @ApiOperation({ summary: 'Tüm bildirimleri okundu olarak işaretle' })
+  @ApiResponse({ status: 200 })
+  async markAllAsRead(@CurrentUser() user: CurrentUserData) {
+    return this.notificationsService.markAllAsRead(user.userId);
   }
 
   @Permissions(

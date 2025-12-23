@@ -36,6 +36,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import SendIcon from '@mui/icons-material/Send';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -259,7 +260,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               <PeopleIcon />
             </ListItemIcon>
             <ListItemText 
-              primary="Kullanıcılar" 
+              primary="Panel Kullanıcıları" 
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
@@ -768,11 +769,48 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
           </ListItemButton>
         )}
 
+        {/* Bildirimler - Herkes erişebilir (kendi bildirimlerini görüntülemek için) */}
+        <ListItemButton
+          component={Link}
+          to="/notifications"
+          selected={location.pathname.startsWith('/notifications') && !location.pathname.startsWith('/notifications/send')}
+          onClick={handleLinkClick}
+          sx={{
+            borderRadius: 2,
+            mb: 0.5,
+            '&.Mui-selected': {
+              backgroundColor: alpha(theme.palette.primary.main, 0.08),
+              color: theme.palette.primary.main,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+              },
+              '& .MuiListItemIcon-root': {
+                color: theme.palette.primary.main,
+              },
+            },
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.action.hover, 0.04),
+            },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            <NotificationsIcon />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Bildirimlerim" 
+            primaryTypographyProps={{
+              fontSize: '0.9rem',
+              fontWeight: 500,
+            }}
+          />
+        </ListItemButton>
+
+        {/* Bildirim Gönder - Yetki gerektirir */}
         {showNotifications && (
           <ListItemButton
             component={Link}
-            to="/notifications"
-            selected={location.pathname.startsWith('/notifications')}
+            to="/notifications/send"
+            selected={location.pathname === '/notifications/send'}
             onClick={handleLinkClick}
             sx={{
               borderRadius: 2,
@@ -793,10 +831,10 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
-              <NotificationsIcon />
+              <SendIcon />
             </ListItemIcon>
             <ListItemText 
-              primary="Bildirimler" 
+              primary="Bildirim Gönder" 
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,

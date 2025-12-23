@@ -1,4 +1,4 @@
-import { PrismaClient, MemberStatus, MemberSource, ContentType, ContentStatus, DocumentTemplateType, NotificationType, NotificationTargetType, NotificationStatus, SystemSettingCategory, Gender, EducationStatus, PositionTitle, ApprovalStatus, ApprovalEntityType, PaymentType } from '@prisma/client';
+import { PrismaClient, MemberStatus, MemberSource, ContentType, ContentStatus, DocumentTemplateType, NotificationType, NotificationTargetType, NotificationStatus, NotificationCategory, NotificationChannel, NotificationTypeCategory, SystemSettingCategory, Gender, EducationStatus, PositionTitle, ApprovalStatus, ApprovalEntityType, PaymentType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -504,24 +504,8 @@ async function main() {
     },
   });
 
-  // Rastgele kullanıcılar
+  // Kullanıcılar dizisi (UYE rolüne sahip kullanıcılar kaldırıldı)
   const users: string[] = [adminUser.id, genelBaskan.id, ilBaskani.id, ilceTemsilcisi.id, isyeriTemsilcisi.id, bursaIlBaskani.id, ankaraIlBaskani.id, bursaMudanyaIlceBaskani.id, ankaraCankayaIlceBaskani.id];
-  for (let i = 0; i < 10; i++) {
-    const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
-    const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
-    const user = await prisma.user.create({
-      data: {
-        email: generateEmail(firstName, lastName),
-        passwordHash,
-        firstName,
-        lastName,
-        customRoles: {
-          connect: { id: customRoleMap['UYE'] },
-        },
-      },
-    });
-    users.push(user.id);
-  }
 
   // 5. İşyerleri ekle
   console.log('🏭 İşyerleri ekleniyor...');
@@ -1283,6 +1267,103 @@ async function main() {
     memberRegistrationCounter++;
   }
   console.log(`   - 5 reddedilen üye eklendi`);
+
+  // 40 yeni aktif üye ekle
+  console.log('✅ 40 yeni aktif üye ekleniyor...');
+  for (let i = 0; i < 40; i++) {
+    const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+    const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+    
+    // Aynı isimdeki Burcu Doğan'ı atla
+    if (firstName === 'Burcu' && lastName === 'Doğan') {
+      continue;
+    }
+    
+    const source = sources[Math.floor(Math.random() * sources.length)];
+    const provinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
+    
+    // Bu ile ait district'leri veritabanından çek
+    const districtsInProvince = await prisma.district.findMany({
+      where: { provinceId },
+      select: { id: true },
+    });
+    
+    // İle ait bir ilçe seç (varsa)
+    let districtId: string | undefined;
+    if (districtsInProvince.length > 0) {
+      districtId = districtsInProvince[Math.floor(Math.random() * districtsInProvince.length)].id;
+    }
+
+    // Gerçekçi kayıt tarihi: Son 3-6 ay içinde
+    const monthsAgo = 3 + Math.floor(Math.random() * 4); // 3-6 ay önce
+    const memberCreatedAt = new Date(now);
+    memberCreatedAt.setMonth(memberCreatedAt.getMonth() - monthsAgo);
+    memberCreatedAt.setDate(1 + Math.floor(Math.random() * 28)); // Ayın rastgele bir günü
+
+    // Aktif üyeler için onay tarihi: kayıt tarihinden 1-7 gün sonra
+    const approvedAt = new Date(memberCreatedAt);
+    approvedAt.setDate(approvedAt.getDate() + 1 + Math.floor(Math.random() * 7));
+    // Gelecekteki tarih olmamalı
+    if (approvedAt > now) {
+      approvedAt.setTime(now.getTime() - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000); // Bugünden 0-7 gün önce
+    }
+
+    // Şube seç (zorunlu)
+    const branchId = allBranches.length > 0 
+      ? allBranches[Math.floor(Math.random() * allBranches.length)].id
+      : defaultBranchId;
+
+    // Çalışma bilgileri (zorunlu alanlar)
+    const workingProvinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
+    const workingDistricts = await prisma.district.findMany({
+      where: { provinceId: workingProvinceId },
+      select: { id: true },
+    });
+    const workingDistrictId = workingDistricts.length > 0 
+      ? workingDistricts[Math.floor(Math.random() * workingDistricts.length)].id 
+      : districtId || provinceId; // Fallback
+
+    // Institution seç (zorunlu)
+    const institutionsList = await prisma.institution.findMany({ take: 20 });
+    const institutionId = institutionsList.length > 0 
+      ? institutionsList[Math.floor(Math.random() * institutionsList.length)].id 
+      : null;
+
+    // Eğer institution yoksa, oluşturma işlemini atla
+    if (!institutionId) {
+      console.warn(`⚠️  Institution bulunamadı, aktif üye ${firstName} ${lastName} atlanıyor`);
+      continue;
+    }
+
+    const member = await prisma.member.create({
+      data: {
+        firstName,
+        lastName,
+        nationalId: generateNationalId(),
+        phone: generatePhone(),
+        email: generateEmail(firstName, lastName),
+        status: MemberStatus.ACTIVE,
+        source,
+        provinceId,
+        districtId,
+        branchId, // Zorunlu
+        registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
+        positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
+        // Çalışma bilgileri (zorunlu)
+        workingProvinceId,
+        workingDistrictId,
+        institutionId,
+        createdByUserId: users[Math.floor(Math.random() * users.length)],
+        approvedByUserId: users[Math.floor(Math.random() * users.length)],
+        approvedAt,
+        createdAt: memberCreatedAt,
+        updatedAt: memberCreatedAt,
+      },
+    });
+    memberIds.push(member.id);
+    memberRegistrationCounter++;
+  }
+  console.log(`   - 40 yeni aktif üye eklendi`);
 
   // Ankara ili için özel üyeler ekle
   console.log('🏛️  Ankara ili için üyeler ekleniyor...');
@@ -2428,6 +2509,7 @@ Sendika Yönetimi
   // 🔹 Sistem Ayarları
   console.log('⚙️  Sistem ayarları ekleniyor...');
   const settings = [
+    // GENEL AYARLAR
     {
       key: 'SITE_NAME',
       value: 'Sendika Yönetim Sistemi',
@@ -2436,33 +2518,342 @@ Sendika Yönetimi
       isEditable: true,
     },
     {
-      key: 'SITE_EMAIL',
-      value: 'info@sendika.org',
-      description: 'Site e-posta adresi',
+      key: 'SITE_LOGO_URL',
+      value: '/logo.png',
+      description: 'Site logo URL',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'DEFAULT_LANGUAGE',
+      value: 'tr',
+      description: 'Varsayılan dil (tr, en)',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'TIMEZONE',
+      value: 'Europe/Istanbul',
+      description: 'Zaman dilimi',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'DATE_FORMAT',
+      value: 'DD.MM.YYYY',
+      description: 'Tarih formatı',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'PAGINATION_SIZE',
+      value: '25',
+      description: 'Varsayılan sayfalama boyutu',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'SESSION_TIMEOUT',
+      value: '1440',
+      description: 'Oturum süresi (dakika)',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'MAX_FILE_SIZE',
+      value: '10485760',
+      description: 'Maksimum dosya boyutu (byte)',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'MAINTENANCE_MODE',
+      value: 'false',
+      description: 'Bakım modu (true/false)',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'MAINTENANCE_MESSAGE',
+      value: 'Sistem bakımda. Lütfen daha sonra tekrar deneyin.',
+      description: 'Bakım modu mesajı',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    // E-POSTA AYARLARI
+    {
+      key: 'EMAIL_ENABLED',
+      value: 'true',
+      description: 'E-posta gönderimi aktif/pasif',
       category: SystemSettingCategory.EMAIL,
       isEditable: true,
     },
     {
-      key: 'SMTP_HOST',
-      value: 'smtp.gmail.com',
-      description: 'SMTP sunucu adresi',
+      key: 'EMAIL_FROM_ADDRESS',
+      value: 'noreply@sendika.org',
+      description: 'Varsayılan gönderen e-posta adresi',
       category: SystemSettingCategory.EMAIL,
       isEditable: true,
     },
     {
-      key: 'SMTP_PORT',
-      value: '587',
-      description: 'SMTP port numarası',
+      key: 'EMAIL_FROM_NAME',
+      value: 'Sendika Yönetim Sistemi',
+      description: 'Varsayılan gönderen adı',
       category: SystemSettingCategory.EMAIL,
       isEditable: true,
     },
     {
-      key: 'SMS_PROVIDER',
-      value: 'twilio',
-      description: 'SMS sağlayıcı',
+      key: 'EMAIL_AWS_REGION',
+      value: 'us-east-1',
+      description: 'AWS SES bölgesi',
+      category: SystemSettingCategory.EMAIL,
+      isEditable: true,
+    },
+    {
+      key: 'EMAIL_AWS_ACCESS_KEY_ID',
+      value: '',
+      description: 'AWS SES Access Key ID (boş bırakılırsa environment variable kullanılır)',
+      category: SystemSettingCategory.EMAIL,
+      isEditable: true,
+    },
+    {
+      key: 'EMAIL_AWS_SECRET_ACCESS_KEY',
+      value: '',
+      description: 'AWS SES Secret Access Key (boş bırakılırsa environment variable kullanılır)',
+      category: SystemSettingCategory.EMAIL,
+      isEditable: true,
+    },
+    // SMS AYARLARI
+    {
+      key: 'SMS_ENABLED',
+      value: 'true',
+      description: 'SMS gönderimi aktif/pasif',
       category: SystemSettingCategory.SMS,
       isEditable: true,
     },
+    {
+      key: 'SMS_NETGSM_USERNAME',
+      value: '',
+      description: 'NetGSM kullanıcı adı (boş bırakılırsa environment variable kullanılır)',
+      category: SystemSettingCategory.SMS,
+      isEditable: true,
+    },
+    {
+      key: 'SMS_NETGSM_PASSWORD',
+      value: '',
+      description: 'NetGSM şifre (boş bırakılırsa environment variable kullanılır)',
+      category: SystemSettingCategory.SMS,
+      isEditable: true,
+    },
+    {
+      key: 'SMS_NETGSM_MSG_HEADER',
+      value: '',
+      description: 'NetGSM mesaj başlığı (boş bırakılırsa environment variable kullanılır)',
+      category: SystemSettingCategory.SMS,
+      isEditable: true,
+    },
+    {
+      key: 'SMS_NETGSM_API_URL',
+      value: 'https://api.netgsm.com.tr/sms/send/get',
+      description: 'NetGSM API URL',
+      category: SystemSettingCategory.SMS,
+      isEditable: true,
+    },
+    // ÜYELİK AYARLARI
+    {
+      key: 'MEMBERSHIP_AUTO_APPROVE',
+      value: 'false',
+      description: 'Üyelik başvurularını otomatik onayla',
+      category: SystemSettingCategory.MEMBERSHIP,
+      isEditable: true,
+    },
+    {
+      key: 'MEMBERSHIP_DEFAULT_STATUS',
+      value: 'PENDING',
+      description: 'Varsayılan üyelik durumu (PENDING, ACTIVE)',
+      category: SystemSettingCategory.MEMBERSHIP,
+      isEditable: true,
+    },
+    {
+      key: 'MEMBERSHIP_REQUIRE_APPROVAL',
+      value: 'true',
+      description: 'Üyelik onayı zorunlu mu?',
+      category: SystemSettingCategory.MEMBERSHIP,
+      isEditable: true,
+    },
+    {
+      key: 'MEMBERSHIP_MIN_AGE',
+      value: '18',
+      description: 'Minimum üyelik yaşı',
+      category: SystemSettingCategory.MEMBERSHIP,
+      isEditable: true,
+    },
+    // AİDAT AYARLARI
+    {
+      key: 'DUES_DEFAULT_AMOUNT',
+      value: '100',
+      description: 'Varsayılan aidat tutarı (TL)',
+      category: SystemSettingCategory.DUES,
+      isEditable: true,
+    },
+    {
+      key: 'DUES_DEFAULT_PERIOD',
+      value: 'MONTHLY',
+      description: 'Varsayılan ödeme periyodu (MONTHLY, YEARLY)',
+      category: SystemSettingCategory.DUES,
+      isEditable: true,
+    },
+    {
+      key: 'DUES_LATE_FEE_RATE',
+      value: '0.05',
+      description: 'Gecikme cezası oranı (0.05 = %5)',
+      category: SystemSettingCategory.DUES,
+      isEditable: true,
+    },
+    {
+      key: 'DUES_REMINDER_DAYS',
+      value: '7',
+      description: 'Borç hatırlatma gün sayısı (ödeme tarihinden önce)',
+      category: SystemSettingCategory.DUES,
+      isEditable: true,
+    },
+    {
+      key: 'DUES_GRACE_PERIOD_DAYS',
+      value: '15',
+      description: 'Ödeme erteleme süresi (gün)',
+      category: SystemSettingCategory.DUES,
+      isEditable: true,
+    },
+    // GÜVENLİK AYARLARI
+    {
+      key: 'SECURITY_PASSWORD_MIN_LENGTH',
+      value: '8',
+      description: 'Minimum şifre uzunluğu',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    {
+      key: 'SECURITY_PASSWORD_REQUIRE_UPPERCASE',
+      value: 'true',
+      description: 'Şifrede büyük harf zorunlu mu?',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    {
+      key: 'SECURITY_PASSWORD_REQUIRE_LOWERCASE',
+      value: 'true',
+      description: 'Şifrede küçük harf zorunlu mu?',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    {
+      key: 'SECURITY_PASSWORD_REQUIRE_NUMBER',
+      value: 'true',
+      description: 'Şifrede rakam zorunlu mu?',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    {
+      key: 'SECURITY_PASSWORD_REQUIRE_SPECIAL',
+      value: 'false',
+      description: 'Şifrede özel karakter zorunlu mu?',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    {
+      key: 'SECURITY_SESSION_TIMEOUT',
+      value: '1440',
+      description: 'Oturum zaman aşımı (dakika)',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    {
+      key: 'SECURITY_MAX_LOGIN_ATTEMPTS',
+      value: '5',
+      description: 'Maksimum giriş denemesi',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    {
+      key: 'SECURITY_LOCKOUT_DURATION',
+      value: '30',
+      description: 'Hesap kilitlenme süresi (dakika)',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    {
+      key: 'SECURITY_2FA_ENABLED',
+      value: 'false',
+      description: 'İki faktörlü kimlik doğrulama aktif mi?',
+      category: SystemSettingCategory.SECURITY,
+      isEditable: true,
+    },
+    // BİLDİRİM AYARLARI
+    {
+      key: 'NOTIFICATION_EMAIL_ENABLED',
+      value: 'true',
+      description: 'E-posta bildirimleri aktif mi?',
+      category: SystemSettingCategory.NOTIFICATION,
+      isEditable: true,
+    },
+    {
+      key: 'NOTIFICATION_SMS_ENABLED',
+      value: 'true',
+      description: 'SMS bildirimleri aktif mi?',
+      category: SystemSettingCategory.NOTIFICATION,
+      isEditable: true,
+    },
+    {
+      key: 'NOTIFICATION_IN_APP_ENABLED',
+      value: 'true',
+      description: 'Uygulama içi bildirimler aktif mi?',
+      category: SystemSettingCategory.NOTIFICATION,
+      isEditable: true,
+    },
+    {
+      key: 'NOTIFICATION_DUES_REMINDER_ENABLED',
+      value: 'true',
+      description: 'Aidat hatırlatma bildirimleri aktif mi?',
+      category: SystemSettingCategory.NOTIFICATION,
+      isEditable: true,
+    },
+    {
+      key: 'NOTIFICATION_MEMBERSHIP_APPROVAL_ENABLED',
+      value: 'true',
+      description: 'Üyelik onay bildirimleri aktif mi?',
+      category: SystemSettingCategory.NOTIFICATION,
+      isEditable: true,
+    },
+    // UI AYARLARI
+    {
+      key: 'UI_THEME',
+      value: 'light',
+      description: 'Varsayılan tema (light, dark, auto)',
+      category: SystemSettingCategory.UI,
+      isEditable: true,
+    },
+    {
+      key: 'UI_PRIMARY_COLOR',
+      value: '#1976d2',
+      description: 'Birincil renk (hex)',
+      category: SystemSettingCategory.UI,
+      isEditable: true,
+    },
+    {
+      key: 'UI_SHOW_BREADCRUMBS',
+      value: 'true',
+      description: 'Breadcrumb göster',
+      category: SystemSettingCategory.UI,
+      isEditable: true,
+    },
+    {
+      key: 'UI_SHOW_NOTIFICATIONS',
+      value: 'true',
+      description: 'Bildirim ikonu göster',
+      category: SystemSettingCategory.UI,
+      isEditable: true,
+    },
+    // ENTEGRASYON AYARLARI
     {
       key: 'PAYMENT_GATEWAY',
       value: 'iyzico',
@@ -2471,10 +2862,17 @@ Sendika Yönetimi
       isEditable: true,
     },
     {
-      key: 'MAX_FILE_SIZE',
-      value: '10485760',
-      description: 'Maksimum dosya boyutu (byte)',
-      category: SystemSettingCategory.GENERAL,
+      key: 'PAYMENT_GATEWAY_API_KEY',
+      value: '',
+      description: 'Ödeme gateway API anahtarı',
+      category: SystemSettingCategory.INTEGRATION,
+      isEditable: true,
+    },
+    {
+      key: 'PAYMENT_GATEWAY_SECRET_KEY',
+      value: '',
+      description: 'Ödeme gateway gizli anahtarı',
+      category: SystemSettingCategory.INTEGRATION,
       isEditable: true,
     },
   ];
@@ -2495,10 +2893,12 @@ Sendika Yönetimi
   const provincesForNotifications = await prisma.province.findMany({ take: 1 });
   if (activeUsers.length > 0 && provincesForNotifications.length > 0) {
     const notifications = [
+      // Genel bildirimler
       {
         title: 'Hoş Geldiniz',
         message: 'Sendika yönetim sistemine hoş geldiniz. Tüm üyelerimize başarılar dileriz.',
-        type: NotificationType.IN_APP,
+        category: NotificationCategory.ANNOUNCEMENT,
+        channels: [NotificationChannel.IN_APP],
         targetType: NotificationTargetType.ALL_MEMBERS,
         status: NotificationStatus.SENT,
         sentAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 gün önce
@@ -2510,7 +2910,9 @@ Sendika Yönetimi
       {
         title: 'Aidat Hatırlatması',
         message: 'Aidat ödemelerinizi zamanında yapmanızı rica ederiz.',
-        type: NotificationType.EMAIL,
+        category: NotificationCategory.FINANCIAL,
+        typeCategory: NotificationTypeCategory.DUES_OVERDUE,
+        channels: [NotificationChannel.EMAIL],
         targetType: NotificationTargetType.REGION,
         targetId: provincesForNotifications[0].id,
         status: NotificationStatus.SENT,
@@ -2520,12 +2922,205 @@ Sendika Yönetimi
         successCount: 23,
         failedCount: 2,
       },
+      // Admin kullanıcısına özel bildirimler
+      {
+        title: 'Yeni Üye Başvurusu Bekliyor',
+        message: 'Sistemde onay bekleyen 5 yeni üye başvurusu bulunmaktadır. Lütfen kontrol ediniz.',
+        category: NotificationCategory.SYSTEM,
+        typeCategory: NotificationTypeCategory.MEMBER_APPLICATION_NEW,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 saat önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+        actionUrl: '/members?status=PENDING',
+        actionLabel: 'Başvuruları Görüntüle',
+      },
+      {
+        title: 'Muhasebe Onayı Bekliyor',
+        message: 'Tevkifat dosyaları için muhasebe onayı bekleyen 3 işlem bulunmaktadır.',
+        category: NotificationCategory.FINANCIAL,
+        typeCategory: NotificationTypeCategory.ACCOUNTING_APPROVAL_PENDING,
+        channels: [NotificationChannel.IN_APP],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 saat önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+        actionUrl: '/accounting/approvals',
+        actionLabel: 'Onayları Görüntüle',
+      },
+      {
+        title: 'Sistem Güncellemesi Tamamlandı',
+        message: 'Sistem güncellemesi başarıyla tamamlandı. Yeni özellikler ve iyileştirmeler aktif edildi.',
+        category: NotificationCategory.SYSTEM,
+        channels: [NotificationChannel.IN_APP],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 gün önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+      },
+      {
+        title: 'Aylık Rapor Hazır',
+        message: 'Aralık 2024 ayı için detaylı rapor hazırlanmıştır. Raporu görüntülemek için tıklayınız.',
+        category: NotificationCategory.FINANCIAL,
+        typeCategory: NotificationTypeCategory.DUES_BULK_REPORT_READY,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 gün önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+        actionUrl: '/reports/monthly?month=12&year=2024',
+        actionLabel: 'Raporu Görüntüle',
+      },
+      {
+        title: 'Kritik Güvenlik Uyarısı',
+        message: 'Sistemde olağandışı aktivite tespit edildi. Lütfen güvenlik loglarını kontrol ediniz.',
+        category: NotificationCategory.SYSTEM,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 30 * 60 * 1000), // 30 dakika önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+        actionUrl: '/security/logs',
+        actionLabel: 'Güvenlik Loglarını İncele',
+      },
+      {
+        title: 'Yedekleme Başarılı',
+        message: 'Veritabanı yedekleme işlemi başarıyla tamamlandı. Yedek dosyası güvenli bir şekilde saklanmıştır.',
+        category: NotificationCategory.SYSTEM,
+        channels: [NotificationChannel.IN_APP],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 saat önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+      },
+      {
+        title: 'Toplu Bildirim Gönderildi',
+        message: 'Tüm üyelere gönderilen "Aidat Hatırlatması" bildirimi başarıyla tamamlandı. 95 üyeye ulaşıldı.',
+        category: NotificationCategory.ANNOUNCEMENT,
+        channels: [NotificationChannel.IN_APP],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), // 6 gün önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+      },
+      {
+        title: 'Yeni Rol Ataması Yapıldı',
+        message: 'Sistemde yeni bir kullanıcıya rol ataması yapıldı. Detayları görüntülemek için tıklayınız.',
+        category: NotificationCategory.SYSTEM,
+        typeCategory: NotificationTypeCategory.ROLE_CHANGED,
+        channels: [NotificationChannel.IN_APP],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 gün önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+        actionUrl: '/users',
+        actionLabel: 'Kullanıcıları Görüntüle',
+      },
+      {
+        title: 'Borçlu Üye Hatırlatması',
+        message: '3 aydan fazla süredir aidat ödemesi yapmayan 15 üye bulunmaktadır. Lütfen takip ediniz.',
+        category: NotificationCategory.FINANCIAL,
+        typeCategory: NotificationTypeCategory.DUES_OVERDUE,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+        status: NotificationStatus.SENT,
+        sentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 gün önce
+        sentBy: adminUser.id,
+        recipientCount: 1,
+        successCount: 1,
+        failedCount: 0,
+        actionUrl: '/dues/debts',
+        actionLabel: 'Borçlu Üyeleri Görüntüle',
+      },
     ];
 
     for (const notification of notifications) {
-      await prisma.notification.create({ data: notification });
+      // Migration'da type field'ı NOT NULL, channels array'inin ilk elemanını type olarak kullan
+      const channelToTypeMap: Record<NotificationChannel, NotificationType> = {
+        [NotificationChannel.IN_APP]: NotificationType.IN_APP,
+        [NotificationChannel.EMAIL]: NotificationType.EMAIL,
+        [NotificationChannel.SMS]: NotificationType.SMS,
+        [NotificationChannel.WHATSAPP]: NotificationType.WHATSAPP,
+      };
+      
+      const notificationData = {
+        ...notification,
+        type: channelToTypeMap[notification.channels[0]], // channels array'inin ilk elemanı type olarak kullanılıyor
+      };
+      await prisma.notification.create({ data: notificationData });
     }
-    console.log(`   - ${notifications.length} bildirim eklendi`);
+    console.log(`   - ${notifications.length} bildirim eklendi (${notifications.filter(n => n.targetId === adminUser.id).length} admin kullanıcısına özel)`);
+    
+    // Admin kullanıcısına gönderilen bildirimler için UserNotification kayıtları oluştur
+    console.log('📬 Admin kullanıcısı için bildirim kayıtları oluşturuluyor...');
+    const adminNotifications = await prisma.notification.findMany({
+      where: {
+        targetType: NotificationTargetType.USER,
+        targetId: adminUser.id,
+      },
+    });
+    
+    let readCount = 0;
+    let unreadCount = 0;
+    
+    for (let i = 0; i < adminNotifications.length; i++) {
+      const notification = adminNotifications[i];
+      const isRead = i < Math.floor(adminNotifications.length * 0.4); // İlk %40'ı okunmuş olarak işaretle
+      const readAt = isRead && notification.sentAt 
+        ? new Date(notification.sentAt.getTime() + Math.random() * 24 * 60 * 60 * 1000) 
+        : null; // Okunma zamanı gönderimden sonra rastgele bir saat içinde
+      
+      await prisma.userNotification.create({
+        data: {
+          userId: adminUser.id,
+          notificationId: notification.id,
+          isRead,
+          readAt,
+        },
+      });
+      
+      if (isRead) {
+        readCount++;
+      } else {
+        unreadCount++;
+      }
+    }
+    
+    console.log(`   - ${adminNotifications.length} bildirim admin kullanıcısına eklendi (${readCount} okunmuş, ${unreadCount} okunmamış)`);
   }
 
   // 🔹 Tevkifat Merkezleri

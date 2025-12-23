@@ -72,11 +72,12 @@ model User {
   approvedTevkifatFiles TevkifatFile[] @relation("TevkifatFileApprovedBy")
 
   // 🔹 Üye ödeme ilişkileri
-  createdMemberPayments MemberPayment[] @relation("MemberPaymentCreatedBy")
+  createdMemberPayments  MemberPayment[] @relation("MemberPaymentCreatedBy")
   approvedMemberPayments MemberPayment[] @relation("MemberPaymentApprovedBy")
 
   // 🔹 Kullanıcı bildirimleri
-  userNotifications UserNotification[] @relation("UserNotifications")
+  userNotifications    UserNotification[]        @relation("UserNotifications")
+  notificationSettings UserNotificationSettings? @relation("UserNotificationSettings")
 }
 
 enum MemberStatus {
@@ -129,9 +130,9 @@ model Member {
   // 🔹 Üyelik & Yönetim Kurulu Bilgileri
   membershipInfoOptionId String? // Admin tarafından yönetilen seçmeli bilgi
   membershipInfoOption   MembershipInfoOption? @relation(fields: [membershipInfoOptionId], references: [id])
-  registrationNumber     String  @unique // Üye kayıt numarası (zorunlu, benzersiz, admin belirler)
-  boardDecisionDate   DateTime? // Yönetim kurulu karar tarihi
-  boardDecisionBookNo String? // Yönetim kurulu karar defter no
+  registrationNumber     String                @unique // Üye kayıt numarası (zorunlu, benzersiz, admin belirler)
+  boardDecisionDate      DateTime? // Yönetim kurulu karar tarihi
+  boardDecisionBookNo    String? // Yönetim kurulu karar defter no
 
   // 🔹 Kimlik & Kişisel Bilgiler
   motherName String? // Anne adı (seçmeli)
@@ -149,37 +150,37 @@ model Member {
   positionTitle     PositionTitle // Kadro ünvanı (zorunlu)
   institutionRegNo  String? // Kurum sicil no (zorunlu değil)
   workUnit          String? // Görev yaptığı birim
-  workUnitAddress   String?        @db.Text // Birim adresi
+  workUnitAddress   String?       @db.Text // Birim adresi
   tevkifatCenterId  String? // Tevkifat merkezi (seçmeli)
   branchId          String // Bağlı olduğu şube (zorunlu)
 
   // Bölge ilişkileri (ikamet adresi - çalıştığı yer değil)
-  provinceId  String?
-  districtId  String?
+  provinceId String?
+  districtId String?
 
-  province  Province?  @relation("MemberProvince", fields: [provinceId], references: [id])
-  district  District?  @relation("MemberDistrict", fields: [districtId], references: [id])
+  province Province? @relation("MemberProvince", fields: [provinceId], references: [id])
+  district District? @relation("MemberDistrict", fields: [districtId], references: [id])
 
   // 🔹 Çalışma ilişkileri (zorunlu)
-  workingProvince Province    @relation("MemberWorkingProvince", fields: [workingProvinceId], references: [id])
-  workingDistrict District    @relation("MemberWorkingDistrict", fields: [workingDistrictId], references: [id])
-  institution     Institution @relation(fields: [institutionId], references: [id])
+  workingProvince Province        @relation("MemberWorkingProvince", fields: [workingProvinceId], references: [id])
+  workingDistrict District        @relation("MemberWorkingDistrict", fields: [workingDistrictId], references: [id])
+  institution     Institution     @relation(fields: [institutionId], references: [id])
   tevkifatCenter  TevkifatCenter? @relation(fields: [tevkifatCenterId], references: [id])
-  branch          Branch      @relation("MemberBranch", fields: [branchId], references: [id])
+  branch          Branch          @relation("MemberBranch", fields: [branchId], references: [id])
 
   createdByUserId  String?
   approvedByUserId String?
   approvedAt       DateTime?
 
   // 🔹 Kullanıcı ilişkileri
-  createdBy   User? @relation("MemberCreatedBy", fields: [createdByUserId], references: [id])
-  approvedBy  User? @relation("MemberApprovedBy", fields: [approvedByUserId], references: [id])
+  createdBy  User? @relation("MemberCreatedBy", fields: [createdByUserId], references: [id])
+  approvedBy User? @relation("MemberApprovedBy", fields: [approvedByUserId], references: [id])
 
   // 🔹 Üyelik iptal bilgisi (field önce, relation sonra)
   cancelledByUserId  String? // Üyeliği iptal eden kullanıcı
   cancellationReason String? // Üyeliğin iptal edilme nedeni
   cancelledAt        DateTime? // Üyeliğin iptal edildiği tarih
-  cancelledBy        User? @relation("MemberCancelledBy", fields: [cancelledByUserId], references: [id])
+  cancelledBy        User?     @relation("MemberCancelledBy", fields: [cancelledByUserId], references: [id])
 
   // 🔹 Önceki iptal edilmiş üye bilgisi (yeniden üye olanlar için)
   previousCancelledMemberId String? // Daha önce iptal edilmiş üyenin ID'si
@@ -405,7 +406,7 @@ model MemberDocument {
   @@index([generatedBy])
 }
 
-// 🔹 Bildirimler
+// 🔹 Bildirimler - Genişletilmiş Sistem
 enum NotificationType {
   EMAIL
   SMS
@@ -413,49 +414,142 @@ enum NotificationType {
   IN_APP
 }
 
+enum NotificationCategory {
+  SYSTEM // Sistem bildirimleri
+  FINANCIAL // Mali bildirimler
+  ANNOUNCEMENT // Duyuru bildirimleri
+  REMINDER // Hatırlatmalar
+}
+
+enum NotificationTypeCategory {
+  // Sistem Bildirimleri
+  MEMBER_APPLICATION_NEW
+  MEMBER_APPLICATION_APPROVED
+  MEMBER_APPLICATION_REJECTED
+  ROLE_CHANGED
+  SCOPE_ASSIGNED
+  PASSWORD_RESET
+  ACCOUNT_ACTIVATED
+  ACCOUNT_DEACTIVATED
+
+  // Mali Bildirimler
+  DUES_PAYMENT_RECEIVED
+  DUES_OVERDUE
+  DUES_BULK_REPORT_READY
+  ACCOUNTING_APPROVAL_PENDING
+
+  // Duyuru Bildirimleri
+  ANNOUNCEMENT_GENERAL
+  ANNOUNCEMENT_REGIONAL
+  ANNOUNCEMENT_WORKPLACE
+  ANNOUNCEMENT_ELECTION
+
+  // Hatırlatmalar
+  REMINDER_DUES_PAYMENT
+  REMINDER_DOCUMENT_MISSING
+  REMINDER_REPRESENTATIVE_TERM_EXPIRING
+  REMINDER_PENDING_APPROVAL
+}
+
 enum NotificationTargetType {
   ALL_MEMBERS
   REGION
   SCOPE
   USER // Belirli kullanıcıya (admin/genel başkan için onay bekleyen işlemler)
+  ROLE // Rol bazlı (örn: tüm il başkanları)
 }
 
 enum NotificationStatus {
   PENDING
+  SENDING
   SENT
   FAILED
+  PARTIALLY_SENT
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
 }
 
 model Notification {
-  id             String                 @id @default(cuid())
+  id             String                    @id @default(cuid())
   title          String
-  message        String                 @db.Text
-  type           NotificationType
+  message        String                    @db.Text
+  category       NotificationCategory      @default(SYSTEM)
+  typeCategory   NotificationTypeCategory?
+  type           NotificationType // Veritabanında NOT NULL, channels array'inin ilk elemanından türetilir
+  channels       NotificationChannel[]     @default([IN_APP])
   targetType     NotificationTargetType
-  targetId       String? // provinceId veya başka bir ID
-  status         NotificationStatus     @default(PENDING)
+  targetId       String? // provinceId, roleId, userId vb.
+  targetRole     String? // Rol bazlı bildirim için
+  status         NotificationStatus        @default(PENDING)
   sentAt         DateTime?
+  scheduledFor   DateTime? // Zamanlanmış bildirimler için
   sentBy         String
-  sentByUser     User?                  @relation("NotificationSentBy", fields: [sentBy], references: [id])
-  recipientCount Int                    @default(0)
-  successCount   Int                    @default(0)
-  failedCount    Int                    @default(0)
+  sentByUser     User?                     @relation("NotificationSentBy", fields: [sentBy], references: [id])
+  recipientCount Int                       @default(0)
+  successCount   Int                       @default(0)
+  failedCount    Int                       @default(0)
+  actionUrl      String? // Bildirime tıklandığında gidilecek URL
+  actionLabel    String? // Aksiyon butonu etiketi
+  metadata       Json? // Ek bilgiler (entityId, entityType vb.)
 
-  // Kullanıcı bildirimleri (onay bekleyen işlemler için)
+  // İlişkiler
   userNotifications UserNotification[]
+  recipients        NotificationRecipient[]
+  logs              NotificationLog[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([sentBy])
   @@index([status])
   @@index([targetType])
+  @@index([category])
+  @@index([typeCategory])
+  @@index([scheduledFor])
 }
 
-// 🔹 Kullanıcı Bildirimleri (Okundu/Okunmadı takibi)
+// 🔹 Bildirim Alıcıları (Her alıcı için ayrı kayıt)
+model NotificationRecipient {
+  id             String              @id @default(cuid())
+  notificationId String
+  notification   Notification        @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String? // User ID (varsa)
+  memberId       String? // Member ID (varsa)
+  email          String? // Email adresi
+  phone          String? // Telefon numarası
+  channel        NotificationChannel
+
+  // Durum
+  status        NotificationStatus @default(PENDING)
+  sentAt        DateTime?
+  readAt        DateTime?
+  deliveredAt   DateTime?
+  failedAt      DateTime?
+  failureReason String?            @db.Text
+
+  // İlişkiler
+  logs NotificationLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([notificationId])
+  @@index([userId])
+  @@index([memberId])
+  @@index([status])
+  @@index([channel])
+}
+
+// 🔹 Kullanıcı Bildirimleri (IN_APP için okundu/okunmadı takibi)
 model UserNotification {
   id             String       @id @default(cuid())
   userId         String
-  user           User         @relation("UserNotifications", fields: [userId], references: [id])
+  user           User         @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
   notificationId String
   notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   isRead         Boolean      @default(false)
@@ -467,6 +561,66 @@ model UserNotification {
   @@index([userId])
   @@index([isRead])
   @@index([notificationId])
+  @@index([createdAt])
+}
+
+// 🔹 Bildirim Logları (Detaylı audit log)
+model NotificationLog {
+  id               String                 @id @default(cuid())
+  notificationId   String
+  notification     Notification           @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  recipientId      String?
+  recipient        NotificationRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  channel          NotificationChannel
+  action           String // SENT, DELIVERED, READ, FAILED, BOUNCED, etc.
+  status           NotificationStatus
+  message          String?                @db.Text
+  metadata         Json? // Ek detaylar
+  errorDetails     Json? // Hata detayları
+  providerResponse Json? // SMS/Email provider yanıtı
+  ipAddress        String?
+  userAgent        String?
+
+  createdAt DateTime @default(now())
+
+  @@index([notificationId])
+  @@index([recipientId])
+  @@index([channel])
+  @@index([action])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// 🔹 Kullanıcı Bildirim Ayarları
+model UserNotificationSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation("UserNotificationSettings", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Kanal ayarları
+  emailEnabled    Boolean @default(true)
+  smsEnabled      Boolean @default(true)
+  whatsappEnabled Boolean @default(false)
+  inAppEnabled    Boolean @default(true)
+
+  // Saat aralığı (zaman dilimi)
+  timeZone        String  @default("Europe/Istanbul")
+  quietHoursStart String? // HH:mm format (örn: "22:00")
+  quietHoursEnd   String? // HH:mm format (örn: "08:00")
+
+  // Kategori bazlı ayarlar
+  systemNotificationsEnabled       Boolean @default(true)
+  financialNotificationsEnabled    Boolean @default(true)
+  announcementNotificationsEnabled Boolean @default(true)
+  reminderNotificationsEnabled     Boolean @default(true)
+
+  // Tip bazlı ayarlar (JSON - NotificationTypeCategory -> boolean mapping)
+  typeCategorySettings Json? // { MEMBER_APPLICATION_NEW: true, ... }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // 🔹 Sistem Ayarları
@@ -475,6 +629,11 @@ enum SystemSettingCategory {
   EMAIL
   SMS
   INTEGRATION
+  MEMBERSHIP
+  DUES
+  SECURITY
+  NOTIFICATION
+  UI
   OTHER
 }
 
@@ -485,6 +644,8 @@ model SystemSetting {
   description   String?               @db.Text
   category      SystemSettingCategory
   isEditable    Boolean               @default(true)
+  isCritical    Boolean               @default(false) // Kritik ayarlar için onay gerekir
+  requiresApproval Boolean             @default(false) // Onay mekanizması aktif mi?
   updatedAt     DateTime              @updatedAt
   updatedBy     String?
   updatedByUser User?                 @relation("SystemSettingUpdatedBy", fields: [updatedBy], references: [id])
@@ -493,6 +654,7 @@ model SystemSetting {
 
   @@index([category])
   @@index([key])
+  @@index([isCritical])
 }
 
 // 🔹 Sistem Logları
@@ -501,7 +663,7 @@ model SystemLog {
   action     String
   entityType String
   entityId   String?
-  userId     String
+  userId     String? // Nullable - başarısız login gibi durumlar için
   user       User?   @relation("SystemLogUser", fields: [userId], references: [id])
   details    Json? // Ek detaylar
   ipAddress  String?
@@ -690,29 +852,29 @@ model TevkifatFile {
 
 // 🔹 Üye Ödemeleri
 model MemberPayment {
-  id                String      @id @default(cuid())
-  memberId          String
-  member            Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  id                 String          @id @default(cuid())
+  memberId           String
+  member             Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
   registrationNumber String? // Üye kayıt numarası (member'dan kopyalanır, hızlı erişim için)
-  paymentDate       DateTime    @default(now()) // Ödemenin sisteme işlendiği tarih
+  paymentDate        DateTime        @default(now()) // Ödemenin sisteme işlendiği tarih
   paymentPeriodMonth Int // Ay (1-12)
   paymentPeriodYear  Int // Yıl
-  amount            Decimal     @db.Decimal(10, 2) // Ödenen tutar
-  paymentType       PaymentType // TEVKIFAT / ELDEN / HAVALE
-  tevkifatCenterId  String? // Tevkifat merkezi (TEVKIFAT tipinde zorunlu)
-  tevkifatCenter    TevkifatCenter? @relation(fields: [tevkifatCenterId], references: [id])
-  tevkifatFileId    String? // Tevkifat dosyası ile ilişki (varsa)
-  tevkifatFile      TevkifatFile? @relation(fields: [tevkifatFileId], references: [id])
-  description       String?     @db.Text // Serbest açıklama
-  documentUrl       String? // PDF / dekont URL'i
-  isApproved        Boolean     @default(false) // Onay durumu
-  approvedByUserId  String? // Onaylayan kullanıcı (Admin/Muhasebe)
-  approvedByUser    User?       @relation("MemberPaymentApprovedBy", fields: [approvedByUserId], references: [id])
-  approvedAt        DateTime? // Onay zamanı
-  createdByUserId   String // İşlemi yapan kullanıcı
-  createdByUser     User        @relation("MemberPaymentCreatedBy", fields: [createdByUserId], references: [id])
-  ipAddress         String? // İşlem IP adresi
-  userAgent         String? // User agent (log için)
+  amount             Decimal         @db.Decimal(10, 2) // Ödenen tutar
+  paymentType        PaymentType // TEVKIFAT / ELDEN / HAVALE
+  tevkifatCenterId   String? // Tevkifat merkezi (TEVKIFAT tipinde zorunlu)
+  tevkifatCenter     TevkifatCenter? @relation(fields: [tevkifatCenterId], references: [id])
+  tevkifatFileId     String? // Tevkifat dosyası ile ilişki (varsa)
+  tevkifatFile       TevkifatFile?   @relation(fields: [tevkifatFileId], references: [id])
+  description        String?         @db.Text // Serbest açıklama
+  documentUrl        String? // PDF / dekont URL'i
+  isApproved         Boolean         @default(false) // Onay durumu
+  approvedByUserId   String? // Onaylayan kullanıcı (Admin/Muhasebe)
+  approvedByUser     User?           @relation("MemberPaymentApprovedBy", fields: [approvedByUserId], references: [id])
+  approvedAt         DateTime? // Onay zamanı
+  createdByUserId    String // İşlemi yapan kullanıcı
+  createdByUser      User            @relation("MemberPaymentCreatedBy", fields: [createdByUserId], references: [id])
+  ipAddress          String? // İşlem IP adresi
+  userAgent          String? // User agent (log için)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

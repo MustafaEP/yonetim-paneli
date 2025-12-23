@@ -64,9 +64,58 @@ export const exportToCSV = (
 };
 
 /**
- * Excel export fonksiyonu (CSV formatında, Excel ile açılabilir)
+ * Excel export fonksiyonu (xlsx kütüphanesi ile gerçek Excel formatı)
  */
-export const exportToExcel = exportToCSV;
+export const exportToExcel = (
+  data: any[],
+  columns: ExportColumn[],
+  filename: string = 'export',
+) => {
+  try {
+    // xlsx kütüphanesini dinamik import et
+    import('xlsx').then((XLSX) => {
+      // Sadece görünür kolonları al
+      const visibleColumns = columns.filter((col) => col.field !== 'actions');
+      
+      // Veriyi Excel formatına dönüştür
+      const worksheetData = data.map((row) => {
+        const rowData: Record<string, any> = {};
+        visibleColumns.forEach((col) => {
+          let value = row[col.field];
+          if (col.valueGetter) {
+            value = col.valueGetter(value, row);
+          }
+          rowData[col.headerName] = value !== null && value !== undefined ? value : '';
+        });
+        return rowData;
+      });
+
+      // Workbook oluştur
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+
+      // Kolon genişliklerini ayarla
+      const colWidths = visibleColumns.map((col) => ({
+        wch: col.width || 15,
+      }));
+      worksheet['!cols'] = colWidths;
+
+      // Worksheet'i workbook'a ekle
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Rapor');
+
+      // Excel dosyasını indir
+      XLSX.writeFile(workbook, `${filename}.xlsx`);
+    }).catch((error) => {
+      console.error('xlsx import hatası:', error);
+      // Fallback: CSV export kullan
+      exportToCSV(data, columns, filename);
+    });
+  } catch (error) {
+    console.error('Excel export hatası:', error);
+    // Fallback: CSV export kullan
+    exportToCSV(data, columns, filename);
+  }
+};
 
 /**
  * PDF export fonksiyonu (basit HTML tablosu olarak)

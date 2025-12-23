@@ -186,7 +186,7 @@ const UsersListPage: React.FC = () => {
                 mb: 0.5,
               }}
             >
-              Kullanıcılar
+              Panel Kullanıcıları
             </Typography>
             <Typography
               variant="body2"

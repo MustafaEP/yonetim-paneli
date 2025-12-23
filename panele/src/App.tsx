@@ -25,6 +25,8 @@ import DocumentTemplatesPage from './pages/documents/DocumentTemplatesPage';
 import MemberDocumentsPage from './pages/documents/MemberDocumentsPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
+import MyNotificationsPage from './pages/notifications/MyNotificationsPage';
+import NotificationSettingsPage from './pages/notifications/NotificationSettingsPage';
 import SystemSettingsPage from './pages/system/SystemSettingsPage';
 import SystemLogsPage from './pages/system/SystemLogsPage';
 import BranchesPage from './pages/regions/BranchesPage';
@@ -34,6 +36,8 @@ import PaymentsListPage from './pages/payments/PaymentsListPage';
 import PaymentDetailPage from './pages/payments/PaymentDetailPage';
 import BranchDetailPage from './pages/regions/BranchDetailPage';
 import InstitutionsPage from './pages/institutions/InstitutionsPage';
+import InstitutionDetailPage from './pages/institutions/InstitutionDetailPage';
+import InstitutionCreatePage from './pages/institutions/InstitutionCreatePage';
 import { Box, Typography, Button, Container, Paper, alpha, useTheme } from '@mui/material';
 import BlockIcon from '@mui/icons-material/Block';
 import HomeIcon from '@mui/icons-material/Home';
@@ -170,6 +174,16 @@ const App: React.FC = () => {
           <Route element={<ProtectedRoute requiredPermission="INSTITUTION_LIST" />}>
             <Route path="/institutions" element={<InstitutionsPage />} />
           </Route>
+          
+          {/* Kurum Detay: INSTITUTION_VIEW */}
+          <Route element={<ProtectedRoute requiredPermission="INSTITUTION_VIEW" />}>
+            <Route path="/institutions/:id" element={<InstitutionDetailPage />} />
+          </Route>
+          
+          {/* Kurum Oluştur: INSTITUTION_CREATE */}
+          <Route element={<ProtectedRoute requiredPermission="INSTITUTION_CREATE" />}>
+            <Route path="/institutions/new" element={<InstitutionCreatePage />} />
+          </Route>
 
           {/* İçerik Yönetimi: CONTENT_MANAGE */}
           <Route element={<ProtectedRoute requiredPermission="CONTENT_MANAGE" />}>
@@ -194,8 +208,12 @@ const App: React.FC = () => {
 
           {/* Bildirimler: NOTIFY_ALL_MEMBERS, NOTIFY_REGION, NOTIFY_OWN_SCOPE */}
           <Route element={<ProtectedRoute requiredPermission="NOTIFY_ALL_MEMBERS" alternativePermission="NOTIFY_REGION" alternativePermission2="NOTIFY_OWN_SCOPE" />}>
-            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/notifications/send" element={<NotificationsPage />} />
           </Route>
+
+          {/* Kullanıcı Bildirimleri - Herkes erişebilir */}
+          <Route path="/notifications" element={<MyNotificationsPage />} />
+          <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
 
           {/* Sistem Ayarları: SYSTEM_SETTINGS_VIEW */}
           <Route element={<ProtectedRoute requiredPermission="SYSTEM_SETTINGS_VIEW" />}>

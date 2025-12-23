@@ -1,7 +1,80 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
-export class ConfigService {
+export class ConfigService implements OnModuleInit {
+  private settingsCache: Map<string, string> = new Map();
+  private cacheInitialized = false;
+
+  constructor(private prisma: PrismaService) {}
+
+  async onModuleInit() {
+    await this.loadSettingsCache();
+  }
+
+  /**
+   * Sistem ayarlarını cache'e yükler
+   */
+  async loadSettingsCache(): Promise<void> {
+    try {
+      const settings = await this.prisma.systemSetting.findMany({
+        where: { isEditable: true },
+      });
+      this.settingsCache.clear();
+      settings.forEach((setting) => {
+        this.settingsCache.set(setting.key, setting.value);
+      });
+      this.cacheInitialized = true;
+    } catch (error) {
+      console.error('Failed to load system settings cache:', error);
+    }
+  }
+
+  /**
+   * Cache'i invalidate eder (ayar değiştiğinde çağrılır)
+   */
+  async invalidateSettingsCache(key?: string): Promise<void> {
+    if (key) {
+      // Sadece belirli bir ayarı yeniden yükle
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key },
+      });
+      if (setting) {
+        this.settingsCache.set(key, setting.value);
+      } else {
+        this.settingsCache.delete(key);
+      }
+    } else {
+      // Tüm cache'i yeniden yükle
+      await this.loadSettingsCache();
+    }
+  }
+
+  /**
+   * Sistem ayarını cache'den okur
+   */
+  getSystemSetting(key: string, defaultValue?: string): string | undefined {
+    return this.settingsCache.get(key) || defaultValue;
+  }
+
+  /**
+   * Sistem ayarını boolean olarak okur
+   */
+  getSystemSettingBoolean(key: string, defaultValue = false): boolean {
+    const value = this.getSystemSetting(key);
+    if (!value) return defaultValue;
+    return value.toLowerCase() === 'true' || value === '1';
+  }
+
+  /**
+   * Sistem ayarını number olarak okur
+   */
+  getSystemSettingNumber(key: string, defaultValue = 0): number {
+    const value = this.getSystemSetting(key);
+    if (!value) return defaultValue;
+    const num = parseFloat(value);
+    return isNaN(num) ? defaultValue : num;
+  }
   get port(): number {
     return parseInt(process.env.PORT || '3000', 10);
   }
@@ -24,6 +97,69 @@ export class ConfigService {
 
   get corsCredentials(): boolean {
     return process.env.CORS_CREDENTIALS === 'true';
+  }
+
+  // Redis Configuration
+  get redisHost(): string {
+    return process.env.REDIS_HOST || 'localhost';
+  }
+
+  get redisPort(): number {
+    return parseInt(process.env.REDIS_PORT || '6379', 10);
+  }
+
+  get redisPassword(): string | undefined {
+    return process.env.REDIS_PASSWORD;
+  }
+
+  get redisUrl(): string {
+    if (this.redisPassword) {
+      return `redis://:${this.redisPassword}@${this.redisHost}:${this.redisPort}`;
+    }
+    return `redis://${this.redisHost}:${this.redisPort}`;
+  }
+
+  // AWS SES Configuration
+  get awsSesRegion(): string {
+    return process.env.AWS_SES_REGION || 'us-east-1';
+  }
+
+  get awsSesAccessKeyId(): string | undefined {
+    return process.env.AWS_SES_ACCESS_KEY_ID;
+  }
+
+  get awsSesSecretAccessKey(): string | undefined {
+    return process.env.AWS_SES_SECRET_ACCESS_KEY;
+  }
+
+  get awsSesFromEmail(): string | undefined {
+    return process.env.AWS_SES_FROM_EMAIL;
+  }
+
+  // NetGSM Configuration
+  get netgsmUsername(): string | undefined {
+    return process.env.NETGSM_USERNAME;
+  }
+
+  get netgsmPassword(): string | undefined {
+    return process.env.NETGSM_PASSWORD;
+  }
+
+  get netgsmMsgHeader(): string | undefined {
+    return process.env.NETGSM_MSG_HEADER;
+  }
+
+  get netgsmApiUrl(): string {
+    return process.env.NETGSM_API_URL || 'https://api.netgsm.com.tr/sms/send/get';
+  }
+
+  // JWT Configuration
+  get jwtSecret(): string {
+    return process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+  }
+
+  get jwtExpiresIn(): string {
+    return process.env.JWT_EXPIRES_IN || '24h';
   }
 }
 

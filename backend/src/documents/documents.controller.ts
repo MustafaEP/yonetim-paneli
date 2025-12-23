@@ -87,6 +87,20 @@ export class DocumentsController {
     return this.documentsService.findMemberDocuments(memberId);
   }
 
+  // PDF oluştur
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Post('generate')
+  @ApiOperation({ summary: 'PDF doküman oluştur' })
+  @ApiBody({ type: GenerateDocumentDto })
+  @ApiResponse({ status: 201, description: 'PDF doküman oluşturuldu' })
+  @ApiResponse({ status: 404, description: 'Şablon veya üye bulunamadı' })
+  async generateDocument(
+    @Body() dto: GenerateDocumentDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.generateDocument(dto, user.userId);
+  }
+
   // Doküman yükle
   @Permissions(Permission.DOCUMENT_GENERATE_PDF)
   @Post('members/:memberId/upload')

@@ -86,7 +86,8 @@ const ContentListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   useEffect(() => {
     loadContents();
@@ -177,7 +178,8 @@ const ContentListPage: React.FC = () => {
         toast.error(e.response?.data?.message || 'İçerik yayınlanırken bir hata oluştu');
       }
     },
-    [toast, loadContents],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const columns: GridColDef[] = useMemo(

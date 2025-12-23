@@ -2,55 +2,29 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box,
-  Card,
-  Typography,
-  TextField,
-  Button,
   CircularProgress,
   Alert,
   useTheme,
   alpha,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Tabs,
-  Tab,
+  Paper,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
-import SaveIcon from '@mui/icons-material/Save';
-import EditIcon from '@mui/icons-material/Edit';
 
 import type { SystemSetting } from '../../api/systemApi';
 import { getSystemSettings, updateSystemSetting } from '../../api/systemApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`settings-tabpanel-${index}`}
-      aria-labelledby={`settings-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+import SettingsSidebar, { type SettingsCategory } from './components/SettingsSidebar';
+import GeneralSettings from './components/GeneralSettings';
+import RolesSettings from './components/RolesSettings';
+import MembershipSettings from './components/MembershipSettings';
+import NotificationsSettings from './components/NotificationsSettings';
+import DuesSettings from './components/DuesSettings';
+import OrganizationSettings from './components/OrganizationSettings';
+import SecuritySettings from './components/SecuritySettings';
+import AuditSettings from './components/AuditSettings';
+import IntegrationSettings from './components/IntegrationSettings';
+import MaintenanceSettings from './components/MaintenanceSettings';
 
 const SystemSettingsPage: React.FC = () => {
   const theme = useTheme();
@@ -59,13 +33,7 @@ const SystemSettingsPage: React.FC = () => {
 
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editingSetting, setEditingSetting] = useState<SystemSetting | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editValue, setEditValue] = useState('');
-
-  const [tabValue, setTabValue] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<SettingsCategory>('GENERAL');
 
   const canView = hasPermission('SYSTEM_SETTINGS_VIEW');
   const canManage = hasPermission('SYSTEM_SETTINGS_MANAGE');
@@ -89,45 +57,50 @@ const SystemSettingsPage: React.FC = () => {
     }
   };
 
-  const handleEdit = (setting: SystemSetting) => {
-    setEditingSetting(setting);
-    setEditValue(setting.value);
-    setError(null);
-    setEditDialogOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!editingSetting) return;
-
-    setSaving(true);
-    setError(null);
-
+  const handleUpdate = async (key: string, value: string) => {
     try {
-      await updateSystemSetting(editingSetting.key, { value: editValue });
+      await updateSystemSetting(key, { value });
       toast.success('Ayar başarıyla güncellendi');
-      setEditDialogOpen(false);
-      setEditingSetting(null);
-      loadSettings();
+      await loadSettings();
     } catch (e: any) {
       console.error('Ayar güncellenirken hata:', e);
-      setError(e.response?.data?.message || 'Ayar güncellenirken bir hata oluştu');
-    } finally {
-      setSaving(false);
+      toast.error(e.response?.data?.message || 'Ayar güncellenirken bir hata oluştu');
+      throw e;
     }
   };
 
-  const categories = ['GENERAL', 'EMAIL', 'SMS', 'INTEGRATION', 'OTHER'];
-  const categoryLabels: Record<string, string> = {
-    GENERAL: 'Genel',
-    EMAIL: 'E-posta',
-    SMS: 'SMS',
-    INTEGRATION: 'Entegrasyon',
-    OTHER: 'Diğer',
+  const renderCategoryContent = () => {
+    switch (selectedCategory) {
+      case 'GENERAL':
+        return (
+          <GeneralSettings
+            settings={settings}
+            onUpdate={handleUpdate}
+            loading={loading}
+          />
+        );
+      case 'ROLES':
+        return <RolesSettings />;
+      case 'MEMBERSHIP':
+        return <MembershipSettings />;
+      case 'NOTIFICATIONS':
+        return <NotificationsSettings />;
+      case 'DUES':
+        return <DuesSettings />;
+      case 'ORGANIZATION':
+        return <OrganizationSettings />;
+      case 'SECURITY':
+        return <SecuritySettings />;
+      case 'AUDIT':
+        return <AuditSettings />;
+      case 'INTEGRATION':
+        return <IntegrationSettings />;
+      case 'MAINTENANCE':
+        return <MaintenanceSettings />;
+      default:
+        return null;
+    }
   };
-
-  const filteredSettings = settings.filter(
-    (s) => s.category === categories[tabValue],
-  );
 
   if (!canView) {
     return (
@@ -138,174 +111,40 @@ const SystemSettingsPage: React.FC = () => {
   }
 
   return (
-    <Box>
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <SettingsIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-          </Box>
-          <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              Sistem Ayarları
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Sistem ayarlarını görüntüleyin ve yönetin
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
+    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
+      {/* Sol Menü */}
+      <SettingsSidebar
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+      />
 
-      <Card
-        elevation={0}
+      {/* Sağ Panel - İçerik */}
+      <Box
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          flexGrow: 1,
+          overflow: 'auto',
+          backgroundColor: theme.palette.background.default,
         }}
       >
-        <Box sx={{ borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-          <Tabs
-            value={tabValue}
-            onChange={(_, newValue) => setTabValue(newValue)}
-            variant="scrollable"
-            scrollButtons="auto"
-          >
-            {categories.map((cat, index) => (
-              <Tab key={index} label={categoryLabels[cat]} />
-            ))}
-          </Tabs>
-        </Box>
-
-        <Box sx={{ p: 3 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            minHeight: '100%',
+            borderRadius: 0,
+            p: 3,
+          }}
+        >
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
               <CircularProgress />
             </Box>
           ) : (
-            categories.map((cat, index) => (
-              <TabPanel key={index} value={tabValue} index={index}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {filteredSettings.map((setting) => (
-                    <Card
-                      key={setting.id}
-                      elevation={0}
-                      sx={{
-                        p: 2,
-                        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                        borderRadius: 2,
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6" sx={{ mb: 0.5 }}>
-                            {setting.key}
-                          </Typography>
-                          {setting.description && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                              {setting.description}
-                            </Typography>
-                          )}
-                          <TextField
-                            value={setting.value}
-                            fullWidth
-                            InputProps={{
-                              readOnly: true,
-                            }}
-                            sx={{ mt: 1 }}
-                          />
-                        </Box>
-                        {canManage && setting.isEditable && (
-                          <Button
-                            startIcon={<EditIcon />}
-                            onClick={() => handleEdit(setting)}
-                            sx={{ ml: 2 }}
-                          >
-                            Düzenle
-                          </Button>
-                        )}
-                      </Box>
-                    </Card>
-                  ))}
-                  {filteredSettings.length === 0 && (
-                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                      Bu kategoride ayar bulunmamaktadır.
-                    </Typography>
-                  )}
-                </Box>
-              </TabPanel>
-            ))
+            renderCategoryContent()
           )}
-        </Box>
-      </Card>
-
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Ayarı Düzenle</DialogTitle>
-        <DialogContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
-          {editingSetting && (
-            <Box sx={{ pt: 1 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {editingSetting.description || editingSetting.key}
-              </Typography>
-              <TextField
-                label="Değer"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                fullWidth
-                multiline={editValue.length > 50}
-                rows={editValue.length > 50 ? 4 : 1}
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)} disabled={saving}>
-            İptal
-          </Button>
-          <Button
-            onClick={handleSave}
-            variant="contained"
-            disabled={saving}
-            startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-          >
-            {saving ? 'Kaydediliyor...' : 'Kaydet'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Paper>
+      </Box>
     </Box>
   );
 };
 
 export default SystemSettingsPage;
-

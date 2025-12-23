@@ -1,11 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto';
-import { NotificationStatus, NotificationTargetType } from '@prisma/client';
+import { NotificationStatus, NotificationTargetType, NotificationType, MemberStatus } from '@prisma/client';
+import { NotificationQueue } from './queues/notification.queue';
+import { NotificationJobData } from './processors/notification.processor';
+import { EmailService } from './services/email.service';
+import { SmsService } from './services/sms.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(NotificationsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private notificationQueue: NotificationQueue,
+    private emailService: EmailService,
+    private smsService: SmsService,
+  ) {}
 
   async findAll(params?: {
     status?: NotificationStatus;
@@ -70,6 +81,19 @@ export class NotificationsService {
   }
 
   async create(dto: CreateNotificationDto, userId: string) {
+    // Hedef tip kontrolü
+    if (
+      (dto.targetType === NotificationTargetType.REGION || dto.targetType === NotificationTargetType.SCOPE) &&
+      !dto.targetId
+    ) {
+      throw new Error(`${dto.targetType} için targetId zorunludur`);
+    }
+
+    // ALL_MEMBERS için targetId olmamalı
+    if (dto.targetType === NotificationTargetType.ALL_MEMBERS && dto.targetId) {
+      throw new Error('ALL_MEMBERS için targetId belirtilmemelidir');
+    }
+
     return this.prisma.notification.create({
       data: {
         ...dto,
@@ -92,28 +116,503 @@ export class NotificationsService {
   async send(id: string) {
     const notification = await this.findOne(id);
 
-    // Burada gerçek bildirim gönderme mantığı olacak
-    // Şimdilik sadece durumu güncelliyoruz
-    return this.prisma.notification.update({
-      where: { id },
-      data: {
-        status: NotificationStatus.SENT,
-        sentAt: new Date(),
-        recipientCount: 100, // Örnek değer
-        successCount: 95, // Örnek değer
-        failedCount: 5, // Örnek değer
-      },
-      include: {
-        sentByUser: {
+    if (notification.status !== NotificationStatus.PENDING) {
+      throw new Error(`Notification ${id} is not in PENDING status`);
+    }
+
+    try {
+      // Hedef kullanıcıları belirle
+      const recipients = await this.getRecipients(notification);
+
+      this.logger.log(`Sending notification ${id} to ${recipients.length} recipients`);
+
+      // Her alıcı için job oluştur
+      const jobs: Promise<any>[] = [];
+      let failedJobCount = 0;
+
+      // Redis durumunu kontrol et
+      const useQueue = this.notificationQueue.redisAvailable;
+
+      if (!useQueue) {
+        this.logger.warn(
+          `Redis is not available. Notification ${id} will be sent directly (synchronously) without queue.`,
+        );
+      }
+
+      // Redis varsa queue kullan, yoksa direkt gönder
+      if (useQueue) {
+        // Queue kullanarak gönder (mevcut mantık)
+        for (const recipient of recipients) {
+          try {
+            // Bildirim tipine göre job oluştur
+            if (notification.type === NotificationType.EMAIL && recipient.email) {
+              jobs.push(
+                this.notificationQueue.add('email', {
+                  notificationId: id,
+                  type: NotificationType.EMAIL,
+                  recipientId: recipient.id,
+                  recipientEmail: recipient.email,
+                  title: notification.title,
+                  message: notification.message,
+                } as NotificationJobData).catch((error) => {
+                  // Redis bağlantı hatası ise daha açıklayıcı mesaj
+                  if (error.message?.includes('ECONNREFUSED') || error.message?.includes('Redis')) {
+                    this.logger.error(
+                      `Failed to add email job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
+                    );
+                  } else {
+                    this.logger.error(`Failed to add email job for recipient ${recipient.id}: ${error.message}`);
+                  }
+                  failedJobCount++;
+                  return null; // Promise'i reject etmek yerine null döndür
+                }),
+              );
+            } else if (notification.type === NotificationType.SMS && recipient.phone) {
+              jobs.push(
+                this.notificationQueue.add('sms', {
+                  notificationId: id,
+                  type: NotificationType.SMS,
+                  recipientId: recipient.id,
+                  recipientPhone: recipient.phone,
+                  title: notification.title,
+                  message: notification.message,
+                } as NotificationJobData).catch((error) => {
+                  if (error.message?.includes('ECONNREFUSED') || error.message?.includes('Redis')) {
+                    this.logger.error(
+                      `Failed to add SMS job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
+                    );
+                  } else {
+                    this.logger.error(`Failed to add SMS job for recipient ${recipient.id}: ${error.message}`);
+                  }
+                  failedJobCount++;
+                  return null;
+                }),
+              );
+            } else if (notification.type === NotificationType.IN_APP) {
+              // Web içi bildirim için UserNotification kaydı oluştur
+              jobs.push(
+                this.notificationQueue.add('in-app', {
+                  notificationId: id,
+                  type: NotificationType.IN_APP,
+                  recipientId: recipient.id,
+                  title: notification.title,
+                  message: notification.message,
+                } as NotificationJobData).catch((error) => {
+                  if (error.message?.includes('ECONNREFUSED') || error.message?.includes('Redis')) {
+                    this.logger.error(
+                      `Failed to add in-app job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
+                    );
+                  } else {
+                    this.logger.error(`Failed to add in-app job for recipient ${recipient.id}: ${error.message}`);
+                  }
+                  failedJobCount++;
+                  return null;
+                }),
+              );
+            }
+          } catch (jobError) {
+            this.logger.error(`Failed to create job for recipient ${recipient.id}: ${jobError.message}`);
+            failedJobCount++;
+          }
+        }
+      } else {
+        // Redis yoksa direkt olarak gönder (synchronous)
+        let successCount = 0;
+        let failedCount = 0;
+
+        for (const recipient of recipients) {
+          try {
+            if (notification.type === NotificationType.EMAIL && recipient.email) {
+              await this.emailService.sendEmail({
+                to: recipient.email,
+                subject: notification.title,
+                html: notification.message,
+              });
+              successCount++;
+              this.logger.log(`Email sent directly to ${recipient.email} (notification ${id})`);
+            } else if (notification.type === NotificationType.SMS && recipient.phone) {
+              await this.smsService.sendSms({
+                to: recipient.phone,
+                message: `${notification.title}\n\n${notification.message}`,
+              });
+              successCount++;
+              this.logger.log(`SMS sent directly to ${recipient.phone} (notification ${id})`);
+            } else if (notification.type === NotificationType.IN_APP) {
+              // Web içi bildirim için UserNotification kaydı oluştur
+              await this.prisma.userNotification.upsert({
+                where: {
+                  userId_notificationId: {
+                    userId: recipient.id,
+                    notificationId: id,
+                  },
+                },
+                create: {
+                  userId: recipient.id,
+                  notificationId: id,
+                  isRead: false,
+                },
+                update: {
+                  isRead: false,
+                },
+              });
+              successCount++;
+              this.logger.log(`In-app notification created directly for user ${recipient.id} (notification ${id})`);
+            } else {
+              this.logger.warn(
+                `Skipping recipient ${recipient.id}: missing email/phone for notification type ${notification.type}`,
+              );
+              failedCount++;
+            }
+          } catch (error: any) {
+            this.logger.error(
+              `Failed to send notification directly to recipient ${recipient.id}: ${error.message}`,
+              error.stack,
+            );
+            failedCount++;
+          }
+        }
+
+        // Durumu güncelle
+        const updated = await this.prisma.notification.update({
+          where: { id },
+          data: {
+            status: NotificationStatus.SENT,
+            sentAt: new Date(),
+            recipientCount: recipients.length,
+            successCount,
+            failedCount,
+          },
+          include: {
+            sentByUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        });
+
+        this.logger.log(
+          `Notification ${id} sent directly (no queue): ${successCount} successful, ${failedCount} failed out of ${recipients.length} total`,
+        );
+
+        return updated;
+      }
+
+      // Queue kullanıldıysa buraya gelir - Job'ları ekle ve sonuçları bekle
+      const jobResults = await Promise.allSettled(jobs);
+      const successCount = jobResults.filter((r) => r.status === 'fulfilled').length;
+      const failedCount = failedJobCount + jobResults.filter((r) => r.status === 'rejected').length;
+
+      // Durumu güncelle
+      const updated = await this.prisma.notification.update({
+        where: { id },
+        data: {
+          status: NotificationStatus.SENT,
+          sentAt: new Date(),
+          recipientCount: recipients.length,
+          successCount,
+          failedCount,
+        },
+        include: {
+          sentByUser: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      this.logger.log(
+        `Notification ${id} sent: ${successCount} successful, ${failedCount} failed out of ${recipients.length} total`,
+      );
+
+      return updated;
+    } catch (error) {
+      this.logger.error(`Failed to send notification ${id}: ${error.message}`, error.stack);
+
+      // Hata durumunda status'u FAILED yap
+      await this.prisma.notification.update({
+        where: { id },
+        data: {
+          status: NotificationStatus.FAILED,
+        },
+      });
+
+      throw error;
+    }
+  }
+
+  private async getRecipients(notification: {
+    id: string;
+    targetType: NotificationTargetType;
+    targetId?: string | null;
+    type: NotificationType;
+  }): Promise<Array<{ id: string; email?: string; phone?: string }>> {
+    switch (notification.targetType) {
+      case NotificationTargetType.ALL_MEMBERS:
+        // Tüm aktif üyeler
+        const allMembers = await this.prisma.member.findMany({
+          where: {
+            status: MemberStatus.ACTIVE,
+            isActive: true,
+            deletedAt: null,
+          },
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
             email: true,
+            phone: true,
+          },
+        });
+
+        // Üye ID'lerini User ID'lere dönüştür (eğer IN_APP ise)
+        if (notification.type === NotificationType.IN_APP) {
+          // Üyeler için User kaydı yok, bu yüzden sadece email/phone olanları döndürüyoruz
+          // IN_APP için üye bazlı bildirim sistemi kurulmalı (MemberNotification modeli gerekebilir)
+          // Şimdilik sadece User'lar için IN_APP bildirimi gönderiyoruz
+          return [];
+        }
+
+        return allMembers.map((m) => ({
+          id: m.id,
+          email: m.email || undefined,
+          phone: m.phone || undefined,
+        }));
+
+      case NotificationTargetType.REGION:
+        if (!notification.targetId) {
+          throw new Error('targetId is required for REGION target type');
+        }
+
+        // Belirli bir ildeki aktif üyeler
+        const regionMembers = await this.prisma.member.findMany({
+          where: {
+            provinceId: notification.targetId,
+            status: MemberStatus.ACTIVE,
+            isActive: true,
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+          },
+        });
+
+        return regionMembers.map((m) => ({
+          id: m.id,
+          email: m.email || undefined,
+          phone: m.phone || undefined,
+        }));
+
+      case NotificationTargetType.SCOPE:
+        // Scope bazlı bildirim (UserScope'a göre)
+        // Bu durumda targetId bir UserScope ID olabilir veya provinceId/districtId olabilir
+        if (!notification.targetId) {
+          throw new Error('targetId is required for SCOPE target type');
+        }
+
+        // Scope'a göre üyeleri filtrele
+        const scopeMembers = await this.prisma.member.findMany({
+          where: {
+            OR: [
+              { provinceId: notification.targetId },
+              { districtId: notification.targetId },
+              { workingProvinceId: notification.targetId },
+              { workingDistrictId: notification.targetId },
+            ],
+            status: MemberStatus.ACTIVE,
+            isActive: true,
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+          },
+        });
+
+        return scopeMembers.map((m) => ({
+          id: m.id,
+          email: m.email || undefined,
+          phone: m.phone || undefined,
+        }));
+
+      case NotificationTargetType.USER:
+        if (!notification.targetId) {
+          throw new Error('targetId is required for USER target type');
+        }
+
+        // Belirli bir kullanıcıya bildirim (onay bekleyen işlemler için)
+        const user = await this.prisma.user.findUnique({
+          where: { id: notification.targetId },
+          select: {
+            id: true,
+            email: true,
+          },
+        });
+
+        if (!user) {
+          throw new Error(`User ${notification.targetId} not found`);
+        }
+
+        return [
+          {
+            id: user.id,
+            email: user.email,
+          },
+        ];
+
+      default:
+        throw new Error(`Unsupported target type: ${notification.targetType}`);
+    }
+  }
+
+  async findUserNotifications(params: {
+    userId: string;
+    isRead?: boolean;
+    limit?: number;
+    offset?: number;
+  }) {
+    const { userId, isRead, limit = 25, offset = 0 } = params;
+
+    const where: any = {
+      userId,
+    };
+
+    if (isRead !== undefined) {
+      where.isRead = isRead;
+    }
+
+    const [userNotifications, total] = await Promise.all([
+      this.prisma.userNotification.findMany({
+        where,
+        include: {
+          notification: {
+            include: {
+              sentByUser: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.userNotification.count({ where }),
+    ]);
+
+    return {
+      data: userNotifications.map((un) => ({
+        id: un.id,
+        notificationId: un.notificationId,
+        isRead: un.isRead,
+        readAt: un.readAt,
+        createdAt: un.createdAt,
+        notification: un.notification,
+      })),
+      total,
+      limit,
+      offset,
+    };
+  }
+
+  async markAsRead(userId: string, id: string) {
+    // Önce userNotificationId olarak dene
+    let userNotification = await this.prisma.userNotification.findFirst({
+      where: {
+        id: id,
+        userId,
+      },
+    });
+
+    // Bulunamazsa notificationId olarak dene
+    if (!userNotification) {
+      userNotification = await this.prisma.userNotification.findFirst({
+        where: {
+          notificationId: id,
+          userId,
+        },
+      });
+    }
+
+    if (!userNotification) {
+      throw new NotFoundException('Bildirim bulunamadı');
+    }
+
+    // Zaten okundu ise güncelleme yapma ama include ile döndür
+    if (userNotification.isRead) {
+      return this.prisma.userNotification.findUnique({
+        where: { id: userNotification.id },
+        include: {
+          notification: {
+            include: {
+              sentByUser: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    return this.prisma.userNotification.update({
+      where: { id: userNotification.id },
+      data: {
+        isRead: true,
+        readAt: new Date(),
+      },
+      include: {
+        notification: {
+          include: {
+            sentByUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
           },
         },
       },
     });
+  }
+
+  async markAllAsRead(userId: string) {
+    const result = await this.prisma.userNotification.updateMany({
+      where: {
+        userId,
+        isRead: false,
+      },
+      data: {
+        isRead: true,
+        readAt: new Date(),
+      },
+    });
+
+    return {
+      count: result.count,
+      message: `${result.count} bildirim okundu olarak işaretlendi`,
+    };
   }
 
   async delete(id: string) {

@@ -1,10 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MemberScopeService } from '../members/member-scope.service';
 import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
+import { MemberStatus } from '@prisma/client';
 
 @Injectable()
 export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+  // Varsayılan aylık aidat miktarı (TL) - Sistem ayarlarından alınabilir
+  private readonly DEFAULT_MONTHLY_DUES = 50;
+
   constructor(
     private prisma: PrismaService,
     private memberScopeService: MemberScopeService,
@@ -109,9 +114,8 @@ export class ReportsService {
       count: item._count.id,
     }));
 
-    // Borç hesaplama (basitleştirilmiş - aidat planı olan aktif üyeler için)
-    // TODO: Daha detaylı borç hesaplaması yapılabilir
-    const totalDebt = 0;
+    // Borç hesaplama
+    const totalDebt = await this.calculateTotalDebt(where);
 
     return {
       totalMembers,
@@ -216,7 +220,7 @@ export class ReportsService {
         activeMembers,
         cancelledMembers,
         totalPayments: Number(totalPayments._sum.amount || 0),
-        totalDebt: 0, // TODO: Borç hesaplaması eklenecek
+        totalDebt: await this.calculateTotalDebt({ provinceId: regionId }),
         workplaces: workplacesWithCounts,
       };
     }
@@ -272,7 +276,7 @@ export class ReportsService {
           activeMembers,
           cancelledMembers,
           totalPayments: Number(totalPayments._sum.amount || 0),
-          totalDebt: 0, // TODO: Borç hesaplaması eklenecek
+          totalDebt: await this.calculateTotalDebt({ provinceId: province.id }),
           workplaces: [],
         };
       }),
@@ -399,8 +403,15 @@ export class ReportsService {
       memberCount: number;
     }> = [];
 
-    // Borç hesaplama (basitleştirilmiş)
-    const totalDebt = 0;
+    // Borç hesaplama
+    const memberWhereForDebt: any = {};
+    if (scopeIds.provinceId) {
+      memberWhereForDebt.provinceId = scopeIds.provinceId;
+    }
+    if (scopeIds.districtId) {
+      memberWhereForDebt.districtId = scopeIds.districtId;
+    }
+    const totalDebt = await this.calculateTotalDebt(memberWhereForDebt, params?.year, params?.month);
 
     return {
       totalPayments: Number(totalPaymentsResult._sum.amount || 0),
@@ -410,6 +421,124 @@ export class ReportsService {
       byMonth,
       byPlan,
     };
+  }
+
+  /**
+   * Toplam borç hesapla
+   */
+  private async calculateTotalDebt(
+    memberWhere: any = {},
+    targetYear?: number,
+    targetMonth?: number,
+  ): Promise<number> {
+    const now = new Date();
+    const currentYear = targetYear || now.getFullYear();
+    const currentMonth = targetMonth || now.getMonth() + 1;
+
+    // Aktif üyeleri al
+    const activeMembers = await this.prisma.member.findMany({
+      where: {
+        ...memberWhere,
+        status: MemberStatus.ACTIVE,
+        isActive: true,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        approvedAt: true,
+        createdAt: true,
+      },
+    });
+
+    let totalDebt = 0;
+
+    for (const member of activeMembers) {
+      const memberDebt = await this.calculateMemberDebt(member.id, currentYear, currentMonth);
+      totalDebt += memberDebt;
+    }
+
+    return totalDebt;
+  }
+
+  /**
+   * Üye bazlı borç hesapla
+   * Son 12 ay içinde ödeme yapılmamış aylar için borç hesaplar
+   */
+  async calculateMemberDebt(memberId: string, targetYear?: number, targetMonth?: number): Promise<number> {
+    const now = new Date();
+    const currentYear = targetYear || now.getFullYear();
+    const currentMonth = targetMonth || now.getMonth() + 1;
+
+    // Üyenin onay tarihini al (üyelik başlangıcı)
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        id: true,
+        approvedAt: true,
+        createdAt: true,
+        status: true,
+      },
+    });
+
+    if (!member || member.status !== MemberStatus.ACTIVE) {
+      return 0;
+    }
+
+    // Üyelik başlangıç tarihi
+    const membershipStartDate = member.approvedAt
+      ? new Date(member.approvedAt)
+      : new Date(member.createdAt);
+    const membershipStartYear = membershipStartDate.getFullYear();
+    const membershipStartMonth = membershipStartDate.getMonth() + 1;
+
+    // Son 12 ay içindeki ödemeleri al
+    const payments = await this.prisma.memberPayment.findMany({
+      where: {
+        memberId,
+        isApproved: true,
+        paymentPeriodYear: {
+          gte: currentYear - 1,
+        },
+      },
+      select: {
+        paymentPeriodYear: true,
+        paymentPeriodMonth: true,
+      },
+    });
+
+    // Ödenmiş ayları set olarak tut
+    const paidMonths = new Set<string>();
+    payments.forEach((p) => {
+      paidMonths.add(`${p.paymentPeriodYear}-${p.paymentPeriodMonth}`);
+    });
+
+    // Borç hesapla: Son 12 ay içinde ödenmemiş aylar
+    let debtMonths = 0;
+    const monthsToCheck = 12;
+
+    for (let i = 0; i < monthsToCheck; i++) {
+      let checkYear = currentYear;
+      let checkMonth = currentMonth - i;
+
+      // Ay negatif olursa önceki yıla geç
+      while (checkMonth <= 0) {
+        checkMonth += 12;
+        checkYear -= 1;
+      }
+
+      // Üyelik başlangıcından önceki ayları sayma
+      if (checkYear < membershipStartYear || (checkYear === membershipStartYear && checkMonth < membershipStartMonth)) {
+        continue;
+      }
+
+      // Ödenmemiş ay kontrolü
+      const monthKey = `${checkYear}-${checkMonth}`;
+      if (!paidMonths.has(monthKey)) {
+        debtMonths++;
+      }
+    }
+
+    return debtMonths * this.DEFAULT_MONTHLY_DUES;
   }
 }
 

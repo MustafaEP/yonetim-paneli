@@ -26,6 +26,7 @@ import { useToast } from '../../hooks/useToast';
 import { getPaymentsForAccounting } from '../../api/paymentsApi';
 import type { MemberPayment } from '../../api/paymentsApi';
 import { getBranches } from '../../api/branchesApi';
+import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 
 const MemberPaymentsPage: React.FC = () => {
   const theme = useTheme();
@@ -76,13 +77,38 @@ const MemberPaymentsPage: React.FC = () => {
   };
 
   const handleExportExcel = () => {
-    // TODO: Excel export implementasyonu
-    toast.showInfo('Excel export özelliği yakında eklenecek');
+    try {
+      const exportColumns: ExportColumn[] = columns.map((col) => ({
+        field: col.field,
+        headerName: col.headerName || col.field,
+        width: col.width || col.flex ? (col.flex as number) * 10 : 15,
+        valueGetter: col.valueGetter,
+      }));
+      const filename = `uye-odemeleri-${yearFilter}-${monthNames[monthFilter - 1]}-${new Date().getTime()}`;
+      exportToExcel(payments, exportColumns, filename);
+      toast.showSuccess('Excel dosyası indirildi');
+    } catch (error: any) {
+      console.error('Excel export hatası:', error);
+      toast.showError('Excel export sırasında bir hata oluştu');
+    }
   };
 
   const handleExportPDF = () => {
-    // TODO: PDF export implementasyonu
-    toast.showInfo('PDF export özelliği yakında eklenecek');
+    try {
+      const exportColumns: ExportColumn[] = columns.map((col) => ({
+        field: col.field,
+        headerName: col.headerName || col.field,
+        width: col.width || col.flex ? (col.flex as number) * 10 : 15,
+        valueGetter: col.valueGetter,
+      }));
+      const filename = `uye-odemeleri-${yearFilter}-${monthNames[monthFilter - 1]}-${new Date().getTime()}`;
+      const title = `Üye Ödemeleri - ${monthNames[monthFilter - 1]} ${yearFilter}`;
+      exportToPDF(payments, exportColumns, filename, title);
+      toast.showSuccess('PDF dosyası indirildi');
+    } catch (error: any) {
+      console.error('PDF export hatası:', error);
+      toast.showError('PDF export sırasında bir hata oluştu');
+    }
   };
 
   const monthNames = [

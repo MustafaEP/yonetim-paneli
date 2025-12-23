@@ -99,3 +99,126 @@ export const getDuesReport = async (params?: {
   return res.data;
 };
 
+// Export fonksiyonları
+export const exportGlobalReportToExcel = async (): Promise<void> => {
+  const res = await httpClient.get('/reports/global/export/excel', {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Genel_Rapor_${new Date().toISOString().split('T')[0]}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const exportGlobalReportToPdf = async (): Promise<void> => {
+  const res = await httpClient.get('/reports/global/export/pdf', {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Genel_Rapor_${new Date().toISOString().split('T')[0]}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const exportRegionReportToExcel = async (regionId?: string): Promise<void> => {
+  const res = await httpClient.get('/reports/region/export/excel', {
+    params: regionId ? { regionId } : undefined,
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Bolge_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const exportRegionReportToPdf = async (regionId?: string): Promise<void> => {
+  const res = await httpClient.get('/reports/region/export/pdf', {
+    params: regionId ? { regionId } : undefined,
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Bolge_Raporu_${new Date().toISOString().split('T')[0]}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const exportDuesReportToExcel = async (params?: {
+  year?: number;
+  month?: number;
+}): Promise<void> => {
+  const res = await httpClient.get('/reports/dues/export/excel', {
+    params,
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Aidat_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const exportDuesReportToPdf = async (params?: {
+  year?: number;
+  month?: number;
+}): Promise<void> => {
+  const res = await httpClient.get('/reports/dues/export/pdf', {
+    params,
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Aidat_Raporu_${new Date().toISOString().split('T')[0]}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const exportMemberStatusReportToExcel = async (): Promise<void> => {
+  const res = await httpClient.get('/reports/member-status/export/excel', {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Uye_Durum_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const exportMemberStatusReportToPdf = async (): Promise<void> => {
+  const res = await httpClient.get('/reports/member-status/export/pdf', {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Uye_Durum_Raporu_${new Date().toISOString().split('T')[0]}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
