@@ -274,6 +274,7 @@ const SystemLogsPage: React.FC = () => {
                   <MenuItem value="VIEW">Görüntüle</MenuItem>
                   <MenuItem value="LOGIN">Giriş</MenuItem>
                   <MenuItem value="LOGIN_FAILED">Başarısız Giriş</MenuItem>
+                  <MenuItem value="LOGOUT">Çıkış</MenuItem>
                 </Select>
               </FormControl>
               <TextField

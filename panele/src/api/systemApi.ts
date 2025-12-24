@@ -58,6 +58,23 @@ export const updateSystemSetting = async (
   return res.data;
 };
 
+// Logo yükleme
+export const uploadLogo = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  const res = await httpClient.post<{ url: string }>(
+    '/system/upload-logo',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+  return res.data.url;
+};
+
 // Sistem logları
 export const getSystemLogs = async (params?: {
   userId?: string;
@@ -77,6 +94,17 @@ export const getSystemLogs = async (params?: {
 
 export const getSystemLogById = async (id: string): Promise<SystemLog> => {
   const res = await httpClient.get<SystemLog>(`/system/logs/${id}`);
+  return res.data;
+};
+
+// Public sistem bilgileri (login yapmadan erişilebilir)
+export interface PublicSystemInfo {
+  siteName: string;
+  siteLogoUrl: string;
+}
+
+export const getPublicSystemInfo = async (): Promise<PublicSystemInfo> => {
+  const res = await httpClient.get<PublicSystemInfo>('/system/public-info');
   return res.data;
 };
 

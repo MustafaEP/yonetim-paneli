@@ -31,6 +31,7 @@ import { sendNotification, getNotifications } from '../../api/notificationsApi';
 import { getProvinces } from '../../api/regionsApi';
 import { getUsers } from '../../api/usersApi';
 import { useAuth } from '../../context/AuthContext';
+import { useSystemSettings } from '../../context/SystemSettingsContext';
 import { useToast } from '../../hooks/useToast';
 import type { Province } from '../../types/region';
 import type { UserListItem } from '../../types/user';
@@ -38,6 +39,7 @@ import type { UserListItem } from '../../types/user';
 const NotificationsPage: React.FC = () => {
   const theme = useTheme();
   const { hasPermission } = useAuth();
+  const { getSettingValue } = useSystemSettings();
   const toast = useToast();
 
   const [rows, setRows] = useState<Notification[]>([]);
@@ -55,7 +57,7 @@ const NotificationsPage: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     message: '',
-    type: 'EMAIL' as 'EMAIL' | 'SMS' | 'WHATSAPP' | 'IN_APP',
+    type: 'IN_APP' as 'EMAIL' | 'SMS' | 'IN_APP',
     targetType: 'USER' as 'ALL_MEMBERS' | 'REGION' | 'SCOPE' | 'USER',
   });
 
@@ -64,6 +66,17 @@ const NotificationsPage: React.FC = () => {
   const canNotifyScope = hasPermission('NOTIFY_OWN_SCOPE');
 
   const canSend = canNotifyAll || canNotifyRegion || canNotifyScope;
+
+  // Sistem ayarlarına göre entegrasyon ve bildirim kanalları kontrolü
+  const integrationEmailEnabled = getSettingValue('INTEGRATION_EMAIL_ENABLED') === 'true';
+  const integrationSmsEnabled = getSettingValue('INTEGRATION_SMS_ENABLED') === 'true';
+  const notificationEmailEnabled = getSettingValue('NOTIFICATION_EMAIL_ENABLED') === 'true';
+  const notificationSmsEnabled = getSettingValue('NOTIFICATION_SMS_ENABLED') === 'true';
+
+  // E-posta kanalı: Hem entegrasyon hem de bildirim kanalı aktif olmalı
+  const emailChannelAvailable = integrationEmailEnabled && notificationEmailEnabled;
+  // SMS kanalı: Hem entegrasyon hem de bildirim kanalı aktif olmalı
+  const smsChannelAvailable = integrationSmsEnabled && notificationSmsEnabled;
 
   useEffect(() => {
     loadNotifications();
@@ -109,10 +122,18 @@ const NotificationsPage: React.FC = () => {
   };
 
   const handleOpenDialog = () => {
+    // Varsayılan tip: İlk mevcut kanalı seç, yoksa IN_APP
+    let defaultType: 'EMAIL' | 'SMS' | 'IN_APP' = 'IN_APP';
+    if (emailChannelAvailable) {
+      defaultType = 'EMAIL';
+    } else if (smsChannelAvailable) {
+      defaultType = 'SMS';
+    }
+
     setFormData({
       title: '',
       message: '',
-      type: 'IN_APP',
+      type: defaultType,
       targetType: 'USER',
     });
     setSelectedProvince(null);
@@ -154,40 +175,33 @@ const NotificationsPage: React.FC = () => {
       }
     }
 
-    // Birden fazla kullanıcı seçildiyse her birine ayrı bildirim gönder
+    // Birden fazla kullanıcı seçildiyse tek bildirim gönder (metadata içinde userIds array'i ile)
     if (formData.targetType === 'USER' && selectedUsers.length > 0) {
       setSending(true);
-      let successCount = 0;
-      let failCount = 0;
 
       try {
-        // Her kullanıcı için ayrı bildirim gönder
-        for (const user of selectedUsers) {
-          try {
-            const payload: any = {
-              ...formData,
-              targetType: 'USER',
-              targetId: user.id,
-            };
-            await sendNotification(payload);
-            successCount++;
-          } catch (e: any) {
-            console.error(`Kullanıcı ${user.firstName} ${user.lastName} için bildirim gönderilirken hata:`, e);
-            failCount++;
-          }
-        }
-
-        if (successCount > 0) {
-          toast.success(`${successCount} kullanıcıya bildirim başarıyla gönderildi${failCount > 0 ? `, ${failCount} kullanıcıya gönderilemedi` : ''}`);
-        } else {
-          toast.error('Bildirimler gönderilemedi');
-        }
-
+        // Tek bir bildirim oluştur, metadata içinde tüm kullanıcı ID'lerini gönder
+        const payload: any = {
+          title: formData.title,
+          message: formData.message,
+          type: formData.type,
+          targetType: 'USER',
+          targetId: selectedUsers[0].id, // İlk kullanıcı ID'si (geriye dönük uyumluluk için)
+          metadata: {
+            userIds: selectedUsers.map((u) => u.id),
+            userNames: selectedUsers.map((u) => `${u.firstName} ${u.lastName}`),
+          },
+        };
+        
+        console.log('Gönderilen payload:', payload);
+        await sendNotification(payload);
+        toast.success(`${selectedUsers.length} kullanıcıya bildirim başarıyla gönderildi`);
         handleCloseDialog();
         await loadNotifications();
       } catch (e: any) {
-        console.error('Bildirimler gönderilirken hata:', e);
-        const errorMessage = e.response?.data?.message || e.message || 'Bildirimler gönderilirken bir hata oluştu';
+        console.error('Bildirim gönderilirken hata:', e);
+        console.error('Hata detayları:', e.response?.data);
+        const errorMessage = e.response?.data?.message || e.response?.data?.error || e.message || 'Bildirim gönderilirken bir hata oluştu';
         setError(errorMessage);
         toast.error(errorMessage);
       } finally {
@@ -237,7 +251,6 @@ const NotificationsPage: React.FC = () => {
         const typeLabels: Record<string, string> = {
           EMAIL: 'E-posta',
           SMS: 'SMS',
-          WHATSAPP: 'WhatsApp',
           IN_APP: 'Uygulama İçi',
         };
         return <Chip label={typeLabels[params.value] || params.value} size="small" />;
@@ -280,6 +293,54 @@ const NotificationsPage: React.FC = () => {
       field: 'recipientCount',
       headerName: 'Alıcı Sayısı',
       width: 120,
+    },
+    {
+      field: 'recipients',
+      headerName: 'Alıcılar',
+      width: 250,
+      flex: 1,
+      renderCell: (params) => {
+        const notification = params.row as Notification;
+        // Metadata içinde userNames varsa göster
+        if (notification.metadata && typeof notification.metadata === 'object' && 'userNames' in notification.metadata) {
+          const userNames = (notification.metadata as any).userNames;
+          if (Array.isArray(userNames) && userNames.length > 0) {
+            const maxVisible = 5; // Maksimum gösterilecek isim sayısı
+            if (userNames.length <= maxVisible) {
+              return (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {userNames.map((name: string, index: number) => (
+                    <Chip key={index} label={name} size="small" variant="outlined" />
+                  ))}
+                </Box>
+              );
+            } else {
+              return (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                  {userNames.slice(0, maxVisible).map((name: string, index: number) => (
+                    <Chip key={index} label={name} size="small" variant="outlined" />
+                  ))}
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+                    ...
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                    (+{userNames.length - maxVisible} kişi)
+                  </Typography>
+                </Box>
+              );
+            }
+          }
+        }
+        // Diğer durumlar için alıcı sayısını göster
+        if (notification.recipientCount > 0) {
+          return (
+            <Typography variant="body2" color="text.secondary">
+              {notification.recipientCount} alıcı
+            </Typography>
+          );
+        }
+        return '-';
+      },
     },
     {
       field: 'sentAt',
@@ -421,9 +482,12 @@ const NotificationsPage: React.FC = () => {
                   }
                   label="Tür"
                 >
-                  <MenuItem value="EMAIL">E-posta</MenuItem>
-                  <MenuItem value="SMS">SMS</MenuItem>
-                  <MenuItem value="WHATSAPP">WhatsApp</MenuItem>
+                  {emailChannelAvailable && (
+                    <MenuItem value="EMAIL">E-posta</MenuItem>
+                  )}
+                  {smsChannelAvailable && (
+                    <MenuItem value="SMS">SMS</MenuItem>
+                  )}
                   <MenuItem value="IN_APP">Uygulama İçi</MenuItem>
                 </Select>
               </FormControl>

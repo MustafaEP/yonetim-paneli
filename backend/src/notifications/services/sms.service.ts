@@ -61,8 +61,15 @@ export class SmsService {
   }
 
   async sendSms(options: SendSmsOptions): Promise<void> {
-    // SMS gönderimi aktif mi kontrol et
+    // SMS gönderimi aktif mi kontrol et (önce NOTIFICATION_SMS_ENABLED, sonra SMS_ENABLED)
+    const notificationSmsEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_SMS_ENABLED', true);
     const smsEnabled = this.configService.getSystemSettingBoolean('SMS_ENABLED', true);
+    
+    if (!notificationSmsEnabled) {
+      this.logger.warn('SMS notifications are disabled in notification settings.');
+      return;
+    }
+    
     if (!smsEnabled) {
       this.logger.warn('SMS sending is disabled in system settings.');
       return;

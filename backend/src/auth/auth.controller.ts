@@ -1,8 +1,11 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Body, Controller, Post, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './decorators/public.decorator';
+import { CurrentUser } from './decorators/current-user.decorator';
+import type { CurrentUserData } from './decorators/current-user.decorator';
+import type { Request } from 'express';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -33,5 +36,26 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Geçersiz kimlik bilgileri' })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('logout')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Kullanıcı çıkışı', description: 'Kullanıcı oturumunu sonlandırır ve log kaydı oluşturur' })
+  @ApiResponse({ status: 200, description: 'Çıkış başarılı' })
+  async logout(@CurrentUser() user: CurrentUserData, @Req() request: Request) {
+    const ipAddress = this.getIpAddress(request);
+    const userAgent = request.headers['user-agent'] || 'unknown';
+    return this.authService.logout(user.userId, ipAddress, userAgent);
+  }
+
+  private getIpAddress(request: Request): string {
+    return (
+      request.ip ||
+      (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      (request.headers['x-real-ip'] as string) ||
+      request.connection?.remoteAddress ||
+      (request.socket as any)?.remoteAddress ||
+      'unknown'
+    );
   }
 }

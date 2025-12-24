@@ -1,5 +1,5 @@
 // src/components/layout/MainLayout.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Box,
@@ -12,22 +12,51 @@ import {
   IconButton,
   useMediaQuery,
 } from '@mui/material';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ProfileMenu from './ProfileMenu';
 import NotificationCenter from '../notifications/NotificationCenter';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import MenuIcon from '@mui/icons-material/Menu';
+import { useAuth } from '../../context/AuthContext';
+import { useSystemSettings } from '../../context/SystemSettingsContext';
+import { useDocumentHead } from '../../hooks/useDocumentHead';
+import { Avatar } from '@mui/material';
 
 const MainLayout: React.FC = () => {
   const theme = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
+  const { getSettingValue } = useSystemSettings();
+
+  const siteName = getSettingValue('SITE_NAME', 'Sendika Yönetim Paneli');
+  const siteLogoUrl = getSettingValue('SITE_LOGO_URL', '');
+  const footerText = getSettingValue('FOOTER_TEXT', `© ${new Date().getFullYear()} Sendika Yönetim Sistemi. Tüm hakları saklıdır.`);
+
+  // Document title ve favicon'u güncelle
+  useDocumentHead(
+    `${siteName} | Yönetim Paneli`,
+    siteLogoUrl || undefined
+  );
+
+  // Token kontrolü - eğer token yoksa login'e yönlendir
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  // Loading durumunda veya token yoksa hiçbir şey render etme
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
 
   // Breadcrumb oluşturma
   const pathnames = location.pathname.split('/').filter((x) => x);
@@ -79,29 +108,55 @@ const MainLayout: React.FC = () => {
           )}
 
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-            <Box
-              sx={{
-                width: { xs: 36, sm: 40 },
-                height: { xs: 36, sm: 40 },
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: { xs: 1.5, sm: 2 },
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              <Typography
+            {siteLogoUrl ? (
+              <Avatar
+                key={siteLogoUrl}
+                src={
+                  siteLogoUrl.startsWith('http://') || siteLogoUrl.startsWith('https://')
+                    ? siteLogoUrl
+                    : `http://localhost:3000${siteLogoUrl}`
+                }
+                alt="Logo"
                 sx={{
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: { xs: '1rem', sm: '1.2rem' },
+                  width: { xs: 36, sm: 40 },
+                  height: { xs: 36, sm: 40 },
+                  borderRadius: 2,
+                  mr: { xs: 1.5, sm: 2 },
+                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+                }}
+                imgProps={{
+                  onError: (e) => {
+                    const target = e.target as HTMLImageElement;
+                    console.error('Logo yüklenemedi:', siteLogoUrl, 'Attempted URL:', target.src);
+                    // Fallback: Logo yüklenemezse boş göster
+                  },
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: { xs: 36, sm: 40 },
+                  height: { xs: 36, sm: 40 },
+                  borderRadius: 2,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: { xs: 1.5, sm: 2 },
+                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
                 }}
               >
-                S
-              </Typography>
-            </Box>
+                <Typography
+                  sx={{
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: { xs: '1rem', sm: '1.2rem' },
+                  }}
+                >
+                  {siteName.charAt(0).toUpperCase()}
+                </Typography>
+              </Box>
+            )}
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
               <Typography
                 variant="h6"
@@ -114,7 +169,7 @@ const MainLayout: React.FC = () => {
                   backgroundClip: 'text',
                 }}
               >
-                Sendika Yönetim Paneli
+                {siteName}
               </Typography>
               <Typography
                 variant="caption"
@@ -141,7 +196,7 @@ const MainLayout: React.FC = () => {
                   backgroundClip: 'text',
                 }}
               >
-                Sendika Panel
+                {siteName.length > 20 ? `${siteName.substring(0, 20)}...` : siteName}
               </Typography>
             </Box>
           </Box>
@@ -301,7 +356,7 @@ const MainLayout: React.FC = () => {
                 fontSize: { xs: '0.8rem', sm: '0.875rem' },
               }}
             >
-              © {new Date().getFullYear()} Sendika Yönetim Sistemi. Tüm hakları saklıdır.
+              {footerText}
             </Typography>
             <Box 
               sx={{ 

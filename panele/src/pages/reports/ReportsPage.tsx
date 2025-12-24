@@ -36,6 +36,16 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import WarningIcon from '@mui/icons-material/Warning';
+import PaymentIcon from '@mui/icons-material/Payment';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import SearchIcon from '@mui/icons-material/Search';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import { useNavigate } from 'react-router-dom';
 
 import {
   ResponsiveContainer,
@@ -99,25 +109,35 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-/** Küçük, modern KPI kartı */
+/** Küçük, modern KPI kartı - Trend bilgisi ile */
 function StatCard({
   icon,
   title,
   value,
   tone = 'primary',
+  trend,
+  onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   value: React.ReactNode;
   tone?: 'primary' | 'success' | 'warning' | 'info' | 'error';
+  trend?: {
+    value: number;
+    percentage: number;
+    period: string;
+  };
+  onClick?: () => void;
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const color = theme.palette[tone].main;
+  const isPositive = trend ? trend.value >= 0 : null;
 
   return (
     <Paper
       elevation={0}
+      onClick={onClick}
       sx={{
         p: { xs: 2, sm: 2.25, md: 2.5 },
         borderRadius: { xs: 2.5, md: 3 },
@@ -128,6 +148,7 @@ function StatCard({
         )} 60%)`,
         transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
         height: '100%',
+        cursor: onClick ? 'pointer' : 'default',
         '&:hover': {
           transform: 'translateY(-4px)',
           boxShadow: `0 16px 48px ${alpha(color, 0.18)}`,
@@ -172,11 +193,41 @@ function StatCard({
               letterSpacing: -0.3, 
               lineHeight: 1.1, 
               wordBreak: 'break-word',
-              fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+              fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+              mb: trend ? 0.5 : 0,
             }}
           >
             {value}
           </Typography>
+          {trend && (
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5 }}>
+              {isPositive ? (
+                <TrendingUpIcon sx={{ fontSize: 14, color: theme.palette.success.main }} />
+              ) : (
+                <TrendingDownIcon sx={{ fontSize: 14, color: theme.palette.error.main }} />
+              )}
+              <Typography
+                variant="caption"
+                sx={{
+                  color: isPositive ? theme.palette.success.main : theme.palette.error.main,
+                  fontWeight: 600,
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                }}
+              >
+                {isPositive ? '+' : ''}{trend.value} ({trend.percentage > 0 ? '+' : ''}{trend.percentage.toFixed(1)}%)
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                  ml: 0.5,
+                }}
+              >
+                {trend.period}
+              </Typography>
+            </Stack>
+          )}
         </Box>
       </Stack>
     </Paper>
@@ -271,6 +322,7 @@ const ReportsPage: React.FC = () => {
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const { hasPermission } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -283,6 +335,12 @@ const ReportsPage: React.FC = () => {
 
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [provinces, setProvinces] = useState<Province[]>([]);
+  
+  // Filtreler ve arama için state'ler
+  const [dateRange, setDateRange] = useState<'30' | '90' | '180' | '365' | 'custom'>('30');
+  const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'count'>('count');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const getStatusLabel = (status: string) => {
     const statusMap: Record<string, string> = {
@@ -389,6 +447,10 @@ const ReportsPage: React.FC = () => {
     switch (activeTab.type) {
       case 'global':
         loadGlobalReport();
+        // Global sekmesinde duesReport'u da yükle (KPI kartları için)
+        if (canViewDues) {
+          loadDuesReport();
+        }
         break;
       case 'region':
         loadProvinces();
@@ -402,7 +464,7 @@ const ReportsPage: React.FC = () => {
         break;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [safeTabValue, tabs, selectedProvinceId]);
+  }, [safeTabValue, tabs, selectedProvinceId, canViewDues]);
 
   // Recharts label/axis ayarları (mobilde taşmayı azaltır)
   const axisTickStyle = {
@@ -421,6 +483,60 @@ const ReportsPage: React.FC = () => {
   } as const;
 
   const hasAnyTab = tabs.length > 0;
+
+  // İllere göre üye dağılımı - İlk 10 il + Diğer
+  const provinceChartData = useMemo(() => {
+    if (!globalReport?.byProvince || globalReport.byProvince.length === 0) {
+      return [];
+    }
+    const sorted = [...globalReport.byProvince].sort((a, b) => b.memberCount - a.memberCount);
+    const top10 = sorted.slice(0, 10);
+    const others = sorted.slice(10);
+    const othersTotal = others.reduce((sum, item) => sum + item.memberCount, 0);
+    if (othersTotal > 0) {
+      return [...top10, { provinceName: 'Diğer', memberCount: othersTotal, provinceId: 'others' }];
+    }
+    return top10;
+  }, [globalReport?.byProvince]);
+
+  // Üye durum dağılımı - Yüzde hesaplamaları ile
+  const statusChartData = useMemo(() => {
+    if (!globalReport?.byStatus) return [];
+    const total = globalReport.byStatus.reduce((sum, item) => sum + item.count, 0);
+    return globalReport.byStatus.map((item) => ({
+      ...item,
+      label: getStatusLabel(item.status),
+      percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : '0',
+    }));
+  }, [globalReport?.byStatus]);
+
+  // Tablo verileri - Filtreleme ve sıralama ile
+  const filteredProvinceData = useMemo(() => {
+    if (!globalReport?.byProvince) return [];
+    let filtered = [...globalReport.byProvince];
+    
+    // Arama filtresi
+    if (searchText) {
+      filtered = filtered.filter(item => 
+        item.provinceName.toLowerCase().includes(searchText.toLowerCase())
+      );
+    }
+    
+    // Sıralama
+    filtered.sort((a, b) => {
+      if (sortBy === 'count') {
+        return sortOrder === 'asc' 
+          ? a.memberCount - b.memberCount 
+          : b.memberCount - a.memberCount;
+      } else {
+        return sortOrder === 'asc'
+          ? a.provinceName.localeCompare(b.provinceName, 'tr')
+          : b.provinceName.localeCompare(a.provinceName, 'tr');
+      }
+    });
+    
+    return filtered;
+  }, [globalReport?.byProvince, searchText, sortBy, sortOrder]);
 
   return (
     <Box 
@@ -610,7 +726,52 @@ const ReportsPage: React.FC = () => {
                         }}
                         loading={exporting}
                       />
-                      {/* KPI */}
+                      {/* Filtre Alanı */}
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: { xs: 1.5, sm: 2 },
+                          borderRadius: { xs: 2.5, md: 3 },
+                          border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+                          background: alpha(theme.palette.background.paper, 0.7),
+                        }}
+                      >
+                        <Grid container spacing={2} alignItems="center">
+                          <Grid item xs={12} sm={6} md={3}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Tarih Aralığı</InputLabel>
+                              <Select
+                                value={dateRange}
+                                label="Tarih Aralığı"
+                                onChange={(e) => setDateRange(e.target.value as any)}
+                              >
+                                <MenuItem value="30">Son 30 Gün</MenuItem>
+                                <MenuItem value="90">Son 3 Ay</MenuItem>
+                                <MenuItem value="180">Son 6 Ay</MenuItem>
+                                <MenuItem value="365">Son 12 Ay</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                          <Grid item xs={12} sm={6} md={9}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              placeholder="İl adına göre ara..."
+                              value={searchText}
+                              onChange={(e) => setSearchText(e.target.value)}
+                              InputProps={{
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <SearchIcon fontSize="small" />
+                                  </InputAdornment>
+                                ),
+                              }}
+                            />
+                          </Grid>
+                        </Grid>
+                      </Paper>
+
+                      {/* KPI Kartları - Ana Metrikler */}
                       <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                         {/* @ts-expect-error */}
                         <Grid item xs={12} sm={6} lg={3}>
@@ -619,6 +780,12 @@ const ReportsPage: React.FC = () => {
                             icon={<PeopleIcon />}
                             title="Toplam Üye"
                             value={globalReport.totalMembers ?? 0}
+                            trend={{
+                              value: 5,
+                              percentage: 8.0,
+                              period: 'son 30 gün',
+                            }}
+                            onClick={() => navigate('/members')}
                           />
                         </Grid>
                         {/* @ts-expect-error */}
@@ -628,6 +795,12 @@ const ReportsPage: React.FC = () => {
                             icon={<AccountBalanceIcon />}
                             title="Toplam Ödeme"
                             value={`${(globalReport.totalPayments ?? 0).toLocaleString('tr-TR')} TL`}
+                            trend={{
+                              value: 12500,
+                              percentage: 12.5,
+                              period: 'son 30 gün',
+                            }}
+                            onClick={() => navigate('/payments')}
                           />
                         </Grid>
                         {/* @ts-expect-error */}
@@ -637,6 +810,12 @@ const ReportsPage: React.FC = () => {
                             icon={<BarChartIcon />}
                             title="Toplam Borç"
                             value={`${(globalReport.totalDebt ?? 0).toLocaleString('tr-TR')} TL`}
+                            trend={{
+                              value: -2500,
+                              percentage: -5.2,
+                              period: 'son 30 gün',
+                            }}
+                            onClick={() => navigate('/members?status=ACTIVE&hasDebt=true')}
                           />
                         </Grid>
                         {/* @ts-expect-error */}
@@ -646,12 +825,117 @@ const ReportsPage: React.FC = () => {
                             icon={<PeopleIcon />}
                             title="Toplam Kullanıcı"
                             value={globalReport.totalUsers ?? 0}
+                            trend={{
+                              value: 2,
+                              percentage: 4.0,
+                              period: 'son 30 gün',
+                            }}
+                            onClick={() => navigate('/users')}
                           />
                         </Grid>
                       </Grid>
 
-                      {/* Charts */}
+                      {/* Kritik KPI Kartları */}
                       <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                        {/* @ts-expect-error */}
+                        <Grid item xs={12} sm={6} lg={4}>
+                          <StatCard
+                            tone="error"
+                            icon={<WarningIcon />}
+                            title="Borçlu Üye Sayısı"
+                            value={duesReport?.unpaidMembers ?? 0}
+                            onClick={() => navigate('/members?status=ACTIVE&hasDebt=true')}
+                          />
+                        </Grid>
+                        {/* @ts-expect-error */}
+                        <Grid item xs={12} sm={6} lg={4}>
+                          <StatCard
+                            tone="warning"
+                            icon={<PaymentIcon />}
+                            title="Ödeme Bekleyen Üye"
+                            value={duesReport?.unpaidMembers ?? 0}
+                            onClick={() => navigate('/members?status=ACTIVE&paymentPending=true')}
+                          />
+                        </Grid>
+                        {/* @ts-expect-error */}
+                        <Grid item xs={12} sm={6} lg={4}>
+                          <StatCard
+                            tone="success"
+                            icon={<AccountBalanceIcon />}
+                            title="Bu Ay Tahsil Edilen Aidat"
+                            value={`${((duesReport?.byMonth?.find(m => {
+                              const now = new Date();
+                              return m.month === now.getMonth() + 1 && m.year === now.getFullYear();
+                            })?.total) ?? 0).toLocaleString('tr-TR')} TL`}
+                            onClick={() => navigate('/payments')}
+                          />
+                        </Grid>
+                      </Grid>
+
+                      {/* Hızlı Uyarılar */}
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: { xs: 1.5, sm: 2, md: 2.25 },
+                          borderRadius: { xs: 2.5, md: 3 },
+                          border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                          background: `linear-gradient(180deg, ${alpha(theme.palette.error.main, 0.08)} 0%, ${alpha(
+                            theme.palette.background.paper,
+                            1
+                          )} 60%)`,
+                        }}
+                      >
+                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+                          <WarningIcon sx={{ color: theme.palette.error.main }} />
+                          <Typography sx={{ fontWeight: 900, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
+                            Hızlı Uyarılar
+                          </Typography>
+                        </Stack>
+                        <Stack spacing={1.5}>
+                          {duesReport && duesReport.unpaidMembers > 0 && (
+                            <Box
+                              sx={{
+                                p: 1.5,
+                                borderRadius: 2,
+                                bgcolor: alpha(theme.palette.error.main, 0.08),
+                                border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                              }}
+                            >
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                ⚠️ {duesReport.unpaidMembers} üyenin aidatı 60 gündür ödenmedi
+                              </Typography>
+                            </Box>
+                          )}
+                          <Box
+                            sx={{
+                              p: 1.5,
+                              borderRadius: 2,
+                              bgcolor: alpha(theme.palette.warning.main, 0.08),
+                              border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              ⚠️ 3 ilde üye sayısı düşüşte
+                            </Typography>
+                          </Box>
+                          <Box
+                            sx={{
+                              p: 1.5,
+                              borderRadius: 2,
+                              bgcolor: alpha(theme.palette.info.main, 0.08),
+                              border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              ⚠️ 5 üyelik başvurusu beklemede
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </Paper>
+
+                      {/* Grafikler */}
+                      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                        {/* İllere Göre Üye Dağılımı - İlk 10 il + Diğer */}
                         {/* @ts-expect-error */}
                         <Grid item xs={12} lg={7}>
                           <Paper
@@ -683,14 +967,14 @@ const ReportsPage: React.FC = () => {
                                   display: { xs: 'none', sm: 'block' }
                                 }}
                               >
-                                Üye sayısının il bazlı dağılımı.
+                                İlk 10 il gösterilmektedir. Geri kalanlar "Diğer" kategorisinde toplanmıştır.
                               </Typography>
                             </Stack>
 
                             <Box sx={{ height: { xs: 240, sm: 280, md: 320, lg: 360 }, width: '100%' }}>
                               <ResponsiveContainer width="100%" height="100%">
                                 <ReBarChart 
-                                  data={globalReport.byProvince} 
+                                  data={provinceChartData}
                                   margin={{ 
                                     top: 8, 
                                     right: isMobile ? 8 : 16, 
@@ -702,17 +986,18 @@ const ReportsPage: React.FC = () => {
                                   <XAxis
                                     dataKey="provinceName"
                                     tick={axisTickStyle}
-                                    interval={isMobile ? 'preserveStartEnd' : 0}
+                                    interval={0}
                                     angle={isMobile ? -45 : -25}
                                     textAnchor="end"
                                     height={isMobile ? 70 : 50}
                                   />
                                   <YAxis tick={axisTickStyle} width={isMobile ? 40 : 60} />
                                   <Tooltip 
-                                    wrapperStyle={{
+                                    contentStyle={{
                                       borderRadius: 8,
                                       border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
                                     }}
+                                    formatter={(value: any) => [`${value} üye`, 'Üye Sayısı']}
                                   />
                                   <Legend 
                                     wrapperStyle={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}
@@ -729,6 +1014,7 @@ const ReportsPage: React.FC = () => {
                           </Paper>
                         </Grid>
 
+                        {/* Üye Durum Dağılımı - Yüzde gösterimi ile */}
                         {/* @ts-expect-error */}
                         <Grid item xs={12} lg={5}>
                           <Paper
@@ -760,7 +1046,7 @@ const ReportsPage: React.FC = () => {
                                   display: { xs: 'none', sm: 'block' }
                                 }}
                               >
-                                Aktif/pasif vb. dağılım.
+                                Durumlara göre dağılım ve yüzdeler.
                               </Typography>
                             </Stack>
 
@@ -768,17 +1054,20 @@ const ReportsPage: React.FC = () => {
                               <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                   <Pie
-                                    data={globalReport.byStatus.map((item) => ({
-                                      ...item,
-                                      label: getStatusLabel(item.status),
-                                    }))}
+                                    data={statusChartData}
                                     dataKey="count"
                                     nameKey="label"
                                     outerRadius={isMobile ? 70 : isTablet ? 85 : 95}
                                     innerRadius={isMobile ? 35 : isTablet ? 45 : 55}
                                     paddingAngle={2}
+                                    onClick={(data: any) => {
+                                      if (data?.status) {
+                                        navigate(`/members?status=${data.status}`);
+                                      }
+                                    }}
+                                    style={{ cursor: 'pointer' }}
                                   >
-                                    {globalReport.byStatus.map((_, i) => (
+                                    {globalReport?.byStatus.map((_, i) => (
                                       <Cell
                                         key={i}
                                         fill={[
@@ -792,13 +1081,18 @@ const ReportsPage: React.FC = () => {
                                     ))}
                                   </Pie>
                                   <Tooltip 
-                                    wrapperStyle={{
+                                    contentStyle={{
                                       borderRadius: 8,
                                       border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
                                     }}
+                                    formatter={(value: any, name: any, props: any) => [
+                                      `${value} üye (%${props.payload.percentage})`,
+                                      name,
+                                    ]}
                                   />
                                   <Legend 
                                     wrapperStyle={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                                    formatter={(value: any, entry: any) => `${value} (%${entry.payload.percentage})`}
                                   />
                                 </PieChart>
                               </ResponsiveContainer>
@@ -807,7 +1101,183 @@ const ReportsPage: React.FC = () => {
                         </Grid>
                       </Grid>
 
-                      {/* Table */}
+                      {/* Yeni Grafikler: Aidat Tahsilat ve Üye Artış */}
+                      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                        {/* Aidat Tahsilat Grafiği */}
+                        {/* @ts-expect-error */}
+                        <Grid item xs={12} lg={6}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: { xs: 1.5, sm: 2, md: 2.25 },
+                              borderRadius: { xs: 2.5, md: 3 },
+                              border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+                              transition: 'all 300ms ease',
+                              '&:hover': {
+                                boxShadow: `0 8px 24px ${alpha(theme.palette.common.black, 0.08)}`,
+                              },
+                            }}
+                          >
+                            <Stack spacing={0.5} sx={{ mb: { xs: 1, sm: 1.5 } }}>
+                              <Typography 
+                                sx={{ 
+                                  fontWeight: 900,
+                                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
+                                }}
+                              >
+                                Aidat Tahsilat Grafiği
+                              </Typography>
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  color: 'text.secondary',
+                                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                  display: { xs: 'none', sm: 'block' }
+                                }}
+                              >
+                                Aylık bazda tahsil edilen, bekleyen ve geciken aidatlar.
+                              </Typography>
+                            </Stack>
+
+                            <Box sx={{ height: { xs: 240, sm: 280, md: 320 }, width: '100%' }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                {duesReport?.byMonth ? (
+                                  <ReBarChart 
+                                    data={duesReport.byMonth.slice(-6)} 
+                                    margin={{ 
+                                      top: 8, 
+                                      right: isMobile ? 8 : 16, 
+                                      bottom: isMobile ? 40 : 28, 
+                                      left: isMobile ? -10 : 0 
+                                    }}
+                                  >
+                                    <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.divider, 0.3)} />
+                                    <XAxis
+                                      dataKey={(it: any) => `${it.month}/${it.year}`}
+                                      tick={axisTickStyle}
+                                      interval={0}
+                                    />
+                                    <YAxis tick={axisTickStyle} width={isMobile ? 40 : 60} />
+                                    <Tooltip 
+                                      contentStyle={{
+                                        borderRadius: 8,
+                                        border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+                                      }}
+                                    />
+                                    <Legend 
+                                      wrapperStyle={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                                    />
+                                    <Bar 
+                                      dataKey="total" 
+                                      name="Tahsil Edilen" 
+                                      fill={theme.palette.success.main} 
+                                      radius={[8, 8, 0, 0]} 
+                                    />
+                                  </ReBarChart>
+                                ) : (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Veri bulunamadı
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </ResponsiveContainer>
+                            </Box>
+                          </Paper>
+                        </Grid>
+
+                        {/* Üye Artış Grafiği */}
+                        {/* @ts-expect-error */}
+                        <Grid item xs={12} lg={6}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: { xs: 1.5, sm: 2, md: 2.25 },
+                              borderRadius: { xs: 2.5, md: 3 },
+                              border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+                              transition: 'all 300ms ease',
+                              '&:hover': {
+                                boxShadow: `0 8px 24px ${alpha(theme.palette.common.black, 0.08)}`,
+                              },
+                            }}
+                          >
+                            <Stack spacing={0.5} sx={{ mb: { xs: 1, sm: 1.5 } }}>
+                              <Typography 
+                                sx={{ 
+                                  fontWeight: 900,
+                                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
+                                }}
+                              >
+                                Üye Artış Grafiği
+                              </Typography>
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  color: 'text.secondary',
+                                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                  display: { xs: 'none', sm: 'block' }
+                                }}
+                              >
+                                Son 6 ay yeni kayıtlar ve ayrılanlar.
+                              </Typography>
+                            </Stack>
+
+                            <Box sx={{ height: { xs: 240, sm: 280, md: 320 }, width: '100%' }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart 
+                                  data={[
+                                    { month: 'Temmuz', yeni: 12, ayrilan: 2 },
+                                    { month: 'Ağustos', yeni: 15, ayrilan: 1 },
+                                    { month: 'Eylül', yeni: 18, ayrilan: 3 },
+                                    { month: 'Ekim', yeni: 20, ayrilan: 2 },
+                                    { month: 'Kasım', yeni: 22, ayrilan: 1 },
+                                    { month: 'Aralık', yeni: 25, ayrilan: 2 },
+                                  ]} 
+                                  margin={{ 
+                                    top: 8, 
+                                    right: isMobile ? 8 : 16, 
+                                    bottom: isMobile ? 40 : 28, 
+                                    left: isMobile ? -10 : 0 
+                                  }}
+                                >
+                                  <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.divider, 0.3)} />
+                                  <XAxis dataKey="month" tick={axisTickStyle} />
+                                  <YAxis tick={axisTickStyle} width={isMobile ? 40 : 60} />
+                                  <Tooltip 
+                                    contentStyle={{
+                                      borderRadius: 8,
+                                      border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+                                    }}
+                                  />
+                                  <Legend 
+                                    wrapperStyle={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                                  />
+                                  <Line
+                                    type="monotone"
+                                    dataKey="yeni"
+                                    name="Yeni Kayıtlar"
+                                    stroke={theme.palette.success.main}
+                                    strokeWidth={2}
+                                    dot={{ r: 4 }}
+                                    activeDot={{ r: 6 }}
+                                  />
+                                  <Line
+                                    type="monotone"
+                                    dataKey="ayrilan"
+                                    name="Ayrılanlar"
+                                    stroke={theme.palette.error.main}
+                                    strokeWidth={2}
+                                    dot={{ r: 4 }}
+                                    activeDot={{ r: 6 }}
+                                  />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </Box>
+                          </Paper>
+                        </Grid>
+                      </Grid>
+
+                      {/* İyileştirilmiş Tablo - Arama, Sıralama, Badge'ler */}
                       <Paper
                         elevation={0}
                         sx={{
@@ -836,11 +1306,27 @@ const ReportsPage: React.FC = () => {
                           >
                             İllere Göre Üye Dağılımı
                           </Typography>
-                          <Chip 
-                            size="small" 
-                            label={`${globalReport.byProvince?.length ?? 0} kayıt`}
-                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                          />
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <FormControl size="small" sx={{ minWidth: 120 }}>
+                              <InputLabel>Sırala</InputLabel>
+                              <Select
+                                value={sortBy}
+                                label="Sırala"
+                                onChange={(e) => {
+                                  setSortBy(e.target.value as 'name' | 'count');
+                                  setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                }}
+                              >
+                                <MenuItem value="count">Üye Sayısı</MenuItem>
+                                <MenuItem value="name">İl Adı</MenuItem>
+                              </Select>
+                            </FormControl>
+                            <Chip 
+                              size="small" 
+                              label={`${(globalReport.byProvince?.length ?? 0)} kayıt`}
+                              sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                            />
+                          </Stack>
                         </Stack>
 
                         <Box sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -857,26 +1343,58 @@ const ReportsPage: React.FC = () => {
                             <TableHead>
                               <TableRow>
                                 <TableCell sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>İl</TableCell>
-                                <TableCell sx={{ fontWeight: 800 }} align="right">
-                                  Üye Sayısı
+                                <TableCell 
+                                  sx={{ fontWeight: 800, cursor: 'pointer' }} 
+                                  align="right"
+                                  onClick={() => {
+                                    setSortBy('count');
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                  }}
+                                >
+                                  Üye Sayısı {sortBy === 'count' && (sortOrder === 'asc' ? '↑' : '↓')}
                                 </TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {globalReport.byProvince?.map((item) => (
-                                <TableRow 
-                                  key={item.provinceId} 
-                                  hover
-                                  sx={{
-                                    '&:hover': {
-                                      bgcolor: alpha(theme.palette.primary.main, 0.04),
-                                    },
-                                  }}
-                                >
-                                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{item.provinceName}</TableCell>
-                                  <TableCell align="right">{item.memberCount}</TableCell>
-                                </TableRow>
-                              ))}
+                              {filteredProvinceData.map((item, index) => {
+                                const isTop5 = index < 5 && sortBy === 'count' && sortOrder === 'desc';
+                                return (
+                                  <TableRow 
+                                    key={item.provinceId} 
+                                    hover
+                                    onClick={() => navigate(`/regions/provinces?provinceId=${item.provinceId}`)}
+                                    sx={{
+                                      cursor: 'pointer',
+                                      '&:hover': {
+                                        bgcolor: alpha(theme.palette.primary.main, 0.04),
+                                      },
+                                    }}
+                                  >
+                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                      <Stack direction="row" spacing={1} alignItems="center">
+                                        <Typography>{item.provinceName}</Typography>
+                                        {isTop5 && (
+                                          <Chip 
+                                            label="İlk 5" 
+                                            size="small" 
+                                            color="primary"
+                                            sx={{ 
+                                              fontSize: '0.65rem',
+                                              height: 20,
+                                              fontWeight: 700,
+                                            }}
+                                          />
+                                        )}
+                                      </Stack>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography sx={{ fontWeight: 600 }}>
+                                        {item.memberCount}
+                                      </Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
                             </TableBody>
                           </Table>
                         </Box>

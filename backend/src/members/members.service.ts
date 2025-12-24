@@ -11,6 +11,7 @@ import { MemberScopeService } from './member-scope.service';
 import { MemberHistoryService } from './member-history.service';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
 import { UpdateMemberDto } from './dto/update-member.dto';
+import { ConfigService } from '../config/config.service';
 
 @Injectable()
 export class MembersService {
@@ -18,7 +19,173 @@ export class MembersService {
     private prisma: PrismaService,
     private scopeService: MemberScopeService,
     private historyService: MemberHistoryService,
+    private configService: ConfigService,
   ) {}
+
+  private validateNationalIdOrThrow(nationalId: string) {
+    const cleaned = nationalId?.trim() || '';
+    if (!cleaned) {
+      throw new BadRequestException('TC Kimlik Numarası zorunludur');
+    }
+    if (!/^[1-9]\d{10}$/.test(cleaned)) {
+      throw new BadRequestException('TC Kimlik Numarası 11 haneli, başında 0 olmayan rakamlardan oluşmalıdır');
+    }
+    if (/^(\d)\1{10}$/.test(cleaned)) {
+      throw new BadRequestException('TC Kimlik Numarası tüm hanesi aynı olamaz');
+    }
+
+    const digits = cleaned.split('').map(Number);
+    const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
+    const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
+    const tenthDigit = ((oddSum * 7) - evenSum) % 10;
+    if (digits[9] !== tenthDigit) {
+      throw new BadRequestException('TC Kimlik Numarası geçersiz (10. hane kontrolü)');
+    }
+
+    const eleventhDigit = digits.slice(0, 10).reduce((acc, digit) => acc + digit, 0) % 10;
+    if (digits[10] !== eleventhDigit) {
+      throw new BadRequestException('TC Kimlik Numarası geçersiz (11. hane kontrolü)');
+    }
+  }
+
+  /**
+   * Sistem ayarlarına göre zorunlu alanları kontrol et
+   */
+  private validateRequiredFields(dto: CreateMemberApplicationDto, provinceId?: string, districtId?: string) {
+    // İkamet il/ilçe kontrolü (özel kontrol çünkü scope'dan da gelebilir)
+    if (this.configService.getSystemSettingBoolean('MEMBERSHIP_REQUIRE_PROVINCE_DISTRICT', false)) {
+      const finalProvinceId = provinceId || dto.provinceId;
+      const finalDistrictId = districtId || dto.districtId;
+      if (!finalProvinceId || !finalDistrictId) {
+        throw new BadRequestException('İkamet il ve ilçe alanları zorunludur');
+      }
+    }
+
+    const requiredFields = [
+      { key: 'MEMBERSHIP_REQUIRE_MOTHER_NAME', field: 'motherName', label: 'Anne adı' },
+      { key: 'MEMBERSHIP_REQUIRE_FATHER_NAME', field: 'fatherName', label: 'Baba adı' },
+      { key: 'MEMBERSHIP_REQUIRE_BIRTHPLACE', field: 'birthplace', label: 'Doğum yeri' },
+      { key: 'MEMBERSHIP_REQUIRE_GENDER', field: 'gender', label: 'Cinsiyet' },
+      { key: 'MEMBERSHIP_REQUIRE_EDUCATION', field: 'educationStatus', label: 'Öğrenim durumu' },
+      { key: 'MEMBERSHIP_REQUIRE_PHONE', field: 'phone', label: 'Telefon' },
+      { key: 'MEMBERSHIP_REQUIRE_EMAIL', field: 'email', label: 'E-posta' },
+      { key: 'MEMBERSHIP_REQUIRE_INSTITUTION_REG_NO', field: 'institutionRegNo', label: 'Kurum sicil no' },
+      { key: 'MEMBERSHIP_REQUIRE_WORK_UNIT', field: 'workUnit', label: 'Görev yaptığı birim' },
+    ];
+
+    for (const { key, field, label } of requiredFields) {
+      const isRequired = this.configService.getSystemSettingBoolean(key, false);
+      if (isRequired) {
+        const value = dto[field as keyof CreateMemberApplicationDto];
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          throw new BadRequestException(`${label} alanı zorunludur`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Sistem ayarlarına göre kayıt numarası oluştur
+   */
+  private async generateRegistrationNumber(): Promise<string> {
+    const autoGenerate = this.configService.getSystemSettingBoolean('MEMBERSHIP_AUTO_GENERATE_REG_NUMBER', false);
+    if (!autoGenerate) {
+      // Otomatik oluşturma kapalıysa geçici bir değer döndür
+      return `TEMP-${Date.now()}`;
+    }
+
+    const format = this.configService.getSystemSetting('MEMBERSHIP_REG_NUMBER_FORMAT', 'SEQUENTIAL');
+    const prefix = this.configService.getSystemSetting('MEMBERSHIP_REG_NUMBER_PREFIX', '').trim();
+    const startNumber = this.configService.getSystemSettingNumber('MEMBERSHIP_REG_NUMBER_START', 1);
+    const currentYear = new Date().getFullYear();
+
+    // Format'a göre expected pattern oluştur
+    let expectedPattern: string;
+    switch (format) {
+      case 'SEQUENTIAL':
+        expectedPattern = '^\\d+$';
+        break;
+      case 'YEAR_SEQUENTIAL':
+        expectedPattern = `^${currentYear}-\\d+$`;
+        break;
+      case 'PREFIX_SEQUENTIAL':
+        expectedPattern = prefix ? `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+$` : '^\\d+$';
+        break;
+      case 'PREFIX_YEAR_SEQUENTIAL':
+        expectedPattern = prefix
+          ? `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-${currentYear}-\\d+$`
+          : `^${currentYear}-\\d+$`;
+        break;
+      default:
+        expectedPattern = '^\\d+$';
+    }
+
+    // En son kayıt numarasını bul (geçici numaralar hariç, format'a uygun olanlar)
+    const allMembers = await this.prisma.member.findMany({
+      where: {
+        registrationNumber: {
+          not: {
+            startsWith: 'TEMP-',
+          },
+        },
+      },
+      select: {
+        registrationNumber: true,
+      },
+    });
+
+    const regex = new RegExp(expectedPattern);
+    let maxNumber = startNumber - 1;
+
+    for (const member of allMembers) {
+      if (member.registrationNumber && regex.test(member.registrationNumber)) {
+        // Son numarayı çıkar
+        const numberMatch = member.registrationNumber.match(/(\d+)$/);
+        if (numberMatch) {
+          const num = parseInt(numberMatch[1], 10);
+          if (num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+    }
+
+    const nextNumber = maxNumber + 1;
+
+    switch (format) {
+      case 'SEQUENTIAL':
+        return `${nextNumber}`;
+      case 'YEAR_SEQUENTIAL':
+        return `${currentYear}-${String(nextNumber).padStart(3, '0')}`;
+      case 'PREFIX_SEQUENTIAL':
+        return prefix ? `${prefix}-${String(nextNumber).padStart(3, '0')}` : `${nextNumber}`;
+      case 'PREFIX_YEAR_SEQUENTIAL':
+        return prefix
+          ? `${prefix}-${currentYear}-${String(nextNumber).padStart(3, '0')}`
+          : `${currentYear}-${String(nextNumber).padStart(3, '0')}`;
+      default:
+        return `${nextNumber}`;
+    }
+  }
+
+  /**
+   * Başvuru kaynağının izinli olup olmadığını kontrol et
+   */
+  private validateAllowedSource(source: MemberSource) {
+    const allowedSourcesStr = this.configService.getSystemSetting('MEMBERSHIP_ALLOWED_SOURCES', '');
+    const allowedSources = allowedSourcesStr
+      ? allowedSourcesStr.split(',').map((s) => s.trim()).filter((s) => s !== '')
+      : [];
+
+    // Eğer hiçbir kaynak belirtilmemişse, tüm kaynaklar izinlidir
+    if (allowedSources.length === 0) {
+      return;
+    }
+
+    if (!allowedSources.includes(source)) {
+      throw new BadRequestException(`Başvuru kaynağı "${source}" izinli değil`);
+    }
+  }
 
   // TC kimlik numarasına göre iptal edilmiş üye kontrolü
   async checkCancelledMemberByNationalId(nationalId: string, user?: CurrentUserData) {
@@ -68,6 +235,24 @@ export class MembersService {
     previousCancelledMemberId?: string,
     user?: CurrentUserData,
   ) {
+    // Başvuru kaynağını kontrol et
+    const source = dto.source || MemberSource.DIRECT;
+    this.validateAllowedSource(source);
+
+    // Yeniden kayıt kontrolü - eğer iptal edilmiş bir üye varsa ve yeniden kayda izin yoksa reddet
+    const allowReRegistration = this.configService.getSystemSettingBoolean('MEMBERSHIP_ALLOW_RE_REGISTRATION', true);
+    if (!allowReRegistration && previousCancelledMemberId) {
+      throw new BadRequestException('Yeniden kayıt şu anda devre dışı bırakılmıştır');
+    }
+    
+    // Eğer yeniden kayıt kapalıysa ve iptal edilmiş üye varsa kontrol et
+    if (!allowReRegistration && user) {
+      const cancelledMember = await this.checkCancelledMemberByNationalId(dto.nationalId, user);
+      if (cancelledMember) {
+        throw new BadRequestException('Bu TC kimlik numarasına sahip iptal edilmiş bir üye bulunmaktadır ve yeniden kayıt şu anda devre dışı bırakılmıştır');
+      }
+    }
+
     // Kullanıcının scope'una göre provinceId ve districtId'yi al
     let provinceId: string | undefined = undefined;
     let districtId: string | undefined = undefined;
@@ -103,13 +288,11 @@ export class MembersService {
       districtId = dto.districtId;
     }
 
-    // Zorunlu alan kontrolleri
+    // Zorunlu alan kontrolleri (her zaman zorunlu olanlar)
     if (!dto.branchId) {
       throw new BadRequestException('Bağlı olduğu şube seçilmelidir');
     }
-    if (!dto.nationalId) {
-      throw new BadRequestException('TC Kimlik Numarası zorunludur');
-    }
+    this.validateNationalIdOrThrow(dto.nationalId);
     if (!dto.workingProvinceId) {
       throw new BadRequestException('Çalıştığı il zorunludur');
     }
@@ -123,8 +306,36 @@ export class MembersService {
       throw new BadRequestException('Kadro ünvanı zorunludur');
     }
 
-    // registrationNumber yoksa geçici bir değer oluştur (admin onaylarken değiştirebilir)
-    const registrationNumber = dto.registrationNumber || `TEMP-${Date.now()}`;
+    // Sistem ayarlarına göre zorunlu alanları kontrol et
+    this.validateRequiredFields(dto, provinceId, districtId);
+
+    // Yönetim kurulu kararı kontrolü
+    const requireBoardDecision = this.configService.getSystemSettingBoolean('MEMBERSHIP_REQUIRE_BOARD_DECISION', false);
+    if (requireBoardDecision && (!dto.boardDecisionDate || !dto.boardDecisionBookNo)) {
+      throw new BadRequestException('Yönetim kurulu karar tarihi ve defter no zorunludur');
+    }
+
+    // Kayıt numarası oluştur
+    const registrationNumber = dto.registrationNumber || await this.generateRegistrationNumber();
+
+    // Varsayılan durum ve otomatik onay kontrolü
+    const defaultStatus = this.configService.getSystemSetting('MEMBERSHIP_DEFAULT_STATUS', 'PENDING') as MemberStatus;
+    const autoApprove = this.configService.getSystemSettingBoolean('MEMBERSHIP_AUTO_APPROVE', false);
+    
+    let initialStatus = defaultStatus;
+    let approvedByUserId: string | undefined = undefined;
+    let approvedAt: Date | undefined = undefined;
+
+    if (autoApprove && defaultStatus === MemberStatus.PENDING) {
+      // Otomatik onay aktifse ve varsayılan durum PENDING ise, ACTIVE yap
+      initialStatus = MemberStatus.ACTIVE;
+      approvedByUserId = createdByUserId;
+      approvedAt = new Date();
+    } else if (autoApprove) {
+      // Otomatik onay aktifse varsayılan durumu kullan ama onay bilgilerini ekle
+      approvedByUserId = createdByUserId;
+      approvedAt = new Date();
+    }
 
     return this.prisma.member.create({
       data: {
@@ -133,16 +344,18 @@ export class MembersService {
         nationalId: dto.nationalId,
         phone: dto.phone,
         email: dto.email,
-        source: dto.source || MemberSource.DIRECT,
-        status: MemberStatus.PENDING,
+        source: source,
+        status: initialStatus,
         createdByUserId,
+        approvedByUserId,
+        approvedAt,
         previousCancelledMemberId: previousCancelledMemberId || null,
         provinceId: provinceId,
         districtId: districtId,
         
         // 🔹 Üyelik & Yönetim Kurulu Bilgileri
         membershipInfoOptionId: dto.membershipInfoOptionId,
-        registrationNumber: registrationNumber, // Zorunlu (geçici değer veya admin tarafından belirlenen)
+        registrationNumber: registrationNumber,
         boardDecisionDate: dto.boardDecisionDate ? new Date(dto.boardDecisionDate) : null,
         boardDecisionBookNo: dto.boardDecisionBookNo,
         
@@ -583,6 +796,12 @@ export class MembersService {
 
   async cancelMembership(id: string, dto: CancelMemberDto, cancelledByUserId: string) {
     const member = await this.getById(id);
+
+    // Üyelik iptaline izin kontrolü
+    const allowCancellation = this.configService.getSystemSettingBoolean('MEMBERSHIP_ALLOW_CANCELLATION', true);
+    if (!allowCancellation) {
+      throw new BadRequestException('Üyelik iptali şu anda devre dışı bırakılmıştır');
+    }
 
     // Sadece aktif üyelerin üyeliği iptal edilebilir
     if (member.status !== MemberStatus.ACTIVE) {

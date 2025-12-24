@@ -16,7 +16,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   alternativePermission2,
   alternativePermission3,
 }) => {
-  const { isAuthenticated, hasPermission } = useAuth();
+  const { isAuthenticated, hasPermission, isLoading } = useAuth();
+
+  // Token kontrolü tamamlanana kadar bekle
+  if (isLoading) {
+    return null; // veya bir loading spinner gösterilebilir
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional, ValidateIf } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsOptional, ValidateIf, IsObject } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { NotificationType, NotificationTargetType } from '@prisma/client';
 
@@ -26,5 +26,10 @@ export class CreateNotificationDto {
   @IsString()
   @IsNotEmpty()
   targetId?: string;
+
+  @ApiProperty({ description: 'Ek bilgiler (metadata)', required: false })
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, any>;
 }
 

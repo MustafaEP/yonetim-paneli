@@ -1,10 +1,26 @@
 -- Migration: Comprehensive Notification System
 -- Bu migration mevcut Notification tablosunu genişletir ve yeni tablolar ekler
 
--- 1. Yeni Enum'ları oluştur
-CREATE TYPE "NotificationCategory" AS ENUM ('SYSTEM', 'FINANCIAL', 'ANNOUNCEMENT', 'REMINDER');
+-- 1. NotificationStatus enum'unu oluştur (eğer yoksa)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationStatus') THEN
+    CREATE TYPE "NotificationStatus" AS ENUM ('PENDING', 'SENT', 'FAILED');
+  END IF;
+END $$;
 
-CREATE TYPE "NotificationTypeCategory" AS ENUM (
+-- 2. Yeni Enum'ları oluştur
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationCategory') THEN
+    CREATE TYPE "NotificationCategory" AS ENUM ('SYSTEM', 'FINANCIAL', 'ANNOUNCEMENT', 'REMINDER');
+  END IF;
+END $$;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationTypeCategory') THEN
+    CREATE TYPE "NotificationTypeCategory" AS ENUM (
   -- Sistem Bildirimleri
   'MEMBER_APPLICATION_NEW',
   'MEMBER_APPLICATION_APPROVED',
@@ -29,11 +45,18 @@ CREATE TYPE "NotificationTypeCategory" AS ENUM (
   'REMINDER_DOCUMENT_MISSING',
   'REMINDER_REPRESENTATIVE_TERM_EXPIRING',
   'REMINDER_PENDING_APPROVAL'
-);
+    );
+  END IF;
+END $$;
 
-CREATE TYPE "NotificationChannel" AS ENUM ('IN_APP', 'EMAIL', 'SMS', 'WHATSAPP');
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationChannel') THEN
+    CREATE TYPE "NotificationChannel" AS ENUM ('IN_APP', 'EMAIL', 'SMS', 'WHATSAPP');
+  END IF;
+END $$;
 
--- 2. NotificationStatus enum'una yeni değerler ekle (eğer yoksa)
+-- 3. NotificationStatus enum'una yeni değerler ekle (eğer yoksa)
 -- PostgreSQL'de enum'a değer ekleme
 DO $$ 
 BEGIN
@@ -46,7 +69,15 @@ BEGIN
   END IF;
 END $$;
 
--- 3. NotificationTargetType enum'una ROLE ekle
+-- 4. NotificationTargetType enum'unu oluştur (eğer yoksa)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationTargetType') THEN
+    CREATE TYPE "NotificationTargetType" AS ENUM ('ALL_MEMBERS', 'REGION', 'SCOPE', 'USER');
+  END IF;
+END $$;
+
+-- 5. NotificationTargetType enum'una ROLE ekle
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'ROLE' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'NotificationTargetType')) THEN
@@ -54,7 +85,7 @@ BEGIN
   END IF;
 END $$;
 
--- 4. Notification tablosuna yeni kolonlar ekle
+-- 6. Notification tablosuna yeni kolonlar ekle
 ALTER TABLE "Notification" 
   ADD COLUMN IF NOT EXISTS "category" "NotificationCategory" NOT NULL DEFAULT 'SYSTEM',
   ADD COLUMN IF NOT EXISTS "typeCategory" "NotificationTypeCategory",
@@ -66,7 +97,7 @@ ALTER TABLE "Notification"
   ADD COLUMN IF NOT EXISTS "metadata" JSONB,
   ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
--- 5. Eski 'type' kolonundaki verileri 'channels' array'ine dönüştür
+-- 7. Eski 'type' kolonundaki verileri 'channels' array'ine dönüştür
 -- Eğer type = EMAIL ise channels = [EMAIL], type = SMS ise channels = [SMS] vs.
 UPDATE "Notification" 
 SET channels = CASE 
@@ -78,16 +109,16 @@ SET channels = CASE
 END
 WHERE "type" IS NOT NULL;
 
--- 6. Notification tablosundan eski 'type' kolonunu kaldır (artık kullanılmıyor)
+-- 8. Notification tablosundan eski 'type' kolonunu kaldır (artık kullanılmıyor)
 -- ÖNEMLİ: Bu adımı yapmadan önce tüm verilerin dönüştürüldüğünden emin olun
 -- ALTER TABLE "Notification" DROP COLUMN IF EXISTS "type";
 
--- 7. Notification tablosuna index'ler ekle
+-- 9. Notification tablosuna index'ler ekle
 CREATE INDEX IF NOT EXISTS "Notification_category_idx" ON "Notification"("category");
 CREATE INDEX IF NOT EXISTS "Notification_typeCategory_idx" ON "Notification"("typeCategory");
 CREATE INDEX IF NOT EXISTS "Notification_scheduledFor_idx" ON "Notification"("scheduledFor");
 
--- 8. NotificationRecipient tablosunu oluştur
+-- 10. NotificationRecipient tablosunu oluştur
 CREATE TABLE IF NOT EXISTS "NotificationRecipient" (
     "id" TEXT NOT NULL,
     "notificationId" TEXT NOT NULL,
@@ -108,7 +139,7 @@ CREATE TABLE IF NOT EXISTS "NotificationRecipient" (
     CONSTRAINT "NotificationRecipient_pkey" PRIMARY KEY ("id")
 );
 
--- 9. NotificationRecipient foreign key ve index'ler
+-- 11. NotificationRecipient foreign key ve index'ler
 CREATE INDEX IF NOT EXISTS "NotificationRecipient_notificationId_idx" ON "NotificationRecipient"("notificationId");
 CREATE INDEX IF NOT EXISTS "NotificationRecipient_userId_idx" ON "NotificationRecipient"("userId");
 CREATE INDEX IF NOT EXISTS "NotificationRecipient_memberId_idx" ON "NotificationRecipient"("memberId");
@@ -118,7 +149,7 @@ CREATE INDEX IF NOT EXISTS "NotificationRecipient_channel_idx" ON "NotificationR
 ALTER TABLE "NotificationRecipient" ADD CONSTRAINT "NotificationRecipient_notificationId_fkey" 
     FOREIGN KEY ("notificationId") REFERENCES "Notification"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- 10. NotificationLog tablosunu oluştur
+-- 12. NotificationLog tablosunu oluştur
 CREATE TABLE IF NOT EXISTS "NotificationLog" (
     "id" TEXT NOT NULL,
     "notificationId" TEXT NOT NULL,
@@ -137,7 +168,7 @@ CREATE TABLE IF NOT EXISTS "NotificationLog" (
     CONSTRAINT "NotificationLog_pkey" PRIMARY KEY ("id")
 );
 
--- 11. NotificationLog foreign key ve index'ler
+-- 13. NotificationLog foreign key ve index'ler
 CREATE INDEX IF NOT EXISTS "NotificationLog_notificationId_idx" ON "NotificationLog"("notificationId");
 CREATE INDEX IF NOT EXISTS "NotificationLog_recipientId_idx" ON "NotificationLog"("recipientId");
 CREATE INDEX IF NOT EXISTS "NotificationLog_channel_idx" ON "NotificationLog"("channel");
@@ -151,12 +182,12 @@ ALTER TABLE "NotificationLog" ADD CONSTRAINT "NotificationLog_notificationId_fke
 ALTER TABLE "NotificationLog" ADD CONSTRAINT "NotificationLog_recipientId_fkey" 
     FOREIGN KEY ("recipientId") REFERENCES "NotificationRecipient"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- 12. Notification tablosuna NotificationRecipient ve NotificationLog ilişkileri için trigger eklemek gerekmez (Prisma bunları yönetir)
+-- 14. Notification tablosuna NotificationRecipient ve NotificationLog ilişkileri için trigger eklemek gerekmez (Prisma bunları yönetir)
 
--- 13. UserNotification tablosunu güncelle (zaten var ama index ekleyelim)
+-- 15. UserNotification tablosunu güncelle (zaten var ama index ekleyelim)
 CREATE INDEX IF NOT EXISTS "UserNotification_createdAt_idx" ON "UserNotification"("createdAt");
 
--- 14. UserNotificationSettings tablosunu oluştur
+-- 16. UserNotificationSettings tablosunu oluştur
 CREATE TABLE IF NOT EXISTS "UserNotificationSettings" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -179,7 +210,7 @@ CREATE TABLE IF NOT EXISTS "UserNotificationSettings" (
     CONSTRAINT "UserNotificationSettings_userId_key" UNIQUE ("userId")
 );
 
--- 15. UserNotificationSettings foreign key ve index
+-- 17. UserNotificationSettings foreign key ve index
 CREATE INDEX IF NOT EXISTS "UserNotificationSettings_userId_idx" ON "UserNotificationSettings"("userId");
 
 ALTER TABLE "UserNotificationSettings" ADD CONSTRAINT "UserNotificationSettings_userId_fkey" 
