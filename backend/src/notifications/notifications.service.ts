@@ -6,6 +6,7 @@ import { NotificationQueue } from './queues/notification.queue';
 import { NotificationJobData } from './processors/notification.processor';
 import { EmailService } from './services/email.service';
 import { SmsService } from './services/sms.service';
+import { ConfigService } from '../config/config.service';
 
 @Injectable()
 export class NotificationsService {
@@ -16,6 +17,7 @@ export class NotificationsService {
     private notificationQueue: NotificationQueue,
     private emailService: EmailService,
     private smsService: SmsService,
+    private configService: ConfigService,
   ) {}
 
   async findAll(params?: {
@@ -139,13 +141,18 @@ export class NotificationsService {
         );
       }
 
+      // Bildirim kanal ayarlarını kontrol et
+      const notificationEmailEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_EMAIL_ENABLED', true);
+      const notificationSmsEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_SMS_ENABLED', true);
+      const notificationInAppEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_IN_APP_ENABLED', true);
+
       // Redis varsa queue kullan, yoksa direkt gönder
       if (useQueue) {
         // Queue kullanarak gönder (mevcut mantık)
         for (const recipient of recipients) {
           try {
-            // Bildirim tipine göre job oluştur
-            if (notification.type === NotificationType.EMAIL && recipient.email) {
+            // Bildirim tipine göre job oluştur (kanal ayarlarını kontrol et)
+            if (notification.type === NotificationType.EMAIL && recipient.email && notificationEmailEnabled) {
               jobs.push(
                 this.notificationQueue.add('email', {
                   notificationId: id,
@@ -167,7 +174,7 @@ export class NotificationsService {
                   return null; // Promise'i reject etmek yerine null döndür
                 }),
               );
-            } else if (notification.type === NotificationType.SMS && recipient.phone) {
+            } else if (notification.type === NotificationType.SMS && recipient.phone && notificationSmsEnabled) {
               jobs.push(
                 this.notificationQueue.add('sms', {
                   notificationId: id,
@@ -188,7 +195,7 @@ export class NotificationsService {
                   return null;
                 }),
               );
-            } else if (notification.type === NotificationType.IN_APP) {
+            } else if (notification.type === NotificationType.IN_APP && notificationInAppEnabled) {
               // Web içi bildirim için UserNotification kaydı oluştur
               jobs.push(
                 this.notificationQueue.add('in-app', {
@@ -222,7 +229,7 @@ export class NotificationsService {
 
         for (const recipient of recipients) {
           try {
-            if (notification.type === NotificationType.EMAIL && recipient.email) {
+            if (notification.type === NotificationType.EMAIL && recipient.email && notificationEmailEnabled) {
               await this.emailService.sendEmail({
                 to: recipient.email,
                 subject: notification.title,
@@ -230,14 +237,14 @@ export class NotificationsService {
               });
               successCount++;
               this.logger.log(`Email sent directly to ${recipient.email} (notification ${id})`);
-            } else if (notification.type === NotificationType.SMS && recipient.phone) {
+            } else if (notification.type === NotificationType.SMS && recipient.phone && notificationSmsEnabled) {
               await this.smsService.sendSms({
                 to: recipient.phone,
                 message: `${notification.title}\n\n${notification.message}`,
               });
               successCount++;
               this.logger.log(`SMS sent directly to ${recipient.phone} (notification ${id})`);
-            } else if (notification.type === NotificationType.IN_APP) {
+            } else if (notification.type === NotificationType.IN_APP && notificationInAppEnabled) {
               // Web içi bildirim için UserNotification kaydı oluştur
               await this.prisma.userNotification.upsert({
                 where: {
@@ -353,6 +360,7 @@ export class NotificationsService {
     targetType: NotificationTargetType;
     targetId?: string | null;
     type: NotificationType;
+    metadata?: any;
   }): Promise<Array<{ id: string; email?: string; phone?: string }>> {
     switch (notification.targetType) {
       case NotificationTargetType.ALL_MEMBERS:
@@ -444,6 +452,33 @@ export class NotificationsService {
         }));
 
       case NotificationTargetType.USER:
+        // Metadata içinde userIds array'i varsa, birden fazla kullanıcıya gönder
+        if (notification.metadata && typeof notification.metadata === 'object' && Array.isArray((notification.metadata as any).userIds) && (notification.metadata as any).userIds.length > 0) {
+          // Birden fazla kullanıcıya bildirim gönder
+          const userIds = (notification.metadata as any).userIds;
+          const users = await this.prisma.user.findMany({
+            where: {
+              id: { in: userIds },
+              isActive: true,
+              deletedAt: null,
+            },
+            select: {
+              id: true,
+              email: true,
+            },
+          });
+
+          if (users.length === 0) {
+            throw new Error('Seçilen kullanıcılardan hiçbiri bulunamadı');
+          }
+
+          return users.map((u) => ({
+            id: u.id,
+            email: u.email,
+          }));
+        }
+
+        // Tek kullanıcıya bildirim (geriye dönük uyumluluk)
         if (!notification.targetId) {
           throw new Error('targetId is required for USER target type');
         }

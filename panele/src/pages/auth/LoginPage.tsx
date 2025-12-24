@@ -14,6 +14,7 @@ import {
   alpha,
   CircularProgress,
   Container,
+  Avatar,
 } from '@mui/material';
 import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
@@ -27,6 +28,8 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getPublicSystemInfo } from '../../api/systemApi';
+import { useDocumentHead } from '../../hooks/useDocumentHead';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -34,6 +37,10 @@ const LoginPage: React.FC = () => {
   const theme = useTheme();
 
   const { isAuthenticated, login } = useAuth();
+  
+  const [siteName, setSiteName] = useState('Sendika Yönetim Paneli');
+  const [siteLogoUrl, setSiteLogoUrl] = useState('');
+  const [loadingInfo, setLoadingInfo] = useState(true);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,6 +49,30 @@ const LoginPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<'email-admin' | 'email-genel' | 'email-bursa' | 'email-ankara' | 'email-bursa-mudanya' | 'email-ankara-cankaya' | null>(null);
+
+  // Public sistem bilgilerini yükle
+  useEffect(() => {
+    const loadPublicInfo = async () => {
+      try {
+        const info = await getPublicSystemInfo();
+        setSiteName(info.siteName);
+        setSiteLogoUrl(info.siteLogoUrl);
+      } catch (error) {
+        console.error('Sistem bilgileri yüklenirken hata:', error);
+        // Hata durumunda varsayılan değerler kullanılacak
+      } finally {
+        setLoadingInfo(false);
+      }
+    };
+
+    loadPublicInfo();
+  }, []);
+
+  // Document title ve favicon'u güncelle
+  useDocumentHead(
+    loadingInfo ? undefined : `${siteName} | Giriş`,
+    siteLogoUrl || undefined
+  );
 
   // Zaten login olmuşsa dashboard'a at
   useEffect(() => {
@@ -133,58 +164,89 @@ const LoginPage: React.FC = () => {
           <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
             {/* Logo & Header */}
             <Box sx={{ mb: 4, textAlign: 'center' }}>
-              <Box
-                sx={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: 3,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mx: 'auto',
-                  mb: 3,
-                  boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.4)}`,
-                  animation: 'pulse 2s ease-in-out infinite',
-                  '@keyframes pulse': {
-                    '0%, 100%': {
-                      transform: 'scale(1)',
-                    },
-                    '50%': {
-                      transform: 'scale(1.05)',
-                    },
-                  },
-                }}
-              >
-                <SecurityIcon sx={{ fontSize: 36, color: 'white' }} />
-              </Box>
-              <Typography
-                variant="h4"
-                component="h1"
-                gutterBottom
-                sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '1.5rem', sm: '2rem' },
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                Hoş Geldiniz
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  fontSize: { xs: '0.875rem', sm: '0.95rem' },
-                  maxWidth: 360,
-                  mx: 'auto',
-                  lineHeight: 1.6,
-                }}
-              >
-                Sendika yönetim paneline giriş yapmak için bilgilerinizi girin
-              </Typography>
+              {loadingInfo ? (
+                <CircularProgress size={40} sx={{ mb: 3 }} />
+              ) : (
+                <>
+                  {siteLogoUrl ? (
+                    <Avatar
+                      src={
+                        siteLogoUrl.startsWith('http://') || siteLogoUrl.startsWith('https://')
+                          ? siteLogoUrl
+                          : `http://localhost:3000${siteLogoUrl}`
+                      }
+                      alt={siteName}
+                      sx={{
+                        width: 72,
+                        height: 72,
+                        mx: 'auto',
+                        mb: 3,
+                        boxShadow: `0 12px 28px ${alpha(theme.palette.common.black, 0.15)}`,
+                        border: `3px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                      }}
+                      imgProps={{
+                        onError: () => {
+                          // Logo yüklenemezse varsayılan ikonu göster
+                          setSiteLogoUrl('');
+                        },
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: 3,
+                        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 3,
+                        boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.4)}`,
+                        animation: 'pulse 2s ease-in-out infinite',
+                        '@keyframes pulse': {
+                          '0%, 100%': {
+                            transform: 'scale(1)',
+                          },
+                          '50%': {
+                            transform: 'scale(1.05)',
+                          },
+                        },
+                      }}
+                    >
+                      <SecurityIcon sx={{ fontSize: 36, color: 'white' }} />
+                    </Box>
+                  )}
+                  <Typography
+                    variant="h4"
+                    component="h1"
+                    gutterBottom
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                      background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                    }}
+                  >
+                    {siteName}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: { xs: '0.875rem', sm: '0.95rem' },
+                      maxWidth: 360,
+                      mx: 'auto',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Yönetim paneline giriş yapmak için bilgilerinizi girin
+                  </Typography>
+                </>
+              )}
             </Box>
 
             {error && (
@@ -659,7 +721,7 @@ const LoginPage: React.FC = () => {
                   fontSize: '0.8rem',
                 }}
               >
-                © {new Date().getFullYear()} Sendika Yönetim Sistemi
+                © {new Date().getFullYear()} {siteName}
               </Typography>
               <Typography
                 variant="caption"

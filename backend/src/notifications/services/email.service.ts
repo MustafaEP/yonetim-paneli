@@ -60,8 +60,15 @@ export class EmailService {
   }
 
   async sendEmail(options: SendEmailOptions): Promise<void> {
-    // Email gönderimi aktif mi kontrol et
+    // Email gönderimi aktif mi kontrol et (önce NOTIFICATION_EMAIL_ENABLED, sonra EMAIL_ENABLED)
+    const notificationEmailEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_EMAIL_ENABLED', true);
     const emailEnabled = this.configService.getSystemSettingBoolean('EMAIL_ENABLED', true);
+    
+    if (!notificationEmailEnabled) {
+      this.logger.warn('Email notifications are disabled in notification settings.');
+      return;
+    }
+    
     if (!emailEnabled) {
       this.logger.warn('Email sending is disabled in system settings.');
       return;

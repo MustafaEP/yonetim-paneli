@@ -3,6 +3,8 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -13,6 +15,7 @@ import { Public } from '../../auth/decorators/public.decorator';
 @Injectable()
 export class SystemLogInterceptor implements NestInterceptor {
   constructor(
+    @Inject(forwardRef(() => SystemService))
     private systemService: SystemService,
     private reflector: Reflector,
   ) {}
@@ -37,6 +40,11 @@ export class SystemLogInterceptor implements NestInterceptor {
           next: async (response) => {
             if (response?.user?.id) {
               try {
+                // SystemService'in mevcut olduğundan emin ol
+                if (!this.systemService) {
+                  console.warn('SystemService is not available for logging');
+                  return;
+                }
                 // Başarılı login
                 await this.systemService.createLog({
                   action: 'LOGIN',
@@ -57,6 +65,11 @@ export class SystemLogInterceptor implements NestInterceptor {
           },
           error: async (error) => {
             try {
+              // SystemService'in mevcut olduğundan emin ol
+              if (!this.systemService) {
+                console.warn('SystemService is not available for logging');
+                return;
+              }
               // Başarısız login - userId null olabilir
               await this.systemService.createLog({
                 action: 'LOGIN_FAILED',
@@ -146,6 +159,11 @@ export class SystemLogInterceptor implements NestInterceptor {
       tap({
         next: async (response) => {
           try {
+            // SystemService'in mevcut olduğundan emin ol
+            if (!this.systemService) {
+              console.warn('SystemService is not available for logging');
+              return;
+            }
             // Başarılı işlemleri logla
             await this.systemService.createLog({
               action,
@@ -167,6 +185,11 @@ export class SystemLogInterceptor implements NestInterceptor {
         },
         error: async (error) => {
           try {
+            // SystemService'in mevcut olduğundan emin ol
+            if (!this.systemService) {
+              console.warn('SystemService is not available for logging');
+              return;
+            }
             // Hatalı işlemleri de logla
             await this.systemService.createLog({
               action,

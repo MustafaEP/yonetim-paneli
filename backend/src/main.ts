@@ -13,7 +13,8 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // 🔹 Static file serving - uploads klasörünü serve et
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  // process.cwd() kullanarak hem development hem production'da çalışmasını sağla
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads',
   });
 

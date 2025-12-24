@@ -2,37 +2,25 @@
 import React from 'react';
 import {
   Box,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
+  Tabs,
+  Tab,
   Typography,
   useTheme,
   alpha,
-  Divider,
+  useMediaQuery,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
-import EmailIcon from '@mui/icons-material/Email';
-import SmsIcon from '@mui/icons-material/Sms';
 import PeopleIcon from '@mui/icons-material/People';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SecurityIcon from '@mui/icons-material/Security';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import PaletteIcon from '@mui/icons-material/Palette';
 import IntegrationInstructionsIcon from '@mui/icons-material/IntegrationInstructions';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import AssessmentIcon from '@mui/icons-material/Assessment';
-import BusinessIcon from '@mui/icons-material/Business';
 import HistoryIcon from '@mui/icons-material/History';
 
 export type SettingsCategory =
   | 'GENERAL'
-  | 'ROLES'
   | 'MEMBERSHIP'
-  | 'NOTIFICATIONS'
   | 'DUES'
-  | 'ORGANIZATION'
   | 'SECURITY'
   | 'AUDIT'
   | 'INTEGRATION'
@@ -53,63 +41,45 @@ interface CategoryItem {
 const categories: CategoryItem[] = [
   {
     id: 'GENERAL',
-    label: 'Genel Sistem Ayarları',
+    label: 'Genel Sistem',
     icon: <SettingsIcon />,
-    description: 'Sistem kimliği ve temel davranış',
-  },
-  {
-    id: 'ROLES',
-    label: 'Rol & Yetki Ayarları',
-    icon: <AdminPanelSettingsIcon />,
-    description: 'İzin sistemi ve rol yönetimi',
+    description: 'Temel sistem ayarları',
   },
   {
     id: 'MEMBERSHIP',
-    label: 'Üyelik & Başvuru',
+    label: 'Üyelik',
     icon: <PeopleIcon />,
-    description: 'Üye lifecycle kontrolü',
-  },
-  {
-    id: 'NOTIFICATIONS',
-    label: 'Bildirim Ayarları',
-    icon: <NotificationsIcon />,
-    description: 'Kanal ve bildirim yönetimi',
+    description: 'Üye başvuru ve onay',
   },
   {
     id: 'DUES',
-    label: 'Aidat & Finans',
+    label: 'Aidat',
     icon: <AccountBalanceIcon />,
-    description: 'Aidat planları ve ödeme',
-  },
-  {
-    id: 'ORGANIZATION',
-    label: 'Şube & Organizasyon',
-    icon: <BusinessIcon />,
-    description: 'Organizasyon yapısı',
+    description: 'Ödeme ve finans',
   },
   {
     id: 'SECURITY',
-    label: 'Güvenlik Ayarları',
+    label: 'Güvenlik',
     icon: <SecurityIcon />,
-    description: 'Şifre politikası ve oturum',
+    description: 'Şifre ve oturum',
   },
   {
     id: 'AUDIT',
-    label: 'Loglama & Denetim',
+    label: 'Loglama',
     icon: <HistoryIcon />,
-    description: 'Audit log ve izleme',
+    description: 'Audit ve izleme',
   },
   {
     id: 'INTEGRATION',
-    label: 'Entegrasyon Ayarları',
+    label: 'Entegrasyon',
     icon: <IntegrationInstructionsIcon />,
-    description: 'E-posta, SMS, API',
+    description: 'Bildirim ve API',
   },
   {
     id: 'MAINTENANCE',
-    label: 'Bakım & Geliştirici',
+    label: 'Bakım',
     icon: <AssessmentIcon />,
-    description: 'Sistem bakım ve izleme',
+    description: 'Sistem bakımı',
   },
 ];
 
@@ -118,85 +88,145 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onCategoryChange,
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const handleChange = (_event: React.SyntheticEvent, newIndex: number) => {
+    const category = categories[newIndex];
+    if (category) {
+      onCategoryChange(category.id);
+    }
+  };
+
+  const getCategoryIndex = () => {
+    const index = categories.findIndex((cat) => cat.id === selectedCategory);
+    return index >= 0 ? index : 0;
+  };
 
   return (
     <Box
       sx={{
-        width: 280,
-        height: '100%',
-        borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        width: '100%',
         backgroundColor: theme.palette.background.paper,
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
-      <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-          Sistem Ayarları
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-          Kategori seçin
-        </Typography>
-      </Box>
-
-      <List sx={{ flexGrow: 1, overflow: 'auto', py: 1 }}>
-        {categories.map((category, index) => {
+      <Tabs
+        value={getCategoryIndex()}
+        onChange={handleChange}
+        variant="scrollable"
+        scrollButtons="auto"
+        sx={{
+          minHeight: isMobile ? 60 : 72,
+          px: { xs: 1, sm: 2 },
+          '& .MuiTabs-indicator': {
+            height: 3,
+            borderRadius: '3px 3px 0 0',
+            background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+          },
+          '& .MuiTabs-scrollButtons': {
+            color: theme.palette.text.secondary,
+            '&.Mui-disabled': {
+              opacity: 0.3,
+            },
+          },
+          '& .MuiTab-root': {
+            minHeight: isMobile ? 60 : 72,
+            textTransform: 'none',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.5, sm: 2 },
+            minWidth: isMobile ? 'auto' : 120,
+            flex: isMobile ? 'none' : 1,
+            maxWidth: isMobile ? 'none' : 'none',
+            transition: 'all 0.2s',
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.primary.main, 0.04),
+            },
+            '&.Mui-selected': {
+              color: theme.palette.primary.main,
+              fontWeight: 600,
+              '& .tab-icon-wrapper': {
+                transform: 'scale(1.1)',
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              },
+            },
+          },
+        }}
+      >
+        {categories.map((category) => {
           const isSelected = selectedCategory === category.id;
           return (
-            <React.Fragment key={category.id}>
-              <ListItem disablePadding>
-                <ListItemButton
-                  selected={isSelected}
-                  onClick={() => onCategoryChange(category.id)}
+            <Tab
+              key={category.id}
+              icon={
+                <Box
+                  className="tab-icon-wrapper"
                   sx={{
-                    mx: 1,
-                    mb: 0.5,
+                    width: { xs: 36, sm: 40 },
+                    height: { xs: 36, sm: 40 },
                     borderRadius: 2,
-                    '&.Mui-selected': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                      color: theme.palette.primary.main,
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.15),
-                      },
-                      '& .MuiListItemIcon-root': {
-                        color: theme.palette.primary.main,
-                      },
-                    },
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.action.hover, 0.05),
-                    },
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: isSelected 
+                      ? alpha(theme.palette.primary.main, 0.1)
+                      : alpha(theme.palette.action.hover, 0.04),
+                    color: isSelected 
+                      ? theme.palette.primary.main 
+                      : theme.palette.text.secondary,
+                    transition: 'all 0.2s',
+                    mb: { xs: 0.5, sm: 1 },
                   }}
                 >
-                  <ListItemIcon
+                  {React.cloneElement(category.icon as React.ReactElement, {
+                    sx: { fontSize: { xs: 20, sm: 22 } }
+                  })}
+                </Box>
+              }
+              label={
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: { xs: 0.25, sm: 0.5 },
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography
+                    component="span"
                     sx={{
-                      minWidth: 40,
-                      color: isSelected ? theme.palette.primary.main : 'text.secondary',
+                      fontWeight: isSelected ? 600 : 500,
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                      lineHeight: 1.2,
+                      color: isSelected 
+                        ? theme.palette.primary.main 
+                        : theme.palette.text.primary,
                     }}
                   >
-                    {category.icon}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={category.label}
-                    secondary={category.description}
-                    primaryTypographyProps={{
-                      fontSize: '0.875rem',
-                      fontWeight: isSelected ? 600 : 400,
-                    }}
-                    secondaryTypographyProps={{
-                      fontSize: '0.7rem',
-                      sx: { mt: 0.25 },
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-              {index < categories.length - 1 && <Divider sx={{ mx: 2 }} />}
-            </React.Fragment>
+                    {category.label}
+                  </Typography>
+                  {!isMobile && (
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: '0.7rem',
+                        color: theme.palette.text.secondary,
+                        lineHeight: 1,
+                        fontWeight: 400,
+                      }}
+                    >
+                      {category.description}
+                    </Typography>
+                  )}
+                </Box>
+              }
+            />
           );
         })}
-      </List>
+      </Tabs>
     </Box>
   );
 };
 
 export default SettingsSidebar;
-

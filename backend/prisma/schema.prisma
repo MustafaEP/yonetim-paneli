@@ -634,6 +634,7 @@ enum SystemSettingCategory {
   SECURITY
   NOTIFICATION
   UI
+  AUDIT
   OTHER
 }
 

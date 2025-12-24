@@ -7,3 +7,8 @@ export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
   return response.data;
 };
 
+export const logoutApi = async (): Promise<{ message: string }> => {
+  const response = await httpClient.post<{ message: string }>('/auth/logout');
+  return response.data;
+};
+

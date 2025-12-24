@@ -8,8 +8,12 @@ import {
   Delete,
   Query,
   NotFoundException,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { SystemService } from './system.service';
 import { CreateSystemSettingDto, UpdateSystemSettingDto } from './dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -17,12 +21,24 @@ import { Permission } from '../auth/permission.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
 import { SystemSettingCategory } from '@prisma/client';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('System')
-@ApiBearerAuth('JWT-auth')
 @Controller('system')
 export class SystemController {
   constructor(private readonly systemService: SystemService) {}
+
+  // Public endpoint - Logo ve sistem adı için
+  @Public()
+  @Get('public-info')
+  @ApiOperation({ summary: 'Public sistem bilgileri (logo ve sistem adı)' })
+  @ApiResponse({ status: 200 })
+  async getPublicInfo() {
+    return this.systemService.getPublicInfo();
+  }
 
   // Settings
   @Permissions(Permission.SYSTEM_SETTINGS_VIEW)
@@ -120,6 +136,60 @@ export class SystemController {
     }
 
     return log;
+  }
+
+  // Logo yükleme
+  @Permissions(Permission.SYSTEM_SETTINGS_MANAGE)
+  @Post('upload-logo')
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const uploadPath = join(process.cwd(), 'uploads', 'logos');
+          if (!existsSync(uploadPath)) {
+            mkdirSync(uploadPath, { recursive: true });
+          }
+          cb(null, uploadPath);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `logo-${uniqueSuffix}${ext}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|svg|webp)$/)) {
+          return cb(new BadRequestException('Sadece resim dosyaları yüklenebilir'), false);
+        }
+        cb(null, true);
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        logo: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Logo yükle' })
+  @ApiResponse({ status: 201, description: 'Logo başarıyla yüklendi' })
+  @ApiResponse({ status: 400, description: 'Geçersiz dosya' })
+  async uploadLogo(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Dosya yüklenemedi');
+    }
+
+    const logoUrl = `/uploads/logos/${file.filename}`;
+    return { url: logoUrl };
   }
 }
 

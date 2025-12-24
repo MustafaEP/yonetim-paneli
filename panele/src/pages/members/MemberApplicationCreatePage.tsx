@@ -1,5 +1,5 @@
 // src/pages/members/MemberApplicationCreatePage.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -25,6 +25,7 @@ import {
   Stack,
   Chip,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -43,6 +44,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ErrorIcon from '@mui/icons-material/Error';
 
 import { useAuth } from '../../context/AuthContext';
 import { createMemberApplication, checkCancelledMemberByNationalId } from '../../api/membersApi';
@@ -59,6 +61,7 @@ import {
 import { getRoles } from '../../api/rolesApi';
 import { getBranches } from '../../api/branchesApi';
 import { getInstitutions } from '../../api/institutionsApi';
+import { getTevkifatCenters } from '../../api/accountingApi';
 import type { CustomRole } from '../../types/role';
 import type { Branch } from '../../api/branchesApi';
 import type { Institution } from '../../api/institutionsApi';
@@ -89,7 +92,7 @@ const MemberApplicationCreatePage: React.FC = () => {
     motherName: string;
     fatherName: string;
     birthplace: string;
-    gender: 'MALE' | 'FEMALE' | 'OTHER' | '';
+    gender: 'MALE' | 'FEMALE' | '';
     educationStatus: 'PRIMARY' | 'HIGH_SCHOOL' | 'COLLEGE' | '';
     // Bölge Bilgileri (Kayıtlı olduğu yer - ikamet)
     provinceId: string;
@@ -135,11 +138,16 @@ const MemberApplicationCreatePage: React.FC = () => {
   const [workingDistricts, setWorkingDistricts] = useState<District[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [tevkifatCenters, setTevkifatCenters] = useState<Array<{ id: string; name: string }>>([]);
   const [provinceDisabled, setProvinceDisabled] = useState(false);
   const [districtDisabled, setDistrictDisabled] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   // Her dosya için özel ad (index bazlı)
   const [fileNames, setFileNames] = useState<Record<number, string>>({});
+  // Validation states
+  const [nationalIdError, setNationalIdError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProvinces = async () => {
@@ -260,6 +268,19 @@ const MemberApplicationCreatePage: React.FC = () => {
     loadInstitutions();
   }, []);
 
+  // Tevkifat merkezlerini yükle
+  useEffect(() => {
+    const loadTevkifatCenters = async () => {
+      try {
+        const data = await getTevkifatCenters();
+        setTevkifatCenters(data.filter(c => c.isActive).map(c => ({ id: c.id, name: c.name })));
+      } catch (e) {
+        console.error('Tevkifat merkezleri yüklenirken hata:', e);
+      }
+    };
+    loadTevkifatCenters();
+  }, []);
+
   // Çalışma ilçelerini yükle
   useEffect(() => {
     const loadWorkingDistricts = async () => {
@@ -318,43 +339,130 @@ const MemberApplicationCreatePage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.provinceId]);
 
+  // Memoized utility functions
+  const normalizeNationalId = useCallback((value: string) => value.replace(/\D/g, '').slice(0, 11), []);
 
-  const handleChange = (field: keyof typeof form, value: string) => {
-    // Eğer il/ilçe disabled ise değişikliğe izin verme
-    if (field === 'provinceId' && provinceDisabled) {
-      return;
+  // Sadece harf, boşluk ve Türkçe karakterlere izin ver (sayıları engelle)
+  const normalizeTextOnly = useCallback((value: string): string => {
+    // Türkçe karakterler ve harfler, boşluk, tire, nokta, apostrof
+    return value.replace(/[^a-zA-ZçğıöşüÇĞIİÖŞÜ\s\-\.']/g, '');
+  }, []);
+
+  // Telefon numarası formatı: +90 (507) 411 2255
+  const formatPhoneNumber = useCallback((value: string): string => {
+    // Sadece rakamları al
+    const digits = value.replace(/\D/g, '');
+    
+    // Boşsa +90 döndür
+    if (digits.length === 0) {
+      return '+90 ';
     }
-    if (field === 'districtId' && districtDisabled) {
-      return;
+    
+    // Eğer 90 ile başlamıyorsa, 90 ekle
+    let phoneDigits = digits;
+    if (!digits.startsWith('90')) {
+      phoneDigits = '90' + digits;
+    }
+    
+    // Maksimum 12 hane (90 + 10 hane)
+    phoneDigits = phoneDigits.slice(0, 12);
+    
+    // +90'dan sonraki kısmı al (90'ı çıkar)
+    const afterCountryCode = phoneDigits.slice(2);
+    
+    // Format: +90 (XXX) XXX XXXX
+    if (afterCountryCode.length === 0) {
+      return '+90 ';
+    } else if (afterCountryCode.length <= 3) {
+      return `+90 (${afterCountryCode}`;
+    } else if (afterCountryCode.length <= 6) {
+      return `+90 (${afterCountryCode.slice(0, 3)}) ${afterCountryCode.slice(3)}`;
+    } else {
+      return `+90 (${afterCountryCode.slice(0, 3)}) ${afterCountryCode.slice(3, 6)} ${afterCountryCode.slice(6, 10)}`;
+    }
+  }, []);
+
+  const normalizePhoneNumber = useCallback((value: string): string => {
+    // Formatı temizle, sadece rakamları al
+    const digits = value.replace(/\D/g, '');
+    // Boşsa boş döndür
+    if (digits.length === 0) {
+      return '';
+    }
+    // Eğer 90 ile başlamıyorsa, 90 ekle
+    if (!digits.startsWith('90')) {
+      return '90' + digits.slice(0, 10); // Maksimum 10 hane ekle
+    }
+    // Maksimum 12 hane (90 + 10 hane)
+    return digits.slice(0, 12);
+  }, []);
+
+  const getPhoneError = useCallback((phone: string): string | null => {
+    if (!phone || phone.trim() === '') {
+      return null; // Telefon opsiyonel
+    }
+    const digits = phone.replace(/\D/g, '');
+    // +90 ile başlamalı ve toplam 12 hane olmalı (90 + 10 hane)
+    if (!digits.startsWith('90')) {
+      return 'Telefon numarası +90 ile başlamalıdır.';
+    }
+    if (digits.length !== 12) {
+      return 'Telefon numarası +90 (XXX) XXX XXXX formatında olmalıdır.';
+    }
+    // İlk 3 hane (90'dan sonra) 5 ile başlamalı
+    if (digits[2] !== '5') {
+      return 'Telefon numarası +90 (5XX) XXX XXXX formatında olmalıdır.';
+    }
+    return null;
+  }, []);
+
+  const getEmailError = useCallback((email: string): string | null => {
+    if (!email || email.trim() === '') {
+      return null; // E-posta opsiyonel
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return 'Geçerli bir e-posta adresi giriniz.';
+    }
+    return null;
+  }, []);
+
+  const getNationalIdError = useCallback((nationalId: string): string | null => {
+    const cleaned = nationalId.trim();
+    if (!cleaned) {
+      return 'TC Kimlik Numarası zorunludur.';
+    }
+    if (!/^\d{11}$/.test(cleaned)) {
+      return 'TC Kimlik Numarası 11 haneli ve sadece rakam olmalıdır.';
+    }
+    if (cleaned[0] === '0') {
+      return 'TC Kimlik Numarası 0 ile başlayamaz.';
+    }
+    if (/^(\d)\1{10}$/.test(cleaned)) {
+      return 'TC Kimlik Numarası tüm hanesi aynı olamaz.';
     }
 
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-      ...(field === 'provinceId'
-        ? {
-            districtId: '',
-          }
-        : {}),
-      ...(field === 'workingProvinceId'
-        ? {
-            workingDistrictId: '',
-          }
-        : {}),
-    }));
-
-    // TC kimlik numarası değiştiğinde kontrol yap
-    if (field === 'nationalId' && value && value.trim().length === 11) {
-      checkNationalId(value.trim());
-    } else if (field === 'nationalId' && (!value || value.trim().length !== 11)) {
-      // TC boş veya 11 haneli değilse dialog'u kapat
-      setCancelledMember(null);
-      setPreviousCancelledMemberId(undefined);
+    const digits = cleaned.split('').map(Number);
+    const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
+    const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
+    const tenthDigit = ((oddSum * 7) - evenSum) % 10;
+    if (digits[9] !== tenthDigit) {
+      return 'TC Kimlik Numarası geçersiz (10. hane kontrolü).';
     }
-  };
 
-  const checkNationalId = async (nationalId: string) => {
-    if (!nationalId || nationalId.trim().length !== 11) {
+    const eleventhDigit = digits.slice(0, 10).reduce((acc, digit) => acc + digit, 0) % 10;
+    if (digits[10] !== eleventhDigit) {
+      return 'TC Kimlik Numarası geçersiz (11. hane kontrolü).';
+    }
+
+    return null;
+  }, []);
+
+  // TC kontrolü için debounce timer
+  const checkNationalIdTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const checkNationalId = useCallback(async (nationalId: string) => {
+    if (getNationalIdError(nationalId)) {
       return;
     }
 
@@ -375,7 +483,111 @@ const MemberApplicationCreatePage: React.FC = () => {
     } finally {
       setCheckingNationalId(false);
     }
-  };
+  }, [getNationalIdError]);
+
+  const handleChange = useCallback((field: keyof typeof form, value: string) => {
+    // Eğer il/ilçe disabled ise değişikliğe izin verme
+    if (field === 'provinceId' && provinceDisabled) {
+      return;
+    }
+    if (field === 'districtId' && districtDisabled) {
+      return;
+    }
+
+    let nextValue: string;
+    let shouldUpdateError = false;
+    let errorValue: string | null = null;
+
+    if (field === 'nationalId') {
+      nextValue = normalizeNationalId(value);
+      errorValue = getNationalIdError(nextValue);
+      shouldUpdateError = true;
+    } else if (field === 'phone') {
+      nextValue = formatPhoneNumber(value);
+      const normalized = normalizePhoneNumber(nextValue);
+      errorValue = getPhoneError(normalized);
+      shouldUpdateError = true;
+    } else if (field === 'email') {
+      nextValue = value;
+      errorValue = getEmailError(value);
+      shouldUpdateError = true;
+    } else if (field === 'firstName' || field === 'lastName' || field === 'motherName' || field === 'fatherName' || field === 'birthplace') {
+      // Sadece harf ve Türkçe karakterlere izin ver (sayıları engelle)
+      nextValue = normalizeTextOnly(value);
+    } else {
+      nextValue = value;
+    }
+
+    // Error state'leri sadece değiştiğinde güncelle
+    if (shouldUpdateError) {
+      if (field === 'nationalId') {
+        setNationalIdError((prev) => prev !== errorValue ? errorValue : prev);
+      } else if (field === 'phone') {
+        setPhoneError((prev) => prev !== errorValue ? errorValue : prev);
+      } else if (field === 'email') {
+        setEmailError((prev) => prev !== errorValue ? errorValue : prev);
+      }
+    }
+
+    setForm((prev) => {
+      // Değer aynıysa re-render'ı önle
+      if (prev[field] === nextValue) {
+        return prev;
+      }
+      
+      return {
+        ...prev,
+        [field]: nextValue,
+        ...(field === 'provinceId'
+          ? {
+              districtId: '',
+            }
+          : {}),
+        ...(field === 'workingProvinceId'
+          ? {
+              workingDistrictId: '',
+            }
+          : {}),
+      };
+    });
+
+    // TC kimlik numarası değiştiğinde kontrol yap (debounced)
+    if (field === 'nationalId') {
+      // Önceki timeout'u temizle
+      if (checkNationalIdTimeoutRef.current) {
+        clearTimeout(checkNationalIdTimeoutRef.current);
+      }
+      
+      const isValidNationalId = nextValue.length === 11 && errorValue === null;
+      if (isValidNationalId) {
+        // 500ms debounce ile TC kontrolü yap
+        checkNationalIdTimeoutRef.current = setTimeout(() => {
+          checkNationalId(nextValue);
+        }, 500);
+      } else {
+        // Geçerli bir TC olmadan iptal edilmiş üye kontrolü yapma
+        setCancelledMember(null);
+        setPreviousCancelledMemberId(undefined);
+      }
+    }
+  }, [getNationalIdError, normalizeNationalId, normalizeTextOnly, formatPhoneNumber, normalizePhoneNumber, getPhoneError, getEmailError, provinceDisabled, districtDisabled, checkNationalId]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (checkNationalIdTimeoutRef.current) {
+        clearTimeout(checkNationalIdTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Memoized onKeyPress handler for text-only fields
+  const handleTextOnlyKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    const char = e.key;
+    if (!/^[a-zA-ZçğıöşüÇĞIİÖŞÜ\s\-\.']$/.test(char) && char !== 'Backspace' && char !== 'Delete' && char !== 'Tab' && char !== 'ArrowLeft' && char !== 'ArrowRight') {
+      e.preventDefault();
+    }
+  }, []);
 
   // Dosya adını oluştur (format: UyeKayidi_TCKimlik_AdSoyad)
   // Kayıt numarası henüz yok, başlangıçta sadece TCKimlik_AdSoyad gösterilir
@@ -448,8 +660,23 @@ const MemberApplicationCreatePage: React.FC = () => {
       setError('Soyad alanı zorunludur.');
       return false;
     }
-    if (!form.nationalId || form.nationalId.trim().length !== 11) {
-      setError('TC Kimlik Numarası zorunludur ve 11 haneli olmalıdır.');
+    const nationalIdError = getNationalIdError(form.nationalId);
+    if (nationalIdError) {
+      setError(nationalIdError);
+      setNationalIdError(nationalIdError);
+      return false;
+    }
+    const normalizedPhone = normalizePhoneNumber(form.phone);
+    const phoneError = getPhoneError(normalizedPhone);
+    if (phoneError) {
+      setError(phoneError);
+      setPhoneError(phoneError);
+      return false;
+    }
+    const emailError = getEmailError(form.email);
+    if (emailError) {
+      setError(emailError);
+      setEmailError(emailError);
       return false;
     }
     if (!form.workingProvinceId) {
@@ -492,11 +719,16 @@ const MemberApplicationCreatePage: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
+      // Telefon numarasını normalize et (sadece rakamlar, +90 ile başlamalı)
+      const normalizedPhone = form.phone.trim() 
+        ? normalizePhoneNumber(form.phone.trim())
+        : undefined;
+
       const payload: any = {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         nationalId: form.nationalId.trim(), // Zorunlu
-        phone: form.phone.trim() || undefined,
+        phone: normalizedPhone || undefined,
         email: form.email.trim() || undefined,
         provinceId: form.provinceId || undefined,
         districtId: form.districtId || undefined,
@@ -696,6 +928,10 @@ const MemberApplicationCreatePage: React.FC = () => {
                 onChange={(e) => handleChange('firstName', e.target.value)}
                 fullWidth
                 required
+                inputProps={{
+                  pattern: '[a-zA-ZçğıöşüÇĞIİÖŞÜ\\s\\-\\.\']*',
+                  onKeyPress: handleTextOnlyKeyPress,
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -718,6 +954,10 @@ const MemberApplicationCreatePage: React.FC = () => {
                 onChange={(e) => handleChange('lastName', e.target.value)}
                 fullWidth
                 required
+                inputProps={{
+                  pattern: '[a-zA-ZçğıöşüÇĞIİÖŞÜ\\s\\-\\.\']*',
+                  onKeyPress: handleTextOnlyKeyPress,
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -735,21 +975,46 @@ const MemberApplicationCreatePage: React.FC = () => {
 
             <Grid item xs={12} md={4}>
               <TextField
-                label="TC Kimlik No"
+                label="TC Kimlik No *"
                 value={form.nationalId}
                 onChange={(e) => handleChange('nationalId', e.target.value)}
                 fullWidth
-                inputProps={{ maxLength: 11 }}
+                required
+                error={!!nationalIdError}
+                inputProps={{ maxLength: 11, inputMode: 'numeric', pattern: '\\d*' }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                      <BadgeIcon sx={{ color: nationalIdError ? 'error.main' : 'text.secondary', fontSize: '1.2rem' }} />
                     </InputAdornment>
                   ),
+                  endAdornment: nationalIdError ? (
+                    <InputAdornment position="end">
+                      <Tooltip 
+                        title={nationalIdError} 
+                        arrow 
+                        placement="top"
+                        componentsProps={{
+                          tooltip: {
+                            sx: {
+                              zIndex: 9999,
+                              fontSize: '0.875rem',
+                            },
+                          },
+                        }}
+                      >
+                        <ErrorIcon sx={{ color: 'error.main', fontSize: '1.2rem', cursor: 'help' }} />
+                      </Tooltip>
+                    </InputAdornment>
+                  ) : null,
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2,
+                  },
+                  '& .MuiInputBase-input': {
+                    minWidth: 0,
+                    width: '100%',
                   },
                 }}
               />
@@ -761,16 +1026,41 @@ const MemberApplicationCreatePage: React.FC = () => {
                 value={form.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
                 fullWidth
+                error={!!phoneError}
+                placeholder="+90 (5XX) XXX XX XX"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PhoneIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                      <PhoneIcon sx={{ color: phoneError ? 'error.main' : 'text.secondary', fontSize: '1.2rem' }} />
                     </InputAdornment>
                   ),
+                  endAdornment: phoneError ? (
+                    <InputAdornment position="end">
+                      <Tooltip 
+                        title={phoneError} 
+                        arrow 
+                        placement="top"
+                        componentsProps={{
+                          tooltip: {
+                            sx: {
+                              zIndex: 9999,
+                              fontSize: '0.875rem',
+                            },
+                          },
+                        }}
+                      >
+                        <ErrorIcon sx={{ color: 'error.main', fontSize: '1.2rem', cursor: 'help' }} />
+                      </Tooltip>
+                    </InputAdornment>
+                  ) : null,
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2,
+                  },
+                  '& .MuiInputBase-input': {
+                    minWidth: 0,
+                    width: '100%',
                   },
                 }}
               />
@@ -783,12 +1073,32 @@ const MemberApplicationCreatePage: React.FC = () => {
                 onChange={(e) => handleChange('email', e.target.value)}
                 fullWidth
                 type="email"
+                error={!!emailError}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <EmailIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                      <EmailIcon sx={{ color: emailError ? 'error.main' : 'text.secondary', fontSize: '1.2rem' }} />
                     </InputAdornment>
                   ),
+                  endAdornment: emailError ? (
+                    <InputAdornment position="end">
+                      <Tooltip 
+                        title={emailError} 
+                        arrow 
+                        placement="top"
+                        componentsProps={{
+                          tooltip: {
+                            sx: {
+                              zIndex: 9999,
+                              fontSize: '0.875rem',
+                            },
+                          },
+                        }}
+                      >
+                        <ErrorIcon sx={{ color: 'error.main', fontSize: '1.2rem', cursor: 'help' }} />
+                      </Tooltip>
+                    </InputAdornment>
+                  ) : null,
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
@@ -804,6 +1114,10 @@ const MemberApplicationCreatePage: React.FC = () => {
                 value={form.motherName}
                 onChange={(e) => handleChange('motherName', e.target.value)}
                 fullWidth
+                inputProps={{
+                  pattern: '[a-zA-ZçğıöşüÇĞIİÖŞÜ\\s\\-\\.\']*',
+                  onKeyPress: handleTextOnlyKeyPress,
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -825,6 +1139,10 @@ const MemberApplicationCreatePage: React.FC = () => {
                 value={form.fatherName}
                 onChange={(e) => handleChange('fatherName', e.target.value)}
                 fullWidth
+                inputProps={{
+                  pattern: '[a-zA-ZçğıöşüÇĞIİÖŞÜ\\s\\-\\.\']*',
+                  onKeyPress: handleTextOnlyKeyPress,
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -846,6 +1164,10 @@ const MemberApplicationCreatePage: React.FC = () => {
                 value={form.birthplace}
                 onChange={(e) => handleChange('birthplace', e.target.value)}
                 fullWidth
+                inputProps={{
+                  pattern: '[a-zA-ZçğıöşüÇĞIİÖŞÜ\\s\\-\\.\']*',
+                  onKeyPress: handleTextOnlyKeyPress,
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -885,7 +1207,6 @@ const MemberApplicationCreatePage: React.FC = () => {
                   <MenuItem value="">Seçilmedi</MenuItem>
                   <MenuItem value="MALE">Erkek</MenuItem>
                   <MenuItem value="FEMALE">Kadın</MenuItem>
-                  <MenuItem value="OTHER">Diğer</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -1209,7 +1530,9 @@ const MemberApplicationCreatePage: React.FC = () => {
                 }}
               />
             </Grid>
+          </Grid>
 
+          <Grid container spacing={3} sx={{ mt: 1 }}>
             <Grid item xs={12}>
               <TextField
                 label="Birim Adresi"
@@ -1307,7 +1630,6 @@ const MemberApplicationCreatePage: React.FC = () => {
                   label="Tevkifat Merkezi"
                   value={form.tevkifatCenterId}
                   onChange={(e) => handleChange('tevkifatCenterId', e.target.value)}
-                  disabled
                   startAdornment={
                     <InputAdornment position="start">
                       <CorporateFareIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
@@ -1315,6 +1637,11 @@ const MemberApplicationCreatePage: React.FC = () => {
                   }
                 >
                   <MenuItem value="">Seçilmedi</MenuItem>
+                  {tevkifatCenters.map((center) => (
+                    <MenuItem key={center.id} value={center.id}>
+                      {center.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>

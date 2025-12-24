@@ -7,29 +7,42 @@ import {
   useTheme,
   alpha,
   Paper,
+  Typography,
+  Breadcrumbs,
+  Link as MuiLink,
 } from '@mui/material';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 import type { SystemSetting } from '../../api/systemApi';
 import { getSystemSettings, updateSystemSetting } from '../../api/systemApi';
 import { useAuth } from '../../context/AuthContext';
+import { useSystemSettings } from '../../context/SystemSettingsContext';
 import { useToast } from '../../hooks/useToast';
 import SettingsSidebar, { type SettingsCategory } from './components/SettingsSidebar';
 import GeneralSettings from './components/GeneralSettings';
-import RolesSettings from './components/RolesSettings';
 import MembershipSettings from './components/MembershipSettings';
-import NotificationsSettings from './components/NotificationsSettings';
 import DuesSettings from './components/DuesSettings';
-import OrganizationSettings from './components/OrganizationSettings';
 import SecuritySettings from './components/SecuritySettings';
 import AuditSettings from './components/AuditSettings';
 import IntegrationSettings from './components/IntegrationSettings';
 import MaintenanceSettings from './components/MaintenanceSettings';
 
+const categoryLabels: Record<SettingsCategory, string> = {
+  GENERAL: 'Genel Ayarlar',
+  MEMBERSHIP: 'Üyelik Ayarları',
+  DUES: 'Aidat Ayarları',
+  SECURITY: 'Güvenlik',
+  AUDIT: 'Loglama',
+  INTEGRATION: 'Entegrasyonlar',
+  MAINTENANCE: 'Bakım',
+};
+
 const SystemSettingsPage: React.FC = () => {
   const theme = useTheme();
   const { hasPermission } = useAuth();
   const toast = useToast();
+  const { refreshSettings } = useSystemSettings();
 
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +75,7 @@ const SystemSettingsPage: React.FC = () => {
       await updateSystemSetting(key, { value });
       toast.success('Ayar başarıyla güncellendi');
       await loadSettings();
+      await refreshSettings();
     } catch (e: any) {
       console.error('Ayar güncellenirken hata:', e);
       toast.error(e.response?.data?.message || 'Ayar güncellenirken bir hata oluştu');
@@ -79,22 +93,47 @@ const SystemSettingsPage: React.FC = () => {
             loading={loading}
           />
         );
-      case 'ROLES':
-        return <RolesSettings />;
       case 'MEMBERSHIP':
-        return <MembershipSettings />;
-      case 'NOTIFICATIONS':
-        return <NotificationsSettings />;
+        return (
+          <MembershipSettings
+            settings={settings}
+            onUpdate={canManage ? handleUpdate : undefined}
+            loading={loading}
+            canManage={canManage}
+          />
+        );
       case 'DUES':
-        return <DuesSettings />;
-      case 'ORGANIZATION':
-        return <OrganizationSettings />;
+        return (
+          <DuesSettings
+            settings={settings}
+            onUpdate={handleUpdate}
+            loading={loading}
+          />
+        );
       case 'SECURITY':
-        return <SecuritySettings />;
+        return (
+          <SecuritySettings
+            settings={settings.filter((s) => s.category === 'SECURITY')}
+            onUpdate={canManage ? handleUpdate : undefined}
+            loading={loading}
+          />
+        );
       case 'AUDIT':
-        return <AuditSettings />;
+        return (
+          <AuditSettings
+            settings={settings.filter((s) => s.category === 'AUDIT')}
+            onUpdate={canManage ? handleUpdate : undefined}
+            loading={loading}
+          />
+        );
       case 'INTEGRATION':
-        return <IntegrationSettings />;
+        return (
+          <IntegrationSettings
+            settings={settings.filter((s) => s.category === 'INTEGRATION' || s.category === 'NOTIFICATION')}
+            onUpdate={canManage ? handleUpdate : undefined}
+            loading={loading}
+          />
+        );
       case 'MAINTENANCE':
         return <MaintenanceSettings />;
       default:
@@ -104,45 +143,169 @@ const SystemSettingsPage: React.FC = () => {
 
   if (!canView) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <Alert severity="error">Bu sayfaya erişim yetkiniz bulunmamaktadır.</Alert>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: '60vh',
+          px: 3,
+        }}
+      >
+        <Alert 
+          severity="error"
+          sx={{
+            borderRadius: 2,
+            maxWidth: 500,
+          }}
+        >
+          Bu sayfaya erişim yetkiniz bulunmamaktadır.
+        </Alert>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
-      {/* Sol Menü */}
-      <SettingsSidebar
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-      />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* Başlık ve Breadcrumb */}
+      <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+            }}
+          >
+            <SettingsIcon sx={{ color: '#fff', fontSize: 28 }} />
+          </Box>
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              Sistem Ayarları
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: theme.palette.text.secondary,
+                fontSize: '0.875rem',
+                mt: 0.5,
+              }}
+            >
+              Sistem genelindeki ayarları yönetin ve yapılandırın
+            </Typography>
+          </Box>
+        </Box>
 
-      {/* Sağ Panel - İçerik */}
-      <Box
+        <Breadcrumbs
+          separator={<NavigateNextIcon fontSize="small" sx={{ color: alpha(theme.palette.text.secondary, 0.4) }} />}
+          sx={{ mb: 2 }}
+        >
+          <MuiLink
+            href="/"
+            underline="hover"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              color: theme.palette.text.secondary,
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              '&:hover': {
+                color: theme.palette.primary.main,
+              },
+            }}
+          >
+            Ana Sayfa
+          </MuiLink>
+          <Typography
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              color: theme.palette.primary.main,
+              fontSize: '0.875rem',
+              fontWeight: 600,
+            }}
+          >
+            Sistem Ayarları
+          </Typography>
+        </Breadcrumbs>
+      </Box>
+
+      {/* Sidebar (Tab Navigation) */}
+      <Paper
+        elevation={0}
         sx={{
-          flexGrow: 1,
-          overflow: 'auto',
-          backgroundColor: theme.palette.background.default,
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          overflow: 'hidden',
+          backgroundColor: '#ffffff',
         }}
       >
-        <Paper
-          elevation={0}
+        <SettingsSidebar
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+        />
+      </Paper>
+
+      {/* İçerik */}
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          overflow: 'hidden',
+          backgroundColor: '#ffffff',
+        }}
+      >
+        <Box
           sx={{
-            minHeight: '100%',
-            borderRadius: 0,
             p: 3,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 600,
+              fontSize: '1.1rem',
+              color: theme.palette.text.primary,
+            }}
+          >
+            {categoryLabels[selectedCategory]}
+          </Typography>
+        </Box>
+
+        <Box sx={{ p: 3 }}>
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                minHeight: '400px',
+              }}
+            >
               <CircularProgress />
             </Box>
           ) : (
             renderCategoryContent()
           )}
-        </Paper>
-      </Box>
+        </Box>
+      </Paper>
     </Box>
   );
 };

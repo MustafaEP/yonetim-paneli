@@ -12,6 +12,19 @@ export class SystemService {
     private configService: ConfigService,
   ) {}
 
+  // Public Info - Logo ve sistem adı için (login sayfasında kullanılır)
+  async getPublicInfo() {
+    const [siteName, siteLogo] = await Promise.all([
+      this.prisma.systemSetting.findUnique({ where: { key: 'SITE_NAME' } }),
+      this.prisma.systemSetting.findUnique({ where: { key: 'SITE_LOGO_URL' } }),
+    ]);
+
+    return {
+      siteName: siteName?.value || 'Sendika Yönetim Paneli',
+      siteLogoUrl: siteLogo?.value || '',
+    };
+  }
+
   // System Settings
   async getSettings(category?: SystemSettingCategory) {
     return this.prisma.systemSetting.findMany({
@@ -47,16 +60,48 @@ export class SystemService {
   }
 
   async updateSetting(key: string, dto: UpdateSystemSettingDto, userId: string) {
-    const oldSetting = await this.getSetting(key);
-
-    const updated = await this.prisma.systemSetting.update({
+    // Önce ayarın var olup olmadığını kontrol et
+    const existingSetting = await this.prisma.systemSetting.findUnique({
       where: { key },
-      data: {
-        ...dto,
-        updatedBy: userId,
-        updatedAt: new Date(),
-      },
     });
+
+    let updated;
+    let oldValue: string | undefined;
+    let oldCategory: SystemSettingCategory | undefined;
+
+    if (existingSetting) {
+      // Ayar varsa güncelle
+      oldValue = existingSetting.value;
+      oldCategory = existingSetting.category;
+      
+      updated = await this.prisma.systemSetting.update({
+        where: { key },
+        data: {
+          ...dto,
+          updatedBy: userId,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      // Ayar yoksa oluştur (upsert mantığı)
+      // Varsayılan değerler
+      const defaultCategory = SystemSettingCategory.GENERAL;
+      const defaultDescription = `Sistem ayarı: ${key}`;
+      
+      updated = await this.prisma.systemSetting.create({
+        data: {
+          key,
+          value: dto.value || '',
+          description: dto.description || defaultDescription,
+          category: dto.category || defaultCategory,
+          isEditable: dto.isEditable !== undefined ? dto.isEditable : true,
+          updatedBy: userId,
+        },
+      });
+      
+      oldValue = undefined;
+      oldCategory = defaultCategory;
+    }
 
     // ConfigService cache'ini invalidate et
     await this.configService.invalidateSettingsCache(key);
@@ -64,16 +109,16 @@ export class SystemService {
     // Audit log oluştur
     try {
       await this.createLog({
-        action: 'SETTING_UPDATE',
+        action: existingSetting ? 'SETTING_UPDATE' : 'SETTING_CREATE',
         entityType: 'SYSTEM_SETTING',
         entityId: key,
         userId,
         details: {
           key,
-          category: oldSetting.category,
-          oldValue: oldSetting.value,
+          category: oldCategory || updated.category,
+          oldValue: oldValue,
           newValue: updated.value,
-          description: oldSetting.description,
+          description: updated.description,
         },
       });
     } catch (error) {

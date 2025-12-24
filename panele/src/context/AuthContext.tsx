@@ -7,13 +7,14 @@ import React, {
   type ReactNode,
 } from 'react';
 import type { BackendUser, LoginRequest, LoginResponse } from '../types/auth';
-import { loginApi } from '../api/authApi';
+import { loginApi, logoutApi } from '../api/authApi';
 import type { Role } from '../types/user';
 
 interface AuthContextValue {
   user: BackendUser | null;
   accessToken: string | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => void;
   hasPermission: (permission: string) => boolean;
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<BackendUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('accessToken');
@@ -33,6 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAccessToken(storedToken);
       setUser(JSON.parse(storedUser));
     }
+    setIsLoading(false);
   }, []);
 
   const login = async (credentials: LoginRequest) => {
@@ -44,11 +47,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('user', JSON.stringify(data.user));
   };
 
-  const logout = () => {
-    setAccessToken(null);
-    setUser(null);
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      // Backend'e logout isteği gönder (log kaydı için)
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        try {
+          await logoutApi();
+        } catch (error) {
+          // Logout API hatası olsa bile local logout yap
+          console.error('Logout API hatası:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Logout hatası:', error);
+    } finally {
+      // Her durumda local state'i temizle
+      setAccessToken(null);
+      setUser(null);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+    }
   };
 
   const hasPermission = (permission: string) => {
@@ -66,6 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     accessToken,
     isAuthenticated: !!accessToken,
+    isLoading,
     login,
     logout,
     hasPermission,

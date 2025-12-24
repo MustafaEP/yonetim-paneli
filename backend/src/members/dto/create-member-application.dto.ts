@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MemberSource, Gender, EducationStatus, PositionTitle } from '@prisma/client';
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsDateString, Matches } from 'class-validator';
 
 export class CreateMemberApplicationDto {
   @ApiProperty({
@@ -29,6 +29,9 @@ export class CreateMemberApplicationDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Matches(/^[1-9]\d{10}$/, {
+    message: 'TC Kimlik Numarası 11 haneli, başında 0 olmayan rakamlardan oluşmalıdır.',
+  })
   nationalId: string;
 
   @ApiProperty({
