@@ -1,8 +1,11 @@
 // src/api/httpClient.ts
 import axios, { type AxiosError } from 'axios';
 
-// API base URL - Vite environment variable'dan al veya default kullan
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// API base URL - Vite environment variable'dan al
+// Eğer VITE_API_BASE_URL ayarlanmışsa onu kullan, yoksa relative path kullan (nginx proxy için)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
+  ? import.meta.env.VITE_API_BASE_URL 
+  : (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
 
 export const httpClient = axios.create({
   baseURL: API_BASE_URL,
