@@ -31,6 +31,30 @@ import { useAuth } from '../../context/AuthContext';
 import { getPublicSystemInfo } from '../../api/systemApi';
 import { useDocumentHead } from '../../hooks/useDocumentHead';
 
+// Güvenli clipboard kopyalama fonksiyonu
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } else {
+      // Fallback: Eski tarayıcılar için
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return success;
+    }
+  } catch (error) {
+    console.error('Clipboard kopyalama hatası:', error);
+    return false;
+  }
+};
+
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -426,8 +450,8 @@ const LoginPage: React.FC = () => {
                         transform: 'translateX(4px)',
                       },
                     }}
-                    onClick={() => {
-                      navigator.clipboard.writeText('admin@sendika.local');
+                    onClick={async () => {
+                      await copyToClipboard('admin@sendika.local');
                       setCopiedField('email-admin');
                       setTimeout(() => setCopiedField(null), 2000);
                       setEmail('admin@sendika.local');
@@ -471,8 +495,8 @@ const LoginPage: React.FC = () => {
                         transform: 'translateX(4px)',
                       },
                     }}
-                    onClick={() => {
-                      navigator.clipboard.writeText('genel.baskan@sendika.local');
+                    onClick={async () => {
+                      await copyToClipboard('genel.baskan@sendika.local');
                       setCopiedField('email-genel');
                       setTimeout(() => setCopiedField(null), 2000);
                       setEmail('genel.baskan@sendika.local');
@@ -516,8 +540,8 @@ const LoginPage: React.FC = () => {
                         transform: 'translateX(4px)',
                       },
                     }}
-                    onClick={() => {
-                      navigator.clipboard.writeText('bursa.il.baskani@sendika.local');
+                    onClick={async () => {
+                      await copyToClipboard('bursa.il.baskani@sendika.local');
                       setCopiedField('email-bursa');
                       setTimeout(() => setCopiedField(null), 2000);
                       setEmail('bursa.il.baskani@sendika.local');
@@ -561,8 +585,8 @@ const LoginPage: React.FC = () => {
                         transform: 'translateX(4px)',
                       },
                     }}
-                    onClick={() => {
-                      navigator.clipboard.writeText('ankara.il.baskani@sendika.local');
+                    onClick={async () => {
+                      await copyToClipboard('ankara.il.baskani@sendika.local');
                       setCopiedField('email-ankara');
                       setTimeout(() => setCopiedField(null), 2000);
                       setEmail('ankara.il.baskani@sendika.local');
@@ -606,8 +630,8 @@ const LoginPage: React.FC = () => {
                         transform: 'translateX(4px)',
                       },
                     }}
-                    onClick={() => {
-                      navigator.clipboard.writeText('bursa.mudanya.ilce.baskani@sendika.local');
+                    onClick={async () => {
+                      await copyToClipboard('bursa.mudanya.ilce.baskani@sendika.local');
                       setCopiedField('email-bursa-mudanya');
                       setTimeout(() => setCopiedField(null), 2000);
                       setEmail('bursa.mudanya.ilce.baskani@sendika.local');
@@ -651,8 +675,8 @@ const LoginPage: React.FC = () => {
                         transform: 'translateX(4px)',
                       },
                     }}
-                    onClick={() => {
-                      navigator.clipboard.writeText('ankara.cankaya.ilce.baskani@sendika.local');
+                    onClick={async () => {
+                      await copyToClipboard('ankara.cankaya.ilce.baskani@sendika.local');
                       setCopiedField('email-ankara-cankaya');
                       setTimeout(() => setCopiedField(null), 2000);
                       setEmail('ankara.cankaya.ilce.baskani@sendika.local');

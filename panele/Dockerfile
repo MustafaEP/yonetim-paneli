@@ -12,7 +12,8 @@ COPY . .
 
 # Build arguments for environment variables
 ARG VITE_API_BASE_URL
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Only set ENV if ARG is provided and not empty
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 # Build application
 RUN npm run build
