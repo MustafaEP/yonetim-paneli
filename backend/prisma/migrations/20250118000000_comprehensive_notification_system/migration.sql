@@ -69,7 +69,7 @@ BEGIN
   END IF;
 END $$;
 
--- 4. NotificationTargetType enum'unu oluştur (eğer yoksa)
+-- 4. NotificationTargetType enum'unu oluştur veya güncelle (eğer yoksa)
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationTargetType') THEN
@@ -77,46 +77,81 @@ BEGIN
   END IF;
 END $$;
 
--- 5. NotificationTargetType enum'una ROLE ekle
+-- 5. NotificationTargetType enum'una USER ve ROLE ekle (eğer yoksa)
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'ROLE' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'NotificationTargetType')) THEN
-    ALTER TYPE "NotificationTargetType" ADD VALUE 'ROLE';
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationTargetType') THEN
+    -- USER değerini ekle (eğer yoksa)
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum 
+      WHERE enumlabel = 'USER' 
+      AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'NotificationTargetType')
+    ) THEN
+      ALTER TYPE "NotificationTargetType" ADD VALUE 'USER';
+    END IF;
+    
+    -- ROLE değerini ekle (eğer yoksa)
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum 
+      WHERE enumlabel = 'ROLE' 
+      AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'NotificationTargetType')
+    ) THEN
+      ALTER TYPE "NotificationTargetType" ADD VALUE 'ROLE';
+    END IF;
   END IF;
 END $$;
 
--- 6. Notification tablosuna yeni kolonlar ekle
-ALTER TABLE "Notification" 
-  ADD COLUMN IF NOT EXISTS "category" "NotificationCategory" NOT NULL DEFAULT 'SYSTEM',
-  ADD COLUMN IF NOT EXISTS "typeCategory" "NotificationTypeCategory",
-  ADD COLUMN IF NOT EXISTS "channels" "NotificationChannel"[] NOT NULL DEFAULT ARRAY['IN_APP']::"NotificationChannel"[],
-  ADD COLUMN IF NOT EXISTS "targetRole" TEXT,
-  ADD COLUMN IF NOT EXISTS "scheduledFor" TIMESTAMP(3),
-  ADD COLUMN IF NOT EXISTS "actionUrl" TEXT,
-  ADD COLUMN IF NOT EXISTS "actionLabel" TEXT,
-  ADD COLUMN IF NOT EXISTS "metadata" JSONB,
-  ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+-- 6. Notification tablosuna yeni kolonlar ekle (tablo varsa)
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Notification') THEN
+    ALTER TABLE "Notification" 
+      ADD COLUMN IF NOT EXISTS "category" "NotificationCategory" NOT NULL DEFAULT 'SYSTEM',
+      ADD COLUMN IF NOT EXISTS "typeCategory" "NotificationTypeCategory",
+      ADD COLUMN IF NOT EXISTS "channels" "NotificationChannel"[] NOT NULL DEFAULT ARRAY['IN_APP']::"NotificationChannel"[],
+      ADD COLUMN IF NOT EXISTS "targetRole" TEXT,
+      ADD COLUMN IF NOT EXISTS "scheduledFor" TIMESTAMP(3),
+      ADD COLUMN IF NOT EXISTS "actionUrl" TEXT,
+      ADD COLUMN IF NOT EXISTS "actionLabel" TEXT,
+      ADD COLUMN IF NOT EXISTS "metadata" JSONB;
+    
+    -- updatedAt kolonu zaten varsa kontrol et
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Notification' AND column_name = 'updatedAt') THEN
+      ALTER TABLE "Notification" ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+    END IF;
+  END IF;
+END $$;
 
--- 7. Eski 'type' kolonundaki verileri 'channels' array'ine dönüştür
--- Eğer type = EMAIL ise channels = [EMAIL], type = SMS ise channels = [SMS] vs.
-UPDATE "Notification" 
-SET channels = CASE 
-  WHEN "type" = 'EMAIL' THEN ARRAY['EMAIL']::"NotificationChannel"[]
-  WHEN "type" = 'SMS' THEN ARRAY['SMS']::"NotificationChannel"[]
-  WHEN "type" = 'WHATSAPP' THEN ARRAY['WHATSAPP']::"NotificationChannel"[]
-  WHEN "type" = 'IN_APP' THEN ARRAY['IN_APP']::"NotificationChannel"[]
-  ELSE ARRAY['IN_APP']::"NotificationChannel"[]
-END
-WHERE "type" IS NOT NULL;
+-- 7. Eski 'type' kolonundaki verileri 'channels' array'ine dönüştür (tablo varsa ve type kolonu varsa)
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Notification') 
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Notification' AND column_name = 'type') THEN
+    UPDATE "Notification" 
+    SET channels = CASE 
+      WHEN "type" = 'EMAIL' THEN ARRAY['EMAIL']::"NotificationChannel"[]
+      WHEN "type" = 'SMS' THEN ARRAY['SMS']::"NotificationChannel"[]
+      WHEN "type" = 'WHATSAPP' THEN ARRAY['WHATSAPP']::"NotificationChannel"[]
+      WHEN "type" = 'IN_APP' THEN ARRAY['IN_APP']::"NotificationChannel"[]
+      ELSE ARRAY['IN_APP']::"NotificationChannel"[]
+    END
+    WHERE "type" IS NOT NULL;
+  END IF;
+END $$;
 
 -- 8. Notification tablosundan eski 'type' kolonunu kaldır (artık kullanılmıyor)
 -- ÖNEMLİ: Bu adımı yapmadan önce tüm verilerin dönüştürüldüğünden emin olun
 -- ALTER TABLE "Notification" DROP COLUMN IF EXISTS "type";
 
--- 9. Notification tablosuna index'ler ekle
-CREATE INDEX IF NOT EXISTS "Notification_category_idx" ON "Notification"("category");
-CREATE INDEX IF NOT EXISTS "Notification_typeCategory_idx" ON "Notification"("typeCategory");
-CREATE INDEX IF NOT EXISTS "Notification_scheduledFor_idx" ON "Notification"("scheduledFor");
+-- 9. Notification tablosuna index'ler ekle (tablo varsa)
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Notification') THEN
+    CREATE INDEX IF NOT EXISTS "Notification_category_idx" ON "Notification"("category");
+    CREATE INDEX IF NOT EXISTS "Notification_typeCategory_idx" ON "Notification"("typeCategory");
+    CREATE INDEX IF NOT EXISTS "Notification_scheduledFor_idx" ON "Notification"("scheduledFor");
+  END IF;
+END $$;
 
 -- 10. NotificationRecipient tablosunu oluştur
 CREATE TABLE IF NOT EXISTS "NotificationRecipient" (
@@ -139,15 +174,26 @@ CREATE TABLE IF NOT EXISTS "NotificationRecipient" (
     CONSTRAINT "NotificationRecipient_pkey" PRIMARY KEY ("id")
 );
 
--- 11. NotificationRecipient foreign key ve index'ler
-CREATE INDEX IF NOT EXISTS "NotificationRecipient_notificationId_idx" ON "NotificationRecipient"("notificationId");
-CREATE INDEX IF NOT EXISTS "NotificationRecipient_userId_idx" ON "NotificationRecipient"("userId");
-CREATE INDEX IF NOT EXISTS "NotificationRecipient_memberId_idx" ON "NotificationRecipient"("memberId");
-CREATE INDEX IF NOT EXISTS "NotificationRecipient_status_idx" ON "NotificationRecipient"("status");
-CREATE INDEX IF NOT EXISTS "NotificationRecipient_channel_idx" ON "NotificationRecipient"("channel");
+-- 11. NotificationRecipient foreign key ve index'ler (Notification tablosu varsa)
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Notification') THEN
+    CREATE INDEX IF NOT EXISTS "NotificationRecipient_notificationId_idx" ON "NotificationRecipient"("notificationId");
+    CREATE INDEX IF NOT EXISTS "NotificationRecipient_userId_idx" ON "NotificationRecipient"("userId");
+    CREATE INDEX IF NOT EXISTS "NotificationRecipient_memberId_idx" ON "NotificationRecipient"("memberId");
+    CREATE INDEX IF NOT EXISTS "NotificationRecipient_status_idx" ON "NotificationRecipient"("status");
+    CREATE INDEX IF NOT EXISTS "NotificationRecipient_channel_idx" ON "NotificationRecipient"("channel");
 
-ALTER TABLE "NotificationRecipient" ADD CONSTRAINT "NotificationRecipient_notificationId_fkey" 
-    FOREIGN KEY ("notificationId") REFERENCES "Notification"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    -- Foreign key constraint'i sadece yoksa ekle
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.table_constraints 
+      WHERE constraint_name = 'NotificationRecipient_notificationId_fkey'
+    ) THEN
+      ALTER TABLE "NotificationRecipient" ADD CONSTRAINT "NotificationRecipient_notificationId_fkey" 
+        FOREIGN KEY ("notificationId") REFERENCES "Notification"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+  END IF;
+END $$;
 
 -- 12. NotificationLog tablosunu oluştur
 CREATE TABLE IF NOT EXISTS "NotificationLog" (
@@ -176,16 +222,39 @@ CREATE INDEX IF NOT EXISTS "NotificationLog_action_idx" ON "NotificationLog"("ac
 CREATE INDEX IF NOT EXISTS "NotificationLog_status_idx" ON "NotificationLog"("status");
 CREATE INDEX IF NOT EXISTS "NotificationLog_createdAt_idx" ON "NotificationLog"("createdAt");
 
-ALTER TABLE "NotificationLog" ADD CONSTRAINT "NotificationLog_notificationId_fkey" 
-    FOREIGN KEY ("notificationId") REFERENCES "Notification"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "NotificationLog" ADD CONSTRAINT "NotificationLog_recipientId_fkey" 
-    FOREIGN KEY ("recipientId") REFERENCES "NotificationRecipient"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Foreign key constraint'leri sadece tablolar varsa ekle
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Notification') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.table_constraints 
+      WHERE constraint_name = 'NotificationLog_notificationId_fkey'
+    ) THEN
+      ALTER TABLE "NotificationLog" ADD CONSTRAINT "NotificationLog_notificationId_fkey" 
+        FOREIGN KEY ("notificationId") REFERENCES "Notification"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'NotificationRecipient') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.table_constraints 
+      WHERE constraint_name = 'NotificationLog_recipientId_fkey'
+    ) THEN
+      ALTER TABLE "NotificationLog" ADD CONSTRAINT "NotificationLog_recipientId_fkey" 
+        FOREIGN KEY ("recipientId") REFERENCES "NotificationRecipient"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+  END IF;
+END $$;
 
 -- 14. Notification tablosuna NotificationRecipient ve NotificationLog ilişkileri için trigger eklemek gerekmez (Prisma bunları yönetir)
 
--- 15. UserNotification tablosunu güncelle (zaten var ama index ekleyelim)
-CREATE INDEX IF NOT EXISTS "UserNotification_createdAt_idx" ON "UserNotification"("createdAt");
+-- 15. UserNotification tablosunu güncelle (zaten var ama index ekleyelim - tablo varsa)
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'UserNotification') THEN
+    CREATE INDEX IF NOT EXISTS "UserNotification_createdAt_idx" ON "UserNotification"("createdAt");
+  END IF;
+END $$;
 
 -- 16. UserNotificationSettings tablosunu oluştur
 CREATE TABLE IF NOT EXISTS "UserNotificationSettings" (
