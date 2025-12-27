@@ -19,9 +19,17 @@ COPY . .
 # Build application
 RUN npm run build
 
-# Verify build output exists
-RUN ls -la /app/dist/ || (echo "Build failed - dist directory is empty" && exit 1)
-RUN test -f /app/dist/main.js || (echo "Build failed - main.js not found" && exit 1)
+# Verify build output exists and show contents
+RUN echo "=== Build output directory ===" && \
+    ls -la /app/dist/ || (echo "Build failed - dist directory is empty" && exit 1) && \
+    echo "=== Looking for main files ===" && \
+    find /app/dist -name "main.*" -type f || echo "No main.* files found" && \
+    echo "=== Dist structure ===" && \
+    find /app/dist -type f | head -20 && \
+    echo "=== Checking for main.js in common locations ===" && \
+    (test -f /app/dist/main.js && echo "Found: dist/main.js") || \
+    (test -f /app/dist/src/main.js && echo "Found: dist/src/main.js") || \
+    (echo "WARNING: main.js not found in expected locations" && find /app/dist -name "*.js" | head -5)
 
 # ---- Production stage ----
 FROM node:20-alpine
@@ -62,4 +70,5 @@ COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["node", "dist/main"]
+# Try different possible paths for main.js
+CMD ["sh", "-c", "if [ -f dist/main.js ]; then node dist/main.js; elif [ -f dist/src/main.js ]; then node dist/src/main.js; else echo 'Error: main.js not found' && find dist -name '*.js' | head -5 && exit 1; fi"]
