@@ -19,6 +19,10 @@ COPY . .
 # Build application
 RUN npm run build
 
+# Verify build output exists
+RUN ls -la /app/dist/ || (echo "Build failed - dist directory is empty" && exit 1)
+RUN test -f /app/dist/main.js || (echo "Build failed - main.js not found" && exit 1)
+
 # ---- Production stage ----
 FROM node:20-alpine
 
@@ -35,6 +39,9 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
+
+# Verify dist directory exists in production stage
+RUN ls -la /app/dist/ || (echo "dist directory not found in production stage" && exit 1)
 
 # Create uploads directory
 RUN mkdir -p uploads/documents uploads/logos && \
