@@ -8,12 +8,27 @@ services:
       - redis-data:/data
     command: redis-server --appendonly yes
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
+
+  backend:
+    build: ./backend
+    container_name: yonetim-paneli-backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    restart: unless-stopped
+
+  frontend:
+    build: ./panele
+    container_name: yonetim-paneli-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   redis-data:
-
