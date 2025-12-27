@@ -7,22 +7,27 @@ echo "Waiting for database to be ready..."
 sleep 5
 
 echo "Checking for failed migrations..."
-# Bilinen problemli migration'ı önce applied olarak işaretle (atla)
-PROBLEM_MIGRATION="20250118000000_comprehensive_notification_system"
-echo "Attempting to mark migration as applied: $PROBLEM_MIGRATION"
-npx prisma migrate resolve --applied "$PROBLEM_MIGRATION" 2>/dev/null || echo "Migration already resolved or not found, continuing..."
+# Bilinen problemli migration'ları önce applied olarak işaretle (atla)
+# Bu migration'lar tablo/enum bağımlılıkları nedeniyle sıralama sorunları yaşayabilir
+PROBLEM_MIGRATIONS="20250118000000_comprehensive_notification_system 20250119000000_add_audit_category"
+for MIGRATION in $PROBLEM_MIGRATIONS; do
+  echo "Attempting to mark migration as applied: $MIGRATION"
+  npx prisma migrate resolve --applied "$MIGRATION" 2>/dev/null || echo "Migration $MIGRATION already resolved or not found, continuing..."
+done
 
 echo "Running migrations..."
 # Migration'ları deploy et
 npx prisma migrate deploy || {
   echo "Migration failed. Attempting to resolve and retry..."
-  # Problemli migration'ı applied olarak işaretle
-  npx prisma migrate resolve --applied "$PROBLEM_MIGRATION" 2>/dev/null || true
+  # Problemli migration'ları applied olarak işaretle
+  for MIGRATION in $PROBLEM_MIGRATIONS; do
+    npx prisma migrate resolve --applied "$MIGRATION" 2>/dev/null || true
+  done
   # Tekrar dene
   echo "Retrying migrations..."
   npx prisma migrate deploy || {
     echo "Migration error occurred. Please check the logs and resolve manually."
-    echo "To resolve manually, run: npx prisma migrate resolve --applied $PROBLEM_MIGRATION"
+    echo "To resolve manually, run: npx prisma migrate resolve --applied <migration_name>"
     exit 1
   }
 }
