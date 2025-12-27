@@ -6,8 +6,11 @@ import * as path from 'path';
 const prisma = new PrismaClient();
 
 // JSON dosyalarından şehir ve ilçe verilerini yükle
-const sehirlerPath = path.join(__dirname, 'sehirler.json');
-const ilcelerPath = path.join(__dirname, 'ilceler.json');
+// Production'da (dist/prisma/) veya development'da (prisma/) çalışabilmesi için
+const isProduction = __dirname.includes('dist');
+const prismaDir = isProduction ? path.join(__dirname, '..', '..', 'prisma') : __dirname;
+const sehirlerPath = path.join(prismaDir, 'sehirler.json');
+const ilcelerPath = path.join(prismaDir, 'ilceler.json');
 
 interface SehirData {
   sehir_id: string;
@@ -3696,8 +3699,10 @@ Sendika Yönetimi
 
   // 🔹 Her üye için üye kayıt PDF dosyası oluştur
   console.log('📄 Üye kayıt PDF dosyaları oluşturuluyor...');
-  const sourcePdfPath = path.join(__dirname, 'UyeKayidi.pdf');
-  const uploadsDir = path.join(__dirname, '..', 'uploads', 'documents');
+  const sourcePdfPath = path.join(prismaDir, 'UyeKayidi.pdf');
+  const uploadsDir = isProduction 
+    ? path.join(process.cwd(), 'uploads', 'documents')
+    : path.join(__dirname, '..', 'uploads', 'documents');
   
   // Uploads klasörünü oluştur (yoksa)
   if (!fs.existsSync(uploadsDir)) {
