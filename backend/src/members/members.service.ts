@@ -95,7 +95,7 @@ export class MembersService {
     }
 
     const format = this.configService.getSystemSetting('MEMBERSHIP_REG_NUMBER_FORMAT', 'SEQUENTIAL');
-    const prefix = this.configService.getSystemSetting('MEMBERSHIP_REG_NUMBER_PREFIX', '').trim();
+    const prefix = (this.configService.getSystemSetting('MEMBERSHIP_REG_NUMBER_PREFIX', '') ?? '').trim();
     const startNumber = this.configService.getSystemSettingNumber('MEMBERSHIP_REG_NUMBER_START', 1);
     const currentYear = new Date().getFullYear();
 
