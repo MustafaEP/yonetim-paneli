@@ -64,3 +64,8 @@ next-env.d.ts
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# Markdown files (README.md hariç)
+*.md
+!README.md
+!**/README.md
