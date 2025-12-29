@@ -8,6 +8,12 @@ export class CreateTevkifatCenterDto {
   @MaxLength(255)
   name: string;
 
+  @ApiProperty({ description: 'Tevkifat ünvanı (opsiyonel)', example: 'Müdür', required: false })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  title?: string;
+
   @ApiProperty({ description: 'Kod (opsiyonel)', example: 'SB-TEV-001', required: false })
   @IsString()
   @IsOptional()
@@ -18,4 +24,19 @@ export class CreateTevkifatCenterDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiProperty({ description: 'Adres (opsiyonel)', required: false })
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @ApiProperty({ description: 'İl ID (opsiyonel)', required: false })
+  @IsString()
+  @IsOptional()
+  provinceId?: string;
+
+  @ApiProperty({ description: 'İlçe ID (opsiyonel)', required: false })
+  @IsString()
+  @IsOptional()
+  districtId?: string;
 }

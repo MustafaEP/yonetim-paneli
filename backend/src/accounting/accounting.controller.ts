@@ -11,11 +11,13 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AccountingService } from './accounting.service';
 import { UploadTevkifatFileDto } from './dto/upload-tevkifat-file.dto';
 import { CreateTevkifatCenterDto } from './dto/create-tevkifat-center.dto';
 import { UpdateTevkifatCenterDto } from './dto/update-tevkifat-center.dto';
+import { CreateTevkifatTitleDto } from './dto/create-tevkifat-title.dto';
+import { UpdateTevkifatTitleDto } from './dto/update-tevkifat-title.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permission.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -105,9 +107,14 @@ export class AccountingController {
   @Permissions(Permission.ACCOUNTING_VIEW)
   @Get('tevkifat-centers')
   @ApiOperation({ summary: 'Tevkifat merkezlerini listele' })
+  @ApiQuery({ name: 'provinceId', required: false, description: 'İl ID (filtreleme için - o ile bağlı olanları ve o ilin ilçelerine bağlı olanları gösterir)' })
+  @ApiQuery({ name: 'districtId', required: false, description: 'İlçe ID (filtreleme için)' })
   @ApiResponse({ status: 200, description: 'Tevkifat merkezleri listesi' })
-  async listTevkifatCenters() {
-    return this.accountingService.listTevkifatCenters();
+  async listTevkifatCenters(
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+  ) {
+    return this.accountingService.listTevkifatCenters({ provinceId, districtId });
   }
 
   @Permissions(Permission.ACCOUNTING_VIEW)
@@ -151,5 +158,57 @@ export class AccountingController {
   @ApiResponse({ status: 404, description: 'Tevkifat merkezi bulunamadı' })
   async deleteTevkifatCenter(@Param('id') id: string) {
     return this.accountingService.deleteTevkifatCenter(id);
+  }
+
+  // Tevkifat Unvanları CRUD
+  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Get('tevkifat-titles')
+  @ApiOperation({ summary: 'Tevkifat unvanlarını listele' })
+  @ApiResponse({ status: 200, description: 'Tevkifat unvanları listesi' })
+  async listTevkifatTitles() {
+    return this.accountingService.listTevkifatTitles();
+  }
+
+  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Get('tevkifat-titles/:id')
+  @ApiOperation({ summary: 'Tevkifat unvanı detayını getir' })
+  @ApiParam({ name: 'id', description: 'Tevkifat unvanı ID' })
+  @ApiResponse({ status: 200, description: 'Tevkifat unvanı detayı' })
+  @ApiResponse({ status: 404, description: 'Tevkifat unvanı bulunamadı' })
+  async getTevkifatTitleById(@Param('id') id: string) {
+    return this.accountingService.getTevkifatTitleById(id);
+  }
+
+  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Post('tevkifat-titles')
+  @ApiOperation({ summary: 'Tevkifat unvanı oluştur' })
+  @ApiBody({ type: CreateTevkifatTitleDto })
+  @ApiResponse({ status: 201, description: 'Tevkifat unvanı oluşturuldu' })
+  async createTevkifatTitle(@Body() dto: CreateTevkifatTitleDto) {
+    return this.accountingService.createTevkifatTitle(dto);
+  }
+
+  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Patch('tevkifat-titles/:id')
+  @ApiOperation({ summary: 'Tevkifat unvanı güncelle' })
+  @ApiParam({ name: 'id', description: 'Tevkifat unvanı ID' })
+  @ApiBody({ type: UpdateTevkifatTitleDto })
+  @ApiResponse({ status: 200, description: 'Tevkifat unvanı güncellendi' })
+  @ApiResponse({ status: 404, description: 'Tevkifat unvanı bulunamadı' })
+  async updateTevkifatTitle(
+    @Param('id') id: string,
+    @Body() dto: UpdateTevkifatTitleDto,
+  ) {
+    return this.accountingService.updateTevkifatTitle(id, dto);
+  }
+
+  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Delete('tevkifat-titles/:id')
+  @ApiOperation({ summary: 'Tevkifat unvanı sil (kalıcı silme)' })
+  @ApiParam({ name: 'id', description: 'Tevkifat unvanı ID' })
+  @ApiResponse({ status: 200, description: 'Tevkifat unvanı silindi' })
+  @ApiResponse({ status: 404, description: 'Tevkifat unvanı bulunamadı' })
+  async deleteTevkifatTitle(@Param('id') id: string) {
+    return this.accountingService.deleteTevkifatTitle(id);
   }
 }

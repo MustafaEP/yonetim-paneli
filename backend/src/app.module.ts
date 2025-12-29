@@ -13,7 +13,6 @@ import { ContentModule } from './content/content.module';
 import { SystemModule } from './system/system.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
-import { InstitutionsModule } from './institutions/institutions.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -33,7 +32,6 @@ import { SystemLogInterceptor } from './common/interceptors/system-log.intercept
     SystemModule,
     NotificationsModule,
     ReportsModule,
-    InstitutionsModule,
     ApprovalsModule,
     AccountingModule,
     PaymentsModule,

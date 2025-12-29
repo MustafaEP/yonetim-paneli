@@ -48,19 +48,21 @@ export interface MemberListItem {
 
 export interface MemberDetail extends MemberListItem {
   nationalId: string;
-  source?: 'DIRECT' | 'WORKPLACE' | 'DEALER' | 'OTHER';
+  source?: 'DIRECT' | 'OTHER';
   membershipInfoOption?: { id: string; label: string; value: string } | null;
   boardDecisionDate?: string | null;
   boardDecisionBookNo?: string | null;
   motherName?: string | null;
   fatherName?: string | null;
+  birthDate?: string | null;
   birthplace?: string | null;
   gender?: 'MALE' | 'FEMALE' | 'OTHER' | null;
   educationStatus?: 'PRIMARY' | 'HIGH_SCHOOL' | 'COLLEGE' | null;
   institutionRegNo?: string | null;
   workUnit?: string | null;
   workUnitAddress?: string | null;
-  tevkifatCenter?: { id: string; name: string } | null;
+  tevkifatCenter?: { id: string; name: string; title?: string | null } | null;
+  tevkifatTitle?: { id: string; name: string } | null;
   duesPlan?: {
     id: string;
     name: string;

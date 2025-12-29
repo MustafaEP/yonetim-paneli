@@ -7,7 +7,7 @@ export interface AccountingMember {
   firstName: string;
   lastName: string;
   institution?: { id: string; name: string } | null;
-  tevkifatCenter?: { id: string; name: string } | null;
+  tevkifatCenter?: { id: string; name: string; title: string | null } | null;
   branch?: { id: string; name: string } | null;
   duesPayments: Array<{
     id: string;
@@ -21,7 +21,7 @@ export interface AccountingMember {
 export interface TevkifatFile {
   id: string;
   tevkifatCenterId: string;
-  tevkifatCenter?: { id: string; name: string };
+  tevkifatCenter?: { id: string; name: string; title: string | null };
   totalAmount: number | string;
   memberCount: number;
   month: number;
@@ -101,12 +101,24 @@ export const rejectTevkifatFile = async (id: string): Promise<TevkifatFile> => {
 export interface TevkifatCenter {
   id: string;
   name: string;
+  title: string | null;
   code: string | null;
   description: string | null;
+  address: string | null;
   isActive: boolean;
+  provinceId?: string | null;
+  districtId?: string | null;
+  province?: {
+    id: string;
+    name: string;
+    code: string | null;
+  } | null;
+  district?: {
+    id: string;
+    name: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
-  branchCount?: number;
   memberCount?: number;
   lastTevkifatMonth?: string | null;
 }
@@ -133,19 +145,32 @@ export interface TevkifatCenterDetail extends TevkifatCenter {
 
 export interface CreateTevkifatCenterDto {
   name: string;
+  title?: string;
   code?: string;
   description?: string;
+  address?: string;
+  provinceId?: string;
+  districtId?: string;
 }
 
 export interface UpdateTevkifatCenterDto {
   name?: string;
+  title?: string;
   code?: string;
   description?: string;
+  address?: string;
   isActive?: boolean;
+  provinceId?: string | null;
+  districtId?: string | null;
 }
 
-export const getTevkifatCenters = async (): Promise<TevkifatCenter[]> => {
-  const res = await httpClient.get<TevkifatCenter[]>('/accounting/tevkifat-centers');
+export const getTevkifatCenters = async (filters?: {
+  provinceId?: string;
+  districtId?: string;
+}): Promise<TevkifatCenter[]> => {
+  const res = await httpClient.get<TevkifatCenter[]>('/accounting/tevkifat-centers', {
+    params: filters,
+  });
   return Array.isArray(res.data) ? res.data : [];
 };
 
@@ -170,4 +195,49 @@ export const updateTevkifatCenter = async (
 export const deleteTevkifatCenter = async (id: string): Promise<TevkifatCenter> => {
   const res = await httpClient.delete<TevkifatCenter>(`/accounting/tevkifat-centers/${id}`);
   return res.data;
+};
+
+// Tevkifat Unvanları
+export interface TevkifatTitle {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTevkifatTitleDto {
+  name: string;
+}
+
+export interface UpdateTevkifatTitleDto {
+  name?: string;
+  isActive?: boolean;
+}
+
+export const getTevkifatTitles = async (): Promise<TevkifatTitle[]> => {
+  const res = await httpClient.get<TevkifatTitle[]>('/accounting/tevkifat-titles');
+  return Array.isArray(res.data) ? res.data : [];
+};
+
+export const getTevkifatTitleById = async (id: string): Promise<TevkifatTitle> => {
+  const res = await httpClient.get<TevkifatTitle>(`/accounting/tevkifat-titles/${id}`);
+  return res.data;
+};
+
+export const createTevkifatTitle = async (dto: CreateTevkifatTitleDto): Promise<TevkifatTitle> => {
+  const res = await httpClient.post<TevkifatTitle>('/accounting/tevkifat-titles', dto);
+  return res.data;
+};
+
+export const updateTevkifatTitle = async (
+  id: string,
+  dto: UpdateTevkifatTitleDto,
+): Promise<TevkifatTitle> => {
+  const res = await httpClient.patch<TevkifatTitle>(`/accounting/tevkifat-titles/${id}`, dto);
+  return res.data;
+};
+
+export const deleteTevkifatTitle = async (id: string): Promise<void> => {
+  await httpClient.delete(`/accounting/tevkifat-titles/${id}`);
 };

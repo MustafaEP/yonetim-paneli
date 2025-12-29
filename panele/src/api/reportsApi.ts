@@ -29,11 +29,6 @@ export interface RegionReport {
   cancelledMembers: number;
   totalPayments: number;
   totalDebt: number;
-  workplaces: Array<{
-    workplaceId: string;
-    workplaceName: string;
-    memberCount: number;
-  }>;
 }
 
 export interface MemberStatusReport {

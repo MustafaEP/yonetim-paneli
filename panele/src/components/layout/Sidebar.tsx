@@ -24,7 +24,6 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import MapIcon from '@mui/icons-material/Map';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import BusinessIcon from '@mui/icons-material/Business';
-import StoreIcon from '@mui/icons-material/Store';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -37,6 +36,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SendIcon from '@mui/icons-material/Send';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -362,76 +362,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               />
             </ListItemButton>
             
-            <ListItemButton
-              component={Link}
-              to="/regions/workplaces"
-              selected={location.pathname.startsWith('/regions/workplaces')}
-              onClick={handleLinkClick}
-              sx={{
-                borderRadius: 2,
-                mb: 0.5,
-                '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  color: theme.palette.primary.main,
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: theme.palette.primary.main,
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <BusinessIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="İş Yeri" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            
-            <ListItemButton
-              component={Link}
-              to="/regions/dealers"
-              selected={location.pathname.startsWith('/regions/dealers')}
-              onClick={handleLinkClick}
-              sx={{
-                borderRadius: 2,
-                mb: 0.5,
-                '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  color: theme.palette.primary.main,
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: theme.palette.primary.main,
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.action.hover, 0.04),
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <StoreIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Bayiler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            
             {showBranches && (
               <ListItemButton
                 component={Link}
@@ -498,6 +428,43 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
                 </ListItemIcon>
                 <ListItemText 
                   primary="Kurumlar" 
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
+
+            {showAccounting && (
+              <ListItemButton
+                component={Link}
+                to="/accounting/tevkifat-centers"
+                selected={location.pathname.startsWith('/accounting/tevkifat-centers')}
+                onClick={handleLinkClick}
+                sx={{
+                  borderRadius: 2,
+                  mb: 0.5,
+                  '&.Mui-selected': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: theme.palette.primary.main,
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.action.hover, 0.04),
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <AccountBalanceIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Tevkifat Merkezleri" 
                   primaryTypographyProps={{
                     fontSize: '0.9rem',
                     fontWeight: 500,

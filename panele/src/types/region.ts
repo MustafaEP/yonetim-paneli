@@ -16,42 +16,38 @@ export interface Province {
     } | null;
   }
   
-  export interface Workplace {
-    id: string;
-    name: string;
-    address?: string | null;
-    province?: {
-      id: string;
-      name: string;
-    } | null;
-    district?: {
-      id: string;
-      name: string;
-    } | null;
-  }
-  
-  export interface Dealer {
+// 🔹 Kullanıcı scope tipleri (GET /regions/user-scope/:userId)
+export interface UserScope {
+  id: string;
+  province?: { id: string; name: string } | null;
+  district?: { id: string; name: string } | null;
+}
+
+// 🔹 Institution
+export interface Institution {
+  id: string;
+  name: string;
+  provinceId: string;
+  districtId?: string | null;
+  kurumSicilNo?: string | null;
+  gorevBirimi?: string | null;
+  kurumAdresi?: string | null;
+  kadroUnvanKodu?: string | null;
+  isActive: boolean;
+  approvedAt?: string | null;
+  approvedBy?: string | null;
+  createdBy?: string | null;
+  province?: {
     id: string;
     name: string;
     code?: string | null;
-    address?: string | null;
-    province?: {
-      id: string;
-      name: string;
-    } | null;
-    district?: {
-      id: string;
-      name: string;
-    } | null;
-  }
-  
-  // 🔹 Kullanıcı scope tipleri (GET /regions/user-scope/:userId)
-  export interface UserScope {
+  } | null;
+  district?: {
     id: string;
-    province?: { id: string; name: string } | null;
-    district?: { id: string; name: string } | null;
-    workplace?: { id: string; name: string } | null;
-    dealer?: { id: string; name: string } | null;
-  }
+    name: string;
+  } | null;
+  memberCount?: number;
+  createdAt?: string;
+}
   
   

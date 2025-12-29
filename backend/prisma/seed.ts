@@ -90,6 +90,64 @@ function generateEmail(firstName: string, lastName: string): string {
   return `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randomNum}@${domain}`;
 }
 
+// Doğum tarihi üretici (25-60 yaş arası)
+function generateBirthDate(): Date {
+  const now = new Date();
+  const age = 25 + Math.floor(Math.random() * 35); // 25-60 yaş arası
+  const birthYear = now.getFullYear() - age;
+  const birthMonth = Math.floor(Math.random() * 12);
+  const birthDay = 1 + Math.floor(Math.random() * 28);
+  return new Date(birthYear, birthMonth, birthDay);
+}
+
+// Anne/Baba adı üretici
+function generateParentName(): string {
+  const names = ['Ali', 'Mehmet', 'Ahmet', 'Hasan', 'Hüseyin', 'Mustafa', 'İbrahim', 'Ömer', 'Ayşe', 'Fatma', 'Hatice', 'Zeynep', 'Emine'];
+  return names[Math.floor(Math.random() * names.length)];
+}
+
+// Doğum yeri üretici
+const BIRTHPLACES = [
+  'İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 
+  'Gaziantep', 'Şanlıurfa', 'Mersin', 'Diyarbakır', 'Kayseri', 'Eskişehir',
+  'Trabzon', 'Samsun', 'Manisa', 'Balıkesir', 'Kocaeli', 'Malatya', 'Denizli'
+];
+
+function generateBirthplace(): string {
+  return BIRTHPLACES[Math.floor(Math.random() * BIRTHPLACES.length)];
+}
+
+// Cinsiyet üretici
+function generateGender(firstName: string): Gender {
+  const femaleNames = ['Ayşe', 'Fatma', 'Hatice', 'Zeynep', 'Emine', 'Meryem', 'Elif', 'Şerife', 'Selin', 'Derya', 'Gizem', 'Burcu', 'Seda', 'Pınar', 'Esra', 'Ceren'];
+  return femaleNames.includes(firstName) ? Gender.FEMALE : Gender.MALE;
+}
+
+// Eğitim durumu üretici
+function generateEducationStatus(): EducationStatus {
+  const statuses = [EducationStatus.PRIMARY, EducationStatus.HIGH_SCHOOL, EducationStatus.COLLEGE];
+  const weights = [0.2, 0.3, 0.5]; // %20 ilkokul, %30 lise, %50 üniversite
+  const random = Math.random();
+  if (random < weights[0]) return statuses[0];
+  if (random < weights[0] + weights[1]) return statuses[1];
+  return statuses[2];
+}
+
+// Yönetim kurulu karar tarihi üretici (üyelik tarihinden önce)
+function generateBoardDecisionDate(createdAt: Date): Date {
+  const beforeDays = 3 + Math.floor(Math.random() * 14); // 3-16 gün önce
+  const decisionDate = new Date(createdAt);
+  decisionDate.setDate(decisionDate.getDate() - beforeDays);
+  return decisionDate;
+}
+
+// Yönetim kurulu karar defter no üretici
+function generateBoardDecisionBookNo(): string {
+  const year = new Date().getFullYear();
+  const no = 1 + Math.floor(Math.random() * 150);
+  return `${year}/${no}`;
+}
+
 async function main() {
   console.log('🌱 Seed işlemi başlatılıyor...');
 
@@ -113,6 +171,7 @@ async function main() {
   await prisma.systemSetting.deleteMany();
   await prisma.member.deleteMany(); // Institution'a bağlı, önce silmeliyiz
   await prisma.institution.deleteMany(); // Member'lardan sonra silinebilir
+  await prisma.tevkifatTitle.deleteMany();
   await prisma.tevkifatCenter.deleteMany();
   await prisma.membershipInfoOption.deleteMany();
   await prisma.branch.deleteMany();
@@ -120,8 +179,6 @@ async function main() {
   await prisma.customRolePermission.deleteMany();
   await prisma.customRole.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.workplace.deleteMany();
-  await prisma.dealer.deleteMany();
   await prisma.district.deleteMany();
   await prisma.province.deleteMany();
 
@@ -184,8 +241,6 @@ async function main() {
       'MEMBER_UPDATE', 'MEMBER_STATUS_CHANGE', 'MEMBER_LIST_BY_PROVINCE',
       'DUES_PLAN_MANAGE', 'DUES_PAYMENT_ADD', 'DUES_REPORT_VIEW', 'DUES_DEBT_LIST_VIEW', 'DUES_EXPORT',
       'REGION_LIST', 'BRANCH_MANAGE', 'BRANCH_ASSIGN_PRESIDENT',
-      'WORKPLACE_LIST', 'WORKPLACE_MANAGE', 'WORKPLACE_ASSIGN_REP', 'WORKPLACE_MEMBERS_VIEW',
-      'DEALER_LIST', 'DEALER_CREATE', 'DEALER_APPROVE_APPLICATION', 'DEALER_UPDATE', 'DEALER_PERFORMANCE_VIEW',
       'CONTENT_MANAGE', 'CONTENT_PUBLISH',
       'DOCUMENT_TEMPLATE_MANAGE', 'DOCUMENT_MEMBER_HISTORY_VIEW', 'DOCUMENT_GENERATE_PDF',
       'REPORT_GLOBAL_VIEW', 'REPORT_REGION_VIEW', 'REPORT_MEMBER_STATUS_VIEW', 'REPORT_DUES_VIEW',
@@ -214,14 +269,6 @@ async function main() {
       'MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_CREATE_APPLICATION', 'MEMBER_UPDATE',
       'DUES_PAYMENT_ADD', 'DUES_REPORT_VIEW', 'REPORT_REGION_VIEW',
       'DOCUMENT_TEMPLATE_MANAGE', 'DOCUMENT_GENERATE_PDF', 'NOTIFY_OWN_SCOPE',
-    ],
-    ISYERI_TEMSILCISI: [
-      'MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_CREATE_APPLICATION', 'MEMBER_APPROVE',
-      'MEMBER_REJECT', 'WORKPLACE_MEMBERS_VIEW', 'NOTIFY_OWN_SCOPE',
-    ],
-    BAYI_YETKILISI: [
-      'MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_CREATE_APPLICATION',
-      'DEALER_LIST', 'DEALER_PERFORMANCE_VIEW', 'NOTIFY_OWN_SCOPE',
     ],
     UYE: [], // Üye için varsayılan olarak hiçbir izin yok
   };
@@ -337,18 +384,6 @@ async function main() {
       lastName: 'Temsilcisi',
       customRoles: {
         connect: { id: ilceTemsilcisiRole.id },
-      },
-    },
-  });
-
-  const isyeriTemsilcisi = await prisma.user.create({
-    data: {
-      email: 'isyeri.temsilcisi@sendika.local',
-      passwordHash,
-      firstName: 'İşyeri',
-      lastName: 'Temsilcisi',
-      customRoles: {
-        connect: { id: customRoleMap['ISYERI_TEMSILCISI'] },
       },
     },
   });
@@ -508,96 +543,49 @@ async function main() {
   });
 
   // Kullanıcılar dizisi (UYE rolüne sahip kullanıcılar kaldırıldı)
-  const users: string[] = [adminUser.id, genelBaskan.id, ilBaskani.id, ilceTemsilcisi.id, isyeriTemsilcisi.id, bursaIlBaskani.id, ankaraIlBaskani.id, bursaMudanyaIlceBaskani.id, ankaraCankayaIlceBaskani.id];
+  const users: string[] = [adminUser.id, genelBaskan.id, ilBaskani.id, ilceTemsilcisi.id, bursaIlBaskani.id, ankaraIlBaskani.id, bursaMudanyaIlceBaskani.id, ankaraCankayaIlceBaskani.id];
 
-  // 5. İşyerleri ekle
-  console.log('🏭 İşyerleri ekleniyor...');
-  const workplaceMap: string[] = [];
-  const workplaceNames = [
-    'Tekstil Fabrikası A.Ş.',
-    'Metal İşleme Sanayi',
-    'Gıda Üretim Tesisleri',
-    'Otomotiv Yan Sanayi',
-    'Kimya Endüstrisi',
-    'Elektrik Elektronik A.Ş.',
-    'Plastik Üretim Ltd.',
-    'İnşaat Malzemeleri San.',
-    'Kağıt ve Ambalaj Fab.',
-    'Enerji Üretim Tesisleri',
-  ];
-
+  // Province IDs array (üye oluşturma için kullanılacak)
   const provinceIds = Object.values(provinceMap);
-  const districtIds = Object.values(districtMap);
 
-  for (let i = 0; i < 20; i++) {
-    const provinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
-    
-    // Bu ile ait district'leri veritabanından çek
-    const districtsInProvince = await prisma.district.findMany({
-      where: { provinceId },
-      select: { id: true },
-    });
-
-    const districtId = districtsInProvince.length > 0 
-      ? districtsInProvince[Math.floor(Math.random() * districtsInProvince.length)].id
-      : undefined;
-
-    const workplace = await prisma.workplace.create({
-      data: {
-        name: `${workplaceNames[Math.floor(Math.random() * workplaceNames.length)]} ${i + 1}`,
-        address: `Örnek Adres ${i + 1}, Sokak ${i + 1}`,
-        provinceId,
-        districtId,
-      },
-    });
-    workplaceMap.push(workplace.id);
-  }
-
-  // 6. Bayiler ekle
-  console.log('🏪 Bayiler ekleniyor...');
-  const dealerMap: string[] = [];
-  const dealerNames = [
-    'Bayi A',
-    'Bayi B',
-    'Bayi C',
-    'Bayi D',
-    'Bayi E',
-    'Bayi F',
+  // 5. Anlaşmalı Kurumlar ekle
+  // 🏪 Anlaşmalı Kurumlar - REMOVED (model doesn't exist in schema)
+  console.log('🏪 Anlaşmalı Kurumlar atlanıyor (model mevcut değil)...');
+  const contractedInstitutionMap: string[] = [];
+  
+  // Disabled: contractedInstitution model removed from schema
+  /*
+  const contractedInstitutionNames = [
+    'Anlaşmalı Kurum A',
+    'Anlaşmalı Kurum B',
+    'Anlaşmalı Kurum C',
+    'Anlaşmalı Kurum D',
+    'Anlaşmalı Kurum E',
+    'Anlaşmalı Kurum F',
   ];
 
   for (let i = 0; i < 15; i++) {
     const provinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
-    const dealer = await prisma.dealer.create({
+    const contractedInstitution = await prisma.contractedInstitution.create({
       data: {
-        name: `${dealerNames[Math.floor(Math.random() * dealerNames.length)]} ${i + 1}`,
-        code: `BAYI${String(i + 1).padStart(3, '0')}`,
-        address: `Bayi Adresi ${i + 1}`,
+        name: `${contractedInstitutionNames[Math.floor(Math.random() * contractedInstitutionNames.length)]} ${i + 1}`,
+        code: `AK${String(i + 1).padStart(3, '0')}`,
+        address: `Anlaşmalı Kurum Adresi ${i + 1}`,
         provinceId,
       },
     });
-    dealerMap.push(dealer.id);
+    contractedInstitutionMap.push(contractedInstitution.id);
   }
+  */
 
-  // 7. UserScope ekle (kullanıcılara yetki alanları)
+  // 6. UserScope ekle (kullanıcılara yetki alanları)
   console.log('🔐 Kullanıcı yetkileri ekleniyor...');
   
   // Not: İl Başkanı ve İlçe Temsilcisi kullanıcıları artık IL_BASKANI ve ILCE_TEMSILCISI rollerine sahip değil
   // Bu kullanıcılar GENEL_SEKRETER rolüne atandı, bu yüzden UserScope eklenmedi
 
-  // İşyeri temsilcisine bir işyeri yetkisi
-  if (workplaceMap.length > 0) {
-    await prisma.userScope.create({
-      data: {
-        userId: isyeriTemsilcisi.id,
-        workplaceId: workplaceMap[0],
-      },
-    });
-  }
-
-  // 8.5. Şubeler ekle (üyelerden önce - branchId zorunlu)
+  // 7. Şubeler ekle (üyelerden önce - branchId zorunlu)
   console.log('🏢 Şubeler ekleniyor...');
-  const provincesForBranches = await prisma.province.findMany({ take: 10 });
-  const districtsForBranches = await prisma.district.findMany({ take: 20 });
   const allBranchesForMembers: any[] = [];
 
   // Üye oluşturma için gerekli yardımcı veriler (şimdiden hazırla)
@@ -619,27 +607,85 @@ async function main() {
       })
     : [];
   
-  if (provincesForBranches.length > 0 && activeUsersForBranches.length > 0) {
-    for (let i = 0; i < Math.min(5, provincesForBranches.length); i++) {
-      const province = provincesForBranches[i];
-      const provinceDistricts = districtsForBranches.filter(d => d.provinceId === province.id);
-      const district = provinceDistricts.length > 0 ? provinceDistricts[0] : null;
+  // Şubeleri il ve ilçelere bağlı olarak ekle
+  let branchCounter = 1;
+  const majorProvinces = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep', 'Kayseri', 'Mersin', 'Diyarbakır', 'Samsun', 'Trabzon', 'Eskişehir', 'Denizli'];
+  
+  for (const provinceName of majorProvinces) {
+    const provinceId = provinceMap[provinceName];
+    if (!provinceId) continue;
+
+    // Her il için 1-3 şube ekle
+    const branchCount = Math.floor(Math.random() * 3) + 1;
+    const districts = await prisma.district.findMany({
+      where: { provinceId },
+      take: branchCount,
+      select: { id: true, name: true },
+    });
+
+    for (let i = 0; i < branchCount; i++) {
+      const district = districts[i] || null;
+      const branchName = district 
+        ? `${provinceName} ${district.name} Şubesi`
+        : `${provinceName} Şubesi`;
       
       const branch = await prisma.branch.create({
         data: {
-          name: `${province.name} Şubesi`,
-          code: `SUB-${province.code || String(i + 1).padStart(2, '0')}`,
-          provinceId: province.id,
-          districtId: district?.id,
-          presidentId: activeUsersForBranches[i % activeUsersForBranches.length].id,
-          address: `${province.name} Merkez`,
-          phone: `0${500 + i}${100 + i}${100 + i}${100 + i}`,
-          email: `sube${i + 1}@sendika.org`,
+          name: branchName,
+          code: `SUB-${String(branchCounter).padStart(3, '0')}`,
+          presidentId: activeUsersForBranches.length > 0 
+            ? activeUsersForBranches[branchCounter % activeUsersForBranches.length].id 
+            : null,
+          address: `${provinceName}${district ? ` ${district.name}` : ''} Merkez`,
+          phone: `0${500 + (branchCounter % 100)}${String(100 + (branchCounter % 100)).slice(-7)}`,
+          email: `sube${branchCounter}@sendika.org`,
           isActive: true,
+          provinceId: provinceId,
+          districtId: district?.id || null,
         },
       });
       allBranchesForMembers.push(branch);
+      branchCounter++;
     }
+  }
+
+  // Diğer iller için de şubeler ekle (her il için 1 şube)
+  const otherProvinces = Object.entries(provinceMap).filter(([name]) => 
+    !majorProvinces.includes(name)
+  ).slice(0, 30); // İlk 30 il için
+
+  for (const [provinceName, provinceId] of otherProvinces) {
+    const districts = await prisma.district.findMany({
+      where: { provinceId },
+      take: 1,
+      select: { id: true, name: true },
+    });
+    
+    const district = districts[0] || null;
+    const branchName = district 
+      ? `${provinceName} ${district.name} Şubesi`
+      : `${provinceName} Şubesi`;
+    
+    const branch = await prisma.branch.create({
+      data: {
+        name: branchName,
+        code: `SUB-${String(branchCounter).padStart(3, '0')}`,
+        presidentId: activeUsersForBranches.length > 0 
+          ? activeUsersForBranches[branchCounter % activeUsersForBranches.length].id 
+          : null,
+        address: `${provinceName}${district ? ` ${district.name}` : ''} Merkez`,
+        phone: `0${500 + (branchCounter % 100)}${String(100 + (branchCounter % 100)).slice(-7)}`,
+        email: `sube${branchCounter}@sendika.org`,
+        isActive: true,
+        provinceId: provinceId,
+        districtId: district?.id || null,
+      },
+    });
+    allBranchesForMembers.push(branch);
+    branchCounter++;
+  }
+
+  if (allBranchesForMembers.length > 0) {
     console.log(`   - ${allBranchesForMembers.length} şube eklendi`);
   }
 
@@ -656,37 +702,12 @@ async function main() {
 
   // 8.6. Kurumlar (Institutions) - Üyelerden ÖNCE oluşturulmalı (institutionId zorunlu)
   console.log('🏢 Kurumlar ekleniyor...');
-  const allBranchesForInstitutions = allBranches.length > 0 ? allBranches : await prisma.branch.findMany({ take: 10 });
   
-  // Şubeleri provinceId'ye göre bul
+  // İlleri bul
   const istanbulProvinceIdForInstitutions = provinceMap['İstanbul'];
   const ankaraProvinceIdForInstitutions = provinceMap['Ankara'];
   const bursaProvinceIdForInstitutions = provinceMap['Bursa'];
   const izmirProvinceIdForInstitutions = provinceMap['İzmir'];
-  
-  let istanbulBranch = istanbulProvinceIdForInstitutions 
-    ? await prisma.branch.findFirst({ 
-        where: { provinceId: istanbulProvinceIdForInstitutions },
-        select: { id: true },
-      })
-    : null;
-  
-  // İstanbul şubesi yoksa, mevcut şubelerden birini kullan
-  if (!istanbulBranch && allBranchesForInstitutions.length > 0) {
-    istanbulBranch = { id: allBranchesForInstitutions[0].id };
-  }
-  
-  let ankaraBranch = ankaraProvinceIdForInstitutions
-    ? await prisma.branch.findFirst({ 
-        where: { provinceId: ankaraProvinceIdForInstitutions },
-        select: { id: true },
-      })
-    : null;
-  
-  // Ankara şubesi yoksa, mevcut şubelerden birini kullan
-  if (!ankaraBranch && allBranchesForInstitutions.length > 0) {
-    ankaraBranch = { id: allBranchesForInstitutions[allBranchesForInstitutions.length > 1 ? 1 : 0].id };
-  }
 
   // İlçeleri bul
   let istanbulKadikoyId: string | undefined = districtMap['İstanbul_Kadıköy'];
@@ -742,115 +763,191 @@ async function main() {
   // Daha fazla institution oluştur (tüm üyeler için yeterli olsun)
   const institutionData: any[] = [];
   
-  // İstanbul için institutions
-  if (istanbulBranch && istanbulProvinceIdForInstitutions && istanbulKadikoyId) {
-    institutionData.push({
-      name: 'İstanbul Devlet Hastanesi',
-      provinceId: istanbulProvinceIdForInstitutions,
-      districtId: istanbulKadikoyId,
-      branchId: istanbulBranch.id,
-      isActive: true,
-      approvedAt: new Date(),
-      approvedBy: adminUser.id,
-      createdBy: adminUser.id,
+  // İstanbul için institutions (her ilçe için 2-4 kurum)
+  if (istanbulProvinceIdForInstitutions) {
+    const istanbulDistricts = await prisma.district.findMany({
+      where: { provinceId: istanbulProvinceIdForInstitutions },
+      take: 10, // İlk 10 ilçe
+      select: { id: true, name: true },
     });
-    institutionData.push({
-      name: 'İstanbul Üniversitesi Hastanesi',
-      provinceId: istanbulProvinceIdForInstitutions,
-      districtId: istanbulKadikoyId,
-      branchId: istanbulBranch.id,
-      isActive: true,
-      approvedAt: new Date(),
-      approvedBy: adminUser.id,
-      createdBy: adminUser.id,
-    });
+    
+    const istanbulInstitutionTypes = [
+      'Devlet Hastanesi',
+      'Üniversite Hastanesi',
+      'Eğitim ve Araştırma Hastanesi',
+      'Şehir Hastanesi',
+      'Sağlık Müdürlüğü',
+    ];
+
+    for (const district of istanbulDistricts) {
+      const count = Math.floor(Math.random() * 3) + 2; // 2-4 kurum
+      for (let i = 0; i < count; i++) {
+        const institutionType = istanbulInstitutionTypes[Math.floor(Math.random() * istanbulInstitutionTypes.length)];
+        institutionData.push({
+          name: `İstanbul ${district.name} ${institutionType}`,
+          provinceId: istanbulProvinceIdForInstitutions,
+          districtId: district.id,
+          kurumSicilNo: `KUR-IST-${district.name.substring(0, 3).toUpperCase()}-${String(i + 1).padStart(3, '0')}`,
+          gorevBirimi: institutionType,
+          kurumAdresi: `İstanbul ${district.name} Merkez`,
+          kadroUnvanKodu: `KAD-${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`,
+          isActive: true,
+          approvedAt: new Date(),
+          approvedBy: adminUser.id,
+          createdBy: adminUser.id,
+        });
+      }
+    }
   }
   
   // Ankara için institutions
-  if (ankaraBranch && ankaraProvinceIdForInstitutions && ankaraCankayaId) {
-    institutionData.push({
-      name: 'Ankara Şehir Hastanesi',
-      provinceId: ankaraProvinceIdForInstitutions,
-      districtId: ankaraCankayaId,
-      branchId: ankaraBranch.id,
-      isActive: true,
-      approvedAt: new Date(),
-      approvedBy: adminUser.id,
-      createdBy: adminUser.id,
+  if (ankaraProvinceIdForInstitutions) {
+    const ankaraDistricts = await prisma.district.findMany({
+      where: { provinceId: ankaraProvinceIdForInstitutions },
+      take: 8,
+      select: { id: true, name: true },
     });
-    institutionData.push({
-      name: 'Ankara Üniversitesi Hastanesi',
-      provinceId: ankaraProvinceIdForInstitutions,
-      districtId: ankaraCankayaId,
-      branchId: ankaraBranch.id,
-      isActive: true,
-      approvedAt: new Date(),
-      approvedBy: adminUser.id,
-      createdBy: adminUser.id,
-    });
+    
+    const ankaraInstitutionTypes = [
+      'Devlet Hastanesi',
+      'Üniversite Hastanesi',
+      'Şehir Hastanesi',
+      'Eğitim ve Araştırma Hastanesi',
+    ];
+
+    for (const district of ankaraDistricts) {
+      const count = Math.floor(Math.random() * 3) + 2;
+      for (let i = 0; i < count; i++) {
+        const institutionType = ankaraInstitutionTypes[Math.floor(Math.random() * ankaraInstitutionTypes.length)];
+        institutionData.push({
+          name: `Ankara ${district.name} ${institutionType}`,
+          provinceId: ankaraProvinceIdForInstitutions,
+          districtId: district.id,
+          kurumSicilNo: `KUR-ANK-${district.name.substring(0, 3).toUpperCase()}-${String(i + 1).padStart(3, '0')}`,
+          gorevBirimi: institutionType,
+          kurumAdresi: `Ankara ${district.name} Merkez`,
+          kadroUnvanKodu: `KAD-${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`,
+          isActive: true,
+          approvedAt: new Date(),
+          approvedBy: adminUser.id,
+          createdBy: adminUser.id,
+        });
+      }
+    }
   }
 
   // Bursa için institutions
-  if (bursaProvinceIdForInstitutions && bursaNiluferId && allBranchesForInstitutions.length > 0) {
-    const bursaBranch = await prisma.branch.findFirst({ 
+  if (bursaProvinceIdForInstitutions) {
+    const bursaDistricts = await prisma.district.findMany({
       where: { provinceId: bursaProvinceIdForInstitutions },
-      select: { id: true },
-    }) || { id: allBranchesForInstitutions[0].id };
-    
-    institutionData.push({
-      name: 'Bursa Devlet Hastanesi',
-      provinceId: bursaProvinceIdForInstitutions,
-      districtId: bursaNiluferId,
-      branchId: bursaBranch.id,
-      isActive: true,
-      approvedAt: new Date(),
-      approvedBy: adminUser.id,
-      createdBy: adminUser.id,
+      take: 5,
+      select: { id: true, name: true },
     });
+    
+    for (const district of bursaDistricts) {
+      const count = Math.floor(Math.random() * 3) + 2;
+      for (let i = 0; i < count; i++) {
+        const institutionType = ['Devlet Hastanesi', 'Üniversite Hastanesi', 'Sağlık Müdürlüğü'][Math.floor(Math.random() * 3)];
+        institutionData.push({
+          name: `Bursa ${district.name} ${institutionType}`,
+          provinceId: bursaProvinceIdForInstitutions,
+          districtId: district.id,
+          kurumSicilNo: `KUR-BRS-${district.name.substring(0, 3).toUpperCase()}-${String(i + 1).padStart(3, '0')}`,
+          gorevBirimi: institutionType,
+          kurumAdresi: `Bursa ${district.name} Merkez`,
+          kadroUnvanKodu: `KAD-${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`,
+          isActive: true,
+          approvedAt: new Date(),
+          approvedBy: adminUser.id,
+          createdBy: adminUser.id,
+        });
+      }
+    }
   }
 
   // İzmir için institutions
-  if (izmirProvinceIdForInstitutions && izmirKonakId && allBranchesForInstitutions.length > 0) {
-    const izmirBranch = await prisma.branch.findFirst({ 
+  if (izmirProvinceIdForInstitutions) {
+    const izmirDistricts = await prisma.district.findMany({
       where: { provinceId: izmirProvinceIdForInstitutions },
-      select: { id: true },
-    }) || { id: allBranchesForInstitutions[0].id };
-    
-    institutionData.push({
-      name: 'İzmir Devlet Hastanesi',
-      provinceId: izmirProvinceIdForInstitutions,
-      districtId: izmirKonakId,
-      branchId: izmirBranch.id,
-      isActive: true,
-      approvedAt: new Date(),
-      approvedBy: adminUser.id,
-      createdBy: adminUser.id,
+      take: 8,
+      select: { id: true, name: true },
     });
+    
+    for (const district of izmirDistricts) {
+      const count = Math.floor(Math.random() * 3) + 2;
+      for (let i = 0; i < count; i++) {
+        const institutionType = ['Devlet Hastanesi', 'Üniversite Hastanesi', 'Eğitim ve Araştırma Hastanesi'][Math.floor(Math.random() * 3)];
+        institutionData.push({
+          name: `İzmir ${district.name} ${institutionType}`,
+          provinceId: izmirProvinceIdForInstitutions,
+          districtId: district.id,
+          kurumSicilNo: `KUR-IZM-${district.name.substring(0, 3).toUpperCase()}-${String(i + 1).padStart(3, '0')}`,
+          gorevBirimi: institutionType,
+          kurumAdresi: `İzmir ${district.name} Merkez`,
+          kadroUnvanKodu: `KAD-${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`,
+          isActive: true,
+          approvedAt: new Date(),
+          approvedBy: adminUser.id,
+          createdBy: adminUser.id,
+        });
+      }
+    }
   }
 
   // Diğer iller için genel institutions oluştur
-  const otherProvinces = Object.entries(provinceMap).filter(([name]) => 
+  const otherProvincesForInstitutions = Object.entries(provinceMap).filter(([name]) => 
     !['İstanbul', 'Ankara', 'Bursa', 'İzmir'].includes(name)
-  ).slice(0, 10); // İlk 10 il için
+  );
 
-  for (const [provinceName, provinceId] of otherProvinces) {
+  // Her il için 2-5 kurum ekle
+  for (const [provinceName, provinceId] of otherProvincesForInstitutions) {
     const districts = await prisma.district.findMany({
       where: { provinceId },
-      take: 1,
-      select: { id: true },
+      take: 5, // Her il için en fazla 5 ilçe
+      select: { id: true, name: true },
     });
     
-    if (districts.length > 0 && allBranchesForInstitutions.length > 0) {
-      const branch = await prisma.branch.findFirst({ 
-        where: { provinceId },
-        select: { id: true },
-      }) || { id: allBranchesForInstitutions[0].id };
-      
+    const institutionTypes = [
+      'Devlet Hastanesi',
+      'Üniversite Hastanesi',
+      'Eğitim ve Araştırma Hastanesi',
+      'Şehir Hastanesi',
+      'Sağlık Müdürlüğü',
+      'Aile Sağlığı Merkezi',
+      'Toplum Sağlığı Merkezi',
+    ];
+
+    if (districts.length > 0) {
+      const institutionCount = Math.min(Math.floor(Math.random() * 4) + 2, districts.length); // 2-5 kurum
+
+      for (let i = 0; i < institutionCount; i++) {
+        const district = districts[i % districts.length];
+        const institutionType = institutionTypes[Math.floor(Math.random() * institutionTypes.length)];
+        institutionData.push({
+          name: `${provinceName} ${district.name} ${institutionType}`,
+          provinceId,
+          districtId: district.id,
+          kurumSicilNo: `KUR-${provinceName.substring(0, 3).toUpperCase()}-${String(i + 1).padStart(3, '0')}`,
+          gorevBirimi: institutionType,
+          kurumAdresi: `${provinceName} ${district.name} Merkez`,
+          kadroUnvanKodu: `KAD-${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`,
+          isActive: true,
+          approvedAt: new Date(),
+          approvedBy: adminUser.id,
+          createdBy: adminUser.id,
+        });
+      }
+    } else {
+      // İlçe yoksa sadece ile bağlı kurum ekle
+      const institutionType = institutionTypes[Math.floor(Math.random() * institutionTypes.length)];
       institutionData.push({
-        name: `${provinceName} Devlet Hastanesi`,
+        name: `${provinceName} ${institutionType}`,
         provinceId,
-        districtId: districts[0].id,
-        branchId: branch.id,
+        districtId: null,
+        kurumSicilNo: `KUR-${provinceName.substring(0, 3).toUpperCase()}-001`,
+        gorevBirimi: institutionType,
+        kurumAdresi: `${provinceName} Merkez`,
+        kadroUnvanKodu: `KAD-${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}`,
         isActive: true,
         approvedAt: new Date(),
         approvedBy: adminUser.id,
@@ -884,8 +981,6 @@ async function main() {
   ];
   const sources: MemberSource[] = [
     MemberSource.DIRECT,
-    MemberSource.WORKPLACE,
-    MemberSource.DEALER,
     MemberSource.DIRECT,
   ];
 
@@ -942,10 +1037,6 @@ async function main() {
       districtId: burcuDistrictId,
       branchId: defaultBranchId, // Zorunlu
       registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
-      positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
-      // Çalışma bilgileri (zorunlu)
-      workingProvinceId: burcuWorkingProvinceId,
-      workingDistrictId: burcuWorkingDistrictId,
       institutionId: burcuInstitutionId,
       createdByUserId: users[0],
       approvedByUserId: users[0],
@@ -1025,16 +1116,6 @@ async function main() {
       ? allBranches[Math.floor(Math.random() * allBranches.length)].id
       : defaultBranchId;
 
-    // Çalışma bilgileri (zorunlu alanlar)
-    const workingProvinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
-    const workingDistricts = await prisma.district.findMany({
-      where: { provinceId: workingProvinceId },
-      select: { id: true },
-    });
-    const workingDistrictId = workingDistricts.length > 0 
-      ? workingDistricts[Math.floor(Math.random() * workingDistricts.length)].id 
-      : districtId || provinceId; // Fallback
-
     // Institution seç (zorunlu) - institutions üyelerden önce oluşturuldu
     const institutionsList = await prisma.institution.findMany({ take: 20 });
     const institutionId = institutionsList.length > 0 
@@ -1060,10 +1141,6 @@ async function main() {
         districtId,
         branchId, // Zorunlu
         registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
-        positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
-        // Çalışma bilgileri (zorunlu)
-        workingProvinceId,
-        workingDistrictId,
         institutionId,
         createdByUserId: users[Math.floor(Math.random() * users.length)],
         approvedByUserId: status === MemberStatus.ACTIVE 
@@ -1113,16 +1190,6 @@ async function main() {
       ? allBranches[Math.floor(Math.random() * allBranches.length)].id
       : defaultBranchId;
 
-    // Çalışma bilgileri (zorunlu alanlar)
-    const pendingWorkingProvinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
-    const pendingWorkingDistricts = await prisma.district.findMany({
-      where: { provinceId: pendingWorkingProvinceId },
-      select: { id: true },
-    });
-    const pendingWorkingDistrictId = pendingWorkingDistricts.length > 0 
-      ? pendingWorkingDistricts[Math.floor(Math.random() * pendingWorkingDistricts.length)].id 
-      : districtId || provinceId; // Fallback
-
     const pendingInstitutionsList = await prisma.institution.findMany({ take: 20 });
     const pendingInstitutionId = pendingInstitutionsList.length > 0 
       ? pendingInstitutionsList[Math.floor(Math.random() * pendingInstitutionsList.length)].id 
@@ -1146,10 +1213,7 @@ async function main() {
         districtId,
         branchId: branchIdForPending, // Zorunlu
         registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
-        positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
         // Çalışma bilgileri (zorunlu)
-        workingProvinceId: pendingWorkingProvinceId,
-        workingDistrictId: pendingWorkingDistrictId,
         institutionId: pendingInstitutionId,
         createdByUserId: users[Math.floor(Math.random() * users.length)],
         createdAt: memberCreatedAt,
@@ -1254,10 +1318,8 @@ async function main() {
         districtId: districtId, // İlçe her zaman olmalı
         branchId: branchIdForRejected, // Zorunlu
         registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`, // Zorunlu
-        positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)], // Zorunlu
+ // Zorunlu
         // Çalışma bilgileri (zorunlu)
-        workingProvinceId: rejectedWorkingProvinceId,
-        workingDistrictId: rejectedWorkingDistrictId,
         institutionId: rejectedInstitutionId,
         createdByUserId: users[Math.floor(Math.random() * users.length)],
         approvedByUserId: users[Math.floor(Math.random() * users.length)], // Reddeden kullanıcı
@@ -1316,16 +1378,6 @@ async function main() {
       ? allBranches[Math.floor(Math.random() * allBranches.length)].id
       : defaultBranchId;
 
-    // Çalışma bilgileri (zorunlu alanlar)
-    const workingProvinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
-    const workingDistricts = await prisma.district.findMany({
-      where: { provinceId: workingProvinceId },
-      select: { id: true },
-    });
-    const workingDistrictId = workingDistricts.length > 0 
-      ? workingDistricts[Math.floor(Math.random() * workingDistricts.length)].id 
-      : districtId || provinceId; // Fallback
-
     // Institution seç (zorunlu)
     const institutionsList = await prisma.institution.findMany({ take: 20 });
     const institutionId = institutionsList.length > 0 
@@ -1351,10 +1403,6 @@ async function main() {
         districtId,
         branchId, // Zorunlu
         registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
-        positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
-        // Çalışma bilgileri (zorunlu)
-        workingProvinceId,
-        workingDistrictId,
         institutionId,
         createdByUserId: users[Math.floor(Math.random() * users.length)],
         approvedByUserId: users[Math.floor(Math.random() * users.length)],
@@ -1431,18 +1479,6 @@ async function main() {
         ? allBranches[Math.floor(Math.random() * allBranches.length)].id
         : defaultBranchId;
 
-      // Çalışma bilgileri (zorunlu alanlar)
-      const ankaraWorkingProvinceId = ankaraProvinceIdForMembers;
-      // districtId undefined olabilir ama workingDistrictId zorunlu, fallback kullan
-      let ankaraWorkingDistrictId = districtId;
-      if (!ankaraWorkingDistrictId && ankaraDistricts.length > 0) {
-        ankaraWorkingDistrictId = ankaraDistricts[0].id;
-      }
-      if (!ankaraWorkingDistrictId) {
-        console.warn(`⚠️  Çalışma ilçesi bulunamadı, Ankara üyesi ${firstName} ${lastName} atlanıyor`);
-        continue;
-      }
-
       const ankaraInstitutionsList = await prisma.institution.findMany({ take: 20 });
       const ankaraInstitutionId = ankaraInstitutionsList.length > 0 
         ? ankaraInstitutionsList[Math.floor(Math.random() * ankaraInstitutionsList.length)].id 
@@ -1466,10 +1502,7 @@ async function main() {
           districtId,
           branchId: branchIdForAnkara, // Zorunlu
           registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
-          positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
           // Çalışma bilgileri (zorunlu)
-          workingProvinceId: ankaraWorkingProvinceId,
-          workingDistrictId: ankaraWorkingDistrictId,
           institutionId: ankaraInstitutionId,
           createdByUserId: users[Math.floor(Math.random() * users.length)],
           approvedByUserId: status === MemberStatus.ACTIVE
@@ -1550,18 +1583,6 @@ async function main() {
         ? allBranches[Math.floor(Math.random() * allBranches.length)].id
         : defaultBranchId;
 
-      // Çalışma bilgileri (zorunlu alanlar)
-      const bursaWorkingProvinceId = bursaProvinceId;
-      // districtId undefined olabilir ama workingDistrictId zorunlu, fallback kullan
-      let bursaWorkingDistrictId = districtId;
-      if (!bursaWorkingDistrictId && bursaDistricts.length > 0) {
-        bursaWorkingDistrictId = bursaDistricts[0].id;
-      }
-      if (!bursaWorkingDistrictId) {
-        console.warn(`⚠️  Çalışma ilçesi bulunamadı, Bursa üyesi ${firstName} ${lastName} atlanıyor`);
-        continue;
-      }
-
       const bursaInstitutionsList = await prisma.institution.findMany({ take: 20 });
       const bursaInstitutionId = bursaInstitutionsList.length > 0 
         ? bursaInstitutionsList[Math.floor(Math.random() * bursaInstitutionsList.length)].id 
@@ -1585,10 +1606,7 @@ async function main() {
           districtId,
           branchId: branchIdForBursa, // Zorunlu
           registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
-          positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
           // Çalışma bilgileri (zorunlu)
-          workingProvinceId: bursaWorkingProvinceId,
-          workingDistrictId: bursaWorkingDistrictId,
           institutionId: bursaInstitutionId,
           createdByUserId: users[Math.floor(Math.random() * users.length)],
           approvedByUserId: status === MemberStatus.ACTIVE
@@ -1653,8 +1671,7 @@ async function main() {
   console.log(`   - ${ilceCount} ilçe eklendi`);
   console.log(`   - ${Object.keys(customRoleMap).length} özel rol eklendi`);
   console.log(`   - ${users.length} kullanıcı eklendi`);
-  console.log(`   - ${workplaceMap.length} işyeri eklendi`);
-  console.log(`   - ${dealerMap.length} bayi eklendi`);
+  console.log(`   - ${contractedInstitutionMap.length} anlaşmalı kurum eklendi`);
   console.log(`   - ${memberIds.length} üye eklendi`);
   
   const pendingCount = await prisma.member.count({ where: { status: MemberStatus.PENDING } });
@@ -1820,8 +1837,6 @@ async function main() {
       email: true,
       provinceId: true,
       districtId: true,
-      workingProvinceId: true,
-      workingDistrictId: true,
       institutionId: true,
       source: true,
       cancelledAt: true,
@@ -1883,20 +1898,6 @@ async function main() {
         : defaultBranchId;
 
       // Çalışma bilgileri (zorunlu) - cancelledMember'dan al veya fallback
-      const reRegisterWorkingProvinceId = cancelledMember.workingProvinceId || cancelledMember.provinceId || provinceIds[0];
-      let reRegisterWorkingDistrictId = cancelledMember.workingDistrictId || cancelledMember.districtId;
-      if (!reRegisterWorkingDistrictId) {
-        const fallbackDistrict = await prisma.district.findFirst({ 
-          where: { provinceId: reRegisterWorkingProvinceId },
-          select: { id: true } 
-        });
-        if (!fallbackDistrict) {
-          console.warn(`⚠️  Çalışma ilçesi bulunamadı, yeniden üye kaydı atlanıyor: ${cancelledMember.id}`);
-          continue;
-        }
-        reRegisterWorkingDistrictId = fallbackDistrict.id;
-      }
-      
       let reRegisterInstitutionId = cancelledMember.institutionId;
       if (!reRegisterInstitutionId) {
         const fallbackInstitution = await prisma.institution.findFirst({ select: { id: true } });
@@ -1921,10 +1922,6 @@ async function main() {
           branchId: branchIdForReRegister, // Zorunlu
           previousCancelledMemberId: cancelledMember.id, // Önceki iptal kaydına bağla
           registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
-          positionTitle: positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
-          // Çalışma bilgileri (zorunlu)
-          workingProvinceId: reRegisterWorkingProvinceId,
-          workingDistrictId: reRegisterWorkingDistrictId,
           institutionId: reRegisterInstitutionId,
           createdByUserId: users[Math.floor(Math.random() * users.length)],
           createdAt: reRegisteredAt,
@@ -2743,7 +2740,7 @@ Sendika Yönetimi
     {
       key: 'MEMBERSHIP_ALLOWED_SOURCES',
       value: '',
-      description: 'İzin verilen başvuru kaynakları (virgülle ayrılmış: DIRECT, WORKPLACE, DEALER, OTHER). Boş ise tüm kaynaklar izinlidir.',
+      description: 'İzin verilen başvuru kaynakları (virgülle ayrılmış: DIRECT, OTHER). Boş ise tüm kaynaklar izinlidir.',
       category: SystemSettingCategory.MEMBERSHIP,
       isEditable: true,
     },
@@ -3358,30 +3355,129 @@ Sendika Yönetimi
     console.log(`   - ${adminNotifications.length} bildirim admin kullanıcısına eklendi (${readCount} okunmuş, ${unreadCount} okunmamış)`);
   }
 
-  // 🔹 Tevkifat Merkezleri
+  // 🔹 Tevkifat Merkezleri - İl ve ilçelere bağlı olarak ekle
   console.log('🏛️  Tevkifat merkezleri ekleniyor...');
-  const tevkifatCenters = [
-    { name: 'Ankara Sağlık Bakanlığı Tevkifat Merkezi', code: 'ANK-SBM', description: 'Ankara bölgesi sağlık bakanlığı tevkifat merkezi' },
-    { name: 'İstanbul Sağlık Müdürlüğü Tevkifat Merkezi', code: 'IST-SM', description: 'İstanbul il sağlık müdürlüğü tevkifat merkezi' },
-    { name: 'İzmir Ege Bölgesi Tevkifat Merkezi', code: 'IZM-EGB', description: 'İzmir ve Ege bölgesi tevkifat merkezi' },
-    { name: 'Bursa Marmara Tevkifat Merkezi', code: 'BRS-MRM', description: 'Bursa ve Marmara bölgesi tevkifat merkezi' },
-    { name: 'Antalya Akdeniz Tevkifat Merkezi', code: 'ANT-AKD', description: 'Antalya ve Akdeniz bölgesi tevkifat merkezi' },
-    { name: 'Konya İç Anadolu Tevkifat Merkezi', code: 'KNY-ICA', description: 'Konya ve İç Anadolu bölgesi tevkifat merkezi' },
-    { name: 'Gaziantep Güneydoğu Tevkifat Merkezi', code: 'GAZ-GDA', description: 'Gaziantep ve Güneydoğu bölgesi tevkifat merkezi' },
-    { name: 'Trabzon Karadeniz Tevkifat Merkezi', code: 'TRB-KRD', description: 'Trabzon ve Karadeniz bölgesi tevkifat merkezi' },
-    { name: 'Kayseri Orta Anadolu Tevkifat Merkezi', code: 'KYS-ORT', description: 'Kayseri ve Orta Anadolu bölgesi tevkifat merkezi' },
-    { name: 'Adana Çukurova Tevkifat Merkezi', code: 'ADA-CKR', description: 'Adana ve Çukurova bölgesi tevkifat merkezi' },
-    { name: 'Eskişehir Batı Anadolu Tevkifat Merkezi', code: 'ESK-BAT', description: 'Eskişehir ve Batı Anadolu bölgesi tevkifat merkezi' },
-    { name: 'Samsun Orta Karadeniz Tevkifat Merkezi', code: 'SAM-OKR', description: 'Samsun ve Orta Karadeniz bölgesi tevkifat merkezi' },
-  ];
   const tevkifatCenterMap: Record<string, string> = {};
-  for (const center of tevkifatCenters) {
-    const created = await prisma.tevkifatCenter.create({
-      data: center,
+  let tevkifatCenterCounter = 1;
+  
+  // Büyük şehirler için her ilçeye 1-2 tevkifat merkezi
+  const majorProvincesForTevkifat = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep', 'Kayseri', 'Mersin'];
+  
+  for (const provinceName of majorProvincesForTevkifat) {
+    const provinceId = provinceMap[provinceName];
+    if (!provinceId) continue;
+
+    const districts = await prisma.district.findMany({
+      where: { provinceId },
+      take: 8, // Her il için en fazla 8 ilçe
+      select: { id: true, name: true },
     });
-    tevkifatCenterMap[center.name] = created.id;
+
+    for (const district of districts) {
+      const centerCount = Math.floor(Math.random() * 2) + 1; // 1-2 merkez
+      for (let i = 0; i < centerCount; i++) {
+        const centerTypes = [
+          'Sağlık Bakanlığı Tevkifat Merkezi',
+          'İl Sağlık Müdürlüğü Tevkifat Merkezi',
+          'Bölge Tevkifat Merkezi',
+          'Merkez Tevkifat Birimi',
+        ];
+        const centerType = centerTypes[Math.floor(Math.random() * centerTypes.length)];
+        const centerName = `${provinceName} ${district.name} ${centerType}`;
+        const code = `${provinceName.substring(0, 3).toUpperCase()}-${district.name.substring(0, 3).toUpperCase()}-${String(tevkifatCenterCounter).padStart(3, '0')}`;
+        
+        const created = await prisma.tevkifatCenter.create({
+          data: {
+            name: centerName,
+            code: code,
+            title: centerType,
+            description: `${provinceName} ${district.name} bölgesi tevkifat merkezi`,
+            address: `${provinceName} ${district.name} Merkez`,
+            isActive: true,
+            provinceId: provinceId,
+            districtId: district.id,
+          },
+        });
+        tevkifatCenterMap[centerName] = created.id;
+        tevkifatCenterCounter++;
+      }
+    }
   }
-  console.log(`   - ${tevkifatCenters.length} tevkifat merkezi eklendi`);
+
+  // Diğer iller için her ile 1-3 tevkifat merkezi
+  const otherProvincesForTevkifat = Object.entries(provinceMap).filter(([name]) => 
+    !majorProvincesForTevkifat.includes(name)
+  ).slice(0, 40); // İlk 40 il için
+
+  for (const [provinceName, provinceId] of otherProvincesForTevkifat) {
+    const districts = await prisma.district.findMany({
+      where: { provinceId },
+      take: 3, // Her il için en fazla 3 ilçe
+      select: { id: true, name: true },
+    });
+
+    const centerCount = Math.floor(Math.random() * 3) + 1; // 1-3 merkez
+    for (let i = 0; i < centerCount; i++) {
+      const district = districts[i] || null;
+      const centerTypes = [
+        'Sağlık Bakanlığı Tevkifat Merkezi',
+        'İl Sağlık Müdürlüğü Tevkifat Merkezi',
+        'Bölge Tevkifat Merkezi',
+      ];
+      const centerType = centerTypes[Math.floor(Math.random() * centerTypes.length)];
+      const centerName = district 
+        ? `${provinceName} ${district.name} ${centerType}`
+        : `${provinceName} ${centerType}`;
+      const code = `${provinceName.substring(0, 3).toUpperCase()}-${String(tevkifatCenterCounter).padStart(3, '0')}`;
+      
+      const created = await prisma.tevkifatCenter.create({
+        data: {
+          name: centerName,
+          code: code,
+          title: centerType,
+          description: `${provinceName}${district ? ` ${district.name}` : ''} bölgesi tevkifat merkezi`,
+          address: `${provinceName}${district ? ` ${district.name}` : ''} Merkez`,
+          isActive: true,
+          provinceId: provinceId,
+          districtId: district?.id || null,
+        },
+      });
+      tevkifatCenterMap[centerName] = created.id;
+      tevkifatCenterCounter++;
+    }
+  }
+
+  console.log(`   - ${Object.keys(tevkifatCenterMap).length} tevkifat merkezi eklendi`);
+
+  // 🔹 Tevkifat Ünvanları
+  console.log('🏷️  Tevkifat ünvanları ekleniyor...');
+  const tevkifatTitles = [
+    { name: 'Hemşire' },
+    { name: 'Ebe' },
+    { name: 'Sağlık Memuru' },
+    { name: 'Tıbbi Sekreter' },
+    { name: 'Laborant' },
+    { name: 'Radyoloji Teknisyeni' },
+    { name: 'Anestezi Teknisyeni' },
+    { name: 'Ameliyat Hemşiresi' },
+    { name: 'Yoğun Bakım Hemşiresi' },
+    { name: 'Acil Tıp Teknisyeni' },
+    { name: 'Diyetisyen' },
+    { name: 'Fizyoterapist' },
+    { name: 'Paramedik' },
+    { name: 'Odyolog' },
+    { name: 'Perfüzyonist' },
+    { name: 'Tıbbi Teknolog' },
+  ];
+  const tevkifatTitleMap: Record<string, string> = {};
+  for (const title of tevkifatTitles) {
+    const created = await prisma.tevkifatTitle.create({
+      data: title,
+    });
+    tevkifatTitleMap[title.name] = created.id;
+  }
+  const tevkifatTitleIds = Object.values(tevkifatTitleMap);
+  console.log(`   - ${tevkifatTitles.length} tevkifat ünvanı eklendi`);
 
   // 🔹 Üyelik Bilgisi Seçenekleri
   console.log('📋 Üyelik bilgisi seçenekleri ekleniyor...');
@@ -3407,15 +3503,33 @@ Sendika Yönetimi
   const institutionsList = await prisma.institution.findMany();
   const tevkifatCenterIds = Object.values(tevkifatCenterMap);
   const provinceNames = Object.keys(provinceMap);
+  const membershipInfoOptionsList = await prisma.membershipInfoOption.findMany();
+  const membershipInfoIds = membershipInfoOptionsList.map(o => o.id);
 
   let memberUpdateCount = 0;
   for (let i = 0; i < allMembersForUpdate.length; i++) {
     const member = allMembersForUpdate[i];
+    
+    // Cinsiyet belirleme - isimden tahmin et
+    const gender = generateGender(member.firstName);
+    
+    // Doğum tarihi oluştur
+    const birthDate = generateBirthDate();
+    
+    // Yönetim kurulu karar tarihi (üyelik tarihinden önce)
+    const boardDecisionDate = member.createdAt 
+      ? generateBoardDecisionDate(member.createdAt)
+      : generateBoardDecisionDate(new Date());
+    
     const updateData: any = {
-      gender: genders[Math.floor(Math.random() * genders.length)],
-      educationStatus: educationStatuses[Math.floor(Math.random() * educationStatuses.length)],
-      motherName: `Anne ${member.firstName}`,
-      fatherName: `Baba ${member.firstName}`,
+      gender,
+      educationStatus: generateEducationStatus(),
+      motherName: generateParentName(),
+      fatherName: generateParentName(),
+      birthDate,
+      birthplace: generateBirthplace(),
+      boardDecisionDate,
+      boardDecisionBookNo: generateBoardDecisionBookNo(),
     };
 
     // institutionId atanmamışsa ekle
@@ -3428,17 +3542,21 @@ Sendika Yönetimi
       updateData.tevkifatCenterId = tevkifatCenterIds[i % tevkifatCenterIds.length];
     }
     
-    // workingProvinceId atanmamışsa ekle
-    if (!member.workingProvinceId && provinceNames.length > 0) {
-      const provinceName = provinceNames[i % provinceNames.length];
-      if (provinceMap[provinceName]) {
-        updateData.workingProvinceId = provinceMap[provinceName];
-      }
+    // tevkifatTitleId ekle (ünvan)
+    if (tevkifatTitleIds.length > 0) {
+      updateData.tevkifatTitleId = tevkifatTitleIds[i % tevkifatTitleIds.length];
     }
     
-    // birthplace atanmamışsa ekle
-    if (!member.birthplace && provinceNames.length > 0) {
-      updateData.birthplace = provinceNames[i % provinceNames.length];
+    // membershipInfoOptionId ekle (%80 normal üye, %15 fahri, %5 onursal)
+    if (membershipInfoIds.length > 0) {
+      const random = Math.random();
+      if (random < 0.8 && membershipInfoIds[0]) {
+        updateData.membershipInfoOptionId = membershipInfoIds[0]; // Normal üye
+      } else if (random < 0.95 && membershipInfoIds[1]) {
+        updateData.membershipInfoOptionId = membershipInfoIds[1]; // Fahri üye
+      } else if (membershipInfoIds[2]) {
+        updateData.membershipInfoOptionId = membershipInfoIds[2]; // Onursal üye
+      }
     }
 
     try {
@@ -3451,7 +3569,7 @@ Sendika Yönetimi
       console.error(`   ⚠️  Üye ${member.id} güncellenirken hata:`, e);
     }
   }
-  console.log(`   - ${memberUpdateCount} üyeye ek alanlar eklendi`);
+  console.log(`   - ${memberUpdateCount} üyeye ek alanlar eklendi (cinsiyet, doğum tarihi, eğitim, anne/baba adı, tevkifat ünvanı, üyelik bilgisi, yönetim kurulu kararı)`);
 
   // 🔹 Üye Ödemeleri
   console.log('💳 Üye ödemeleri ekleniyor...');

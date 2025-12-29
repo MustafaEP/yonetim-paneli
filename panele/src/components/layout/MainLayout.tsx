@@ -74,9 +74,6 @@ const MainLayout: React.FC = () => {
     regions: 'Bölgeler',
     provinces: 'İller',
     districts: 'İlçeler',
-    workplaces: 'İş Yerleri',
-    dealers: 'Bayiler',
-    institutions: 'Kurumlar',
   };
 
   return (

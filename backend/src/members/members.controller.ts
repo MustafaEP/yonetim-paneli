@@ -15,6 +15,7 @@ import { MembersService } from './members.service';
 import { CreateMemberApplicationDto } from './dto/create-member-application.dto';
 import { CancelMemberDto } from './dto/cancel-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
+import { ApproveMemberDto } from './dto/approve-member.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permission.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -79,6 +80,17 @@ export class MembersController {
     return this.membersService.listApplicationsForUser(user);
   }
 
+  @Get('membership-info-options')
+  @ApiOperation({ summary: 'Üyelik bilgisi seçeneklerini listele', description: 'Aktif üyelik bilgisi seçeneklerini getirir' })
+  @ApiResponse({
+    status: 200,
+    description: 'Üyelik bilgisi seçenekleri listesi',
+    type: 'array',
+  })
+  async getMembershipInfoOptions() {
+    return this.membersService.getMembershipInfoOptions();
+  }
+
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get()
   @ApiOperation({ summary: 'Üyeleri listele', description: 'Kullanıcının yetkisi dahilindeki tüm üyeleri listeler (durumu farketmeksizin). MEMBER_LIST_BY_PROVINCE izni varsa sadece role\'deki il/ilçe bazlı üyeleri gösterir' })
@@ -129,6 +141,7 @@ export class MembersController {
   @Post(':id/approve')
   @ApiOperation({ summary: 'Üyelik başvurusunu onayla', description: 'PENDING durumundaki başvuruyu ACTIVE yapar' })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
+  @ApiBody({ type: ApproveMemberDto, required: false })
   @ApiResponse({
     status: 200,
     description: 'Başvuru onaylandı',
@@ -136,9 +149,10 @@ export class MembersController {
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
   async approve(
     @Param('id') id: string,
+    @Body() dto: ApproveMemberDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    return this.membersService.approve(id, user.userId);
+    return this.membersService.approve(id, user.userId, dto);
   }
 
   @Permissions(Permission.MEMBER_REJECT)
@@ -285,7 +299,7 @@ export class MembersController {
       const province = member.province?.name || '-';
       const district = member.district?.name || '-';
       const status = getStatusLabel(member.status);
-      const positionTitle = member.positionTitle || '-';
+      const positionTitle = '-';
 
       return `
         <tr>
@@ -555,18 +569,8 @@ export class MembersController {
           <div class="info-grid">
             <div class="info-label">Kurum:</div>
             <div class="info-value">${member.institution?.name || '-'}</div>
-            <div class="info-label">Çalıştığı İl/İlçe:</div>
-            <div class="info-value">${member.workingProvince?.name && member.workingDistrict?.name ? `${member.workingProvince.name} / ${member.workingDistrict.name}` : '-'}</div>
             <div class="info-label">Şube:</div>
             <div class="info-value">${member.branch?.name || '-'}</div>
-            <div class="info-label">Kadro Ünvanı:</div>
-            <div class="info-value">${member.positionTitle ? member.positionTitle.replace(/_/g, ' ') : '-'}</div>
-            <div class="info-label">Kurum Kayıt No:</div>
-            <div class="info-value">${member.institutionRegNo || '-'}</div>
-            <div class="info-label">Çalışma Birimi:</div>
-            <div class="info-value">${member.workUnit || '-'}</div>
-            <div class="info-label">Çalışma Birimi Adresi:</div>
-            <div class="info-value">${member.workUnitAddress || '-'}</div>
           </div>
         </div>
 

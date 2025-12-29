@@ -15,8 +15,6 @@ enum Role {
   GENEL_SEKRETER
   IL_BASKANI
   ILCE_TEMSILCISI
-  ISYERI_TEMSILCISI
-  BAYI_YETKILISI
   UYE
 }
 
@@ -91,8 +89,6 @@ enum MemberStatus {
 
 enum MemberSource {
   DIRECT // panelden direkt başvuru
-  WORKPLACE // işyeri temsilcisi üzerinden
-  DEALER // bayi üzerinden
   OTHER
 }
 
@@ -137,22 +133,18 @@ model Member {
   // 🔹 Kimlik & Kişisel Bilgiler
   motherName String? // Anne adı (seçmeli)
   fatherName String? // Baba adı (seçmeli)
+  birthDate  DateTime? // Doğum tarihi (seçmeli)
   birthplace String? // Doğum yeri (seçmeli)
   gender     Gender? // Cinsiyet (seçmeli)
 
   // 🔹 Eğitim & İletişim Bilgileri
   educationStatus EducationStatus? // Öğrenim durumu (seçmeli)
 
-  // 🔹 Çalışma & Kurum Bilgileri (zorunlu alanlar)
-  workingProvinceId String // Çalıştığı il (zorunlu)
-  workingDistrictId String // Çalıştığı ilçe (zorunlu)
-  institutionId     String // Çalıştığı kurum (zorunlu)
-  positionTitle     PositionTitle // Kadro ünvanı (zorunlu)
-  institutionRegNo  String? // Kurum sicil no (zorunlu değil)
-  workUnit          String? // Görev yaptığı birim
-  workUnitAddress   String?       @db.Text // Birim adresi
-  tevkifatCenterId  String? // Tevkifat merkezi (seçmeli)
-  branchId          String // Bağlı olduğu şube (zorunlu)
+  // 🔹 Kurum Bilgileri
+  institutionId    String // Çalıştığı kurum (zorunlu)
+  tevkifatCenterId String? // Tevkifat merkezi (seçmeli)
+  tevkifatTitleId  String? // Tevkifat ünvanı (seçmeli)
+  branchId         String // Bağlı olduğu şube (zorunlu)
 
   // Bölge ilişkileri (ikamet adresi - çalıştığı yer değil)
   provinceId String?
@@ -161,12 +153,11 @@ model Member {
   province Province? @relation("MemberProvince", fields: [provinceId], references: [id])
   district District? @relation("MemberDistrict", fields: [districtId], references: [id])
 
-  // 🔹 Çalışma ilişkileri (zorunlu)
-  workingProvince Province        @relation("MemberWorkingProvince", fields: [workingProvinceId], references: [id])
-  workingDistrict District        @relation("MemberWorkingDistrict", fields: [workingDistrictId], references: [id])
-  institution     Institution     @relation(fields: [institutionId], references: [id])
-  tevkifatCenter  TevkifatCenter? @relation(fields: [tevkifatCenterId], references: [id])
-  branch          Branch          @relation("MemberBranch", fields: [branchId], references: [id])
+  // 🔹 Kurum ilişkileri
+  institution    Institution     @relation(fields: [institutionId], references: [id])
+  tevkifatCenter TevkifatCenter? @relation(fields: [tevkifatCenterId], references: [id])
+  tevkifatTitle  TevkifatTitle?  @relation(fields: [tevkifatTitleId], references: [id])
+  branch         Branch          @relation("MemberBranch", fields: [branchId], references: [id])
 
   createdByUserId  String?
   approvedByUserId String?
@@ -205,6 +196,7 @@ model Member {
   @@index([institutionId])
   @@index([branchId])
   @@index([tevkifatCenterId])
+  @@index([tevkifatTitleId])
   @@index([status])
 }
 
@@ -213,16 +205,14 @@ model Province {
   name String
   code String? @unique
 
-  districts      District[]
-  workplaces     Workplace[]
-  dealers        Dealer[]
-  members        Member[]    @relation("MemberProvince")
-  workingMembers Member[]    @relation("MemberWorkingProvince")
-  branches       Branch[]
+  districts       District[]
+  members         Member[]         @relation("MemberProvince")
+  tevkifatCenters TevkifatCenter[] @relation("ProvinceTevkifatCenters")
+  institutions    Institution[]    @relation("ProvinceInstitutions")
+  branches        Branch[]         @relation("ProvinceBranches")
 
   userScopes   UserScope[]
   customRoles  CustomRole[]
-  institutions Institution[]
 }
 
 model District {
@@ -231,44 +221,13 @@ model District {
   provinceId String
   province   Province @relation(fields: [provinceId], references: [id])
 
-  workplaces     Workplace[]
-  dealers        Dealer[]
-  members        Member[]    @relation("MemberDistrict")
-  workingMembers Member[]    @relation("MemberWorkingDistrict")
-  branches       Branch[]
+  members         Member[]         @relation("MemberDistrict")
+  tevkifatCenters TevkifatCenter[] @relation("DistrictTevkifatCenters")
+  institutions    Institution[]    @relation("DistrictInstitutions")
+  branches        Branch[]         @relation("DistrictBranches")
 
   userScopes   UserScope[]
   customRoles  CustomRole[]
-  institutions Institution[]
-}
-
-model Workplace {
-  id      String  @id @default(cuid())
-  name    String
-  address String?
-
-  provinceId String?
-  districtId String?
-
-  province Province? @relation(fields: [provinceId], references: [id])
-  district District? @relation(fields: [districtId], references: [id])
-
-  userScopes UserScope[]
-}
-
-model Dealer {
-  id      String  @id @default(cuid())
-  name    String
-  code    String?
-  address String?
-
-  provinceId String?
-  districtId String?
-
-  province Province? @relation(fields: [provinceId], references: [id])
-  district District? @relation(fields: [districtId], references: [id])
-
-  userScopes UserScope[]
 }
 
 model UserScope {
@@ -276,15 +235,11 @@ model UserScope {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  provinceId  String?
-  districtId  String?
-  workplaceId String?
-  dealerId    String?
+  provinceId String?
+  districtId String?
 
-  province  Province?  @relation(fields: [provinceId], references: [id])
-  district  District?  @relation(fields: [districtId], references: [id])
-  workplace Workplace? @relation(fields: [workplaceId], references: [id])
-  dealer    Dealer?    @relation(fields: [dealerId], references: [id])
+  province Province? @relation(fields: [provinceId], references: [id])
+  district District? @relation(fields: [districtId], references: [id])
 
   createdAt DateTime @default(now())
 }
@@ -441,7 +396,6 @@ enum NotificationTypeCategory {
   // Duyuru Bildirimleri
   ANNOUNCEMENT_GENERAL
   ANNOUNCEMENT_REGIONAL
-  ANNOUNCEMENT_WORKPLACE
   ANNOUNCEMENT_ELECTION
 
   // Hatırlatmalar
@@ -639,17 +593,17 @@ enum SystemSettingCategory {
 }
 
 model SystemSetting {
-  id            String                @id @default(cuid())
-  key           String                @unique
-  value         String                @db.Text
-  description   String?               @db.Text
-  category      SystemSettingCategory
-  isEditable    Boolean               @default(true)
-  isCritical    Boolean               @default(false) // Kritik ayarlar için onay gerekir
-  requiresApproval Boolean             @default(false) // Onay mekanizması aktif mi?
-  updatedAt     DateTime              @updatedAt
-  updatedBy     String?
-  updatedByUser User?                 @relation("SystemSettingUpdatedBy", fields: [updatedBy], references: [id])
+  id               String                @id @default(cuid())
+  key              String                @unique
+  value            String                @db.Text
+  description      String?               @db.Text
+  category         SystemSettingCategory
+  isEditable       Boolean               @default(true)
+  isCritical       Boolean               @default(false) // Kritik ayarlar için onay gerekir
+  requiresApproval Boolean               @default(false) // Onay mekanizması aktif mi?
+  updatedAt        DateTime              @updatedAt
+  updatedBy        String?
+  updatedByUser    User?                 @relation("SystemSettingUpdatedBy", fields: [updatedBy], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -680,47 +634,49 @@ model SystemLog {
 
 // 🔹 Şube Yönetimi
 model Branch {
-  id                 String    @id @default(cuid())
+  id                 String  @id @default(cuid())
   name               String
-  code               String?   @unique
-  provinceId         String
-  province           Province  @relation(fields: [provinceId], references: [id])
-  districtId         String?
-  district           District? @relation(fields: [districtId], references: [id])
+  code               String? @unique
   presidentId        String?
-  president          User?     @relation("BranchPresident", fields: [presidentId], references: [id])
-  address            String?   @db.Text
+  president          User?   @relation("BranchPresident", fields: [presidentId], references: [id])
+  address            String? @db.Text
   phone              String?
   email              String?
-  isActive           Boolean   @default(true)
-  branchSharePercent Decimal   @default(40) @db.Decimal(5, 2) // Şube payı %40
+  isActive           Boolean @default(true)
+  branchSharePercent Decimal @default(40) @db.Decimal(5, 2) // Şube payı %40
+  provinceId         String? // İl'e bağlıysa
+  districtId         String? // İlçe'ye bağlıysa
 
-  members      Member[]      @relation("MemberBranch")
-  institutions Institution[]
+  province Province? @relation("ProvinceBranches", fields: [provinceId], references: [id])
+  district District? @relation("DistrictBranches", fields: [districtId], references: [id])
+
+  members Member[] @relation("MemberBranch")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([presidentId])
   @@index([provinceId])
   @@index([districtId])
-  @@index([presidentId])
 }
 
 // 🔹 Kurumlar (Institutions)
 model Institution {
-  id         String    @id @default(cuid())
-  name       String
-  provinceId String
-  districtId String?
-  branchId   String
-  isActive   Boolean   @default(false) // Admin onayı olmadan aktif olmaz
-  approvedAt DateTime? // Admin onay tarihi
-  approvedBy String? // Admin kullanıcı ID
-  createdBy  String? // İl/İlçe başkanı kullanıcı ID
+  id             String    @id @default(cuid())
+  name           String
+  provinceId     String?   // İl'e bağlıysa
+  districtId     String?   // İlçe'ye bağlıysa
+  kurumSicilNo   String?   // Kurum Sicil No
+  gorevBirimi    String?   // Görev Birimi
+  kurumAdresi    String?   @db.Text // Kurum Adresi
+  kadroUnvanKodu String?   // Kadro Ünvan Kodu
+  isActive       Boolean   @default(false) // Admin onayı olmadan aktif olmaz
+  approvedAt     DateTime? // Admin onay tarihi
+  approvedBy     String?   // Admin kullanıcı ID
+  createdBy      String?   // İl/İlçe başkanı kullanıcı ID
 
-  province Province  @relation(fields: [provinceId], references: [id])
-  district District? @relation(fields: [districtId], references: [id])
-  branch   Branch    @relation(fields: [branchId], references: [id])
+  province Province? @relation("ProvinceInstitutions", fields: [provinceId], references: [id])
+  district District? @relation("DistrictInstitutions", fields: [districtId], references: [id])
   members  Member[]
 
   deletedAt DateTime?
@@ -730,24 +686,43 @@ model Institution {
 
   @@index([provinceId])
   @@index([districtId])
-  @@index([branchId])
   @@index([isActive])
 }
 
 // 🔹 Tevkifat Merkezleri
-model TevkifatCenter {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  code        String? @unique
-  description String? @db.Text
-  isActive    Boolean @default(true)
+model TevkifatTitle {
+  id       String  @id @default(cuid())
+  name     String  @unique // Unvan adı (örn: "Müdür", "Başhekim", vb.)
+  isActive Boolean @default(true)
 
-  members  Member[]
-  files    TevkifatFile[]
-  payments MemberPayment[]
+  members Member[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model TevkifatCenter {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  title       String? // Tevkifat ünvanı (deprecated - artık tevkifatTitleId kullanılacak)
+  code        String? @unique
+  description String? @db.Text
+  address     String? @db.Text // Adres
+  isActive    Boolean @default(true)
+  provinceId  String? // İl'e bağlıysa
+  districtId  String? // İlçe'ye bağlıysa
+
+  province Province? @relation("ProvinceTevkifatCenters", fields: [provinceId], references: [id])
+  district District? @relation("DistrictTevkifatCenters", fields: [districtId], references: [id])
+  members   Member[]
+  files     TevkifatFile[]
+  payments  MemberPayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provinceId])
+  @@index([districtId])
 }
 
 // 🔹 Üye Güncelleme Geçmişi

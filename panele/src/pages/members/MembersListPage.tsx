@@ -211,19 +211,6 @@ const MembersListPage: React.FC = () => {
     }
   };
 
-  const getPositionTitleLabel = (title?: string | null): string => {
-    if (!title) return '-';
-    const labels: Record<string, string> = {
-      KADRO_657: '657 Kadrolu',
-      SOZLESMELI_4B: '4B Sözleşmeli',
-      KADRO_663: '663 Kadro Karşılığı',
-      AILE_HEKIMLIGI: 'Aile Hekimliği',
-      UNVAN_4924: '4924 Unvanlı',
-      DIGER_SAGLIK_PERSONELI: 'Diğer Sağlık Personeli',
-    };
-    return labels[title] || title;
-  };
-
   const columns: GridColDef<MemberListItem>[] = [
     { 
       field: 'registrationNumber',
@@ -233,32 +220,22 @@ const MembersListPage: React.FC = () => {
       valueGetter: (_value, row: MemberListItem) => row.registrationNumber ?? '-',
     },
     {
-      field: 'status',
-      headerName: 'Üyelik Durumu',
-      flex: 1,
-      minWidth: 140,
-      renderCell: (params: GridRenderCellParams<MemberListItem>) => (
-        <Chip
-          label={getStatusLabel(params.row.status)}
-          size="small"
-          color={getStatusColor(params.row.status)}
-          sx={{ fontWeight: 500 }}
-        />
-      ),
-    },
-    {
-      field: 'positionTitle',
-      headerName: 'Ünvan',
-      flex: 1,
-      minWidth: 150,
-      valueGetter: (_value, row: MemberListItem) => getPositionTitleLabel(row.positionTitle),
-    },
-    {
       field: 'fullName',
       headerName: 'Ad Soyad',
       flex: 1.5,
-      minWidth: 150,
+      minWidth: 180,
       valueGetter: (_value, row: MemberListItem) => `${row.firstName} ${row.lastName}`,
+      renderCell: (params: GridRenderCellParams<MemberListItem>) => (
+        <Typography
+          sx={{
+            fontWeight: 600,
+            color: theme.palette.text.primary,
+            fontSize: '0.9rem',
+          }}
+        >
+          {`${params.row.firstName} ${params.row.lastName}`}
+        </Typography>
+      ),
     },
     {
       field: 'nationalId',
@@ -271,8 +248,26 @@ const MembersListPage: React.FC = () => {
       field: 'institution',
       headerName: 'Çalıştığı Kurum',
       flex: 1.5,
-      minWidth: 180,
+      minWidth: 200,
       valueGetter: (_value, row: MemberListItem) => row.institution?.name ?? '-',
+    },
+    {
+      field: 'status',
+      headerName: 'Üyelik Durumu',
+      flex: 1,
+      minWidth: 150,
+      renderCell: (params: GridRenderCellParams<MemberListItem>) => (
+        <Chip
+          label={getStatusLabel(params.row.status)}
+          size="small"
+          color={getStatusColor(params.row.status)}
+          sx={{ 
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            borderRadius: 1.5,
+          }}
+        />
+      ),
     },
     {
       field: 'createdAt',
@@ -288,12 +283,12 @@ const MembersListPage: React.FC = () => {
     },
     {
       field: 'actions',
-      headerName: 'Düzenle',
+      headerName: 'İşlemler',
       width: 100,
       sortable: false,
       filterable: false,
       renderCell: (params: GridRenderCellParams<MemberListItem>) => (
-        <Tooltip title="Detay">
+        <Tooltip title="Detayları Görüntüle" arrow>
           <IconButton
             size="small"
             onClick={(e) => {
@@ -302,8 +297,10 @@ const MembersListPage: React.FC = () => {
             }}
             sx={{
               color: theme.palette.primary.main,
+              transition: 'all 0.2s ease',
               '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                transform: 'scale(1.1)',
               },
             }}
           >
@@ -335,33 +332,37 @@ const MembersListPage: React.FC = () => {
   }, []);
 
   return (
-    <Box>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Başlık Bölümü */}
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, flexWrap: 'wrap', gap: 2 }}>
           <Box
             sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
+              width: 48,
+              height: 48,
+              borderRadius: 2.5,
               background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+              boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+              transition: 'transform 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.05)',
+              },
             }}
           >
-            <PeopleIcon sx={{ color: '#fff', fontSize: '1.5rem' }} />
+            <PeopleIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
           </Box>
           <Box sx={{ flexGrow: 1 }}>
             <Typography
               variant="h4"
               sx={{
                 fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                fontSize: { xs: '1.5rem', sm: '1.875rem', md: '2.125rem' },
                 color: theme.palette.text.primary,
                 mb: 0.5,
+                letterSpacing: '-0.02em',
               }}
             >
               Üyeler
@@ -370,7 +371,8 @@ const MembersListPage: React.FC = () => {
               variant="body2"
               sx={{
                 color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
+                fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                fontWeight: 500,
               }}
             >
               Yetkili olduğunuz bölgedeki tüm üyeleri görüntüleyin ve yönetin
@@ -382,17 +384,21 @@ const MembersListPage: React.FC = () => {
             onClick={() => navigate('/members/applications/new')}
             sx={{
               display: { xs: 'none', sm: 'flex' },
-              borderRadius: 2,
+              borderRadius: 2.5,
               textTransform: 'none',
               fontWeight: 600,
               px: 3,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+              py: 1.5,
+              fontSize: '0.9375rem',
+              boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.35)}`,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
-                boxShadow: `0 6px 20px 0 ${alpha(theme.palette.primary.main, 0.4)}`,
+                boxShadow: `0 8px 28px ${alpha(theme.palette.primary.main, 0.45)}`,
+                transform: 'translateY(-2px)',
               },
             }}
           >
-            Yeni Üye
+            Yeni Üye Ekle
           </Button>
         </Box>
 
@@ -405,11 +411,16 @@ const MembersListPage: React.FC = () => {
           sx={{
             display: { xs: 'flex', sm: 'none' },
             mt: 2,
-            borderRadius: 2,
+            borderRadius: 2.5,
             textTransform: 'none',
             fontWeight: 600,
-            py: 1.5,
-            boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+            py: 1.75,
+            fontSize: '0.9375rem',
+            boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.35)}`,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              boxShadow: `0 8px 28px ${alpha(theme.palette.primary.main, 0.45)}`,
+            },
           }}
         >
           Yeni Üye Başvurusu
@@ -422,8 +433,9 @@ const MembersListPage: React.FC = () => {
           severity="error" 
           sx={{ 
             mb: 3,
-            borderRadius: 2,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            borderRadius: 2.5,
+            boxShadow: `0 4px 16px ${alpha(theme.palette.error.main, 0.15)}`,
+            border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
           }} 
           onClose={() => setError(null)}
         >
@@ -435,21 +447,52 @@ const MembersListPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
+          borderRadius: 4,
           border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          boxShadow: `0 4px 24px ${alpha(theme.palette.primary.main, 0.08)}`,
           overflow: 'hidden',
+          transition: 'box-shadow 0.3s ease',
+          '&:hover': {
+            boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.12)}`,
+          },
         }}
       >
         {/* Filtre Bölümü */}
         <Box
           sx={{
-            p: { xs: 2, sm: 3 },
-            backgroundColor: alpha(theme.palette.primary.main, 0.02),
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            p: { xs: 2.5, sm: 3.5 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
           }}
         >
-          <Grid container spacing={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+              }}
+            >
+              <FilterListIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+            </Box>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                fontSize: '1.125rem',
+                color: theme.palette.text.primary,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              Filtreler
+            </Typography>
+          </Box>
+          <Grid container spacing={2.5}>
             {/* Arama */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <TextField
@@ -461,18 +504,22 @@ const MembersListPage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'text.secondary' }} />
+                      <SearchIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
-                    borderRadius: 2,
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
                     '&:hover': {
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: theme.palette.primary.main,
                       },
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                   },
                 }}
@@ -486,13 +533,16 @@ const MembersListPage: React.FC = () => {
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
-                    borderRadius: 2,
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&.Mui-focused': {
+                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
                   },
                 }}
               >
                 <InputLabel>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <FilterListIcon fontSize="small" />
                     Durum
                   </Box>
                 </InputLabel>
@@ -506,6 +556,7 @@ const MembersListPage: React.FC = () => {
                     PaperProps: {
                       style: {
                         maxHeight: 300,
+                        borderRadius: 12,
                       },
                     },
                   }}
@@ -528,7 +579,11 @@ const MembersListPage: React.FC = () => {
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
-                    borderRadius: 2,
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&.Mui-focused': {
+                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
                   },
                 }}
               >
@@ -543,6 +598,7 @@ const MembersListPage: React.FC = () => {
                     PaperProps: {
                       style: {
                         maxHeight: 300,
+                        borderRadius: 12,
                       },
                     },
                   }}
@@ -564,7 +620,11 @@ const MembersListPage: React.FC = () => {
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
-                    borderRadius: 2,
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&.Mui-focused': {
+                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
                   },
                 }}
               >
@@ -591,6 +651,7 @@ const MembersListPage: React.FC = () => {
                     PaperProps: {
                       style: {
                         maxHeight: 300,
+                        borderRadius: 12,
                       },
                     },
                   }}
@@ -611,7 +672,11 @@ const MembersListPage: React.FC = () => {
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
-                    borderRadius: 2,
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&.Mui-focused': {
+                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
                   },
                 }}
               >
@@ -639,6 +704,7 @@ const MembersListPage: React.FC = () => {
                     PaperProps: {
                       style: {
                         maxHeight: 300,
+                        borderRadius: 12,
                       },
                     },
                   }}
@@ -659,7 +725,11 @@ const MembersListPage: React.FC = () => {
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
-                    borderRadius: 2,
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&.Mui-focused': {
+                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
                   },
                 }}
               >
@@ -686,6 +756,7 @@ const MembersListPage: React.FC = () => {
                     PaperProps: {
                       style: {
                         maxHeight: 300,
+                        borderRadius: 12,
                       },
                     },
                   }}
@@ -702,34 +773,36 @@ const MembersListPage: React.FC = () => {
         </Box>
 
         {/* İçerik Bölümü */}
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ p: { xs: 2.5, sm: 3.5 } }}>
           {/* Sonuç Sayısı ve Export Butonları */}
           {!loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: 2,
-                  backgroundColor: alpha(theme.palette.info.main, 0.05),
-                  borderRadius: 2,
-                  border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+                  p: 2.5,
+                  backgroundColor: alpha(theme.palette.info.main, 0.08),
+                  borderRadius: 2.5,
+                  border: `1px solid ${alpha(theme.palette.info.main, 0.15)}`,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.1)}`,
                 }}
               >
                 <Typography
                   variant="body2"
                   sx={{
-                    fontWeight: 600,
+                    fontWeight: 700,
                     color: theme.palette.info.main,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1,
+                    gap: 1.5,
+                    fontSize: '0.9375rem',
                   }}
                 >
                   <PeopleIcon fontSize="small" />
                   Toplam {filteredRows.length} üye bulundu
                 </Typography>
               </Paper>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 <Button
                   variant="outlined"
                   size="small"
@@ -743,9 +816,23 @@ const MembersListPage: React.FC = () => {
                     }));
                     exportToExcel(filteredRows, exportColumns, 'uyeler');
                   }}
-                  sx={{ textTransform: 'none' }}
+                  fullWidth={true}
+                  sx={{ 
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    py: 1,
+                    borderWidth: 1.5,
+                    display: { xs: 'flex', sm: 'inline-flex' },
+                    '&:hover': {
+                      borderWidth: 1.5,
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
                 >
-                  Excel
+                  Excel İndir
                 </Button>
                 <Button
                   variant="outlined"
@@ -759,9 +846,23 @@ const MembersListPage: React.FC = () => {
                       alert('PDF export sırasında bir hata oluştu');
                     }
                   }}
-                  sx={{ textTransform: 'none' }}
+                  fullWidth={true}
+                  sx={{ 
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    py: 1,
+                    borderWidth: 1.5,
+                    display: { xs: 'flex', sm: 'inline-flex' },
+                    '&:hover': {
+                      borderWidth: 1.5,
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
                 >
-                  PDF
+                  PDF İndir
                 </Button>
                 <Button
                   variant="outlined"
@@ -776,43 +877,70 @@ const MembersListPage: React.FC = () => {
                     }));
                     exportToPDF(filteredRows, exportColumns, 'uyeler', 'Üyeler Listesi');
                   }}
-                  sx={{ textTransform: 'none' }}
+                  fullWidth={true}
+                  sx={{ 
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    py: 1,
+                    borderWidth: 1.5,
+                    display: { xs: 'flex', sm: 'inline-flex' },
+                    '&:hover': {
+                      borderWidth: 1.5,
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
                 >
-                  HTML
+                  HTML İndir
                 </Button>
-              </Box>
+              </Stack>
             </Box>
           )}
 
           {/* Tablo - Her zaman render edilir, loading state'i DataGrid'e geçirilir */}
           <Box
             sx={{
-              height: { xs: 400, sm: 500, md: 600 },
-              minHeight: { xs: 400, sm: 500, md: 600 },
+              height: { xs: 400, sm: 500, md: 650 },
+              minHeight: { xs: 400, sm: 500, md: 650 },
               '& .MuiDataGrid-root': {
                 border: 'none',
-                borderRadius: 2,
+                borderRadius: 2.5,
+                overflow: 'hidden',
               },
               '& .MuiDataGrid-cell': {
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                fontSize: '0.875rem',
               },
               '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                backgroundColor: alpha(theme.palette.primary.main, 0.06),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.15)}`,
                 borderRadius: 0,
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,
-                fontSize: '0.875rem',
+                fontSize: '0.9rem',
+                color: theme.palette.text.primary,
               },
               '& .MuiDataGrid-row': {
+                transition: 'background-color 0.2s ease',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                },
+                '&.Mui-selected': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                  },
                 },
               },
               '& .MuiDataGrid-footerContainer': {
                 borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
                 backgroundColor: alpha(theme.palette.background.default, 0.5),
+              },
+              '& .MuiDataGrid-virtualScroller': {
+                minHeight: '200px',
               },
             }}
           >
@@ -826,11 +954,6 @@ const MembersListPage: React.FC = () => {
               }}
               pageSizeOptions={[10, 25, 50, 100]}
               disableRowSelectionOnClick
-              sx={{
-                '& .MuiDataGrid-virtualScroller': {
-                  minHeight: '200px',
-                },
-              }}
             />
           </Box>
         </Box>

@@ -7,6 +7,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UploadTevkifatFileDto } from './dto/upload-tevkifat-file.dto';
 import { CreateTevkifatCenterDto } from './dto/create-tevkifat-center.dto';
 import { UpdateTevkifatCenterDto } from './dto/update-tevkifat-center.dto';
+import { CreateTevkifatTitleDto } from './dto/create-tevkifat-title.dto';
+import { UpdateTevkifatTitleDto } from './dto/update-tevkifat-title.dto';
 import { ApprovalStatus, MemberStatus } from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
 
@@ -54,6 +56,7 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
+            title: true,
           },
         },
         branch: {
@@ -121,6 +124,7 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
+            title: true,
           },
         },
         uploadedByUser: {
@@ -169,6 +173,7 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
+            title: true,
           },
         },
         uploadedByUser: {
@@ -224,6 +229,7 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
+            title: true,
           },
         },
         approvedByUser: {
@@ -271,10 +277,38 @@ export class AccountingService {
 
   /**
    * Tevkifat merkezlerini listele
+   * İl seçildiğinde o ile direkt bağlı olanları ve o ilin ilçelerine bağlı olanları gösterir
    */
-  async listTevkifatCenters() {
+  async listTevkifatCenters(filters?: { provinceId?: string; districtId?: string }) {
+    const where: any = {};
+
+    // Eğer districtId verilmişse, sadece o ilçeye bağlı olanları göster
+    if (filters?.districtId) {
+      where.districtId = filters.districtId;
+    } else if (filters?.provinceId) {
+      // Eğer sadece provinceId verilmişse, o ile direkt bağlı olanları VEYA o ilin ilçelerine bağlı olanları göster
+      where.OR = [
+        { provinceId: filters.provinceId },
+        { district: { provinceId: filters.provinceId } },
+      ];
+    }
+
     const centers = await this.prisma.tevkifatCenter.findMany({
+      where,
       include: {
+        province: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        district: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         _count: {
           select: {
             members: true,
@@ -296,25 +330,12 @@ export class AccountingService {
       orderBy: { name: 'asc' },
     });
 
-    // Şube sayısını hesapla (members üzerinden unique branch sayısı)
-    return Promise.all(
-      centers.map(async (center) => {
-        const branchCount = await this.prisma.member.groupBy({
-          by: ['branchId'],
-          where: {
-            tevkifatCenterId: center.id,
-          },
-        });
-
-        return {
-          ...center,
-          branchCount: branchCount.length,
-          lastTevkifatMonth: center.files[0]
-            ? `${center.files[0].month}/${center.files[0].year}`
-            : null,
-        };
-      }),
-    );
+    return centers.map((center) => ({
+      ...center,
+      lastTevkifatMonth: center.files[0]
+        ? `${center.files[0].month}/${center.files[0].year}`
+        : null,
+    }));
   }
 
   /**
@@ -337,14 +358,6 @@ export class AccountingService {
     if (!center) {
       throw new NotFoundException('Tevkifat merkezi bulunamadı');
     }
-
-    // Şube sayısını hesapla
-        const branchCount = await this.prisma.member.groupBy({
-          by: ['branchId'],
-          where: {
-            tevkifatCenterId: center.id,
-          },
-        });
 
     // Aylık/yıllık özetleri hesapla
     const files = await this.prisma.tevkifatFile.findMany({
@@ -389,7 +402,6 @@ export class AccountingService {
 
     return {
       ...center,
-      branchCount: branchCount.length,
       yearlySummary: Object.entries(yearlySummary).map(([year, data]) => ({
         year: Number(year),
         totalAmount: data.totalAmount,
@@ -417,8 +429,12 @@ export class AccountingService {
     return this.prisma.tevkifatCenter.create({
       data: {
         name: dto.name,
+        title: dto.title || null,
         code: dto.code || null,
         description: dto.description || null,
+        address: dto.address || null,
+        provinceId: dto.provinceId || null,
+        districtId: dto.districtId || null,
         isActive: true,
       },
     });
@@ -450,8 +466,12 @@ export class AccountingService {
       where: { id },
       data: {
         ...(dto.name && { name: dto.name }),
+        ...(dto.title !== undefined && { title: dto.title || null }),
         ...(dto.code !== undefined && { code: dto.code || null }),
         ...(dto.description !== undefined && { description: dto.description || null }),
+        ...(dto.address !== undefined && { address: dto.address || null }),
+        ...(dto.provinceId !== undefined && { provinceId: dto.provinceId || null }),
+        ...(dto.districtId !== undefined && { districtId: dto.districtId || null }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
     });
@@ -472,6 +492,85 @@ export class AccountingService {
     return this.prisma.tevkifatCenter.update({
       where: { id },
       data: { isActive: false },
+    });
+  }
+
+  // Tevkifat Unvanları CRUD
+  async listTevkifatTitles() {
+    return this.prisma.tevkifatTitle.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async getTevkifatTitleById(id: string) {
+    const title = await this.prisma.tevkifatTitle.findUnique({
+      where: { id },
+    });
+
+    if (!title) {
+      throw new NotFoundException('Tevkifat unvanı bulunamadı');
+    }
+
+    return title;
+  }
+
+  async createTevkifatTitle(dto: CreateTevkifatTitleDto) {
+    // İsim benzersizlik kontrolü
+    const existing = await this.prisma.tevkifatTitle.findUnique({
+      where: { name: dto.name },
+    });
+
+    if (existing) {
+      throw new BadRequestException('Bu unvan zaten mevcut');
+    }
+
+    return this.prisma.tevkifatTitle.create({
+      data: {
+        name: dto.name,
+      },
+    });
+  }
+
+  async updateTevkifatTitle(id: string, dto: UpdateTevkifatTitleDto) {
+    const title = await this.prisma.tevkifatTitle.findUnique({
+      where: { id },
+    });
+
+    if (!title) {
+      throw new NotFoundException('Tevkifat unvanı bulunamadı');
+    }
+
+    // İsim benzersizlik kontrolü
+    if (dto.name && dto.name !== title.name) {
+      const existing = await this.prisma.tevkifatTitle.findUnique({
+        where: { name: dto.name },
+      });
+      if (existing) {
+        throw new BadRequestException('Bu unvan zaten mevcut');
+      }
+    }
+
+    return this.prisma.tevkifatTitle.update({
+      where: { id },
+      data: {
+        ...(dto.name && { name: dto.name }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+    });
+  }
+
+  async deleteTevkifatTitle(id: string) {
+    const title = await this.prisma.tevkifatTitle.findUnique({
+      where: { id },
+    });
+
+    if (!title) {
+      throw new NotFoundException('Tevkifat unvanı bulunamadı');
+    }
+
+    // Gerçek silme (hard delete)
+    return this.prisma.tevkifatTitle.delete({
+      where: { id },
     });
   }
 }

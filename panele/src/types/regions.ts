@@ -16,19 +16,6 @@ export interface District {
   } | null;
 }
 
-export interface Workplace {
-  id: string;
-  name: string;
-  address?: string | null;
-  province?: {
-    id: string;
-    name: string;
-  } | null;
-  district?: {
-    id: string;
-    name: string;
-  } | null;
-}
 
 export interface Dealer {
   id: string;
@@ -50,6 +37,5 @@ export interface UserScope {
   id: string;
   province?: { id: string; name: string } | null;
   district?: { id: string; name: string } | null;
-  workplace?: { id: string; name: string } | null;
   dealer?: { id: string; name: string } | null;
 }

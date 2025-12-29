@@ -14,12 +14,12 @@ import { RegionsService } from './regions.service';
 import {
   CreateProvinceDto,
   CreateDistrictDto,
-  CreateWorkplaceDto,
-  CreateDealerDto,
   AssignUserScopeDto,
   CreateBranchDto,
   UpdateBranchDto,
   AssignBranchPresidentDto,
+  CreateInstitutionDto,
+  UpdateInstitutionDto,
 } from './dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permission.enum';
@@ -49,6 +49,16 @@ export class RegionsController {
   @ApiResponse({ status: 201, description: 'İl başarıyla oluşturuldu' })
   async createProvince(@Body() dto: CreateProvinceDto) {
     return this.regionsService.createProvince(dto);
+  }
+
+  @Permissions(Permission.REGION_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
+  @Get('provinces/:id')
+  @ApiOperation({ summary: 'İl detayını getir', description: 'Belirtilen ilin detaylarını getirir' })
+  @ApiParam({ name: 'id', description: 'İl ID', example: 'province-uuid-123' })
+  @ApiResponse({ status: 200, description: 'İl detayı' })
+  @ApiResponse({ status: 404, description: 'İl bulunamadı' })
+  async getProvinceById(@Param('id') id: string) {
+    return this.regionsService.getProvinceById(id);
   }
 
   @Permissions(Permission.BRANCH_MANAGE)
@@ -85,6 +95,16 @@ export class RegionsController {
     return this.regionsService.createDistrict(dto);
   }
 
+  @Permissions(Permission.REGION_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
+  @Get('districts/:id')
+  @ApiOperation({ summary: 'İlçe detayını getir', description: 'Belirtilen ilçenin detaylarını getirir' })
+  @ApiParam({ name: 'id', description: 'İlçe ID', example: 'district-uuid-456' })
+  @ApiResponse({ status: 200, description: 'İlçe detayı' })
+  @ApiResponse({ status: 404, description: 'İlçe bulunamadı' })
+  async getDistrictById(@Param('id') id: string) {
+    return this.regionsService.getDistrictById(id);
+  }
+
   @Permissions(Permission.BRANCH_MANAGE)
   @Put('districts/:id')
   @ApiOperation({ summary: 'İlçe bilgilerini güncelle', description: 'Mevcut ilçe bilgilerini günceller' })
@@ -99,87 +119,11 @@ export class RegionsController {
     return this.regionsService.updateDistrict(id, dto);
   }
 
-  // -------- WORKPLACE --------
-
-  @Permissions(Permission.WORKPLACE_LIST)
-  @Get('workplaces')
-  @ApiOperation({ summary: 'İş yerlerini listele', description: 'Tüm iş yerlerini veya filtrelenmiş listeyi getirir' })
-  @ApiQuery({ name: 'provinceId', required: false, description: 'İl ID (filtreleme için)', example: 'province-uuid-123' })
-  @ApiQuery({ name: 'districtId', required: false, description: 'İlçe ID (filtreleme için)', example: 'district-uuid-456' })
-  @ApiResponse({ status: 200, description: 'İş yeri listesi', type: 'array' })
-  async getWorkplaces(
-    @Query('provinceId') provinceId?: string,
-    @Query('districtId') districtId?: string,
-  ) {
-    return this.regionsService.listWorkplaces(provinceId, districtId);
-  }
-
-  @Permissions(Permission.WORKPLACE_MANAGE)
-  @Post('workplaces')
-  @ApiOperation({ summary: 'Yeni iş yeri oluştur', description: 'Yeni bir iş yeri kaydı oluşturur' })
-  @ApiBody({ type: CreateWorkplaceDto })
-  @ApiResponse({ status: 201, description: 'İş yeri başarıyla oluşturuldu' })
-  async createWorkplace(@Body() dto: CreateWorkplaceDto) {
-    return this.regionsService.createWorkplace(dto);
-  }
-
-  @Permissions(Permission.WORKPLACE_MANAGE)
-  @Put('workplaces/:id')
-  @ApiOperation({ summary: 'İş yeri bilgilerini güncelle', description: 'Mevcut iş yeri bilgilerini günceller' })
-  @ApiParam({ name: 'id', description: 'İş yeri ID', example: 'workplace-uuid-789' })
-  @ApiBody({ type: CreateWorkplaceDto })
-  @ApiResponse({ status: 200, description: 'İş yeri başarıyla güncellendi' })
-  @ApiResponse({ status: 404, description: 'İş yeri bulunamadı' })
-  async updateWorkplace(
-    @Param('id') id: string,
-    @Body() dto: CreateWorkplaceDto,
-  ) {
-    return this.regionsService.updateWorkplace(id, dto);
-  }
-
-  // -------- DEALER --------
-
-  @Permissions(Permission.DEALER_LIST)
-  @Get('dealers')
-  @ApiOperation({ summary: 'Bayileri listele', description: 'Tüm bayileri veya filtrelenmiş listeyi getirir' })
-  @ApiQuery({ name: 'provinceId', required: false, description: 'İl ID (filtreleme için)', example: 'province-uuid-123' })
-  @ApiQuery({ name: 'districtId', required: false, description: 'İlçe ID (filtreleme için)', example: 'district-uuid-456' })
-  @ApiResponse({ status: 200, description: 'Bayi listesi', type: 'array' })
-  async getDealers(
-    @Query('provinceId') provinceId?: string,
-    @Query('districtId') districtId?: string,
-  ) {
-    return this.regionsService.listDealers(provinceId, districtId);
-  }
-
-  @Permissions(Permission.DEALER_CREATE)
-  @Post('dealers')
-  @ApiOperation({ summary: 'Yeni bayi oluştur', description: 'Yeni bir bayi kaydı oluşturur' })
-  @ApiBody({ type: CreateDealerDto })
-  @ApiResponse({ status: 201, description: 'Bayi başarıyla oluşturuldu' })
-  async createDealer(@Body() dto: CreateDealerDto) {
-    return this.regionsService.createDealer(dto);
-  }
-
-  @Permissions(Permission.DEALER_UPDATE)
-  @Put('dealers/:id')
-  @ApiOperation({ summary: 'Bayi bilgilerini güncelle', description: 'Mevcut bayi bilgilerini günceller' })
-  @ApiParam({ name: 'id', description: 'Bayi ID', example: 'dealer-uuid-012' })
-  @ApiBody({ type: CreateDealerDto })
-  @ApiResponse({ status: 200, description: 'Bayi başarıyla güncellendi' })
-  @ApiResponse({ status: 404, description: 'Bayi bulunamadı' })
-  async updateDealer(
-    @Param('id') id: string,
-    @Body() dto: CreateDealerDto,
-  ) {
-    return this.regionsService.updateDealer(id, dto);
-  }
-
   // -------- USER SCOPE --------
 
   @Permissions(Permission.BRANCH_MANAGE)
   @Post('user-scope')
-  @ApiOperation({ summary: 'Kullanıcıya scope ata', description: 'Kullanıcıya il/ilçe/işyeri/bayi yetkisi atar' })
+  @ApiOperation({ summary: 'Kullanıcıya scope ata', description: 'Kullanıcıya il/ilçe yetkisi atar' })
   @ApiBody({ type: AssignUserScopeDto })
   @ApiResponse({ status: 201, description: 'Scope başarıyla atandı' })
   async assignUserScope(@Body() dto: AssignUserScopeDto) {
@@ -216,19 +160,19 @@ export class RegionsController {
   @Permissions(Permission.BRANCH_MANAGE, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get('branches')
   @ApiOperation({ summary: 'Şubeleri listele', description: 'Tüm şubeleri veya filtrelenmiş listeyi getirir' })
+  @ApiQuery({ name: 'isActive', required: false, description: 'Aktif mi?', example: true, type: Boolean })
   @ApiQuery({ name: 'provinceId', required: false, description: 'İl ID (filtreleme için)', example: 'province-uuid-123' })
   @ApiQuery({ name: 'districtId', required: false, description: 'İlçe ID (filtreleme için)', example: 'district-uuid-456' })
-  @ApiQuery({ name: 'isActive', required: false, description: 'Aktif mi?', example: true, type: Boolean })
   @ApiResponse({ status: 200, description: 'Şube listesi', type: 'array' })
   async getBranches(
+    @Query('isActive') isActive?: string,
     @Query('provinceId') provinceId?: string,
     @Query('districtId') districtId?: string,
-    @Query('isActive') isActive?: string,
   ) {
-    const filters: { provinceId?: string; districtId?: string; isActive?: boolean } = {};
+    const filters: { isActive?: boolean; provinceId?: string; districtId?: string } = {};
+    if (isActive !== undefined) filters.isActive = isActive === 'true';
     if (provinceId) filters.provinceId = provinceId;
     if (districtId) filters.districtId = districtId;
-    if (isActive !== undefined) filters.isActive = isActive === 'true';
 
     return this.regionsService.listBranches(filters);
   }
@@ -289,5 +233,87 @@ export class RegionsController {
     @Body() dto: AssignBranchPresidentDto,
   ) {
     return this.regionsService.assignBranchPresident(id, dto);
+  }
+
+  // -------- INSTITUTION --------
+
+  @Permissions(Permission.INSTITUTION_LIST)
+  @Get('institutions')
+  @ApiOperation({ summary: 'Kurumları listele', description: 'Tüm kurumları veya filtrelenmiş listeyi getirir' })
+  @ApiQuery({ name: 'provinceId', required: false, description: 'İl ID (filtreleme için)', example: 'province-uuid-123' })
+  @ApiQuery({ name: 'districtId', required: false, description: 'İlçe ID (filtreleme için)', example: 'district-uuid-456' })
+  @ApiQuery({ name: 'isActive', required: false, description: 'Aktif mi?', example: true, type: Boolean })
+  @ApiResponse({ status: 200, description: 'Kurum listesi', type: 'array' })
+  async getInstitutions(
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+    @Query('isActive') isActive?: string,
+  ) {
+    const filters: { provinceId?: string; districtId?: string; isActive?: boolean } = {};
+    if (provinceId) filters.provinceId = provinceId;
+    if (districtId) filters.districtId = districtId;
+    if (isActive !== undefined) filters.isActive = isActive === 'true';
+
+    return this.regionsService.listInstitutions(filters.provinceId, filters.districtId, filters.isActive);
+  }
+
+  @Permissions(Permission.INSTITUTION_VIEW)
+  @Get('institutions/:id')
+  @ApiOperation({ summary: 'Kurum detayını getir', description: 'Belirtilen kurumun detaylarını getirir' })
+  @ApiParam({ name: 'id', description: 'Kurum ID', example: 'institution-uuid-123' })
+  @ApiResponse({ status: 200, description: 'Kurum detayı' })
+  @ApiResponse({ status: 404, description: 'Kurum bulunamadı' })
+  async getInstitutionById(@Param('id') id: string) {
+    return this.regionsService.getInstitutionById(id);
+  }
+
+  @Permissions(Permission.INSTITUTION_CREATE)
+  @Post('institutions')
+  @ApiOperation({ summary: 'Yeni kurum oluştur', description: 'Yeni bir kurum kaydı oluşturur' })
+  @ApiBody({ type: CreateInstitutionDto })
+  @ApiResponse({ status: 201, description: 'Kurum başarıyla oluşturuldu' })
+  async createInstitution(
+    @Body() dto: CreateInstitutionDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.regionsService.createInstitution(dto, user.userId);
+  }
+
+  @Permissions(Permission.INSTITUTION_UPDATE)
+  @Put('institutions/:id')
+  @ApiOperation({ summary: 'Kurum bilgilerini güncelle', description: 'Mevcut kurum bilgilerini günceller' })
+  @ApiParam({ name: 'id', description: 'Kurum ID', example: 'institution-uuid-123' })
+  @ApiBody({ type: UpdateInstitutionDto })
+  @ApiResponse({ status: 200, description: 'Kurum başarıyla güncellendi' })
+  @ApiResponse({ status: 404, description: 'Kurum bulunamadı' })
+  async updateInstitution(
+    @Param('id') id: string,
+    @Body() dto: UpdateInstitutionDto,
+  ) {
+    return this.regionsService.updateInstitution(id, dto);
+  }
+
+  @Permissions(Permission.INSTITUTION_APPROVE)
+  @Post('institutions/:id/approve')
+  @ApiOperation({ summary: 'Kurumu onayla', description: 'Kurumu aktif hale getirir' })
+  @ApiParam({ name: 'id', description: 'Kurum ID', example: 'institution-uuid-123' })
+  @ApiResponse({ status: 200, description: 'Kurum başarıyla onaylandı' })
+  @ApiResponse({ status: 404, description: 'Kurum bulunamadı' })
+  async approveInstitution(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.regionsService.approveInstitution(id, user.userId);
+  }
+
+  @Permissions(Permission.INSTITUTION_UPDATE)
+  @Delete('institutions/:id')
+  @ApiOperation({ summary: 'Kurum sil', description: 'Mevcut kurumu siler (soft delete)' })
+  @ApiParam({ name: 'id', description: 'Kurum ID', example: 'institution-uuid-123' })
+  @ApiResponse({ status: 200, description: 'Kurum başarıyla silindi' })
+  @ApiResponse({ status: 404, description: 'Kurum bulunamadı' })
+  async deleteInstitution(@Param('id') id: string) {
+    await this.regionsService.deleteInstitution(id);
+    return { message: 'Kurum başarıyla silindi' };
   }
 }

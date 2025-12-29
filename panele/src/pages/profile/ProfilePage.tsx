@@ -407,7 +407,7 @@ const ProfilePage: React.FC = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1,
-                            mb: s.province || s.district || s.workplace || s.dealer ? 1.5 : 0,
+                            mb: s.province || s.district || s.dealer ? 1.5 : 0,
                           }}
                         >
                           <Box
@@ -469,23 +469,6 @@ const ProfilePage: React.FC = () => {
                                 border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
                                 '& .MuiChip-icon': {
                                   color: theme.palette.info.main,
-                                },
-                              }}
-                            />
-                          )}
-
-                          {s.workplace && (
-                            <Chip
-                              icon={<BusinessIcon sx={{ fontSize: '1rem' }} />}
-                              size="small"
-                              label={s.workplace.name}
-                              sx={{
-                                fontWeight: 600,
-                                backgroundColor: alpha(theme.palette.success.main, 0.1),
-                                color: theme.palette.success.main,
-                                border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-                                '& .MuiChip-icon': {
-                                  color: theme.palette.success.main,
                                 },
                               }}
                             />

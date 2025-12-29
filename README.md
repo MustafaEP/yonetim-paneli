@@ -18,7 +18,7 @@ ADMIN
 │           └── IL_BASKANI
 │               └── ILCE_TEMSILCISI
 │                   └── ISYERI_TEMSILCISI
-├── BAYI_YETKILISI
+├── ANLASMALI_KURUM_YETKILISI
 └── UYE
 ```
 
@@ -59,32 +59,27 @@ ADMIN
 - Temsilci atama
 - İş yeri üye listesi
 
-### 7. Bayilik Sistemi (Dealer Management)
-- Bayi başvuru yönetimi
-- Bayi onay süreçleri
-- Performans ve üye takibi
-
-### 8. İçerik Yönetimi (Content Management)
+### 7. İçerik Yönetimi (Content Management)
 - Haber/duyuru/etkinlik yönetimi
 - Yayın durumu kontrolü
 - Taslak sistemi
 
-### 9. Evrak & Doküman (Document Management)
+### 8. Evrak & Doküman (Document Management)
 - Şablon oluşturma
 - Evrak geçmişi
 - PDF üretimi
 
-### 10. Raporlar & Dashboard
+### 9. Raporlar & Dashboard
 - Genel istatistikler
 - Bölgesel raporlar
 - Grafiksel analizler
 
-### 11. Bildirim & İletişim (Notifications)
+### 10. Bildirim & İletişim (Notifications)
 - Toplu bildirim (Email/SMS/WhatsApp)
 - Bölgesel bildirim
 - Hedefli mesajlaşma
 
-### 12. Sistem Ayarları & Loglar
+### 11. Sistem Ayarları & Loglar
 - Genel konfigürasyon
 - Entegrasyon ayarları
 - Audit log görüntüleme
@@ -119,7 +114,7 @@ ADMIN
 - ✅ Tüm üyeleri yönetme
 - ✅ Üye onay/red işlemleri
 - ✅ Aidat planı ve ödeme yönetimi
-- ✅ Şube/il/ilçe/bayi yönetimi
+- ✅ Şube/il/ilçe yönetimi
 
 **İçerik & İletişim:**
 - ✅ Haber/duyuru CRUD
@@ -140,7 +135,6 @@ ADMIN
 - ✅ Üye kayıt onay/reddi (ülke geneli)
 - ✅ İhraç/istifa süreçlerini onaylama
 - ✅ İl başkanı atama onayı
-- ✅ Bayi açılış onayı
 - ✅ Haber/duyuru yayınlama
 - ✅ Tüm raporlar ve istatistikler
 
@@ -158,7 +152,6 @@ ADMIN
 - ✅ Üye onay/red (opsiyonel alan kısıtı)
 - ✅ Aidat raporları görüntüleme
 - ✅ Haber/duyuru oluşturma
-- ✅ Bayi başvurularını görüntüleme
 
 **Sınırlamalar:**
 - ⚠️ Aidat planı değiştirme (opsiyonel)
@@ -233,24 +226,6 @@ ADMIN
 
 ---
 
-### 🟠 BAYI_YETKILISI (Bayi Yetkilisi)
-**Kapsam:** Bayi/temsil ofisi yönetimi
-
-**Yetkiler:**
-- ✅ Bayi bilgilerini görüntüleme
-- ✅ Üye başvuru oluşturma ve düzenleme
-- ✅ Bayi üye aidat durumu görüntüleme
-- ✅ Ödeme bilgisi girişi (onay üstte)
-- ✅ Bayi performans raporları
-- ✅ Bayi kapsamlı bildirim
-
-**Sınırlamalar:**
-- 🔒 Sadece kendi bayi(ler)i
-- ⚠️ Üye onayı üst kademede
-- ❌ Genel sistem verilerine erişim yok
-
----
-
 ### ⚪ UYE (Üye)
 **Kapsam:** Kişisel hesap yönetimi
 
@@ -273,11 +248,10 @@ ADMIN
 |-------|-------|-----|----|----|----|----|----|----|----|----|
 | Kullanıcı Yönetimi | ✅ | ✅¹ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Rol Yönetimi | ✅ | 👁️ | 👁️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Üye Yönetimi | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ✅⁵ | 👁️⁶ |
-| Aidat Yönetimi | ✅ | ✅ | 👁️ | 👁️ | ❌ | ✅² | 👁️³ | 👁️⁴ | ⚠️⁵ | 👁️⁶ |
+| Üye Yönetimi | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ✅⁵ | 👁️⁵ |
+| Aidat Yönetimi | ✅ | ✅ | 👁️ | 👁️ | ❌ | ✅² | 👁️³ | 👁️⁴ | ⚠️⁵ | 👁️⁵ |
 | Bölge Yönetimi | ✅ | ✅ | ✅ | ✅ | 👁️ | ✅² | ⚠️³ | ❌ | ❌ | ❌ |
 | İş Yeri Yönetimi | ✅ | ✅ | ✅ | ✅ | 👁️ | ✅² | ✅³ | ✅⁴ | ❌ | ❌ |
-| Bayi Yönetimi | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ❌ | ❌ | ✅⁵ | ❌ |
 | İçerik Yönetimi | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ⚠️⁵ | ❌ |
 | Evrak Yönetimi | ✅ | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 | Raporlar | ✅ | ✅ | ✅ | ✅ | ✅ | ✅² | ✅³ | ✅⁴ | ✅⁵ | ❌ |
@@ -296,8 +270,7 @@ ADMIN
 2. Sadece kendi ili
 3. Sadece kendi ilçesi
 4. Sadece kendi iş yeri
-5. Sadece kendi bayi(ler)i
-6. Sadece kendi verileri
+5. Sadece kendi verileri
 
 ## 📚 Referanslar
 

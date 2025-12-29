@@ -185,34 +185,6 @@ export class ReportsService {
         }),
       ]);
 
-      // İşyerlerini getir (workplace'lerin member ilişkisi yok, bu yüzden boş array döndürüyoruz)
-      const workplaces = await this.prisma.workplace.findMany({
-        where: {
-          provinceId: regionId,
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-      });
-
-      // Her işyeri için üye sayısını hesapla
-      const workplacesWithCounts = await Promise.all(
-        workplaces.map(async (wp) => {
-          const memberCount = await this.prisma.member.count({
-            where: {
-              workingProvinceId: regionId,
-              // Workplace ilişkisi yok, bu yüzden sadece province bazlı sayıyoruz
-            },
-          });
-          return {
-            workplaceId: wp.id,
-            workplaceName: wp.name,
-            memberCount: 0, // Workplace-member ilişkisi olmadığı için 0
-          };
-        }),
-      );
-
       return {
         regionId: province.id,
         regionName: province.name,
@@ -221,7 +193,6 @@ export class ReportsService {
         cancelledMembers,
         totalPayments: Number(totalPayments._sum.amount || 0),
         totalDebt: await this.calculateTotalDebt({ provinceId: regionId }),
-        workplaces: workplacesWithCounts,
       };
     }
 
@@ -277,7 +248,6 @@ export class ReportsService {
           cancelledMembers,
           totalPayments: Number(totalPayments._sum.amount || 0),
           totalDebt: await this.calculateTotalDebt({ provinceId: province.id }),
-          workplaces: [],
         };
       }),
     );

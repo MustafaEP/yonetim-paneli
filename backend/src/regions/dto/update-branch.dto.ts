@@ -12,16 +12,6 @@ export class UpdateBranchDto {
   @IsOptional()
   code?: string;
 
-  @ApiProperty({ description: 'İl ID', example: 'province-uuid-123', required: false })
-  @IsString()
-  @IsOptional()
-  provinceId?: string;
-
-  @ApiProperty({ description: 'İlçe ID', example: 'district-uuid-456', required: false })
-  @IsString()
-  @IsOptional()
-  districtId?: string;
-
   @ApiProperty({ description: 'Adres', example: 'Atatürk Cad. No:1', required: false })
   @IsString()
   @IsOptional()
@@ -41,4 +31,14 @@ export class UpdateBranchDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiProperty({ description: 'İl ID (opsiyonel)', example: 'province-uuid-123', required: false })
+  @IsString()
+  @IsOptional()
+  provinceId?: string;
+
+  @ApiProperty({ description: 'İlçe ID (opsiyonel)', example: 'district-uuid-456', required: false })
+  @IsString()
+  @IsOptional()
+  districtId?: string;
 }

@@ -8,6 +8,12 @@ export class UpdateTevkifatCenterDto {
   @MaxLength(255)
   name?: string;
 
+  @ApiProperty({ description: 'Tevkifat ünvanı', required: false })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  title?: string;
+
   @ApiProperty({ description: 'Kod', required: false })
   @IsString()
   @IsOptional()
@@ -19,8 +25,23 @@ export class UpdateTevkifatCenterDto {
   @IsOptional()
   description?: string;
 
+  @ApiProperty({ description: 'Adres', required: false })
+  @IsString()
+  @IsOptional()
+  address?: string;
+
   @ApiProperty({ description: 'Aktiflik durumu', required: false })
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiProperty({ description: 'İl ID (opsiyonel)', required: false })
+  @IsString()
+  @IsOptional()
+  provinceId?: string;
+
+  @ApiProperty({ description: 'İlçe ID (opsiyonel)', required: false })
+  @IsString()
+  @IsOptional()
+  districtId?: string;
 }

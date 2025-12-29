@@ -8,7 +8,6 @@ export type Role =
   | 'GENEL_SEKRETER'
   | 'IL_BASKANI'
   | 'ILCE_TEMSILCISI'
-  | 'ISYERI_TEMSILCISI'
   | 'BAYI_YETKILISI'
   | 'UYE';
 
@@ -37,7 +36,6 @@ export const ALL_ROLES: { value: Role; label: string }[] = [
   { value: 'GENEL_SEKRETER', label: 'Genel Sekreter' },
   { value: 'IL_BASKANI', label: 'İl Başkanı' },
   { value: 'ILCE_TEMSILCISI', label: 'İlçe Temsilcisi' },
-  { value: 'ISYERI_TEMSILCISI', label: 'İşyeri Temsilcisi' },
   { value: 'BAYI_YETKILISI', label: 'Bayi Yetkilisi' },
   { value: 'UYE', label: 'Üye' },
 ];

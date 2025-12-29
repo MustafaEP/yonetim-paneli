@@ -41,11 +41,10 @@ import {
   deleteBranch,
   assignBranchPresident,
 } from '../../api/branchesApi';
-import { getProvinces, getDistricts } from '../../api/regionsApi';
 import { getUsers } from '../../api/usersApi';
+import { getProvinces, getDistricts, type Province, type District } from '../../api/regionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
-import type { Province, District } from '../../types/region';
 import type { UserListItem } from '../../types/user';
 
 const BranchesPage: React.FC = () => {
@@ -67,21 +66,19 @@ const BranchesPage: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [selectedPresidentId, setSelectedPresidentId] = useState<string>('');
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
-  const [users, setUsers] = useState<UserListItem[]>([]);
-  const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
-  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('');
-  const [selectedPresidentId, setSelectedPresidentId] = useState<string>('');
 
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    provinceId: '',
-    districtId: '',
     address: '',
     phone: '',
     email: '',
+    provinceId: '',
+    districtId: '',
   });
 
   const canManage = hasPermission('BRANCH_MANAGE');
@@ -89,18 +86,32 @@ const BranchesPage: React.FC = () => {
 
   useEffect(() => {
     loadBranches();
-    loadProvinces();
     loadUsers();
+    loadProvinces();
   }, []);
 
-  useEffect(() => {
-    if (selectedProvinceId) {
-      loadDistricts(selectedProvinceId);
-    } else {
-      setDistricts([]);
-      setSelectedDistrictId('');
+  const loadProvinces = async () => {
+    try {
+      const data = await getProvinces();
+      setProvinces(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      console.error('İller alınırken hata:', e);
     }
-  }, [selectedProvinceId]);
+  };
+
+  const loadDistrictsForProvince = async (provinceId?: string) => {
+    if (!provinceId) {
+      setDistricts([]);
+      return;
+    }
+    try {
+      const data = await getDistricts(provinceId);
+      setDistricts(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      console.error('İlçeler alınırken hata:', e);
+      setDistricts([]);
+    }
+  };
 
   const loadBranches = async () => {
     setLoading(true);
@@ -115,23 +126,6 @@ const BranchesPage: React.FC = () => {
     }
   };
 
-  const loadProvinces = async () => {
-    try {
-      const data = await getProvinces();
-      setProvinces(data);
-    } catch (e: any) {
-      console.error('İller yüklenirken hata:', e);
-    }
-  };
-
-  const loadDistricts = async (provinceId: string) => {
-    try {
-      const data = await getDistricts(provinceId);
-      setDistricts(data);
-    } catch (e: any) {
-      console.error('İlçeler yüklenirken hata:', e);
-    }
-  };
 
   const loadUsers = async () => {
     try {
@@ -145,32 +139,33 @@ const BranchesPage: React.FC = () => {
   const handleOpenDialog = (branch?: Branch) => {
     if (branch) {
       setEditingBranch(branch);
+      const provinceId = branch.provinceId || '';
       setFormData({
         name: branch.name,
         code: branch.code || '',
-        provinceId: branch.provinceId,
-        districtId: branch.districtId || '',
         address: branch.address || '',
         phone: branch.phone || '',
         email: branch.email || '',
+        provinceId,
+        districtId: branch.districtId || '',
       });
-      setSelectedProvinceId(branch.provinceId);
-      if (branch.districtId) {
-        setSelectedDistrictId(branch.districtId);
+      if (provinceId) {
+        loadDistrictsForProvince(provinceId);
+      } else {
+        setDistricts([]);
       }
     } else {
       setEditingBranch(null);
       setFormData({
         name: '',
         code: '',
-        provinceId: '',
-        districtId: '',
         address: '',
         phone: '',
         email: '',
+        provinceId: '',
+        districtId: '',
       });
-      setSelectedProvinceId('');
-      setSelectedDistrictId('');
+      setDistricts([]);
     }
     setError(null);
     setDialogOpen(true);
@@ -183,8 +178,8 @@ const BranchesPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim() || !formData.provinceId) {
-      setError('Şube adı ve il seçimi gereklidir');
+    if (!formData.name.trim()) {
+      setError('Şube adı gereklidir');
       return;
     }
 
@@ -192,17 +187,20 @@ const BranchesPage: React.FC = () => {
     setError(null);
 
     try {
+      const payload = {
+        name: formData.name,
+        code: formData.code || undefined,
+        address: formData.address || undefined,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
+        provinceId: formData.provinceId || undefined,
+        districtId: formData.districtId || undefined,
+      };
       if (editingBranch) {
-        await updateBranch(editingBranch.id, {
-          ...formData,
-          districtId: formData.districtId || undefined,
-        });
+        await updateBranch(editingBranch.id, payload);
         toast.success('Şube başarıyla güncellendi');
       } else {
-        await createBranch({
-          ...formData,
-          districtId: formData.districtId || undefined,
-        });
+        await createBranch(payload);
         toast.success('Şube başarıyla oluşturuldu');
       }
       handleCloseDialog();
@@ -265,24 +263,6 @@ const BranchesPage: React.FC = () => {
       width: 100,
     },
     {
-      field: 'province',
-      headerName: 'İl',
-      width: 150,
-      renderCell: (params) => {
-        const province = params.row.province;
-        return province ? province.name : '-';
-      },
-    },
-    {
-      field: 'district',
-      headerName: 'İlçe',
-      width: 150,
-      renderCell: (params) => {
-        const district = params.row.district;
-        return district ? district.name : '-';
-      },
-    },
-    {
       field: 'president',
       headerName: 'Şube Başkanı',
       width: 200,
@@ -296,23 +276,6 @@ const BranchesPage: React.FC = () => {
       headerName: 'Üye Sayısı',
       width: 120,
       valueGetter: (value) => value ?? 0,
-    },
-    {
-      field: 'institutionCount',
-      headerName: 'Bağlı Kurum Sayısı',
-      width: 150,
-      valueGetter: (value, row) => {
-        // Backend'den gelecek, şimdilik 0
-        return row.institutionCount ?? 0;
-      },
-    },
-    {
-      field: 'branchSharePercent',
-      headerName: 'Şube Payı (%)',
-      width: 130,
-      valueGetter: (value) => {
-        return value ? `${Number(value)}%` : '40%';
-      },
     },
     {
       field: 'isActive',
@@ -508,45 +471,6 @@ const BranchesPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, code: e.target.value })}
               fullWidth
             />
-            <FormControl fullWidth required>
-              <InputLabel>İl</InputLabel>
-              <Select
-                value={formData.provinceId}
-                onChange={(e) => {
-                  setFormData({ ...formData, provinceId: e.target.value, districtId: '' });
-                  setSelectedProvinceId(e.target.value);
-                }}
-                label="İl"
-              >
-                {provinces.map((province) => (
-                  <MenuItem key={province.id} value={province.id}>
-                    {province.name} {province.code ? `(${province.code})` : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {selectedProvinceId && (
-              <FormControl fullWidth>
-                <InputLabel>İlçe (Opsiyonel)</InputLabel>
-                <Select
-                  value={formData.districtId}
-                  onChange={(e) => {
-                    setFormData({ ...formData, districtId: e.target.value });
-                    setSelectedDistrictId(e.target.value);
-                  }}
-                  label="İlçe (Opsiyonel)"
-                >
-                  <MenuItem value="">
-                    <em>İlçe seçmeyin</em>
-                  </MenuItem>
-                  {districts.map((district) => (
-                    <MenuItem key={district.id} value={district.id}>
-                      {district.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
             <TextField
               label="Adres"
               value={formData.address}
@@ -570,6 +494,50 @@ const BranchesPage: React.FC = () => {
                 fullWidth
               />
             </Box>
+            <FormControl fullWidth>
+              <InputLabel>İl (Opsiyonel)</InputLabel>
+              <Select
+                label="İl (Opsiyonel)"
+                value={formData.provinceId}
+                onChange={(e) => {
+                  const provinceId = e.target.value as string;
+                  setFormData({
+                    ...formData,
+                    provinceId,
+                    districtId: '',
+                  });
+                  loadDistrictsForProvince(provinceId);
+                }}
+              >
+                <MenuItem value="">
+                  <em>İl seçin (opsiyonel)</em>
+                </MenuItem>
+                {provinces.map((province) => (
+                  <MenuItem key={province.id} value={province.id}>
+                    {province.name} {province.code && `(${province.code})`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth disabled={!formData.provinceId}>
+              <InputLabel>İlçe (Opsiyonel)</InputLabel>
+              <Select
+                label="İlçe (Opsiyonel)"
+                value={formData.districtId}
+                onChange={(e) =>
+                  setFormData({ ...formData, districtId: e.target.value as string })
+                }
+              >
+                <MenuItem value="">
+                  <em>İlçe seçin (opsiyonel)</em>
+                </MenuItem>
+                {districts.map((district) => (
+                  <MenuItem key={district.id} value={district.id}>
+                    {district.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>
