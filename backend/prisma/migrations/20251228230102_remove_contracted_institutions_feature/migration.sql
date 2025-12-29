@@ -9,14 +9,14 @@ DELETE FROM "CustomRolePermission" WHERE "roleId" IN (SELECT id FROM "CustomRole
 DELETE FROM "CustomRole" WHERE name = 'ANLASMALI_KURUM_YETKILISI';
 
 -- AlterEnum - Remove CONTRACTED_INSTITUTION from MemberSource enum
--- Önce bu değeri kullanan üyeleri OTHER olarak değiştir
-UPDATE "Member" SET source = 'OTHER' WHERE source = 'CONTRACTED_INSTITUTION';
-
--- MemberSource enum'unu güncelle
+-- Önce bu değeri kullanan üyeleri OTHER olarak değiştir (eğer enum'da varsa)
 DO $$ 
 BEGIN
-    -- Eğer enum'da CONTRACTED_INSTITUTION varsa yeniden oluştur
+    -- Eğer enum'da CONTRACTED_INSTITUTION varsa, önce üyeleri güncelle
     IF EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'MemberSource' AND e.enumlabel = 'CONTRACTED_INSTITUTION') THEN
+        -- Üyeleri güncelle
+        UPDATE "Member" SET source = 'OTHER' WHERE source = 'CONTRACTED_INSTITUTION';
+        
         -- Geçici enum oluştur
         CREATE TYPE "MemberSource_new" AS ENUM ('DIRECT', 'WORKPLACE', 'OTHER');
         
