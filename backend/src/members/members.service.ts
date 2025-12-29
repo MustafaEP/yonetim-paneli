@@ -22,29 +22,33 @@ export class MembersService {
     private configService: ConfigService,
   ) {}
 
+  /**
+   * Aktif üyelik bilgisi seçeneklerini getir
+   */
+  async getMembershipInfoOptions() {
+    return this.prisma.membershipInfoOption.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        order: 'asc',
+      },
+      select: {
+        id: true,
+        label: true,
+        value: true,
+        description: true,
+      },
+    });
+  }
+
   private validateNationalIdOrThrow(nationalId: string) {
     const cleaned = nationalId?.trim() || '';
     if (!cleaned) {
       throw new BadRequestException('TC Kimlik Numarası zorunludur');
     }
-    if (!/^[1-9]\d{10}$/.test(cleaned)) {
-      throw new BadRequestException('TC Kimlik Numarası 11 haneli, başında 0 olmayan rakamlardan oluşmalıdır');
-    }
-    if (/^(\d)\1{10}$/.test(cleaned)) {
-      throw new BadRequestException('TC Kimlik Numarası tüm hanesi aynı olamaz');
-    }
-
-    const digits = cleaned.split('').map(Number);
-    const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
-    const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
-    const tenthDigit = ((oddSum * 7) - evenSum) % 10;
-    if (digits[9] !== tenthDigit) {
-      throw new BadRequestException('TC Kimlik Numarası geçersiz (10. hane kontrolü)');
-    }
-
-    const eleventhDigit = digits.slice(0, 10).reduce((acc, digit) => acc + digit, 0) % 10;
-    if (digits[10] !== eleventhDigit) {
-      throw new BadRequestException('TC Kimlik Numarası geçersiz (11. hane kontrolü)');
+    if (!/^\d{11}$/.test(cleaned)) {
+      throw new BadRequestException('TC Kimlik Numarası 11 haneli ve sadece rakam olmalıdır');
     }
   }
 
@@ -293,17 +297,8 @@ export class MembersService {
       throw new BadRequestException('Bağlı olduğu şube seçilmelidir');
     }
     this.validateNationalIdOrThrow(dto.nationalId);
-    if (!dto.workingProvinceId) {
-      throw new BadRequestException('Çalıştığı il zorunludur');
-    }
-    if (!dto.workingDistrictId) {
-      throw new BadRequestException('Çalıştığı ilçe zorunludur');
-    }
     if (!dto.institutionId) {
-      throw new BadRequestException('Çalıştığı kurum zorunludur');
-    }
-    if (!dto.positionTitle) {
-      throw new BadRequestException('Kadro ünvanı zorunludur');
+      throw new BadRequestException('Kurum seçimi zorunludur');
     }
 
     // Sistem ayarlarına göre zorunlu alanları kontrol et
@@ -362,21 +357,17 @@ export class MembersService {
         // 🔹 Kimlik & Kişisel Bilgiler
         motherName: dto.motherName,
         fatherName: dto.fatherName,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : null,
         birthplace: dto.birthplace,
         gender: dto.gender,
         
         // 🔹 Eğitim & İletişim Bilgileri
         educationStatus: dto.educationStatus,
         
-        // 🔹 Çalışma & Kurum Bilgileri (zorunlu)
-        workingProvinceId: dto.workingProvinceId,
-        workingDistrictId: dto.workingDistrictId,
+        // 🔹 Kurum Bilgileri
         institutionId: dto.institutionId,
-        positionTitle: dto.positionTitle,
-        institutionRegNo: dto.institutionRegNo,
-        workUnit: dto.workUnit,
-        workUnitAddress: dto.workUnitAddress,
         tevkifatCenterId: dto.tevkifatCenterId,
+        tevkifatTitleId: dto.tevkifatTitleId,
         branchId: dto.branchId, // Zorunlu
       },
     });
@@ -469,18 +460,6 @@ export class MembersService {
             name: true,
           },
         },
-        workingProvince: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        workingDistrict: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         branch: {
           select: {
             id: true,
@@ -555,18 +534,6 @@ export class MembersService {
             name: true,
           },
         },
-        workingProvince: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        workingDistrict: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         institution: {
           select: {
             id: true,
@@ -574,6 +541,13 @@ export class MembersService {
           },
         },
         tevkifatCenter: {
+          select: {
+            id: true,
+            name: true,
+            title: true,
+          },
+        },
+        tevkifatTitle: {
           select: {
             id: true,
             name: true,
@@ -659,14 +633,9 @@ export class MembersService {
       birthplace: oldMember.birthplace,
       gender: oldMember.gender,
       educationStatus: oldMember.educationStatus,
-      workingProvinceId: oldMember.workingProvinceId,
-      workingDistrictId: oldMember.workingDistrictId,
       institutionId: oldMember.institutionId,
-      positionTitle: oldMember.positionTitle,
-      institutionRegNo: oldMember.institutionRegNo,
-      workUnit: oldMember.workUnit,
-      workUnitAddress: oldMember.workUnitAddress,
       tevkifatCenterId: oldMember.tevkifatCenterId,
+      tevkifatTitleId: oldMember.tevkifatTitleId,
       branchId: oldMember.branchId,
     };
 
@@ -689,10 +658,9 @@ export class MembersService {
       include: {
         province: { select: { id: true, name: true } },
         district: { select: { id: true, name: true } },
-        workingProvince: { select: { id: true, name: true } },
-        workingDistrict: { select: { id: true, name: true } },
         institution: { select: { id: true, name: true } },
-        tevkifatCenter: { select: { id: true, name: true } },
+        tevkifatCenter: { select: { id: true, name: true, title: true } },
+        tevkifatTitle: { select: { id: true, name: true } },
         branch: { select: { id: true, name: true, code: true } },
       },
     });
@@ -716,20 +684,42 @@ export class MembersService {
     return this.historyService.getMemberHistory(id);
   }
 
-  async approve(id: string, approvedByUserId?: string) {
+  async approve(
+    id: string,
+    approvedByUserId?: string,
+    dto?: {
+      registrationNumber?: string;
+      boardDecisionDate?: string;
+      boardDecisionBookNo?: string;
+    },
+  ) {
     const member = await this.getById(id);
 
     if (member.status !== MemberStatus.PENDING) {
       // istersen burada hata fırlatabilirsin
     }
 
+    const updateData: any = {
+      status: MemberStatus.ACTIVE,
+      approvedByUserId,
+      approvedAt: new Date(),
+    };
+
+    if (dto?.registrationNumber) {
+      updateData.registrationNumber = dto.registrationNumber;
+    }
+
+    if (dto?.boardDecisionDate) {
+      updateData.boardDecisionDate = new Date(dto.boardDecisionDate);
+    }
+
+    if (dto?.boardDecisionBookNo) {
+      updateData.boardDecisionBookNo = dto.boardDecisionBookNo;
+    }
+
     return this.prisma.member.update({
       where: { id },
-      data: {
-        status: MemberStatus.ACTIVE,
-        approvedByUserId,
-        approvedAt: new Date(),
-      },
+      data: updateData,
     });
   }
 

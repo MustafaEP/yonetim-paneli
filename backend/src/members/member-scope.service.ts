@@ -181,10 +181,6 @@ export class MemberScopeService {
       return { districtId: scope.districtId };
     }
 
-    // Not: ISYERI_TEMSILCISI ve BAYI_YETKILISI rolleri için Member modelinde 
-    // workplaceId ve dealerId artık yok. İşyeri/bayi bazlı filtreleme için
-    // başka bir mekanizma gerekirse implement edilebilir (örn: institution bazlı)
-
     // Diğer roller veya eksik scope: şimdilik hiç üye gösterme
     console.log('[MemberScopeService] No matching role/scope combination, returning impossible filter');
     return { id: '' };

@@ -23,20 +23,4 @@ export class AssignUserScopeDto {
     required: false,
   })
   districtId?: string;
-
-  @ApiProperty({
-    description: 'İş yeri ID (İş Yeri Temsilcisi için)',
-    example: 'workplace-uuid-789',
-    type: String,
-    required: false,
-  })
-  workplaceId?: string;
-
-  @ApiProperty({
-    description: 'Bayi ID (Bayi Yetkilisi için)',
-    example: 'dealer-uuid-012',
-    type: String,
-    required: false,
-  })
-  dealerId?: string;
 }

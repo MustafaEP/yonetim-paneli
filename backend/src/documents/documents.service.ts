@@ -170,16 +170,8 @@ export class DocumentsService {
            : member.educationStatus === 'COLLEGE' ? 'Üniversite' 
            : member.educationStatus)
         : '',
-      position: member.positionTitle 
-        ? (member.positionTitle === 'KADRO_657' ? 'Kadro 657' 
-           : member.positionTitle === 'SOZLESMELI_4B' ? 'Sözleşmeli 4/B' 
-           : member.positionTitle === 'KADRO_663' ? 'Kadro 663' 
-           : member.positionTitle === 'AILE_HEKIMLIGI' ? 'Aile Hekimliği' 
-           : member.positionTitle === 'UNVAN_4924' ? 'Unvan 4924' 
-           : member.positionTitle === 'DIGER_SAGLIK_PERSONELI' ? 'Diğer Sağlık Personeli' 
-           : member.positionTitle)
-        : '',
-      workUnitAddress: member.workUnitAddress || '',
+      position: '',
+      workUnitAddress: '',
       // Özel değişkenler (DTO'dan gelebilir)
       ...dto.variables,
     };

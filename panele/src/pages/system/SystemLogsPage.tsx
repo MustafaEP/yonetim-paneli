@@ -245,9 +245,7 @@ const SystemLogsPage: React.FC = () => {
                   <MenuItem value="REGION">Bölge</MenuItem>
                   <MenuItem value="PROVINCE">İl</MenuItem>
                   <MenuItem value="DISTRICT">İlçe</MenuItem>
-                  <MenuItem value="WORKPLACE">İş Yeri</MenuItem>
                   <MenuItem value="BRANCH">Şube</MenuItem>
-                  <MenuItem value="DEALER">Bayi</MenuItem>
                   <MenuItem value="CONTENT">İçerik</MenuItem>
                   <MenuItem value="NOTIFICATION">Bildirim</MenuItem>
                   <MenuItem value="PAYMENT">Ödeme</MenuItem>

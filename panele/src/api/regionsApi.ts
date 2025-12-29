@@ -3,9 +3,8 @@ import httpClient from './httpClient';
 import type {
   Province,
   District,
-  Workplace,
-  Dealer,
   UserScope,
+  Institution,
 } from '../types/region';
 
 // 🔹 İller
@@ -30,6 +29,19 @@ export const updateProvince = async (
   },
 ): Promise<Province> => {
   const res = await httpClient.put<Province>(`/regions/provinces/${id}`, payload);
+  return res.data;
+};
+
+export const getProvinceById = async (id: string): Promise<Province & {
+  districtCount?: number;
+  institutionCount?: number;
+  memberCount?: number;
+}> => {
+  const res = await httpClient.get<Province & {
+    districtCount?: number;
+    institutionCount?: number;
+    memberCount?: number;
+  }>(`/regions/provinces/${id}`);
   return res.data;
 };
 
@@ -62,26 +74,15 @@ export const updateDistrict = async (
   return res.data;
 };
 
-// 🔹 İşyeri
-export const getWorkplaces = async (filters?: {
-  provinceId?: string;
-  districtId?: string;
-}): Promise<Workplace[]> => {
-  const res = await httpClient.get<Workplace[]>('/regions/workplaces', {
-    params: filters,
-  });
-  return Array.isArray(res.data) ? res.data : [];
-};
-
-// 🔹 Bayi
-export const getDealers = async (filters?: {
-  provinceId?: string;
-  districtId?: string;
-}): Promise<Dealer[]> => {
-  const res = await httpClient.get<Dealer[]>('/regions/dealers', {
-    params: filters,
-  });
-  return Array.isArray(res.data) ? res.data : [];
+export const getDistrictById = async (id: string): Promise<District & {
+  institutionCount?: number;
+  memberCount?: number;
+}> => {
+  const res = await httpClient.get<District & {
+    institutionCount?: number;
+    memberCount?: number;
+  }>(`/regions/districts/${id}`);
+  return res.data;
 };
 
 // 🔹 Kullanıcı scope
@@ -94,8 +95,6 @@ export const createUserScope = async (payload: {
   userId: string;
   provinceId?: string;
   districtId?: string;
-  workplaceId?: string;
-  dealerId?: string;
 }): Promise<UserScope> => {
   const res = await httpClient.post<UserScope>('/regions/user-scope', payload);
   return res.data;
@@ -105,56 +104,58 @@ export const deleteUserScope = async (scopeId: string): Promise<void> => {
   await httpClient.delete(`/regions/user-scope/${scopeId}`);
 };
 
-
-// 🔹 İşyeri oluştur
-export const createWorkplace = async (payload: {
-  name: string;
-  address?: string;
+// 🔹 Kurumlar
+export const getInstitutions = async (filters?: {
   provinceId?: string;
   districtId?: string;
-}): Promise<Workplace> => {
-  const res = await httpClient.post<Workplace>('/regions/workplaces', payload);
+  isActive?: boolean;
+}): Promise<Institution[]> => {
+  const res = await httpClient.get<Institution[]>('/regions/institutions', {
+    params: filters,
+  });
+  return Array.isArray(res.data) ? res.data : [];
+};
+
+export const getInstitutionById = async (id: string): Promise<Institution> => {
+  const res = await httpClient.get<Institution>(`/regions/institutions/${id}`);
   return res.data;
 };
 
-// 🔹 İşyeri güncelle
-export const updateWorkplace = async (
+export const createInstitution = async (payload: {
+  name: string;
+  provinceId: string;
+  districtId?: string;
+  kurumSicilNo?: string;
+  gorevBirimi?: string;
+  kurumAdresi?: string;
+  kadroUnvanKodu?: string;
+}): Promise<Institution> => {
+  const res = await httpClient.post<Institution>('/regions/institutions', payload);
+  return res.data;
+};
+
+export const updateInstitution = async (
   id: string,
   payload: {
     name: string;
-    address?: string;
-    provinceId?: string;
-    districtId?: string;
+    provinceId?: string | null;
+    districtId?: string | null;
+    kurumSicilNo?: string;
+    gorevBirimi?: string;
+    kurumAdresi?: string;
+    kadroUnvanKodu?: string;
+    isActive?: boolean;
   },
-): Promise<Workplace> => {
-  const res = await httpClient.put<Workplace>(`/regions/workplaces/${id}`, payload);
+): Promise<Institution> => {
+  const res = await httpClient.put<Institution>(`/regions/institutions/${id}`, payload);
   return res.data;
 };
 
-
-// 🔹 Bayi oluştur
-export const createDealer = async (payload: {
-  name: string;
-  code?: string;
-  address?: string;
-  provinceId?: string;
-  districtId?: string;
-}): Promise<Dealer> => {
-  const res = await httpClient.post<Dealer>('/regions/dealers', payload);
+export const approveInstitution = async (id: string): Promise<Institution> => {
+  const res = await httpClient.post<Institution>(`/regions/institutions/${id}/approve`);
   return res.data;
 };
 
-// 🔹 Bayi güncelle
-export const updateDealer = async (
-  id: string,
-  payload: {
-    name: string;
-    code?: string;
-    address?: string;
-    provinceId?: string;
-    districtId?: string;
-  },
-): Promise<Dealer> => {
-  const res = await httpClient.put<Dealer>(`/regions/dealers/${id}`, payload);
-  return res.data;
+export const deleteInstitution = async (id: string): Promise<void> => {
+  await httpClient.delete(`/regions/institutions/${id}`);
 };

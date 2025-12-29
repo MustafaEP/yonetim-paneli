@@ -13,9 +13,7 @@ import UserDetailPage from './pages/users/UserDetailPage';
 import MembersApplicationsPage from './pages/members/MembersApplicationsPage';
 import MemberApplicationCreatePage from './pages/members/MemberApplicationCreatePage';
 import MemberUpdatePage from './pages/members/MemberUpdatePage';
-import RegionsProvincesPage from './pages/regions/RegionsProvincesPage';
-import RegionsWorkplacesPage from './pages/regions/RegionsWorkplacesPage';
-import RegionsDealersPage from './pages/regions/RegionsDealersPage';
+import RegionsPage from './pages/regions/RegionsPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import RolesListPage from './pages/roles/RolesListPage';
 import RoleDetailPage from './pages/roles/RoleDetailPage';
@@ -32,12 +30,11 @@ import SystemLogsPage from './pages/system/SystemLogsPage';
 import BranchesPage from './pages/regions/BranchesPage';
 import TevkifatCentersPage from './pages/accounting/TevkifatCentersPage';
 import TevkifatCenterDetailPage from './pages/accounting/TevkifatCenterDetailPage';
+import TevkifatCenterCreatePage from './pages/accounting/TevkifatCenterCreatePage';
 import PaymentsListPage from './pages/payments/PaymentsListPage';
 import PaymentDetailPage from './pages/payments/PaymentDetailPage';
 import BranchDetailPage from './pages/regions/BranchDetailPage';
-import InstitutionsPage from './pages/institutions/InstitutionsPage';
-import InstitutionDetailPage from './pages/institutions/InstitutionDetailPage';
-import InstitutionCreatePage from './pages/institutions/InstitutionCreatePage';
+import InstitutionsPage from './pages/regions/InstitutionsPage';
 import { Box, Typography, Button, Container, Paper, alpha, useTheme } from '@mui/material';
 import BlockIcon from '@mui/icons-material/Block';
 import HomeIcon from '@mui/icons-material/Home';
@@ -149,19 +146,9 @@ const App: React.FC = () => {
           </Route>
 
           {/* Bölge Yönetimi: REGION_LIST ile görüntüleme */}
-          <Route element={<ProtectedRoute requiredPermission="REGION_LIST" />}>
+          <Route element={<ProtectedRoute requiredPermission="REGION_LIST" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
             <Route path="/regions" element={<Navigate to="/regions/provinces" replace />} />
-            <Route path="/regions/provinces" element={<RegionsProvincesPage />} />
-          </Route>
-
-          {/* İşyeri: WORKPLACE_LIST */}
-          <Route element={<ProtectedRoute requiredPermission="WORKPLACE_LIST" />}>
-            <Route path="/regions/workplaces" element={<RegionsWorkplacesPage />} />
-          </Route>
-
-          {/* Bayi: DEALER_LIST */}
-          <Route element={<ProtectedRoute requiredPermission="DEALER_LIST" />}>
-            <Route path="/regions/dealers" element={<RegionsDealersPage />} />
+            <Route path="/regions/provinces" element={<RegionsPage />} />
           </Route>
 
           {/* Şube Yönetimi: BRANCH_MANAGE */}
@@ -173,16 +160,6 @@ const App: React.FC = () => {
           {/* Kurumlar: INSTITUTION_LIST */}
           <Route element={<ProtectedRoute requiredPermission="INSTITUTION_LIST" />}>
             <Route path="/institutions" element={<InstitutionsPage />} />
-          </Route>
-          
-          {/* Kurum Detay: INSTITUTION_VIEW */}
-          <Route element={<ProtectedRoute requiredPermission="INSTITUTION_VIEW" />}>
-            <Route path="/institutions/:id" element={<InstitutionDetailPage />} />
-          </Route>
-          
-          {/* Kurum Oluştur: INSTITUTION_CREATE */}
-          <Route element={<ProtectedRoute requiredPermission="INSTITUTION_CREATE" />}>
-            <Route path="/institutions/new" element={<InstitutionCreatePage />} />
           </Route>
 
           {/* İçerik Yönetimi: CONTENT_MANAGE */}
@@ -227,8 +204,10 @@ const App: React.FC = () => {
 
           {/* Muhasebe: ACCOUNTING_VIEW */}
           <Route element={<ProtectedRoute requiredPermission="ACCOUNTING_VIEW" />}>
-            <Route path="/accounting/tevkifat-centers" element={<TevkifatCentersPage />} />
+            <Route path="/accounting/tevkifat-centers/new" element={<TevkifatCenterCreatePage />} />
+            <Route path="/accounting/tevkifat-centers/:id/edit" element={<TevkifatCenterCreatePage />} />
             <Route path="/accounting/tevkifat-centers/:id" element={<TevkifatCenterDetailPage />} />
+            <Route path="/accounting/tevkifat-centers" element={<TevkifatCentersPage />} />
           </Route>
 
           {/* Ödemeler: MEMBER_PAYMENT_LIST */}

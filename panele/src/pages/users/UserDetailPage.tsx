@@ -38,15 +38,11 @@ import type {
   UserScope,
   Province,
   District,
-  Workplace,
-  Dealer,
 } from '../../types/region';
 import {
   getUserScopes,
   getProvinces,
   getDistricts,
-  getWorkplaces,
-  getDealers,
   createUserScope,
   deleteUserScope,
 } from '../../api/regionsApi';
@@ -80,19 +76,13 @@ const UserDetailPage: React.FC = () => {
   const [scopeSaving, setScopeSaving] = useState(false);
   const [scopeProvinces, setScopeProvinces] = useState<Province[]>([]);
   const [scopeDistricts, setScopeDistricts] = useState<District[]>([]);
-  const [scopeWorkplaces, setScopeWorkplaces] = useState<Workplace[]>([]);
-  const [scopeDealers, setScopeDealers] = useState<Dealer[]>([]);
 
   const [scopeForm, setScopeForm] = useState<{
     provinceId: string;
     districtId: string;
-    workplaceId: string;
-    dealerId: string;
   }>({
     provinceId: '',
     districtId: '',
-    workplaceId: '',
-    dealerId: '',
   });
 
   const { hasPermission } = useAuth();
@@ -191,12 +181,7 @@ const UserDetailPage: React.FC = () => {
     setScopeForm((prev) => ({
       ...prev,
       [field]: value,
-      ...(field === 'provinceId'
-        ? { districtId: '', workplaceId: '', dealerId: '' }
-        : {}),
-      ...(field === 'districtId' ? { workplaceId: '', dealerId: '' } : {}),
-      ...(field === 'workplaceId' ? { dealerId: '' } : {}),
-      ...(field === 'dealerId' ? { workplaceId: '' } : {}),
+      ...(field === 'provinceId' ? { districtId: '' } : {}),
     }));
   };
 
@@ -206,20 +191,12 @@ const UserDetailPage: React.FC = () => {
       const provinceId = scopeForm.provinceId;
       if (!provinceId) {
         setScopeDistricts([]);
-        setScopeWorkplaces([]);
-        setScopeDealers([]);
         return;
       }
 
       try {
-        const [districts, workplaces, dealers] = await Promise.all([
-          getDistricts(provinceId),
-          getWorkplaces({ provinceId }),
-          getDealers({ provinceId }),
-        ]);
+        const districts = await getDistricts(provinceId);
         setScopeDistricts(districts);
-        setScopeWorkplaces(workplaces);
-        setScopeDealers(dealers);
       } catch (e) {
         console.error('Scope province change load error:', e);
       }
@@ -230,28 +207,6 @@ const UserDetailPage: React.FC = () => {
     }
   }, [scopeForm.provinceId, scopeDialogOpen]);
 
-  // 🔹 İlçe değişince işyeri/bayi verilerini filtrele
-  useEffect(() => {
-    const loadForDistrict = async () => {
-      const provinceId = scopeForm.provinceId || undefined;
-      const districtId = scopeForm.districtId || undefined;
-
-      try {
-        const [workplaces, dealers] = await Promise.all([
-          getWorkplaces({ provinceId, districtId }),
-          getDealers({ provinceId, districtId }),
-        ]);
-        setScopeWorkplaces(workplaces);
-        setScopeDealers(dealers);
-      } catch (e) {
-        console.error('Scope district change load error:', e);
-      }
-    };
-
-    if (scopeDialogOpen && scopeForm.districtId) {
-      loadForDistrict();
-    }
-  }, [scopeForm.districtId, scopeDialogOpen, scopeForm.provinceId]);
 
   // 🔹 Scope dialog aç/kapat
   const openScopeDialog = async () => {
@@ -260,16 +215,13 @@ const UserDetailPage: React.FC = () => {
     setScopeForm({
       provinceId: '',
       districtId: '',
-      workplaceId: '',
-      dealerId: '',
     });
 
     try {
       const provinces = await getProvinces();
       setScopeProvinces(provinces);
       setScopeDistricts([]);
-      setScopeWorkplaces([]);
-      setScopeDealers([]);
+      setScopeContractedInstitutions([]);
     } catch (e) {
       console.error('Provinces load error (scope dialog):', e);
     }
@@ -283,10 +235,10 @@ const UserDetailPage: React.FC = () => {
   // 🔹 Scope save
   const handleScopeSave = async () => {
     if (!id) return;
-    const { provinceId, districtId, workplaceId, dealerId } = scopeForm;
+    const { provinceId, districtId } = scopeForm;
 
-    if (!provinceId && !districtId && !workplaceId && !dealerId) {
-      toast.showWarning('En az bir yetki alanı (il, ilçe, işyeri veya bayi) seçmelisiniz.');
+    if (!provinceId && !districtId) {
+      toast.showWarning('En az bir yetki alanı (il veya ilçe) seçmelisiniz.');
       return;
     }
 
@@ -296,8 +248,6 @@ const UserDetailPage: React.FC = () => {
         userId: id,
         provinceId: provinceId || undefined,
         districtId: districtId || undefined,
-        workplaceId: workplaceId || undefined,
-        dealerId: dealerId || undefined,
       });
       await reloadScopes();
       setScopeDialogOpen(false);
@@ -340,22 +290,6 @@ const UserDetailPage: React.FC = () => {
   const fullName = `${user.firstName} ${user.lastName}`;
 
   const formatScopeRow = (scope: UserScope) => {
-    if (scope.dealer) {
-      return {
-        type: 'Bayi',
-        description: `${scope.province?.name ?? ''} / ${
-          scope.district?.name ?? ''
-        } / ${scope.dealer.name}`,
-      };
-    }
-    if (scope.workplace) {
-      return {
-        type: 'İşyeri',
-        description: `${scope.province?.name ?? ''} / ${
-          scope.district?.name ?? ''
-        } / ${scope.workplace.name}`,
-      };
-    }
     if (scope.district) {
       return {
         type: 'İlçe',
@@ -505,7 +439,7 @@ const UserDetailPage: React.FC = () => {
                 Yetki Alanları (Scope)
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Bu kullanıcı, aşağıdaki il / ilçe / işyeri / bayiler üzerinde yetkilidir.
+                Bu kullanıcı, aşağıdaki il / ilçe / işyeri / anlaşmalı kurumlar üzerinde yetkilidir.
               </Typography>
             </Box>
 
@@ -576,8 +510,8 @@ const UserDetailPage: React.FC = () => {
           sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
         >
           <Typography variant="body2" color="text.secondary">
-            En az bir alan (il, ilçe, işyeri veya bayi) seçmelisiniz. Daha spesifik yetki
-            vermek için il → ilçe → işyeri/bayi şeklinde daraltabilirsiniz.
+            En az bir alan (il veya ilçe) seçmelisiniz. Daha spesifik yetki
+            vermek için il → ilçe şeklinde daraltabilirsiniz.
           </Typography>
 
           <FormControl fullWidth size="small">
@@ -620,53 +554,6 @@ const UserDetailPage: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl
-            fullWidth
-            size="small"
-            disabled={!scopeForm.provinceId}
-          >
-            <InputLabel>İşyeri</InputLabel>
-            <Select
-              label="İşyeri"
-              value={scopeForm.workplaceId}
-              onChange={(e) =>
-                handleScopeFormChange('workplaceId', e.target.value as string)
-              }
-            >
-              <MenuItem value="">
-                <em>Seçilmedi</em>
-              </MenuItem>
-              {scopeWorkplaces.map((w) => (
-                <MenuItem key={w.id} value={w.id}>
-                  {w.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl
-            fullWidth
-            size="small"
-            disabled={!scopeForm.provinceId}
-          >
-            <InputLabel>Bayi</InputLabel>
-            <Select
-              label="Bayi"
-              value={scopeForm.dealerId}
-              onChange={(e) =>
-                handleScopeFormChange('dealerId', e.target.value as string)
-              }
-            >
-              <MenuItem value="">
-                <em>Seçilmedi</em>
-              </MenuItem>
-              {scopeDealers.map((d) => (
-                <MenuItem key={d.id} value={d.id}>
-                  {d.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeScopeDialog} disabled={scopeSaving}>

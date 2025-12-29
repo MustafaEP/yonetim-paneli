@@ -29,8 +29,8 @@ export class CreateMemberApplicationDto {
   })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^[1-9]\d{10}$/, {
-    message: 'TC Kimlik Numarası 11 haneli, başında 0 olmayan rakamlardan oluşmalıdır.',
+  @Matches(/^\d{11}$/, {
+    message: 'TC Kimlik Numarası 11 haneli ve sadece rakam olmalıdır.',
   })
   nationalId: string;
 
@@ -129,6 +129,17 @@ export class CreateMemberApplicationDto {
   fatherName?: string;
 
   @ApiProperty({
+    description: 'Doğum tarihi (seçmeli)',
+    example: '1990-01-15',
+    type: String,
+    format: 'date',
+    required: false,
+  })
+  @IsDateString()
+  @IsOptional()
+  birthDate?: string;
+
+  @ApiProperty({
     description: 'Doğum yeri (seçmeli)',
     example: 'İstanbul',
     type: String,
@@ -159,76 +170,16 @@ export class CreateMemberApplicationDto {
   @IsEnum(EducationStatus)
   educationStatus?: EducationStatus;
 
-  // 🔹 Çalışma & Kurum Bilgileri (zorunlu alanlar)
+  // 🔹 Kurum Bilgileri
   @ApiProperty({
-    description: 'Çalıştığı il ID (zorunlu)',
-    example: 'province-uuid-123',
-    type: String,
-    required: true,
-  })
-  @IsString()
-  @IsNotEmpty()
-  workingProvinceId: string;
-
-  @ApiProperty({
-    description: 'Çalıştığı ilçe ID (zorunlu)',
-    example: 'district-uuid-123',
-    type: String,
-    required: true,
-  })
-  @IsString()
-  @IsNotEmpty()
-  workingDistrictId: string;
-
-  @ApiProperty({
-    description: 'Çalıştığı kurum ID (zorunlu)',
+    description: 'Çalıştığı kurum ID',
     example: 'institution-uuid-123',
     type: String,
-    required: true,
-  })
-  @IsString()
-  @IsNotEmpty()
-  institutionId: string;
-
-  @ApiProperty({
-    description: 'Kadro ünvanı (zorunlu)',
-    example: PositionTitle.KADRO_657,
-    enum: PositionTitle,
-    required: true,
-  })
-  @IsNotEmpty()
-  @IsEnum(PositionTitle)
-  positionTitle: PositionTitle;
-
-  @ApiProperty({
-    description: 'Kurum sicil no (zorunlu değil)',
-    example: 'SIC-12345',
-    type: String,
     required: false,
   })
   @IsString()
   @IsOptional()
-  institutionRegNo?: string;
-
-  @ApiProperty({
-    description: 'Görev yaptığı birim',
-    example: 'Poliklinik',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  workUnit?: string;
-
-  @ApiProperty({
-    description: 'Birim adresi',
-    example: 'Atatürk Cad. No:1',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  workUnitAddress?: string;
+  institutionId?: string;
 
   @ApiProperty({
     description: 'Tevkifat merkezi ID (seçmeli)',
@@ -239,6 +190,16 @@ export class CreateMemberApplicationDto {
   @IsString()
   @IsOptional()
   tevkifatCenterId?: string;
+
+  @ApiProperty({
+    description: 'Tevkifat ünvanı ID (seçmeli)',
+    example: 'tevkifat-title-uuid-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  tevkifatTitleId?: string;
 
   @ApiProperty({
     description: 'Bağlı olduğu şube ID (zorunlu)',

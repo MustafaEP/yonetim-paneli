@@ -5,17 +5,6 @@ export interface Branch {
   id: string;
   name: string;
   code?: string;
-  provinceId: string;
-  province?: {
-    id: string;
-    name: string;
-    code?: string;
-  };
-  districtId?: string;
-  district?: {
-    id: string;
-    name: string;
-  };
   presidentId?: string;
   president?: {
     id: string;
@@ -27,9 +16,19 @@ export interface Branch {
   phone?: string;
   email?: string;
   isActive: boolean;
+  provinceId?: string | null;
+  districtId?: string | null;
+  province?: {
+    id: string;
+    name: string;
+    code: string | null;
+  } | null;
+  district?: {
+    id: string;
+    name: string;
+  } | null;
   branchSharePercent?: number | string;
   memberCount?: number;
-  institutionCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,41 +37,27 @@ export interface BranchDetail extends Branch {
   activeMemberCount: number;
   totalRevenue: number | string;
   branchShareAmount: number | string;
-  institutions: Array<{
-    id: string;
-    name: string;
-    province?: {
-      id: string;
-      name: string;
-    };
-    district?: {
-      id: string;
-      name: string;
-    };
-    isActive: boolean;
-    approvedAt: string | null;
-  }>;
 }
 
 export interface CreateBranchDto {
   name: string;
   code?: string;
-  provinceId: string;
-  districtId?: string;
   address?: string;
   phone?: string;
   email?: string;
+  provinceId?: string;
+  districtId?: string;
 }
 
 export interface UpdateBranchDto {
   name?: string;
   code?: string;
-  provinceId?: string;
-  districtId?: string;
   address?: string;
   phone?: string;
   email?: string;
   isActive?: boolean;
+  provinceId?: string | null;
+  districtId?: string | null;
 }
 
 export interface AssignPresidentDto {
@@ -81,9 +66,9 @@ export interface AssignPresidentDto {
 
 // Şube listesi
 export const getBranches = async (params?: {
+  isActive?: boolean;
   provinceId?: string;
   districtId?: string;
-  isActive?: boolean;
 }): Promise<Branch[]> => {
   const res = await httpClient.get<Branch[]>('/regions/branches', { params });
   return Array.isArray(res.data) ? res.data : [];

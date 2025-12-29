@@ -29,15 +29,6 @@ export type Permission =
   | 'REGION_LIST'
   | 'BRANCH_MANAGE'
   | 'BRANCH_ASSIGN_PRESIDENT'
-  | 'WORKPLACE_LIST'
-  | 'WORKPLACE_MANAGE'
-  | 'WORKPLACE_ASSIGN_REP'
-  | 'WORKPLACE_MEMBERS_VIEW'
-  | 'DEALER_LIST'
-  | 'DEALER_CREATE'
-  | 'DEALER_APPROVE_APPLICATION'
-  | 'DEALER_UPDATE'
-  | 'DEALER_PERFORMANCE_VIEW'
   | 'CONTENT_MANAGE'
   | 'CONTENT_PUBLISH'
   | 'DOCUMENT_TEMPLATE_MANAGE'
@@ -150,15 +141,6 @@ export const PERMISSION_GROUPS = {
     'REGION_LIST',
     'BRANCH_MANAGE',
     'BRANCH_ASSIGN_PRESIDENT',
-    'WORKPLACE_LIST',
-    'WORKPLACE_MANAGE',
-    'WORKPLACE_ASSIGN_REP',
-    'WORKPLACE_MEMBERS_VIEW',
-    'DEALER_LIST',
-    'DEALER_CREATE',
-    'DEALER_APPROVE_APPLICATION',
-    'DEALER_UPDATE',
-    'DEALER_PERFORMANCE_VIEW',
   ] as Permission[],
   CONTENT_MANAGEMENT: [
     'CONTENT_MANAGE',
@@ -217,15 +199,6 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   REGION_LIST: 'Bölgeleri Listele',
   BRANCH_MANAGE: 'Şube Yönet',
   BRANCH_ASSIGN_PRESIDENT: 'Şube Başkanı Ata',
-  WORKPLACE_LIST: 'İş Yerlerini Listele',
-  WORKPLACE_MANAGE: 'İş Yeri Yönet',
-  WORKPLACE_ASSIGN_REP: 'İş Yeri Temsilcisi Ata',
-  WORKPLACE_MEMBERS_VIEW: 'İş Yeri Üyelerini Görüntüle',
-  DEALER_LIST: 'Bayileri Listele',
-  DEALER_CREATE: 'Bayi Oluştur',
-  DEALER_APPROVE_APPLICATION: 'Bayi Başvurusu Onayla',
-  DEALER_UPDATE: 'Bayi Güncelle',
-  DEALER_PERFORMANCE_VIEW: 'Bayi Performansını Görüntüle',
   CONTENT_MANAGE: 'İçerik Yönet',
   CONTENT_PUBLISH: 'İçerik Yayınla',
   DOCUMENT_TEMPLATE_MANAGE: 'Doküman Şablonu Yönet',

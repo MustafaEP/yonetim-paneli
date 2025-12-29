@@ -130,24 +130,6 @@ export class UpdateMemberDto {
 
   // 🔹 Çalışma & Kurum Bilgileri
   @ApiProperty({
-    description: 'Çalıştığı il ID',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  workingProvinceId?: string;
-
-  @ApiProperty({
-    description: 'Çalıştığı ilçe ID',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  workingDistrictId?: string;
-
-  @ApiProperty({
     description: 'Çalıştığı kurum ID',
     type: String,
     required: false,
@@ -157,42 +139,6 @@ export class UpdateMemberDto {
   institutionId?: string;
 
   @ApiProperty({
-    description: 'Kadro ünvanı',
-    enum: PositionTitle,
-    required: false,
-  })
-  @IsOptional()
-  @IsEnum(PositionTitle)
-  positionTitle?: PositionTitle;
-
-  @ApiProperty({
-    description: 'Kurum sicil no',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  institutionRegNo?: string;
-
-  @ApiProperty({
-    description: 'Görev yaptığı birim',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  workUnit?: string;
-
-  @ApiProperty({
-    description: 'Birim adresi',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  workUnitAddress?: string;
-
-  @ApiProperty({
     description: 'Tevkifat merkezi ID',
     type: String,
     required: false,
@@ -200,6 +146,15 @@ export class UpdateMemberDto {
   @IsString()
   @IsOptional()
   tevkifatCenterId?: string;
+
+  @ApiProperty({
+    description: 'Tevkifat ünvanı ID',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  tevkifatTitleId?: string;
 
   @ApiProperty({
     description: 'Bağlı olduğu şube ID',

@@ -431,8 +431,6 @@ export class NotificationsService {
             OR: [
               { provinceId: notification.targetId },
               { districtId: notification.targetId },
-              { workingProvinceId: notification.targetId },
-              { workingDistrictId: notification.targetId },
             ],
             status: MemberStatus.ACTIVE,
             isActive: true,

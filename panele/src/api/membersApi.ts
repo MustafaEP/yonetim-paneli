@@ -31,8 +31,15 @@ export const getMemberApplications = async (): Promise<MemberApplicationRow[]> =
 };
 
 // 🔹 Başvuruyu onayla: POST /members/:id/approve
-export const approveMember = async (id: string): Promise<void> => {
-  await httpClient.post(`/members/${id}/approve`, {});
+export const approveMember = async (
+  id: string,
+  data?: {
+    registrationNumber?: string;
+    boardDecisionDate?: string;
+    boardDecisionBookNo?: string;
+  },
+): Promise<void> => {
+  await httpClient.post(`/members/${id}/approve`, data || {});
 };
 
 // 🔹 Başvuruyu reddet: POST /members/:id/reject
@@ -47,10 +54,9 @@ export const createMemberApplication = async (payload: {
   nationalId?: string;
   phone?: string;
   email?: string;
-  source?: 'DIRECT' | 'WORKPLACE' | 'DEALER' | 'OTHER';
+  source?: 'DIRECT' | 'OTHER';
   provinceId?: string;
   districtId?: string;
-  workplaceId?: string;
   dealerId?: string;
   duesPlanId: string;
   previousCancelledMemberId?: string;

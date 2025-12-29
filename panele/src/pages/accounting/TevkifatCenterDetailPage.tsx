@@ -34,11 +34,9 @@ import {
   type TevkifatFile,
 } from '../../api/accountingApi';
 import { getMembers, type MemberListItem } from '../../api/membersApi';
-import { getBranches, type Branch } from '../../api/branchesApi';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PeopleIcon from '@mui/icons-material/People';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
 
 const TevkifatCenterDetailPage: React.FC = () => {
   const theme = useTheme();
@@ -50,13 +48,10 @@ const TevkifatCenterDetailPage: React.FC = () => {
   const [center, setCenter] = useState<TevkifatCenterDetail | null>(null);
   const [files, setFiles] = useState<TevkifatFile[]>([]);
   const [members, setMembers] = useState<MemberListItem[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const [loadingBranches, setLoadingBranches] = useState(false);
   const membersSectionRef = React.useRef<HTMLDivElement>(null);
-  const branchesSectionRef = React.useRef<HTMLDivElement>(null);
 
   const canView = hasPermission('ACCOUNTING_VIEW');
 
@@ -67,13 +62,6 @@ const TevkifatCenterDetailPage: React.FC = () => {
       loadMembers();
     }
   }, [id, canView]);
-
-  // Şubeleri üyeler yüklendikten sonra yükle
-  useEffect(() => {
-    if (members.length > 0 && id) {
-      loadBranches();
-    }
-  }, [members, id]);
 
   const loadCenter = async () => {
     if (!id) return;
@@ -120,28 +108,6 @@ const TevkifatCenterDetailPage: React.FC = () => {
     }
   };
 
-  const loadBranches = async () => {
-    if (!id) return;
-    setLoadingBranches(true);
-    try {
-      const allBranches = await getBranches();
-      // Bu tevkifat merkezine bağlı şubeleri bul
-      // Şubeler, bu merkeze bağlı üyelerin şubelerinden hesaplanır
-      const centerMemberBranches = members
-        .filter((member) => member.tevkifatCenter?.id === id && member.branch?.id)
-        .map((member) => member.branch!.id);
-      const uniqueBranchIds = [...new Set(centerMemberBranches)];
-      const centerBranches = allBranches.filter((branch) =>
-        uniqueBranchIds.includes(branch.id)
-      );
-      setBranches(centerBranches);
-    } catch (e: any) {
-      console.error('Şubeler yüklenirken hata:', e);
-      toast.showError('Şubeler yüklenirken bir hata oluştu');
-    } finally {
-      setLoadingBranches(false);
-    }
-  };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -284,6 +250,22 @@ const TevkifatCenterDetailPage: React.FC = () => {
                 </Typography>
                 <Typography variant="body1">{center.code || '-'}</Typography>
               </Box>
+              {center.title && (
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Tevkifat Ünvanı
+                  </Typography>
+                  <Typography variant="body1">{center.title}</Typography>
+                </Box>
+              )}
+              {center.address && (
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Adres
+                  </Typography>
+                  <Typography variant="body1">{center.address}</Typography>
+                </Box>
+              )}
               {center.description && (
                 <Box>
                   <Typography variant="body2" color="text.secondary">
@@ -292,30 +274,6 @@ const TevkifatCenterDetailPage: React.FC = () => {
                   <Typography variant="body1">{center.description}</Typography>
                 </Box>
               )}
-              <Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                  Bağlı Şube Sayısı
-                </Typography>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    cursor: 'pointer',
-                    '&:hover': {
-                      color: theme.palette.primary.main,
-                    },
-                  }}
-                  onClick={() => {
-                    branchesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                >
-                  <Typography variant="body1" fontWeight={600}>
-                    {branches.length || center.branchCount || 0}
-                  </Typography>
-                  <LinkIcon fontSize="small" sx={{ opacity: 0.6 }} />
-                </Box>
-              </Box>
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                   Toplam Üye Sayısı
@@ -559,117 +517,6 @@ const TevkifatCenterDetailPage: React.FC = () => {
                     },
                   ]}
                   loading={loadingMembers}
-                  getRowId={(row) => row.id}
-                  pageSizeOptions={[10, 25, 50]}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 10 } },
-                  }}
-                  disableRowSelectionOnClick
-                />
-              </Box>
-            )}
-          </Card>
-        </Grid>
-
-        {/* Bağlı Şubeler */}
-        <Grid size={{ xs: 12 }}>
-          <Card
-            ref={branchesSectionRef}
-            elevation={0}
-            sx={{
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 3,
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <AccountTreeIcon sx={{ color: theme.palette.primary.main }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                Bağlı Şubeler ({branches.length})
-              </Typography>
-            </Box>
-            {loadingBranches ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress />
-              </Box>
-            ) : branches.length === 0 ? (
-              <Alert severity="info">Bu merkeze bağlı şube bulunmamaktadır</Alert>
-            ) : (
-              <Box
-                sx={{
-                  height: 400,
-                  '& .MuiDataGrid-root': {
-                    border: 'none',
-                  },
-                  '& .MuiDataGrid-cell': {
-                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  },
-                  '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  },
-                }}
-              >
-                <DataGrid
-                  rows={branches}
-                  columns={[
-                    {
-                      field: 'name',
-                      headerName: 'Şube Adı',
-                      flex: 1,
-                      minWidth: 200,
-                    },
-                    {
-                      field: 'province',
-                      headerName: 'İl',
-                      flex: 1,
-                      minWidth: 150,
-                      valueGetter: (_value, row) => row.province?.name || '-',
-                    },
-                    {
-                      field: 'district',
-                      headerName: 'İlçe',
-                      flex: 1,
-                      minWidth: 150,
-                      valueGetter: (_value, row) => row.district?.name || '-',
-                    },
-                    {
-                      field: 'president',
-                      headerName: 'Şube Başkanı',
-                      flex: 1,
-                      minWidth: 200,
-                      valueGetter: (_value, row) =>
-                        row.president ? `${row.president.firstName} ${row.president.lastName}` : '-',
-                    },
-                    {
-                      field: 'isActive',
-                      headerName: 'Durum',
-                      width: 120,
-                      renderCell: (params) => (
-                        <Chip
-                          label={params.value ? 'Aktif' : 'Pasif'}
-                          color={params.value ? 'success' : 'default'}
-                          size="small"
-                        />
-                      ),
-                    },
-                    {
-                      field: 'actions',
-                      headerName: 'İşlemler',
-                      width: 100,
-                      sortable: false,
-                      renderCell: (params) => (
-                        <IconButton
-                          size="small"
-                          onClick={() => navigate(`/regions/branches/${params.row.id}`)}
-                          sx={{ color: theme.palette.info.main }}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      ),
-                    },
-                  ]}
-                  loading={loadingBranches}
                   getRowId={(row) => row.id}
                   pageSizeOptions={[10, 25, 50]}
                   initialState={{

@@ -53,13 +53,6 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
 
   REGION_LIST: 'Bölgeleri Listele',
   BRANCH_MANAGE: 'Şube/İl/İlçe Yönetimi',
-
-  WORKPLACE_LIST: 'İşyeri Listele',
-  WORKPLACE_MANAGE: 'İşyeri Yönetimi',
-
-  DEALER_LIST: 'Bayi Listele',
-  DEALER_CREATE: 'Bayi Oluştur',
-  DEALER_UPDATE: 'Bayi Güncelle',
 };
 
 const getLabelForPermission = (perm: string) =>
@@ -87,7 +80,6 @@ const groupPermissions = (permissions: string[]): GroupedPerms[] => {
     } else if (
       perm.startsWith('REGION_') ||
       perm.startsWith('BRANCH_') ||
-      perm.startsWith('WORKPLACE_') ||
       perm.startsWith('DEALER_')
     ) {
       groups[3].items.push(perm);

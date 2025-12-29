@@ -3,12 +3,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateProvinceDto,
   CreateDistrictDto,
-  CreateWorkplaceDto,
-  CreateDealerDto,
   AssignUserScopeDto,
   CreateBranchDto,
   UpdateBranchDto,
   AssignBranchPresidentDto,
+  CreateInstitutionDto,
+  UpdateInstitutionDto,
 } from './dto';
 import { Prisma } from '@prisma/client';
 
@@ -42,6 +42,33 @@ export class RegionsService {
     });
   }
 
+  async getProvinceById(id: string) {
+    const province = await this.prisma.province.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            districts: true,
+            institutions: true,
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (!province) {
+      throw new NotFoundException('İl bulunamadı');
+    }
+
+    return {
+      ...province,
+      districtCount: province._count.districts,
+      institutionCount: province._count.institutions,
+      memberCount: province._count.members,
+      _count: undefined,
+    };
+  }
+
   // ---------- DISTRICT ----------
   async listDistricts(provinceId?: string) {
     const where: Prisma.DistrictWhereInput = {};
@@ -72,76 +99,30 @@ export class RegionsService {
     });
   }
 
-  // ---------- WORKPLACE ----------
-  async listWorkplaces(provinceId?: string, districtId?: string) {
-    const where: Prisma.WorkplaceWhereInput = {};
-    if (provinceId) where.provinceId = provinceId;
-    if (districtId) where.districtId = districtId;
-
-    return this.prisma.workplace.findMany({
-      where,
-      orderBy: { name: 'asc' },
-    });
-  }
-
-  async createWorkplace(dto: CreateWorkplaceDto) {
-    return this.prisma.workplace.create({
-      data: {
-        name: dto.name,
-        address: dto.address,
-        provinceId: dto.provinceId,
-        districtId: dto.districtId,
-      },
-    });
-  }
-
-  async updateWorkplace(id: string, dto: CreateWorkplaceDto) {
-    return this.prisma.workplace.update({
+  async getDistrictById(id: string) {
+    const district = await this.prisma.district.findUnique({
       where: { id },
-      data: {
-        name: dto.name,
-        address: dto.address,
-        provinceId: dto.provinceId,
-        districtId: dto.districtId,
+      include: {
+        province: true,
+        _count: {
+          select: {
+            institutions: true,
+            members: true,
+          },
+        },
       },
     });
-  }
 
-  // ---------- DEALER ----------
-  async listDealers(provinceId?: string, districtId?: string) {
-    const where: Prisma.DealerWhereInput = {};
-    if (provinceId) where.provinceId = provinceId;
-    if (districtId) where.districtId = districtId;
+    if (!district) {
+      throw new NotFoundException('İlçe bulunamadı');
+    }
 
-    return this.prisma.dealer.findMany({
-      where,
-      orderBy: { name: 'asc' },
-    });
-  }
-
-  async createDealer(dto: CreateDealerDto) {
-    return this.prisma.dealer.create({
-      data: {
-        name: dto.name,
-        code: dto.code,
-        address: dto.address,
-        provinceId: dto.provinceId,
-        districtId: dto.districtId,
-      },
-    });
-  }
-
-  async updateDealer(id: string, dto: CreateDealerDto) {
-    return this.prisma.dealer.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        code: dto.code,
-        address: dto.address,
-        provinceId: dto.provinceId,
-        districtId: dto.districtId,
-      },
-    });
+    return {
+      ...district,
+      institutionCount: district._count.institutions,
+      memberCount: district._count.members,
+      _count: undefined,
+    };
   }
 
   // ---------- USER SCOPE ----------
@@ -155,8 +136,6 @@ export class RegionsService {
     const data = {
       provinceId: dto.provinceId || null,
       districtId: dto.districtId || null,
-      workplaceId: dto.workplaceId || null,
-      dealerId: dto.dealerId || null,
     };
 
     if (existing) {
@@ -180,8 +159,6 @@ export class RegionsService {
       include: {
         province: true,
         district: true,
-        workplace: true,
-        dealer: true,
       },
     });
 
@@ -193,28 +170,15 @@ export class RegionsService {
   }
 
   // ---------- BRANCH ----------
-  async listBranches(filters?: { provinceId?: string; districtId?: string; isActive?: boolean }) {
+  async listBranches(filters?: { isActive?: boolean; provinceId?: string; districtId?: string }) {
     const where: Prisma.BranchWhereInput = {};
+    if (filters?.isActive !== undefined) where.isActive = filters.isActive;
     if (filters?.provinceId) where.provinceId = filters.provinceId;
     if (filters?.districtId) where.districtId = filters.districtId;
-    if (filters?.isActive !== undefined) where.isActive = filters.isActive;
 
     const branches = await this.prisma.branch.findMany({
       where,
       include: {
-        province: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        district: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         president: {
           select: {
             id: true,
@@ -226,7 +190,6 @@ export class RegionsService {
         _count: {
           select: {
             members: true,
-            institutions: true,
           },
         },
       },
@@ -237,7 +200,6 @@ export class RegionsService {
     return branches.map((branch) => ({
       ...branch,
       memberCount: branch._count.members,
-      institutionCount: branch._count.institutions,
       branchSharePercent: branch.branchSharePercent ? Number(branch.branchSharePercent) : 40,
       _count: undefined,
     }));
@@ -247,19 +209,6 @@ export class RegionsService {
     const branch = await this.prisma.branch.findUnique({
       where: { id },
       include: {
-        province: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        district: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         president: {
           select: {
             id: true,
@@ -271,7 +220,6 @@ export class RegionsService {
         _count: {
           select: {
             members: true,
-            institutions: true,
           },
         },
       },
@@ -289,32 +237,6 @@ export class RegionsService {
         deletedAt: null,
         isActive: true,
       },
-    });
-
-    // Şubeye bağlı kurumlar
-    const institutions = await this.prisma.institution.findMany({
-      where: {
-        branchId: id,
-      },
-      select: {
-        id: true,
-        name: true,
-        province: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        district: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        isActive: true,
-        approvedAt: true,
-      },
-      orderBy: { name: 'asc' },
     });
 
     // Tevkifat merkezlerinden gelen toplam gelir (onaylı ödemeler)
@@ -340,11 +262,9 @@ export class RegionsService {
       ...branch,
       memberCount: branch._count.members,
       activeMemberCount,
-      institutionCount: branch._count.institutions,
       totalRevenue: totalRevenueAmount,
       branchShareAmount,
       branchSharePercent,
-      institutions,
       _count: undefined,
     };
   }
@@ -354,26 +274,11 @@ export class RegionsService {
       data: {
         name: dto.name,
         code: dto.code,
-        provinceId: dto.provinceId,
-        districtId: dto.districtId,
         address: dto.address,
         phone: dto.phone,
         email: dto.email,
-      },
-      include: {
-        province: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        district: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        ...(dto.provinceId && { provinceId: dto.provinceId }),
+        ...(dto.districtId && { districtId: dto.districtId }),
       },
     });
   }
@@ -392,27 +297,14 @@ export class RegionsService {
       data: {
         name: dto.name,
         code: dto.code,
-        provinceId: dto.provinceId,
-        districtId: dto.districtId,
         address: dto.address,
         phone: dto.phone,
         email: dto.email,
         isActive: dto.isActive,
+        ...(dto.provinceId !== undefined && { provinceId: dto.provinceId }),
+        ...(dto.districtId !== undefined && { districtId: dto.districtId }),
       },
       include: {
-        province: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        district: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         president: {
           select: {
             id: true,
@@ -463,6 +355,40 @@ export class RegionsService {
         presidentId: dto.presidentId,
       },
       include: {
+        president: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
+  // ---------- INSTITUTION ----------
+  async listInstitutions(provinceId?: string, districtId?: string, isActive?: boolean) {
+    const where: Prisma.InstitutionWhereInput = {
+      deletedAt: null,
+    };
+
+    // Eğer districtId verilmişse, sadece o ilçeye bağlı olanları göster
+    if (districtId) {
+      where.districtId = districtId;
+    } else if (provinceId) {
+      // Eğer sadece provinceId verilmişse, o ile direkt bağlı olanları VEYA o ilin ilçelerine bağlı olanları göster
+      where.OR = [
+        { provinceId: provinceId },
+        { district: { provinceId: provinceId } },
+      ];
+    }
+
+    if (isActive !== undefined) where.isActive = isActive;
+
+    const institutions = await this.prisma.institution.findMany({
+      where,
+      include: {
         province: {
           select: {
             id: true,
@@ -476,14 +402,189 @@ export class RegionsService {
             name: true,
           },
         },
-        president: {
+        _count: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
+            members: true,
           },
         },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    // _count'ları memberCount'a dönüştür
+    return institutions.map((institution) => ({
+      ...institution,
+      memberCount: institution._count.members,
+      _count: undefined,
+    }));
+  }
+
+  async getInstitutionById(id: string) {
+    const institution = await this.prisma.institution.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      include: {
+        province: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        district: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (!institution) {
+      throw new NotFoundException('Kurum bulunamadı');
+    }
+
+    return {
+      ...institution,
+      memberCount: institution._count.members,
+      _count: undefined,
+    };
+  }
+
+  async createInstitution(dto: CreateInstitutionDto, createdBy?: string) {
+    return this.prisma.institution.create({
+      data: {
+        name: dto.name,
+        ...(dto.provinceId ? { provinceId: dto.provinceId } : {}),
+        ...(dto.districtId ? { districtId: dto.districtId } : {}),
+        ...(dto.kurumSicilNo ? { kurumSicilNo: dto.kurumSicilNo } : {}),
+        ...(dto.gorevBirimi ? { gorevBirimi: dto.gorevBirimi } : {}),
+        ...(dto.kurumAdresi ? { kurumAdresi: dto.kurumAdresi } : {}),
+        ...(dto.kadroUnvanKodu ? { kadroUnvanKodu: dto.kadroUnvanKodu } : {}),
+        ...(createdBy ? { createdBy } : {}),
+        isActive: false, // Admin onayı gerekli
+      } as Prisma.InstitutionCreateInput,
+      include: {
+        province: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        district: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateInstitution(id: string, dto: UpdateInstitutionDto) {
+    const existing = await this.prisma.institution.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Kurum bulunamadı');
+    }
+
+    return this.prisma.institution.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        provinceId: dto.provinceId !== undefined ? dto.provinceId : undefined,
+        districtId: dto.districtId !== undefined ? dto.districtId : undefined,
+        kurumSicilNo: dto.kurumSicilNo,
+        gorevBirimi: dto.gorevBirimi,
+        kurumAdresi: dto.kurumAdresi,
+        kadroUnvanKodu: dto.kadroUnvanKodu,
+        isActive: dto.isActive,
+      },
+      include: {
+        province: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        district: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async approveInstitution(id: string, approvedBy: string) {
+    const existing = await this.prisma.institution.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Kurum bulunamadı');
+    }
+
+    return this.prisma.institution.update({
+      where: { id },
+      data: {
+        isActive: true,
+        approvedAt: new Date(),
+        approvedBy,
+      },
+      include: {
+        province: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        district: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteInstitution(id: string) {
+    const existing = await this.prisma.institution.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Kurum bulunamadı');
+    }
+
+    // Soft delete
+    return this.prisma.institution.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
       },
     });
   }

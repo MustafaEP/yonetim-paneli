@@ -16,6 +16,12 @@ import {
   useTheme,
   useMediaQuery,
   LinearProgress,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Tooltip,
+  IconButton,
 } from '@mui/material';
 
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
@@ -28,12 +34,20 @@ import PeopleIcon from '@mui/icons-material/People';
 import PersonIcon from '@mui/icons-material/Person';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import PaymentIcon from '@mui/icons-material/Payment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import { useAuth } from '../../context/AuthContext';
 import { getMemberApplications, getMembers } from '../../api/membersApi';
 import { getUsers } from '../../api/usersApi';
+import { getPayments } from '../../api/paymentsApi';
 import type { MemberListItem } from '../../types/member';
+import type { MemberPayment } from '../../api/paymentsApi';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -60,6 +74,17 @@ const DashboardPage: React.FC = () => {
   const [activeUsers, setActiveUsers] = useState<number>(0);
   const [membersLoading, setMembersLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
+
+  // Recent members and payments
+  const [recentMembers, setRecentMembers] = useState<MemberListItem[]>([]);
+  const [recentPayments, setRecentPayments] = useState<MemberPayment[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Payment statistics
+  const [totalPaymentsAmount, setTotalPaymentsAmount] = useState<number>(0);
+  const [approvedPaymentsAmount, setApprovedPaymentsAmount] = useState<number>(0);
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState<number>(0);
+  const [thisMonthPaymentsAmount, setThisMonthPaymentsAmount] = useState<number>(0);
 
   useEffect(() => {
     const loadApplications = async () => {
@@ -91,6 +116,12 @@ const DashboardPage: React.FC = () => {
         setInactiveMembers(members.filter(m => m.status === 'INACTIVE').length);
         setResignedMembers(members.filter(m => m.status === 'RESIGNED').length);
         setExpelledMembers(members.filter(m => m.status === 'EXPELLED').length);
+        
+        // Son 5 üye
+        const sortedMembers = [...members].sort((a, b) => {
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
+        setRecentMembers(sortedMembers.slice(0, 5));
       } catch (e) {
         console.error('Üyeler alınırken hata:', e);
         setTotalMembers(0);
@@ -98,6 +129,7 @@ const DashboardPage: React.FC = () => {
         setInactiveMembers(0);
         setResignedMembers(0);
         setExpelledMembers(0);
+        setRecentMembers([]);
       } finally {
         setMembersLoading(false);
       }
@@ -126,6 +158,54 @@ const DashboardPage: React.FC = () => {
 
     loadUsers();
   }, [canListUsers]);
+
+  useEffect(() => {
+    const loadPayments = async () => {
+      if (!canListMembers) return;
+      setPaymentsLoading(true);
+      try {
+        const data = await getPayments();
+        const payments = Array.isArray(data) ? data : [];
+        
+        // Son 5 ödeme
+        const sortedPayments = [...payments].sort((a, b) => {
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
+        setRecentPayments(sortedPayments.slice(0, 5));
+
+        // Toplam ödeme tutarı
+        const total = payments.reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
+        setTotalPaymentsAmount(total);
+
+        // Onaylanmış ödemeler tutarı
+        const approved = payments.filter(p => p.isApproved).reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
+        setApprovedPaymentsAmount(approved);
+
+        // Bekleyen ödemeler sayısı
+        const pending = payments.filter(p => !p.isApproved).length;
+        setPendingPaymentsCount(pending);
+
+        // Bu ay yapılan ödemeler
+        const now = new Date();
+        const thisMonth = payments.filter(p => {
+          const paymentDate = new Date(p.createdAt);
+          return paymentDate.getMonth() === now.getMonth() && paymentDate.getFullYear() === now.getFullYear();
+        }).reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
+        setThisMonthPaymentsAmount(thisMonth);
+      } catch (e) {
+        console.error('Ödemeler alınırken hata:', e);
+        setRecentPayments([]);
+        setTotalPaymentsAmount(0);
+        setApprovedPaymentsAmount(0);
+        setPendingPaymentsCount(0);
+        setThisMonthPaymentsAmount(0);
+      } finally {
+        setPaymentsLoading(false);
+      }
+    };
+
+    loadPayments();
+  }, [canListMembers]);
 
   const hasAnyPermission = canViewApplications || canListMembers || canListUsers || canCreateMemberApplication || canManageRegions;
   
@@ -165,7 +245,7 @@ const DashboardPage: React.FC = () => {
     {
       show: canManageRegions,
       title: 'Bölge Yönetimi',
-      description: 'İl, ilçe, işyeri ve bayileri yönetin',
+      description: 'İl, ilçe ve işyerlerini yönetin',
       icon: MapIcon,
       path: '/regions/provinces',
       gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
@@ -311,35 +391,55 @@ const DashboardPage: React.FC = () => {
                 minHeight: { xs: 130, sm: 140 },
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden',
                 '&:hover': {
                   transform: 'translateY(-4px)',
                   boxShadow: `0 12px 24px ${alpha('#fa709a', 0.3)}`,
                 },
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '100px',
+                  height: '100px',
+                  background: alpha('#fff', 0.1),
+                  borderRadius: '50%',
+                  transform: 'translate(30%, -30%)',
+                },
               }}
               onClick={() => navigate('/members/applications')}
             >
-              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 }, position: 'relative', zIndex: 1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' }, fontWeight: 600 }}>
                       Bekleyen Başvurular
                     </Typography>
                     {applicationsLoading ? (
                       <CircularProgress size={24} sx={{ color: 'white' }} />
                     ) : (
-                      <Typography variant="h4" fontWeight={700} sx={{ fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' } }}>
+                      <Typography variant="h3" fontWeight={700} sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '2.75rem' }, mb: 0.5 }}>
                         {pendingApplicationsCount}
                       </Typography>
                     )}
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <AccessTimeIcon sx={{ fontSize: 14, opacity: 0.8 }} />
+                      <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
+                        Onay Bekliyor
+                      </Typography>
+                    </Stack>
                   </Box>
                   <Avatar 
                     sx={{ 
                       bgcolor: alpha('#fff', 0.2),
-                      width: { xs: 44, sm: 48 }, 
-                      height: { xs: 44, sm: 48 },
+                      width: { xs: 48, sm: 56 }, 
+                      height: { xs: 48, sm: 56 },
+                      boxShadow: `0 4px 12px ${alpha('#000', 0.2)}`,
                     }}
                   >
-                    <PendingActionsIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
+                    <PendingActionsIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
                   </Avatar>
                 </Stack>
               </CardContent>
@@ -359,38 +459,126 @@ const DashboardPage: React.FC = () => {
                 minHeight: { xs: 130, sm: 140 },
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden',
                 '&:hover': {
                   transform: 'translateY(-4px)',
                   boxShadow: `0 12px 24px ${alpha('#667eea', 0.3)}`,
                 },
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '100px',
+                  height: '100px',
+                  background: alpha('#fff', 0.1),
+                  borderRadius: '50%',
+                  transform: 'translate(30%, -30%)',
+                },
               }}
               onClick={() => navigate('/members')}
             >
-              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 }, position: 'relative', zIndex: 1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' }, fontWeight: 600 }}>
                       Aktif Üyeler
                     </Typography>
                     {membersLoading ? (
                       <CircularProgress size={24} sx={{ color: 'white' }} />
                     ) : (
-                      <Typography variant="h4" fontWeight={700} sx={{ fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' } }}>
+                      <Typography variant="h3" fontWeight={700} sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '2.75rem' }, mb: 0.5 }}>
                         {activeMembers}
                       </Typography>
                     )}
-                    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                      Toplam: {totalMembers}
-                    </Typography>
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <TrendingUpIcon sx={{ fontSize: 14, opacity: 0.8 }} />
+                      <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
+                        Toplam: {totalMembers}
+                      </Typography>
+                    </Stack>
                   </Box>
                   <Avatar 
                     sx={{ 
                       bgcolor: alpha('#fff', 0.2),
-                      width: { xs: 44, sm: 48 }, 
-                      height: { xs: 44, sm: 48 },
+                      width: { xs: 48, sm: 56 }, 
+                      height: { xs: 48, sm: 56 },
+                      boxShadow: `0 4px 12px ${alpha('#000', 0.2)}`,
                     }}
                   >
-                    <PeopleIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
+                    <PeopleIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
+                  </Avatar>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Total Payments */}
+        {canListMembers && (
+          <Grid item xs={12} sm={6} md={6} lg={3}>
+            <Card
+              sx={{
+                background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                color: 'white',
+                borderRadius: 3,
+                height: '100%',
+                minHeight: { xs: 130, sm: 140 },
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: `0 12px 24px ${alpha('#43e97b', 0.3)}`,
+                },
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '100px',
+                  height: '100px',
+                  background: alpha('#fff', 0.1),
+                  borderRadius: '50%',
+                  transform: 'translate(30%, -30%)',
+                },
+              }}
+              onClick={() => navigate('/payments')}
+            >
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 }, position: 'relative', zIndex: 1 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' }, fontWeight: 600 }}>
+                      Toplam Tahsilat
+                    </Typography>
+                    {paymentsLoading ? (
+                      <CircularProgress size={24} sx={{ color: 'white' }} />
+                    ) : (
+                      <Typography variant="h3" fontWeight={700} sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }, mb: 0.5 }}>
+                        {approvedPaymentsAmount.toLocaleString('tr-TR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })} ₺
+                      </Typography>
+                    )}
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <CheckCircleIcon sx={{ fontSize: 14, opacity: 0.8 }} />
+                      <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
+                        Onaylı Ödemeler
+                      </Typography>
+                    </Stack>
+                  </Box>
+                  <Avatar 
+                    sx={{ 
+                      bgcolor: alpha('#fff', 0.2),
+                      width: { xs: 48, sm: 56 }, 
+                      height: { xs: 48, sm: 56 },
+                      boxShadow: `0 4px 12px ${alpha('#000', 0.2)}`,
+                    }}
+                  >
+                    <AccountBalanceWalletIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
                   </Avatar>
                 </Stack>
               </CardContent>
@@ -410,89 +598,55 @@ const DashboardPage: React.FC = () => {
                 minHeight: { xs: 130, sm: 140 },
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden',
                 '&:hover': {
                   transform: 'translateY(-4px)',
                   boxShadow: `0 12px 24px ${alpha('#4facfe', 0.3)}`,
                 },
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '100px',
+                  height: '100px',
+                  background: alpha('#fff', 0.1),
+                  borderRadius: '50%',
+                  transform: 'translate(30%, -30%)',
+                },
               }}
               onClick={() => navigate('/users')}
             >
-              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 }, position: 'relative', zIndex: 1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' }, fontWeight: 600 }}>
                       Panel Kullanıcıları
                     </Typography>
                     {usersLoading ? (
                       <CircularProgress size={24} sx={{ color: 'white' }} />
                     ) : (
-                      <Typography variant="h4" fontWeight={700} sx={{ fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' } }}>
+                      <Typography variant="h3" fontWeight={700} sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '2.75rem' }, mb: 0.5 }}>
                         {totalUsers}
                       </Typography>
                     )}
-                    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                      Aktif: {activeUsers}
-                    </Typography>
-                  </Box>
-                  <Avatar 
-                    sx={{ 
-                      bgcolor: alpha('#fff', 0.2),
-                      width: { xs: 44, sm: 48 }, 
-                      height: { xs: 44, sm: 48 },
-                    }}
-                  >
-                    <ManageAccountsIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
-                  </Avatar>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        )}
-
-        {/* Inactive/Resigned Members */}
-        {canListMembers && (inactiveMembers > 0 || resignedMembers > 0 || expelledMembers > 0) && (
-          <Grid item xs={12} sm={6} md={6} lg={3}>
-            <Card
-              sx={{
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                color: 'white',
-                borderRadius: 3,
-                height: '100%',
-                minHeight: { xs: 130, sm: 140 },
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: `0 12px 24px ${alpha('#f093fb', 0.3)}`,
-                },
-              }}
-              onClick={() => navigate('/members')}
-            >
-              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                      Pasif/İptal Üyeler
-                    </Typography>
-                    {membersLoading ? (
-                      <CircularProgress size={24} sx={{ color: 'white' }} />
-                    ) : (
-                      <Typography variant="h4" fontWeight={700} sx={{ fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' } }}>
-                        {inactiveMembers + resignedMembers + expelledMembers}
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <CheckCircleIcon sx={{ fontSize: 14, opacity: 0.8 }} />
+                      <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
+                        Aktif: {activeUsers}
                       </Typography>
-                    )}
-                    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                      Pasif: {inactiveMembers} | İstifa: {resignedMembers} | İhraç: {expelledMembers}
-                    </Typography>
+                    </Stack>
                   </Box>
                   <Avatar 
                     sx={{ 
                       bgcolor: alpha('#fff', 0.2),
-                      width: { xs: 44, sm: 48 }, 
-                      height: { xs: 44, sm: 48 },
+                      width: { xs: 48, sm: 56 }, 
+                      height: { xs: 48, sm: 56 },
+                      boxShadow: `0 4px 12px ${alpha('#000', 0.2)}`,
                     }}
                   >
-                    <PersonOffIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
+                    <ManageAccountsIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
                   </Avatar>
                 </Stack>
               </CardContent>
@@ -502,13 +656,415 @@ const DashboardPage: React.FC = () => {
       </Grid>
 
       {/* Detailed Statistics Section */}
-      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mt: { xs: 2, sm: 3 } }}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+        {/* Recent Members */}
+        {canListMembers && (
+          <Grid item xs={12} lg={6}>
+            <Card 
+              sx={{ 
+                borderRadius: 3, 
+                height: '100%',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.08)}`,
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2.5 }}>
+                  <Stack direction="row" alignItems="center" spacing={1.5}>
+                    <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), width: 40, height: 40 }}>
+                      <PersonAddAlt1Icon sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
+                    </Avatar>
+                    <Typography variant="h6" fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.15rem' } }}>
+                      Son Eklenen Üyeler
+                    </Typography>
+                  </Stack>
+                  <Chip 
+                    label={`${recentMembers.length} Üye`} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </Stack>
+                <Divider sx={{ mb: 2 }} />
+                {membersLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress size={32} />
+                  </Box>
+                ) : recentMembers.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <PersonIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                    <Typography color="text.secondary">Henüz üye bulunmuyor</Typography>
+                  </Box>
+                ) : (
+                  <List sx={{ p: 0 }}>
+                    {recentMembers.map((member, index) => (
+                      <ListItem
+                        key={member.id}
+                        sx={{
+                          px: 2,
+                          py: 1.5,
+                          borderRadius: 2,
+                          mb: index < recentMembers.length - 1 ? 1 : 0,
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            bgcolor: alpha(theme.palette.primary.main, 0.05),
+                            transform: 'translateX(4px)',
+                          },
+                        }}
+                        onClick={() => navigate(`/members/${member.id}`)}
+                        secondaryAction={
+                          <Tooltip title="Detayları Görüntüle">
+                            <IconButton edge="end" size="small">
+                              <VisibilityIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        }
+                      >
+                        <ListItemAvatar>
+                          <Avatar 
+                            sx={{ 
+                              bgcolor: alpha(theme.palette.primary.main, 0.15),
+                              color: theme.palette.primary.main,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {member.firstName?.[0]}{member.lastName?.[0]}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
+                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: { xs: '0.875rem', sm: '0.9375rem' } }}>
+                              {member.firstName} {member.lastName}
+                            </Typography>
+                          }
+                          secondary={
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5 }}>
+                              {member.registrationNumber && (
+                                <Chip 
+                                  label={`#${member.registrationNumber}`} 
+                                  size="small" 
+                                  sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                                />
+                              )}
+                              {member.branch && (
+                                <Chip 
+                                  label={member.branch.name} 
+                                  size="small" 
+                                  variant="outlined"
+                                  sx={{ height: 20, fontSize: '0.7rem' }}
+                                />
+                              )}
+                              {member.status === 'ACTIVE' && (
+                                <Chip 
+                                  label="Aktif" 
+                                  size="small" 
+                                  color="success"
+                                  sx={{ height: 20, fontSize: '0.7rem' }}
+                                />
+                              )}
+                            </Stack>
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  onClick={() => navigate('/members')}
+                  sx={{ mt: 2, textTransform: 'none', fontWeight: 600 }}
+                  endIcon={<ArrowForwardIcon />}
+                >
+                  Tüm Üyeleri Görüntüle
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Recent Payments */}
+        {canListMembers && (
+          <Grid item xs={12} lg={6}>
+            <Card 
+              sx={{ 
+                borderRadius: 3, 
+                height: '100%',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.08)}`,
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2.5 }}>
+                  <Stack direction="row" alignItems="center" spacing={1.5}>
+                    <Avatar sx={{ bgcolor: alpha(theme.palette.success.main, 0.1), width: 40, height: 40 }}>
+                      <PaymentIcon sx={{ color: theme.palette.success.main, fontSize: 20 }} />
+                    </Avatar>
+                    <Typography variant="h6" fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.15rem' } }}>
+                      Son Ödemeler
+                    </Typography>
+                  </Stack>
+                  <Chip 
+                    label={`${recentPayments.length} Ödeme`} 
+                    size="small" 
+                    color="success" 
+                    variant="outlined"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </Stack>
+                <Divider sx={{ mb: 2 }} />
+                {paymentsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress size={32} />
+                  </Box>
+                ) : recentPayments.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <PaymentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                    <Typography color="text.secondary">Henüz ödeme bulunmuyor</Typography>
+                  </Box>
+                ) : (
+                  <List sx={{ p: 0 }}>
+                    {recentPayments.map((payment, index) => {
+                      const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+                      const monthName = monthNames[payment.paymentPeriodMonth - 1];
+                      
+                      return (
+                        <ListItem
+                          key={payment.id}
+                          sx={{
+                            px: 2,
+                            py: 1.5,
+                            borderRadius: 2,
+                            mb: index < recentPayments.length - 1 ? 1 : 0,
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              bgcolor: alpha(theme.palette.success.main, 0.05),
+                            },
+                          }}
+                        >
+                          <ListItemAvatar>
+                            <Avatar 
+                              sx={{ 
+                                bgcolor: payment.isApproved 
+                                  ? alpha(theme.palette.success.main, 0.15)
+                                  : alpha(theme.palette.warning.main, 0.15),
+                                color: payment.isApproved 
+                                  ? theme.palette.success.main
+                                  : theme.palette.warning.main,
+                              }}
+                            >
+                              {payment.isApproved ? (
+                                <CheckCircleIcon fontSize="small" />
+                              ) : (
+                                <AccessTimeIcon fontSize="small" />
+                              )}
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                                <Typography variant="body2" fontWeight={600} sx={{ fontSize: { xs: '0.875rem', sm: '0.9375rem' } }}>
+                                  {payment.member?.firstName} {payment.member?.lastName}
+                                </Typography>
+                                {payment.member?.registrationNumber && (
+                                  <Chip 
+                                    label={`#${payment.member.registrationNumber}`} 
+                                    size="small"
+                                    sx={{ height: 18, fontSize: '0.65rem' }}
+                                  />
+                                )}
+                              </Stack>
+                            }
+                            secondary={
+                              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5 }}>
+                                <Chip 
+                                  label={`${monthName} ${payment.paymentPeriodYear}`} 
+                                  size="small" 
+                                  sx={{ height: 20, fontSize: '0.7rem' }}
+                                />
+                                <Typography 
+                                  variant="caption" 
+                                  sx={{ 
+                                    fontWeight: 700,
+                                    color: theme.palette.success.main,
+                                    fontSize: '0.75rem',
+                                  }}
+                                >
+                                  {parseFloat(payment.amount).toLocaleString('tr-TR', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })} ₺
+                                </Typography>
+                              </Stack>
+                            }
+                          />
+                          {payment.isApproved ? (
+                            <Chip 
+                              label="Onaylı" 
+                              size="small" 
+                              color="success"
+                              icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                              sx={{ fontSize: '0.7rem', height: 24 }}
+                            />
+                          ) : (
+                            <Chip 
+                              label="Bekliyor" 
+                              size="small" 
+                              color="warning"
+                              icon={<AccessTimeIcon sx={{ fontSize: 14 }} />}
+                              sx={{ fontSize: '0.7rem', height: 24 }}
+                            />
+                          )}
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                )}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  onClick={() => navigate('/payments')}
+                  sx={{ mt: 2, textTransform: 'none', fontWeight: 600 }}
+                  endIcon={<ArrowForwardIcon />}
+                  color="success"
+                >
+                  Tüm Ödemeleri Görüntüle
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Payment Statistics */}
+        {canListMembers && (
+          <Grid item xs={12} md={6}>
+            <Card 
+              sx={{ 
+                borderRadius: 3, 
+                height: '100%',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.info.main, 0.08)}`,
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2.5 }}>
+                  <Avatar sx={{ bgcolor: alpha(theme.palette.info.main, 0.1), width: 40, height: 40 }}>
+                    <AccountBalanceWalletIcon sx={{ color: theme.palette.info.main, fontSize: 20 }} />
+                  </Avatar>
+                  <Typography variant="h6" fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.15rem' } }}>
+                    Ödeme İstatistikleri
+                  </Typography>
+                </Stack>
+                <Divider sx={{ mb: 3 }} />
+                {paymentsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress size={32} />
+                  </Box>
+                ) : (
+                  <Stack spacing={3}>
+                    <Box>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
+                          Toplam Tahsilat
+                        </Typography>
+                        <Chip
+                          label={`${totalPaymentsAmount.toLocaleString('tr-TR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} ₺`}
+                          color="info"
+                          size="small"
+                          sx={{ fontWeight: 600, fontSize: '0.8rem' }}
+                        />
+                      </Stack>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={totalPaymentsAmount > 0 ? (approvedPaymentsAmount / totalPaymentsAmount) * 100 : 0} 
+                        sx={{ 
+                          height: 8, 
+                          borderRadius: 3,
+                          bgcolor: alpha(theme.palette.info.main, 0.1),
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 3,
+                            background: 'linear-gradient(90deg, #43e97b 0%, #38f9d7 100%)',
+                          },
+                        }} 
+                      />
+                    </Box>
+                    
+                    <Box>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <CheckCircleIcon sx={{ fontSize: 18, color: 'success.main' }} />
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
+                            Onaylı Ödemeler
+                          </Typography>
+                        </Stack>
+                        <Typography variant="body1" fontWeight={700} color="success.main" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+                          {approvedPaymentsAmount.toLocaleString('tr-TR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} ₺
+                        </Typography>
+                      </Stack>
+                    </Box>
+
+                    <Box>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <AccessTimeIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
+                            Bekleyen Ödemeler
+                          </Typography>
+                        </Stack>
+                        <Chip
+                          label={`${pendingPaymentsCount} Adet`}
+                          color="warning"
+                          size="small"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </Stack>
+                    </Box>
+
+                    <Box>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <CalendarTodayIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
+                            Bu Ay Tahsilat
+                          </Typography>
+                        </Stack>
+                        <Typography variant="body1" fontWeight={700} color="primary.main" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+                          {thisMonthPaymentsAmount.toLocaleString('tr-TR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} ₺
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  </Stack>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
         {/* Member Statistics */}
         {canListMembers && (
           <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3, height: '100%' }}>
+            <Card 
+              sx={{ 
+                borderRadius: 3, 
+                height: '100%',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.08)}`,
+              }}
+            >
               <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
-                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2.5 }}>
                   <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), width: 40, height: 40 }}>
                     <PeopleIcon sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
                   </Avatar>
@@ -522,7 +1078,7 @@ const DashboardPage: React.FC = () => {
                     <CircularProgress size={32} />
                   </Box>
                 ) : (
-                  <Stack spacing={2.5}>
+                  <Stack spacing={3}>
                     <Box>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                         <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
@@ -539,20 +1095,28 @@ const DashboardPage: React.FC = () => {
                         variant="determinate" 
                         value={totalMembers > 0 ? (activeMembers / totalMembers) * 100 : 0} 
                         sx={{ 
-                          height: 6, 
+                          height: 8, 
                           borderRadius: 3,
                           bgcolor: alpha(theme.palette.primary.main, 0.1),
                           '& .MuiLinearProgress-bar': {
                             borderRadius: 3,
+                            background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
                           },
                         }} 
                       />
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: '0.7rem' }}>
+                        %{totalMembers > 0 ? Math.round((activeMembers / totalMembers) * 100) : 0} Aktif Üye Oranı
+                      </Typography>
                     </Box>
+                    
                     <Box>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
-                          Aktif Üyeler
-                        </Typography>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <CheckCircleIcon sx={{ fontSize: 18, color: 'success.main' }} />
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
+                            Aktif Üyeler
+                          </Typography>
+                        </Stack>
                         <Chip
                           label={activeMembers}
                           color="success"
@@ -561,12 +1125,16 @@ const DashboardPage: React.FC = () => {
                         />
                       </Stack>
                     </Box>
+                    
                     {(inactiveMembers > 0 || resignedMembers > 0 || expelledMembers > 0) && (
                       <Box>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
-                            Pasif/İptal Üyeler
-                          </Typography>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <PersonOffIcon sx={{ fontSize: 18, color: 'error.main' }} />
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
+                              Pasif/İptal Üyeler
+                            </Typography>
+                          </Stack>
                           <Chip
                             label={inactiveMembers + resignedMembers + expelledMembers}
                             color="default"
@@ -574,13 +1142,13 @@ const DashboardPage: React.FC = () => {
                             sx={{ fontWeight: 600 }}
                           />
                         </Stack>
-                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 0.5 }}>
                           {inactiveMembers > 0 && (
                             <Chip 
                               label={`Pasif: ${inactiveMembers}`} 
                               size="small" 
                               variant="outlined"
-                              sx={{ fontSize: '0.7rem' }}
+                              sx={{ fontSize: '0.7rem', height: 24 }}
                             />
                           )}
                           {resignedMembers > 0 && (
@@ -588,7 +1156,8 @@ const DashboardPage: React.FC = () => {
                               label={`İstifa: ${resignedMembers}`} 
                               size="small" 
                               variant="outlined"
-                              sx={{ fontSize: '0.7rem' }}
+                              color="warning"
+                              sx={{ fontSize: '0.7rem', height: 24 }}
                             />
                           )}
                           {expelledMembers > 0 && (
@@ -596,17 +1165,19 @@ const DashboardPage: React.FC = () => {
                               label={`İhraç: ${expelledMembers}`} 
                               size="small" 
                               variant="outlined"
-                              sx={{ fontSize: '0.7rem' }}
+                              color="error"
+                              sx={{ fontSize: '0.7rem', height: 24 }}
                             />
                           )}
                         </Stack>
                       </Box>
                     )}
+                    
                     <Button
                       variant="outlined"
                       size="small"
                       onClick={() => navigate('/members')}
-                      sx={{ mt: 1, textTransform: 'none' }}
+                      sx={{ mt: 1, textTransform: 'none', fontWeight: 600 }}
                       endIcon={<ArrowForwardIcon />}
                     >
                       Tüm Üyeleri Görüntüle
@@ -621,9 +1192,16 @@ const DashboardPage: React.FC = () => {
         {/* Quick Info & Applications */}
         {canViewApplications && (
           <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3, height: '100%' }}>
+            <Card 
+              sx={{ 
+                borderRadius: 3, 
+                height: '100%',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.08)}`,
+              }}
+            >
               <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
-                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2.5 }}>
                   <Avatar sx={{ bgcolor: alpha(theme.palette.warning.main, 0.1), width: 40, height: 40 }}>
                     <PendingActionsIcon sx={{ color: theme.palette.warning.main, fontSize: 20 }} />
                   </Avatar>
@@ -638,41 +1216,80 @@ const DashboardPage: React.FC = () => {
                   </Box>
                 ) : (
                   <Stack spacing={2.5}>
-                    <Box>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
-                          Bekleyen Başvurular
-                        </Typography>
-                        <Chip
-                          label={pendingApplicationsCount}
-                          color="warning"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
+                    <Box
+                      sx={{
+                        p: 3,
+                        borderRadius: 2,
+                        background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${alpha(theme.palette.warning.light, 0.04)} 100%)`,
+                        border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" justifyContent="space-between">
+                        <Stack direction="row" alignItems="center" spacing={1.5}>
+                          <Box
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: 2,
+                              background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#fff',
+                              boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.3)}`,
+                            }}
+                          >
+                            <PendingActionsIcon sx={{ fontSize: 24 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
+                              BEKLEYEN BAŞVURULAR
+                            </Typography>
+                            <Typography variant="h3" fontWeight={700} color="warning.main">
+                              {pendingApplicationsCount}
+                            </Typography>
+                          </Box>
+                        </Stack>
                       </Stack>
-                      {pendingApplicationsCount > 0 && (
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' } }}>
-                          {pendingApplicationsCount} başvuru onay bekliyor
-                        </Typography>
-                      )}
                     </Box>
+                    
+                    {pendingApplicationsCount > 0 && (
+                      <Box
+                        sx={{
+                          p: 2,
+                          borderRadius: 2,
+                          bgcolor: alpha(theme.palette.warning.main, 0.04),
+                          border: `1px dashed ${alpha(theme.palette.warning.main, 0.3)}`,
+                        }}
+                      >
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <AccessTimeIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                            {pendingApplicationsCount} başvuru onayınızı bekliyor
+                          </Typography>
+                        </Stack>
+                      </Box>
+                    )}
+                    
                     <Button
                       variant="outlined"
                       size="small"
                       onClick={() => navigate('/members/applications')}
-                      sx={{ mt: 1, textTransform: 'none' }}
+                      sx={{ textTransform: 'none', fontWeight: 600 }}
                       endIcon={<ArrowForwardIcon />}
                       color="warning"
                     >
                       Başvuruları İncele
                     </Button>
+                    
                     {canCreateMemberApplication && (
                       <Button
                         variant="contained"
                         size="small"
                         onClick={() => navigate('/members/applications/new')}
-                        sx={{ textTransform: 'none' }}
+                        sx={{ textTransform: 'none', fontWeight: 600 }}
                         startIcon={<PersonAddAlt1Icon />}
+                        color="warning"
                       >
                         Yeni Başvuru Oluştur
                       </Button>
@@ -686,10 +1303,17 @@ const DashboardPage: React.FC = () => {
 
         {/* User Statistics */}
         {canListUsers && (
-          <Grid item xs={12} md={canViewApplications ? 12 : 6}>
-            <Card sx={{ borderRadius: 3, height: '100%' }}>
+          <Grid item xs={12} md={6}>
+            <Card 
+              sx={{ 
+                borderRadius: 3, 
+                height: '100%',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.info.main, 0.08)}`,
+              }}
+            >
               <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
-                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2.5 }}>
                   <Avatar sx={{ bgcolor: alpha(theme.palette.info.main, 0.1), width: 40, height: 40 }}>
                     <ManageAccountsIcon sx={{ color: theme.palette.info.main, fontSize: 20 }} />
                   </Avatar>
@@ -703,7 +1327,7 @@ const DashboardPage: React.FC = () => {
                     <CircularProgress size={32} />
                   </Box>
                 ) : (
-                  <Stack spacing={2.5}>
+                  <Stack spacing={3}>
                     <Box>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                         <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
@@ -720,20 +1344,28 @@ const DashboardPage: React.FC = () => {
                         variant="determinate" 
                         value={totalUsers > 0 ? (activeUsers / totalUsers) * 100 : 0} 
                         sx={{ 
-                          height: 6, 
+                          height: 8, 
                           borderRadius: 3,
                           bgcolor: alpha(theme.palette.info.main, 0.1),
                           '& .MuiLinearProgress-bar': {
                             borderRadius: 3,
+                            background: 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)',
                           },
                         }} 
                       />
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: '0.7rem' }}>
+                        %{totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0} Aktif Kullanıcı Oranı
+                      </Typography>
                     </Box>
+                    
                     <Box>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
-                          Aktif Kullanıcılar
-                        </Typography>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <CheckCircleIcon sx={{ fontSize: 18, color: 'success.main' }} />
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
+                            Aktif Kullanıcılar
+                          </Typography>
+                        </Stack>
                         <Chip
                           label={activeUsers}
                           color="success"
@@ -741,17 +1373,31 @@ const DashboardPage: React.FC = () => {
                           sx={{ fontWeight: 600 }}
                         />
                       </Stack>
-                      {totalUsers > activeUsers && (
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' } }}>
-                          {totalUsers - activeUsers} pasif kullanıcı
-                        </Typography>
-                      )}
                     </Box>
+                    
+                    {totalUsers > activeUsers && (
+                      <Box
+                        sx={{
+                          p: 2,
+                          borderRadius: 2,
+                          bgcolor: alpha(theme.palette.error.main, 0.04),
+                          border: `1px dashed ${alpha(theme.palette.error.main, 0.3)}`,
+                        }}
+                      >
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <PersonOffIcon sx={{ fontSize: 18, color: 'error.main' }} />
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                            {totalUsers - activeUsers} pasif kullanıcı
+                          </Typography>
+                        </Stack>
+                      </Box>
+                    )}
+                    
                     <Button
                       variant="outlined"
                       size="small"
                       onClick={() => navigate('/users')}
-                      sx={{ mt: 1, textTransform: 'none' }}
+                      sx={{ mt: 1, textTransform: 'none', fontWeight: 600 }}
                       endIcon={<ArrowForwardIcon />}
                       color="info"
                     >

@@ -128,8 +128,7 @@ const BranchDetailPage: React.FC = () => {
                 fontSize: { xs: '0.875rem', sm: '0.9rem' },
               }}
             >
-              {branch.province?.name}
-              {branch.district?.name && ` / ${branch.district.name}`}
+              Şube Detayları
             </Typography>
           </Box>
           <Chip
@@ -160,20 +159,6 @@ const BranchDetailPage: React.FC = () => {
                 </Typography>
                 <Typography variant="body1">{branch.code || '-'}</Typography>
               </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  İl
-                </Typography>
-                <Typography variant="body1">{branch.province?.name || '-'}</Typography>
-              </Box>
-              {branch.district && (
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    İlçe
-                  </Typography>
-                  <Typography variant="body1">{branch.district.name}</Typography>
-                </Box>
-              )}
               <Box>
                 <Typography variant="body2" color="text.secondary">
                   Şube Başkanı
@@ -242,14 +227,6 @@ const BranchDetailPage: React.FC = () => {
                   {branch.activeMemberCount || 0}
                 </Typography>
               </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Kurum Sayısı
-                </Typography>
-                <Typography variant="body1" fontWeight={600}>
-                  {branch.institutionCount || 0}
-                </Typography>
-              </Box>
               <Divider sx={{ my: 1 }} />
               <Box>
                 <Typography variant="body2" color="text.secondary">
@@ -277,59 +254,6 @@ const BranchDetailPage: React.FC = () => {
           </Card>
         </Grid>
 
-        {/* Şubeye Bağlı Kurumlar */}
-        {branch.institutions && branch.institutions.length > 0 && (
-          <Grid item xs={12}>
-            <Card
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                p: 3,
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                Şubeye Bağlı Kurumlar
-              </Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Kurum Adı</TableCell>
-                      <TableCell>İl</TableCell>
-                      <TableCell>İlçe</TableCell>
-                      <TableCell>Aktiflik Durumu</TableCell>
-                      <TableCell>Admin Onay Durumu</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {branch.institutions.map((institution) => (
-                      <TableRow key={institution.id}>
-                        <TableCell>{institution.name}</TableCell>
-                        <TableCell>{institution.province?.name || '-'}</TableCell>
-                        <TableCell>{institution.district?.name || '-'}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={institution.isActive ? 'Aktif' : 'Pasif'}
-                            color={institution.isActive ? 'success' : 'default'}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={institution.approvedAt ? 'Onaylandı' : 'Onay Bekliyor'}
-                            color={institution.approvedAt ? 'success' : 'warning'}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Card>
-          </Grid>
-        )}
       </Grid>
     </Box>
   );

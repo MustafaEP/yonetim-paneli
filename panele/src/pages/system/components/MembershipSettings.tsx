@@ -257,8 +257,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
                   {[
                     { value: 'DIRECT', label: 'Panelden Direkt' },
-                    { value: 'WORKPLACE', label: 'İşyeri Temsilcisi' },
-                    { value: 'DEALER', label: 'Bayi Üzerinden' },
                     { value: 'OTHER', label: 'Diğer' },
                   ].map(({ value: source, label }) => {
                     const currentValue = getValue('MEMBERSHIP_ALLOWED_SOURCES');

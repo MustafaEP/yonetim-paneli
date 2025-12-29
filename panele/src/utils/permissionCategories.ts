@@ -61,29 +61,6 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     ],
   },
   {
-    id: 'WORKPLACE_MANAGEMENT',
-    label: 'İş Yeri Yönetimi',
-    description: 'İş yeri kayıt ve yönetim yetkileri',
-    permissions: [
-      'WORKPLACE_LIST',
-      'WORKPLACE_MANAGE',
-      'WORKPLACE_ASSIGN_REP',
-      'WORKPLACE_MEMBERS_VIEW',
-    ],
-  },
-  {
-    id: 'DEALER_MANAGEMENT',
-    label: 'Bayilik Sistemi',
-    description: 'Bayi başvuru ve yönetim yetkileri',
-    permissions: [
-      'DEALER_LIST',
-      'DEALER_CREATE',
-      'DEALER_APPROVE_APPLICATION',
-      'DEALER_UPDATE',
-      'DEALER_PERFORMANCE_VIEW',
-    ],
-  },
-  {
     id: 'CONTENT_MANAGEMENT',
     label: 'İçerik Yönetimi',
     description: 'Haber, duyuru ve etkinlik yönetim yetkileri',
