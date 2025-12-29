@@ -3,7 +3,20 @@
 UPDATE "Member" SET "source" = 'DIRECT' WHERE "source" = 'WORKPLACE';
 
 -- AlterEnum requires creating new enum type without WORKPLACE
-CREATE TYPE "MemberSource_new" AS ENUM ('DIRECT', 'OTHER');
+-- Note: Including DEALER in the new enum as it might exist in the database
+DO $$
+BEGIN
+    -- Check if DEALER exists in current enum
+    IF EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid 
+               WHERE t.typname = 'MemberSource' AND e.enumlabel = 'DEALER') THEN
+        -- Create new enum with DEALER included
+        CREATE TYPE "MemberSource_new" AS ENUM ('DIRECT', 'DEALER', 'OTHER');
+    ELSE
+        -- Create new enum without DEALER
+        CREATE TYPE "MemberSource_new" AS ENUM ('DIRECT', 'OTHER');
+    END IF;
+END $$;
+
 ALTER TABLE "Member" ALTER COLUMN "source" DROP DEFAULT;
 ALTER TABLE "Member" ALTER COLUMN "source" TYPE "MemberSource_new" USING ("source"::text::"MemberSource_new");
 ALTER TYPE "MemberSource" RENAME TO "MemberSource_old";
