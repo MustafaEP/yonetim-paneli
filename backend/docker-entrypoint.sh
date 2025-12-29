@@ -9,7 +9,7 @@ sleep 5
 echo "Checking for failed migrations..."
 # Bilinen problemli migration'ları önce applied olarak işaretle (atla)
 # Bu migration'lar tablo/enum bağımlılıkları nedeniyle sıralama sorunları yaşayabilir
-PROBLEM_MIGRATIONS="20250118000000_comprehensive_notification_system 20250119000000_add_audit_category"
+PROBLEM_MIGRATIONS="20250118000000_comprehensive_notification_system 20250119000000_add_audit_category 20250119000000_add_province_district_to_branch_tevkifat_center"
 for MIGRATION in $PROBLEM_MIGRATIONS; do
   echo "Attempting to mark migration as applied: $MIGRATION"
   npx prisma migrate resolve --applied "$MIGRATION" 2>/dev/null || echo "Migration $MIGRATION already resolved or not found, continuing..."
