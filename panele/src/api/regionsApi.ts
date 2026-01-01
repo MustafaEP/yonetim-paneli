@@ -123,12 +123,8 @@ export const getInstitutionById = async (id: string): Promise<Institution> => {
 
 export const createInstitution = async (payload: {
   name: string;
-  provinceId: string;
+  provinceId?: string;
   districtId?: string;
-  kurumSicilNo?: string;
-  gorevBirimi?: string;
-  kurumAdresi?: string;
-  kadroUnvanKodu?: string;
 }): Promise<Institution> => {
   const res = await httpClient.post<Institution>('/regions/institutions', payload);
   return res.data;
@@ -140,10 +136,6 @@ export const updateInstitution = async (
     name: string;
     provinceId?: string | null;
     districtId?: string | null;
-    kurumSicilNo?: string;
-    gorevBirimi?: string;
-    kurumAdresi?: string;
-    kadroUnvanKodu?: string;
     isActive?: boolean;
   },
 ): Promise<Institution> => {
@@ -156,6 +148,11 @@ export const approveInstitution = async (id: string): Promise<Institution> => {
   return res.data;
 };
 
-export const deleteInstitution = async (id: string): Promise<void> => {
-  await httpClient.delete(`/regions/institutions/${id}`);
+export interface DeleteInstitutionDto {
+  memberActionType: 'REMOVE_INSTITUTION' | 'TRANSFER_TO_INSTITUTION' | 'REMOVE_AND_DEACTIVATE' | 'TRANSFER_AND_DEACTIVATE' | 'TRANSFER_AND_CANCEL';
+  targetInstitutionId?: string;
+}
+
+export const deleteInstitution = async (id: string, dto?: DeleteInstitutionDto): Promise<void> => {
+  await httpClient.delete(`/regions/institutions/${id}`, dto ? { data: dto } : undefined);
 };

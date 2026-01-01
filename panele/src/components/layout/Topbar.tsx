@@ -1,4 +1,7 @@
 // src/components/layout/Topbar.tsx
+// NOT: Bu component şu anda kullanılmamaktadır.
+// MainLayout içinde AppBar zaten mevcut ve tüm topbar işlevselliğini sağlamaktadır.
+// Eğer gelecekte farklı bir layout yapısına ihtiyaç duyulursa bu component kullanılabilir.
 import React from 'react';
 import {
   AppBar,

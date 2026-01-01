@@ -17,6 +17,7 @@ import { ApprovalsModule } from './approvals/approvals.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DocumentsModule } from './documents/documents.module';
+import { ProfessionsModule } from './professions/professions.module';
 import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
 
 @Module({
@@ -36,6 +37,7 @@ import { SystemLogInterceptor } from './common/interceptors/system-log.intercept
     AccountingModule,
     PaymentsModule,
     DocumentsModule,
+    ProfessionsModule,
   ],
   providers: [
     // 1. JWT

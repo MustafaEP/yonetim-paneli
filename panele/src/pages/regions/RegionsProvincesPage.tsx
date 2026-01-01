@@ -144,8 +144,16 @@ const RegionsProvincesPage: React.FC = () => {
   const selectedProvince = provinces.find(p => p.id === selectedProvinceId);
 
   return (
-    <Box>
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: (theme) => 
+        theme.palette.mode === 'light' 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
+          : theme.palette.background.default,
+      pb: 4,
+    }}>
       {/* Başlık Bölümü */}
+      <Box sx={{ pt: { xs: 3, md: 4 }, pb: { xs: 2, md: 3 } }}>
       <Card
         elevation={0}
         sx={{
@@ -212,6 +220,11 @@ const RegionsProvincesPage: React.FC = () => {
               boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
               overflow: 'hidden',
               height: '100%',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.15)}`,
+                transform: 'translateY(-4px)',
+              }
             }}
           >
             {/* Kart Başlığı */}
@@ -370,6 +383,11 @@ const RegionsProvincesPage: React.FC = () => {
               boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
               overflow: 'hidden',
               height: '100%',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.success.main, 0.15)}`,
+                transform: 'translateY(-4px)',
+              }
             }}
           >
             {/* Kart Başlığı */}

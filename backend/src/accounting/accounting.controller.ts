@@ -16,6 +16,7 @@ import { AccountingService } from './accounting.service';
 import { UploadTevkifatFileDto } from './dto/upload-tevkifat-file.dto';
 import { CreateTevkifatCenterDto } from './dto/create-tevkifat-center.dto';
 import { UpdateTevkifatCenterDto } from './dto/update-tevkifat-center.dto';
+import { DeleteTevkifatCenterDto } from './dto/delete-tevkifat-center.dto';
 import { CreateTevkifatTitleDto } from './dto/create-tevkifat-title.dto';
 import { UpdateTevkifatTitleDto } from './dto/update-tevkifat-title.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -152,12 +153,16 @@ export class AccountingController {
 
   @Permissions(Permission.ACCOUNTING_VIEW)
   @Delete('tevkifat-centers/:id')
-  @ApiOperation({ summary: 'Tevkifat merkezi sil (pasif yap)' })
+  @ApiOperation({ 
+    summary: 'Tevkifat merkezi sil (pasif yap)', 
+    description: 'Mevcut tevkifat merkezini pasif yapar. Üyelere ne yapılacağını belirtmek için body içinde memberActionType ve targetTevkifatCenterId gönderilmelidir.' 
+  })
   @ApiParam({ name: 'id', description: 'Tevkifat merkezi ID' })
+  @ApiBody({ type: DeleteTevkifatCenterDto })
   @ApiResponse({ status: 200, description: 'Tevkifat merkezi pasif yapıldı' })
-  @ApiResponse({ status: 404, description: 'Tevkifat merkezi bulunamadı' })
-  async deleteTevkifatCenter(@Param('id') id: string) {
-    return this.accountingService.deleteTevkifatCenter(id);
+  @ApiResponse({ status: 404, description: 'Tevkifat merkezi veya hedef tevkifat merkezi bulunamadı' })
+  async deleteTevkifatCenter(@Param('id') id: string, @Body() dto: DeleteTevkifatCenterDto) {
+    return this.accountingService.deleteTevkifatCenter(id, dto);
   }
 
   // Tevkifat Unvanları CRUD

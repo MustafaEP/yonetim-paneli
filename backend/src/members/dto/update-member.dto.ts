@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Gender, EducationStatus, PositionTitle } from '@prisma/client';
+import { Gender, EducationStatus, PositionTitle, MemberStatus } from '@prisma/client';
 import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
 
 export class UpdateMemberDto {
@@ -164,4 +164,88 @@ export class UpdateMemberDto {
   @IsString()
   @IsOptional()
   branchId?: string;
+
+  // 🔹 Kurum Detay Bilgileri
+  @ApiProperty({
+    description: 'Görev Birimi',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  dutyUnit?: string;
+
+  @ApiProperty({
+    description: 'Kurum Adresi',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionAddress?: string;
+
+  @ApiProperty({
+    description: 'Kurum İli ID',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionProvinceId?: string;
+
+  @ApiProperty({
+    description: 'Kurum İlçesi ID',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionDistrictId?: string;
+
+  @ApiProperty({
+    description: 'Meslek/Unvan ID',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  professionId?: string;
+
+  @ApiProperty({
+    description: 'Kurum Sicil No',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionRegNo?: string;
+
+  @ApiProperty({
+    description: 'Kadro Unvan Kodu',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  staffTitleCode?: string;
+
+  // 🔹 Üye Durumu
+  @ApiProperty({
+    description: 'Üye durumu',
+    enum: MemberStatus,
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(MemberStatus)
+  status?: MemberStatus;
+
+  @ApiProperty({
+    description: 'İptal nedeni (İstifa veya İhraç durumları için)',
+    example: 'İstifa talebi',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  cancellationReason?: string;
 }

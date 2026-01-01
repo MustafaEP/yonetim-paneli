@@ -4,7 +4,6 @@ import httpClient from './httpClient';
 export interface Branch {
   id: string;
   name: string;
-  code?: string;
   presidentId?: string;
   president?: {
     id: string;
@@ -12,9 +11,6 @@ export interface Branch {
     lastName: string;
     email: string;
   };
-  address?: string;
-  phone?: string;
-  email?: string;
   isActive: boolean;
   provinceId?: string | null;
   districtId?: string | null;
@@ -41,20 +37,12 @@ export interface BranchDetail extends Branch {
 
 export interface CreateBranchDto {
   name: string;
-  code?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
   provinceId?: string;
   districtId?: string;
 }
 
 export interface UpdateBranchDto {
   name?: string;
-  code?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
   isActive?: boolean;
   provinceId?: string | null;
   districtId?: string | null;
@@ -95,9 +83,14 @@ export const updateBranch = async (
   return res.data;
 };
 
+export interface DeleteBranchDto {
+  memberActionType: 'TRANSFER_TO_BRANCH' | 'TRANSFER_AND_DEACTIVATE' | 'TRANSFER_AND_CANCEL' | 'TRANSFER_DEACTIVATE_AND_CANCEL';
+  targetBranchId: string;
+}
+
 // Şube sil
-export const deleteBranch = async (id: string): Promise<void> => {
-  await httpClient.delete(`/regions/branches/${id}`);
+export const deleteBranch = async (id: string, dto: DeleteBranchDto): Promise<void> => {
+  await httpClient.delete(`/regions/branches/${id}`, { data: dto });
 };
 
 // Şube başkanı ata

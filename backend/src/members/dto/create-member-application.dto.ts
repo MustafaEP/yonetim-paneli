@@ -231,4 +231,75 @@ export class CreateMemberApplicationDto {
   @IsString()
   @IsOptional()
   districtId?: string;
+
+  // 🔹 Kurum Detay Bilgileri
+  @ApiProperty({
+    description: 'Görev Birimi',
+    example: 'Acil Servis',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  dutyUnit?: string;
+
+  @ApiProperty({
+    description: 'Kurum Adresi',
+    example: 'Atatürk Cad. No:123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionAddress?: string;
+
+  @ApiProperty({
+    description: 'Kurum İli ID',
+    example: 'province-uuid-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionProvinceId?: string;
+
+  @ApiProperty({
+    description: 'Kurum İlçesi ID',
+    example: 'district-uuid-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionDistrictId?: string;
+
+  @ApiProperty({
+    description: 'Meslek/Unvan ID',
+    example: 'profession-uuid-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  professionId?: string;
+
+  @ApiProperty({
+    description: 'Kurum Sicil No',
+    example: '12345',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  institutionRegNo?: string;
+
+  @ApiProperty({
+    description: 'Kadro Unvan Kodu',
+    example: 'K001',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  staffTitleCode?: string;
 }

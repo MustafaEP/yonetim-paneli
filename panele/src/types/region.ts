@@ -27,12 +27,8 @@ export interface UserScope {
 export interface Institution {
   id: string;
   name: string;
-  provinceId: string;
+  provinceId?: string | null;
   districtId?: string | null;
-  kurumSicilNo?: string | null;
-  gorevBirimi?: string | null;
-  kurumAdresi?: string | null;
-  kadroUnvanKodu?: string | null;
   isActive: boolean;
   approvedAt?: string | null;
   approvedBy?: string | null;
@@ -48,6 +44,51 @@ export interface Institution {
   } | null;
   memberCount?: number;
   createdAt?: string;
+}
+
+// 🔹 Branch
+export interface Branch {
+  id: string;
+  name: string;
+  presidentId?: string | null;
+  isActive: boolean;
+  branchSharePercent: number;
+  provinceId?: string | null;
+  districtId?: string | null;
+  province?: {
+    id: string;
+    name: string;
+  } | null;
+  district?: {
+    id: string;
+    name: string;
+  } | null;
+  president?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// 🔹 TevkifatCenter
+export interface TevkifatCenter {
+  id: string;
+  name: string;
+  isActive: boolean;
+  provinceId?: string | null;
+  districtId?: string | null;
+  province?: {
+    id: string;
+    name: string;
+  } | null;
+  district?: {
+    id: string;
+    name: string;
+  } | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
   
   

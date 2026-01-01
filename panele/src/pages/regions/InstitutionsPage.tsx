@@ -21,14 +21,19 @@ import {
   CircularProgress,
   Chip,
   IconButton,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormLabel,
+  Divider,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import BusinessIcon from '@mui/icons-material/Business';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 import type { Province, District, Institution } from '../../types/region';
 import {
@@ -36,41 +41,38 @@ import {
   getDistricts,
   getInstitutions,
   createInstitution,
-  updateInstitution,
   approveInstitution,
   deleteInstitution,
+  type DeleteInstitutionDto,
 } from '../../api/regionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 
 const InstitutionsPage: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
-  const [selectedIsActive, setSelectedIsActive] = useState<string>('');
 
   const [rows, setRows] = useState<Institution[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editingInstitution, setEditingInstitution] = useState<Institution | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingInstitution, setDeletingInstitution] = useState<Institution | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteActionType, setDeleteActionType] = useState<DeleteInstitutionDto['memberActionType']>('REMOVE_INSTITUTION');
+  const [deleteTargetInstitutionId, setDeleteTargetInstitutionId] = useState<string>('');
+  const [availableInstitutions, setAvailableInstitutions] = useState<Institution[]>([]);
   const [form, setForm] = useState<{
     name: string;
     provinceId: string;
     districtId: string;
-    kurumSicilNo: string;
-    gorevBirimi: string;
-    kurumAdresi: string;
-    kadroUnvanKodu: string;
   }>({
     name: '',
     provinceId: '',
     districtId: '',
-    kurumSicilNo: '',
-    gorevBirimi: '',
-    kurumAdresi: '',
-    kadroUnvanKodu: '',
   });
 
   const { hasPermission } = useAuth();
@@ -79,6 +81,7 @@ const InstitutionsPage: React.FC = () => {
   const canListInstitution = hasPermission('INSTITUTION_LIST');
   const canApproveInstitution = hasPermission('INSTITUTION_APPROVE');
   const canDeleteInstitution = hasPermission('INSTITUTION_UPDATE');
+  const canViewInstitution = hasPermission('INSTITUTION_LIST');
 
   const loadProvinces = async () => {
     try {
@@ -127,47 +130,17 @@ const InstitutionsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const isActive = selectedIsActive === '' ? undefined : selectedIsActive === 'true';
-    loadInstitutions(undefined, undefined, isActive);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIsActive]);
-
   const handleOpenNew = () => {
     if (!hasPermission('INSTITUTION_CREATE')) {
       toast.showError('Kurum oluşturmak için yetkiniz yok.');
       return;
     }
-    setEditingInstitution(null);
     setForm({
       name: '',
       provinceId: '',
       districtId: '',
-      kurumSicilNo: '',
-      gorevBirimi: '',
-      kurumAdresi: '',
-      kadroUnvanKodu: '',
     });
     setDistricts([]);
-    setDialogOpen(true);
-  };
-
-  const handleOpenEdit = (inst: Institution) => {
-    if (!hasPermission('INSTITUTION_UPDATE')) return;
-    setEditingInstitution(inst);
-    const provinceId = inst.provinceId;
-    setForm({
-      name: inst.name,
-      provinceId,
-      districtId: inst.districtId || '',
-      kurumSicilNo: inst.kurumSicilNo || '',
-      gorevBirimi: inst.gorevBirimi || '',
-      kurumAdresi: inst.kurumAdresi || '',
-      kadroUnvanKodu: inst.kadroUnvanKodu || '',
-    });
-    if (provinceId) {
-      loadDistrictsForProvince(provinceId);
-    }
     setDialogOpen(true);
   };
 
@@ -203,32 +176,17 @@ const InstitutionsPage: React.FC = () => {
         name: form.name.trim(),
         provinceId: form.provinceId || undefined,
         districtId: form.districtId || undefined,
-        kurumSicilNo: form.kurumSicilNo.trim() || undefined,
-        gorevBirimi: form.gorevBirimi.trim() || undefined,
-        kurumAdresi: form.kurumAdresi.trim() || undefined,
-        kadroUnvanKodu: form.kadroUnvanKodu.trim() || undefined,
       };
 
-      if (editingInstitution) {
-        if (!hasPermission('INSTITUTION_UPDATE')) {
-          toast.showError('Kurum güncellemek için yetkiniz yok.');
-          setSaving(false);
-          return;
-        }
-        await updateInstitution(editingInstitution.id, payload);
-        toast.showSuccess('Kurum başarıyla güncellendi.');
-      } else {
-        if (!hasPermission('INSTITUTION_CREATE')) {
-          toast.showError('Kurum oluşturmak için yetkiniz yok.');
-          setSaving(false);
-          return;
-        }
-        await createInstitution(payload);
-        toast.showSuccess('Kurum başarıyla oluşturuldu.');
+      if (!hasPermission('INSTITUTION_CREATE')) {
+        toast.showError('Kurum oluşturmak için yetkiniz yok.');
+        setSaving(false);
+        return;
       }
+      await createInstitution(payload);
+      toast.showSuccess('Kurum başarıyla oluşturuldu.');
 
-      const isActive = selectedIsActive === '' ? undefined : selectedIsActive === 'true';
-      await loadInstitutions(undefined, undefined, isActive);
+      await loadInstitutions();
       setDialogOpen(false);
     } catch (e) {
       console.error('Kurum kaydedilirken hata:', e);
@@ -246,30 +204,58 @@ const InstitutionsPage: React.FC = () => {
     try {
       await approveInstitution(id);
       toast.showSuccess('Kurum başarıyla onaylandı.');
-      const isActive = selectedIsActive === '' ? undefined : selectedIsActive === 'true';
-      await loadInstitutions(undefined, undefined, isActive);
+      await loadInstitutions();
     } catch (e) {
       console.error('Kurum onaylanırken hata:', e);
       toast.showError('Kurum onaylanırken bir hata oluştu.');
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteClick = async (inst: Institution) => {
     if (!canDeleteInstitution) {
-      toast.showError('Kurum silmek için yetkiniz yok.');
+      toast.showError('Kurum kaldırmak için yetkiniz yok.');
       return;
     }
-    if (!window.confirm('Bu kurumu silmek istediğinize emin misiniz?')) {
+    setDeletingInstitution(inst);
+    setDeleteActionType('REMOVE_INSTITUTION');
+    setDeleteTargetInstitutionId('');
+    // Mevcut kurumu listeden çıkararak hedef kurum listesini hazırla
+    const allInstitutions = await getInstitutions();
+    const filtered = allInstitutions.filter(i => i.id !== inst.id && i.isActive);
+    setAvailableInstitutions(filtered);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingInstitution) return;
+
+    // Transfer seçenekleri için hedef kurum kontrolü
+    if (
+      (deleteActionType === 'TRANSFER_TO_INSTITUTION' ||
+        deleteActionType === 'TRANSFER_AND_DEACTIVATE' ||
+        deleteActionType === 'TRANSFER_AND_CANCEL') &&
+      !deleteTargetInstitutionId
+    ) {
+      toast.showError('Lütfen hedef kurum seçin');
       return;
     }
+
+    setDeleting(true);
     try {
-      await deleteInstitution(id);
-      toast.showSuccess('Kurum başarıyla silindi.');
-      const isActive = selectedIsActive === '' ? undefined : selectedIsActive === 'true';
-      await loadInstitutions(undefined, undefined, isActive);
-    } catch (e) {
-      console.error('Kurum silinirken hata:', e);
-      toast.showError('Kurum silinirken bir hata oluştu.');
+      const dto: DeleteInstitutionDto = {
+        memberActionType: deleteActionType,
+        ...(deleteTargetInstitutionId && { targetInstitutionId: deleteTargetInstitutionId }),
+      };
+      await deleteInstitution(deletingInstitution.id, dto);
+      toast.showSuccess('Kurum başarıyla kaldırıldı.');
+      setDeleteDialogOpen(false);
+      setDeletingInstitution(null);
+      await loadInstitutions();
+    } catch (e: any) {
+      console.error('Kurum kaldırılırken hata:', e);
+      toast.showError(e.response?.data?.message || 'Kurum kaldırılırken bir hata oluştu.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -284,27 +270,6 @@ const InstitutionsPage: React.FC = () => {
           <BusinessIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
           <Typography sx={{ fontWeight: 500 }}>{params.row.name}</Typography>
         </Box>
-      ),
-    },
-    {
-      field: 'kurumSicilNo',
-      headerName: 'Sicil No',
-      flex: 0.8,
-      minWidth: 120,
-      valueGetter: (params: { row?: Institution }) => params?.row?.kurumSicilNo ?? '-',
-    },
-    {
-      field: 'isActive',
-      headerName: 'Durum',
-      flex: 0.7,
-      minWidth: 100,
-      renderCell: (params) => (
-        <Chip
-          label={params.row.isActive ? 'Aktif' : 'Beklemede'}
-          color={params.row.isActive ? 'success' : 'warning'}
-          size="small"
-          icon={params.row.isActive ? <CheckCircleIcon /> : <CancelIcon />}
-        />
       ),
     },
     {
@@ -334,16 +299,16 @@ const InstitutionsPage: React.FC = () => {
               <CheckCircleIcon fontSize="small" />
             </IconButton>
           )}
-          {canManageInstitution && (
+          {canViewInstitution && (
             <IconButton
               size="small"
               color="primary"
               onClick={(e) => {
                 e.stopPropagation();
-                handleOpenEdit(params.row);
+                navigate(`/institutions/${params.row.id}`);
               }}
             >
-              <BusinessIcon fontSize="small" />
+              <VisibilityIcon fontSize="small" />
             </IconButton>
           )}
           {canDeleteInstitution && (
@@ -352,7 +317,7 @@ const InstitutionsPage: React.FC = () => {
               color="error"
               onClick={(e) => {
                 e.stopPropagation();
-                handleDelete(params.row.id);
+                handleDeleteClick(params.row);
               }}
             >
               <DeleteIcon fontSize="small" />
@@ -386,88 +351,106 @@ const InstitutionsPage: React.FC = () => {
   }
 
   return (
-    <Box>
-      {/* Başlık Bölümü */}
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <BusinessIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: (theme) => 
+        theme.palette.mode === 'light' 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.success.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
+          : theme.palette.background.default,
+      pb: 4,
+    }}>
+      {/* Modern Header */}
+      <Box sx={{ pt: { xs: 3, md: 4 }, pb: { xs: 3, md: 4 } }}>
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 4,
+            background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+            color: 'white',
+            overflow: 'visible',
+            position: 'relative',
+            boxShadow: `0 8px 32px ${alpha(theme.palette.success.main, 0.3)}`,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 4,
+              padding: '2px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude',
+            }
+          }}
+        >
+          <Box sx={{ p: { xs: 3, md: 4 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 }, flexWrap: 'wrap' }}>
+              <Box
+                sx={{
+                  width: { xs: 60, md: 80 },
+                  height: { xs: 60, md: 80 },
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                <BusinessIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'white' }} />
+              </Box>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                    mb: 1,
+                  }}
+                >
+                  Kurumlar
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    opacity: 0.95,
+                    fontSize: { xs: '0.875rem', md: '1rem' },
+                  }}
+                >
+                  Kurumları görüntüleyin ve yönetin
+                </Typography>
+              </Box>
+              {hasPermission('INSTITUTION_CREATE') && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenNew}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1.5,
+                    backgroundColor: 'white',
+                    color: theme.palette.success.main,
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                    '&:hover': {
+                      backgroundColor: alpha('#fff', 0.9),
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                    },
+                  }}
+                >
+                  Yeni Kurum
+                </Button>
+              )}
+            </Box>
           </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              Kurumlar
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Kurumları görüntüleyin ve yönetin
-            </Typography>
-          </Box>
-          {hasPermission('INSTITUTION_CREATE') && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenNew}
-              sx={{
-                display: { xs: 'none', sm: 'flex' },
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                '&:hover': {
-                  boxShadow: `0 6px 20px 0 ${alpha(theme.palette.primary.main, 0.4)}`,
-                },
-              }}
-            >
-              Yeni Kurum
-            </Button>
-          )}
-        </Box>
-
-        {/* Mobile New Button */}
-        {hasPermission('INSTITUTION_CREATE') && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            fullWidth
-            onClick={handleOpenNew}
-            sx={{
-              display: { xs: 'flex', sm: 'none' },
-              mt: 2,
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              py: 1.5,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            Yeni Kurum Ekle
-          </Button>
-        )}
+        </Card>
       </Box>
 
       {/* Ana Kart */}
@@ -478,60 +461,13 @@ const InstitutionsPage: React.FC = () => {
           border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
           boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
           overflow: 'hidden',
+          transition: 'all 0.3s ease-in-out',
+          '&:hover': {
+            boxShadow: `0 12px 28px ${alpha(theme.palette.success.main, 0.12)}`,
+            transform: 'translateY(-2px)',
+          }
         }}
       >
-        {/* Filtre Bölümü */}
-        <Box
-          sx={{
-            p: { xs: 2, sm: 3 },
-            backgroundColor: alpha(theme.palette.primary.main, 0.02),
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <FilterListIcon sx={{ color: theme.palette.primary.main }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Filtreler
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr' },
-              gap: 2,
-              maxWidth: 300,
-            }}
-          >
-            <FormControl
-              size="small"
-              fullWidth
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#fff',
-                  borderRadius: 2,
-                  '&:hover': {
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                },
-              }}
-            >
-              <InputLabel>Durum</InputLabel>
-              <Select
-                label="Durum"
-                value={selectedIsActive}
-                onChange={(e) => setSelectedIsActive(e.target.value as string)}
-              >
-                <MenuItem value="">
-                  <em>Tümü</em>
-                </MenuItem>
-                <MenuItem value="true">Aktif</MenuItem>
-                <MenuItem value="false">Beklemede</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </Box>
 
         {/* İçerik Bölümü */}
         <Box sx={{ p: { xs: 2, sm: 3 } }}>
@@ -602,8 +538,9 @@ const InstitutionsPage: React.FC = () => {
               getRowId={(row) => row.id}
               loading={loading}
               onRowDoubleClick={(params) => {
-                const inst = rows.find((x) => x.id === params.id);
-                if (inst && canManageInstitution) handleOpenEdit(inst);
+                if (canViewInstitution) {
+                  navigate(`/institutions/${params.id}`);
+                }
               }}
               initialState={{
                 pagination: {
@@ -622,7 +559,269 @@ const InstitutionsPage: React.FC = () => {
         </Box>
       </Card>
 
-      {/* Kurum Ekle / Düzenle Dialog */}
+      {/* Kurum Kaldır Dialog */}
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={() => !deleting && setDeleteDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${alpha(theme.palette.error.main, 0.15)}`,
+          },
+        }}
+      >
+        <DialogTitle 
+          sx={{ 
+            pb: 1,
+            pt: 3,
+            px: 3,
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            color: theme.palette.error.main,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.3)}`,
+              }}
+            >
+              <DeleteIcon />
+            </Box>
+            Kurumu Sil
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, px: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+              <Typography variant="body2" fontWeight={600} gutterBottom>
+                "{deletingInstitution?.name}" adlı kurumu silmek istediğinize emin misiniz?
+              </Typography>
+              <Typography variant="body2">
+                Bu kuruma bağlı {deletingInstitution?.memberCount || 0} üye bulunmaktadır. 
+                Kurumu silmeden önce üyelere ne yapılacağını seçmeniz gerekmektedir.
+              </Typography>
+            </Alert>
+
+            <Box>
+              <FormLabel sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.95rem', display: 'block' }}>
+                Üyelere Ne Yapılacak?
+              </FormLabel>
+              <RadioGroup
+                value={deleteActionType}
+                onChange={(e) => {
+                  setDeleteActionType(e.target.value as DeleteInstitutionDto['memberActionType']);
+                  setDeleteTargetInstitutionId('');
+                }}
+                sx={{ gap: 1 }}
+              >
+                <FormControlLabel
+                  value="REMOVE_INSTITUTION"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Kurum Bilgisini Kaldır
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler kurumsuz kalacak, durumları değişmeyecek
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.04),
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  value="TRANSFER_TO_INSTITUTION"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Başka Bir Kuruma Taşı
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler seçilen kuruma taşınacak, durumları değişmeyecek
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.04),
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  value="REMOVE_AND_DEACTIVATE"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Kurum Bilgisini Kaldır ve Pasif Et
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler kurumsuz kalacak ve pasif duruma getirilecek
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.warning.main, 0.04),
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  value="TRANSFER_AND_DEACTIVATE"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Başka Bir Kuruma Taşı ve Pasif Et
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler seçilen kuruma taşınacak ve pasif duruma getirilecek
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.warning.main, 0.04),
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  value="TRANSFER_AND_CANCEL"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Başka Bir Kuruma Taşı ve İptal Et
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler seçilen kuruma taşınacak ve üyelikleri iptal edilecek (İstifa)
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.error.main, 0.04),
+                    },
+                  }}
+                />
+              </RadioGroup>
+            </Box>
+
+            {(deleteActionType === 'TRANSFER_TO_INSTITUTION' ||
+              deleteActionType === 'TRANSFER_AND_DEACTIVATE' ||
+              deleteActionType === 'TRANSFER_AND_CANCEL') && (
+              <>
+                <Divider />
+                <FormControl fullWidth required>
+                  <InputLabel>Hedef Kurum</InputLabel>
+                  <Select
+                    value={deleteTargetInstitutionId}
+                    onChange={(e) => setDeleteTargetInstitutionId(e.target.value as string)}
+                    label="Hedef Kurum"
+                    disabled={deleting}
+                    sx={{
+                      borderRadius: 2,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: alpha(theme.palette.divider, 0.2),
+                      },
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Hedef kurum seçin</em>
+                    </MenuItem>
+                    {availableInstitutions.map((inst) => (
+                      <MenuItem key={inst.id} value={inst.id}>
+                        {inst.name}
+                        {inst.memberCount !== undefined && ` (${inst.memberCount} üye)`}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <Alert severity="info" sx={{ mt: 1.5, borderRadius: 2 }}>
+                    Üyeler bu kuruma taşınacaktır
+                  </Alert>
+                </FormControl>
+              </>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 2, gap: 1.5 }}>
+          <Button 
+            onClick={() => {
+              setDeleteDialogOpen(false);
+              setDeletingInstitution(null);
+              setDeleteActionType('REMOVE_INSTITUTION');
+              setDeleteTargetInstitutionId('');
+            }} 
+            disabled={deleting}
+            sx={{ 
+              borderRadius: 2,
+              px: 3,
+              fontWeight: 600,
+            }}
+          >
+            İptal
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            disabled={deleting || ((deleteActionType === 'TRANSFER_TO_INSTITUTION' ||
+              deleteActionType === 'TRANSFER_AND_DEACTIVATE' ||
+              deleteActionType === 'TRANSFER_AND_CANCEL') && !deleteTargetInstitutionId)}
+            startIcon={deleting ? <CircularProgress size={16} /> : <DeleteIcon />}
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              fontWeight: 600,
+              boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.3)}`,
+              '&:hover': {
+                boxShadow: `0 6px 16px ${alpha(theme.palette.error.main, 0.4)}`,
+              },
+            }}
+          >
+            {deleting ? 'Siliniyor...' : 'Kurumu Sil'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Kurum Ekle Dialog */}
       <Dialog
         open={dialogOpen}
         onClose={handleCloseDialog}
@@ -641,7 +840,7 @@ const InstitutionsPage: React.FC = () => {
             pb: 1,
           }}
         >
-          {editingInstitution ? 'Kurum Düzenle' : 'Yeni Kurum'}
+          Yeni Kurum
         </DialogTitle>
         <DialogContent
           sx={{
@@ -712,60 +911,6 @@ const InstitutionsPage: React.FC = () => {
             value={form.name}
             onChange={(e) => handleFormChange('name', e.target.value)}
             required
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          />
-
-          <TextField
-            label="Kurum Sicil No"
-            size="small"
-            fullWidth
-            value={form.kurumSicilNo}
-            onChange={(e) => handleFormChange('kurumSicilNo', e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          />
-
-          <TextField
-            label="Görev Birimi"
-            size="small"
-            fullWidth
-            value={form.gorevBirimi}
-            onChange={(e) => handleFormChange('gorevBirimi', e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          />
-
-          <TextField
-            label="Kurum Adresi"
-            size="small"
-            fullWidth
-            multiline
-            minRows={2}
-            value={form.kurumAdresi}
-            onChange={(e) => handleFormChange('kurumAdresi', e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          />
-
-          <TextField
-            label="Kadro Ünvan Kodu"
-            size="small"
-            fullWidth
-            value={form.kadroUnvanKodu}
-            onChange={(e) => handleFormChange('kadroUnvanKodu', e.target.value)}
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,

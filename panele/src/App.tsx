@@ -31,10 +31,13 @@ import BranchesPage from './pages/regions/BranchesPage';
 import TevkifatCentersPage from './pages/accounting/TevkifatCentersPage';
 import TevkifatCenterDetailPage from './pages/accounting/TevkifatCenterDetailPage';
 import TevkifatCenterCreatePage from './pages/accounting/TevkifatCenterCreatePage';
+import TevkifatTitlesPage from './pages/accounting/TevkifatTitlesPage';
 import PaymentsListPage from './pages/payments/PaymentsListPage';
 import PaymentDetailPage from './pages/payments/PaymentDetailPage';
 import BranchDetailPage from './pages/regions/BranchDetailPage';
 import InstitutionsPage from './pages/regions/InstitutionsPage';
+import InstitutionDetailPage from './pages/regions/InstitutionDetailPage';
+import ProfessionsPage from './pages/professions/ProfessionsPage';
 import { Box, Typography, Button, Container, Paper, alpha, useTheme } from '@mui/material';
 import BlockIcon from '@mui/icons-material/Block';
 import HomeIcon from '@mui/icons-material/Home';
@@ -118,7 +121,7 @@ const App: React.FC = () => {
 
           {/* Üye Güncelleme: MEMBER_UPDATE */}
           <Route element={<ProtectedRoute requiredPermission="MEMBER_UPDATE" />}>
-            <Route path="/members/:id/update" element={<MemberUpdatePage />} />
+            <Route path="/members/:id/edit" element={<MemberUpdatePage />} />
           </Route>
 
           {/* Üye Başvuruları */}
@@ -160,6 +163,12 @@ const App: React.FC = () => {
           {/* Kurumlar: INSTITUTION_LIST */}
           <Route element={<ProtectedRoute requiredPermission="INSTITUTION_LIST" />}>
             <Route path="/institutions" element={<InstitutionsPage />} />
+            <Route path="/institutions/:id" element={<InstitutionDetailPage />} />
+          </Route>
+
+          {/* Meslek/Unvan: MEMBER_CREATE_APPLICATION veya MEMBER_UPDATE */}
+          <Route element={<ProtectedRoute requiredPermission="MEMBER_CREATE_APPLICATION" alternativePermission="MEMBER_UPDATE" />}>
+            <Route path="/professions" element={<ProfessionsPage />} />
           </Route>
 
           {/* İçerik Yönetimi: CONTENT_MANAGE */}
@@ -208,6 +217,7 @@ const App: React.FC = () => {
             <Route path="/accounting/tevkifat-centers/:id/edit" element={<TevkifatCenterCreatePage />} />
             <Route path="/accounting/tevkifat-centers/:id" element={<TevkifatCenterDetailPage />} />
             <Route path="/accounting/tevkifat-centers" element={<TevkifatCentersPage />} />
+            <Route path="/accounting/tevkifat-titles" element={<TevkifatTitlesPage />} />
           </Route>
 
           {/* Ödemeler: MEMBER_PAYMENT_LIST */}

@@ -8,7 +8,6 @@ import {
   Button,
   Chip,
   Grid,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -20,23 +19,43 @@ import {
   IconButton,
   useTheme,
   alpha,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormLabel,
   Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BusinessIcon from '@mui/icons-material/Business';
 import LinkIcon from '@mui/icons-material/Link';
+import EditIcon from '@mui/icons-material/Edit';
+import BlockIcon from '@mui/icons-material/Block';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import {
   getTevkifatCenterById,
   getTevkifatFiles,
+  deleteTevkifatCenter,
+  getTevkifatCenters,
   type TevkifatCenterDetail,
   type TevkifatFile,
+  type DeleteTevkifatCenterDto,
+  type TevkifatCenter,
 } from '../../api/accountingApi';
-import { getMembers, type MemberListItem } from '../../api/membersApi';
-import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import { getMembers } from '../../api/membersApi';
+import { DataGrid } from '@mui/x-data-grid';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PeopleIcon from '@mui/icons-material/People';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 const TevkifatCenterDetailPage: React.FC = () => {
   const theme = useTheme();
@@ -47,21 +66,37 @@ const TevkifatCenterDetailPage: React.FC = () => {
 
   const [center, setCenter] = useState<TevkifatCenterDetail | null>(null);
   const [files, setFiles] = useState<TevkifatFile[]>([]);
-  const [members, setMembers] = useState<MemberListItem[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const membersSectionRef = React.useRef<HTMLDivElement>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteActionType, setDeleteActionType] = useState<DeleteTevkifatCenterDto['memberActionType']>('REMOVE_TEVKIFAT_CENTER');
+  const [deleteTargetTevkifatCenterId, setDeleteTargetTevkifatCenterId] = useState<string>('');
+  const [availableCenters, setAvailableCenters] = useState<TevkifatCenter[]>([]);
 
   const canView = hasPermission('ACCOUNTING_VIEW');
+  const canManage = hasPermission('ACCOUNTING_VIEW');
 
   useEffect(() => {
     if (id && canView) {
       loadCenter();
       loadFiles();
       loadMembers();
+      loadAvailableCenters();
     }
   }, [id, canView]);
+
+  const loadAvailableCenters = async () => {
+    try {
+      const data = await getTevkifatCenters();
+      setAvailableCenters(data);
+    } catch (e: any) {
+      console.error('Tevkifat merkezleri yüklenirken hata:', e);
+    }
+  };
 
   const loadCenter = async () => {
     if (!id) return;
@@ -97,7 +132,7 @@ const TevkifatCenterDetailPage: React.FC = () => {
       const allMembers = await getMembers();
       // Bu tevkifat merkezine bağlı üyeleri filtrele
       const centerMembers = allMembers.filter(
-        (member) => member.tevkifatCenter?.id === id
+        (member: any) => member.tevkifatCenter?.id === id
       );
       setMembers(centerMembers);
     } catch (e: any) {
@@ -135,6 +170,38 @@ const TevkifatCenterDetailPage: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+
+    // Transfer seçenekleri için hedef merkez kontrolü
+    if (
+      (deleteActionType === 'TRANSFER_TO_TEVKIFAT_CENTER' ||
+        deleteActionType === 'TRANSFER_AND_DEACTIVATE' ||
+        deleteActionType === 'TRANSFER_AND_CANCEL') &&
+      !deleteTargetTevkifatCenterId
+    ) {
+      toast.showError('Lütfen hedef tevkifat merkezi seçin');
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const dto: DeleteTevkifatCenterDto = {
+        memberActionType: deleteActionType,
+        ...(deleteTargetTevkifatCenterId && { targetTevkifatCenterId: deleteTargetTevkifatCenterId }),
+      };
+      await deleteTevkifatCenter(id, dto);
+      toast.showSuccess('Tevkifat merkezi kaldırıldı');
+      setDeleteDialogOpen(false);
+      navigate('/accounting/tevkifat-centers');
+    } catch (e: any) {
+      console.error('Tevkifat merkezi silinirken hata:', e);
+      toast.showError(e.response?.data?.message || 'Tevkifat merkezi silinirken bir hata oluştu');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const monthNames = [
     'Ocak',
     'Şubat',
@@ -152,8 +219,25 @@ const TevkifatCenterDetailPage: React.FC = () => {
 
   if (!canView) {
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Alert severity="error">Bu sayfaya erişim yetkiniz bulunmamaktadır.</Alert>
+      <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 4,
+            textAlign: 'center',
+            border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+            borderRadius: 3,
+            boxShadow: `0 4px 16px ${alpha(theme.palette.error.main, 0.15)}`,
+          }}
+        >
+          <BusinessIcon sx={{ fontSize: 64, color: theme.palette.error.main, mb: 2, opacity: 0.5 }} />
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
+            Yetkisiz İşlem
+          </Typography>
+          <Typography color="text.secondary">
+            Bu sayfaya erişim yetkiniz bulunmamaktadır.
+          </Typography>
+        </Paper>
       </Box>
     );
   }
@@ -168,114 +252,234 @@ const TevkifatCenterDetailPage: React.FC = () => {
 
   if (!center) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">Tevkifat merkezi bulunamadı</Alert>
+      <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        <Alert 
+          severity="error"
+          sx={{
+            borderRadius: 2.5,
+            boxShadow: `0 4px 16px ${alpha(theme.palette.error.main, 0.15)}`,
+          }}
+        >
+          Tevkifat merkezi bulunamadı
+        </Alert>
       </Box>
     );
   }
 
   return (
-    <Box>
-      <Box sx={{ mb: 3 }}>
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: (theme) => 
+        theme.palette.mode === 'light' 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
+          : theme.palette.background.default,
+      pb: 4,
+    }}>
+      {/* Back Button */}
+      <Box sx={{ mb: 3, pt: { xs: 2, md: 3 } }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/accounting/tevkifat-centers')}
-          sx={{ mb: 2 }}
+          sx={{ 
+            mb: 3,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 2,
+          }}
         >
           Geri Dön
         </Button>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <BusinessIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
+
+        {/* Modern Header Card */}
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 4,
+            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            color: 'white',
+            overflow: 'visible',
+            position: 'relative',
+            boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 4,
+              padding: '2px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude',
+            }
+          }}
+        >
+          <Box sx={{ p: { xs: 3, md: 4 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 }, flexWrap: 'wrap' }}>
+              <Box
+                sx={{
+                  width: { xs: 60, md: 80 },
+                  height: { xs: 60, md: 80 },
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                <BusinessIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'white' }} />
+              </Box>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                    mb: 1,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {center.name}
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    opacity: 0.95,
+                    fontSize: { xs: '0.875rem', md: '1rem' },
+                  }}
+                >
+                  Tevkifat Merkezi Detayları
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Chip
+                  label={center.isActive ? 'Aktif' : 'Pasif'}
+                  color={center.isActive ? 'success' : 'default'}
+                  sx={{
+                    height: 36,
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    backgroundColor: 'white',
+                    color: center.isActive ? theme.palette.success.main : theme.palette.text.secondary,
+                  }}
+                />
+                {canManage && (
+                  <>
+                    <Button
+                      variant="contained"
+                      startIcon={<EditIcon />}
+                      onClick={() => navigate(`/accounting/tevkifat-centers/${id}/edit`)}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        backgroundColor: 'white',
+                        color: theme.palette.primary.main,
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                        '&:hover': {
+                          backgroundColor: alpha('#fff', 0.9),
+                          boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                        },
+                      }}
+                    >
+                      Düzenle
+                    </Button>
+                    {center.isActive && (
+                      <Button
+                        variant="outlined"
+                        color="warning"
+                        startIcon={<BlockIcon />}
+                        onClick={() => {
+                          setDeleteActionType('REMOVE_TEVKIFAT_CENTER');
+                          setDeleteTargetTevkifatCenterId('');
+                          setDeleteDialogOpen(true);
+                        }}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          backgroundColor: 'white',
+                          borderColor: 'white',
+                          color: theme.palette.warning.main,
+                          '&:hover': {
+                            backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                            borderColor: 'white',
+                          },
+                        }}
+                      >
+                        Kaldır
+                      </Button>
+                    )}
+                  </>
+                )}
+              </Box>
+            </Box>
           </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              {center.name}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              {center.code && `Kod: ${center.code}`}
-            </Typography>
-          </Box>
-          <Chip
-            label={center.isActive ? 'Aktif' : 'Pasif'}
-            color={center.isActive ? 'success' : 'default'}
-          />
-        </Box>
+        </Card>
       </Box>
 
       <Grid container spacing={3}>
         {/* Genel Bilgiler */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card
             elevation={0}
             sx={{
               borderRadius: 3,
               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 3,
+              p: { xs: 2, md: 3 },
+              height: '100%',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.15)}`,
+                transform: 'translateY(-4px)',
+                borderColor: 'primary.main',
+              }
             }}
           >
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <BusinessIcon sx={{ color: theme.palette.primary.main }} />
               Genel Bilgiler
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Kod
-                </Typography>
-                <Typography variant="body1">{center.code || '-'}</Typography>
-              </Box>
-              {center.title && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              {(center as any).title && (
                 <Box>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
                     Tevkifat Ünvanı
                   </Typography>
-                  <Typography variant="body1">{center.title}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {(center as any).title}
+                  </Typography>
                 </Box>
               )}
-              {center.address && (
+              {(center as any).address && (
                 <Box>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
                     Adres
                   </Typography>
-                  <Typography variant="body1">{center.address}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {(center as any).address}
+                  </Typography>
                 </Box>
               )}
-              {center.description && (
+              {(center as any).description && (
                 <Box>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
                     Açıklama
                   </Typography>
-                  <Typography variant="body1">{center.description}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {(center as any).description}
+                  </Typography>
                 </Box>
               )}
               <Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
                   Toplam Üye Sayısı
                 </Typography>
                 <Box
@@ -284,15 +488,17 @@ const TevkifatCenterDetailPage: React.FC = () => {
                     alignItems: 'center',
                     gap: 1,
                     cursor: 'pointer',
+                    transition: 'all 0.2s ease',
                     '&:hover': {
                       color: theme.palette.primary.main,
+                      transform: 'translateX(4px)',
                     },
                   }}
                   onClick={() => {
                     membersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
                 >
-                  <Typography variant="body1" fontWeight={600}>
+                  <Typography variant="h5" fontWeight={700} color="primary">
                     {members.length || center._count.members}
                   </Typography>
                   <LinkIcon fontSize="small" sx={{ opacity: 0.6 }} />
@@ -309,26 +515,34 @@ const TevkifatCenterDetailPage: React.FC = () => {
             sx={{
               borderRadius: 3,
               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 3,
+              p: { xs: 2, md: 3 },
+              height: '100%',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.info.main, 0.15)}`,
+                transform: 'translateY(-4px)',
+                borderColor: 'info.main',
+              }
             }}
           >
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DescriptionIcon sx={{ color: theme.palette.info.main }} />
               İstatistikler
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               <Box>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
                   Toplam Dosya Sayısı
                 </Typography>
-                <Typography variant="body1" fontWeight={600}>
+                <Typography variant="h5" fontWeight={700} color="info.main">
                   {center._count.files}
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
                   Toplam Ödeme Sayısı
                 </Typography>
-                <Typography variant="body1" fontWeight={600}>
+                <Typography variant="h5" fontWeight={700} color="success.main">
                   {center._count.payments}
                 </Typography>
               </Box>
@@ -338,50 +552,58 @@ const TevkifatCenterDetailPage: React.FC = () => {
 
         {/* Yıllık Özet */}
         {center.yearlySummary && center.yearlySummary.length > 0 && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Card
               elevation={0}
               sx={{
                 borderRadius: 3,
                 border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                p: 3,
+                overflow: 'hidden',
+                transition: 'all 0.3s ease-in-out',
+                '&:hover': {
+                  boxShadow: `0 12px 28px ${alpha(theme.palette.warning.main, 0.15)}`,
+                  transform: 'translateY(-4px)',
+                  borderColor: 'warning.main',
+                }
               }}
             >
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                Yıllık Özet
-              </Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Yıl</TableCell>
-                      <TableCell align="right">Toplam Gelir</TableCell>
-                      <TableCell align="right">Ortalama Aylık Gelir</TableCell>
-                      <TableCell align="right">Ödeme Yapan Üye Sayısı</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {center.yearlySummary.map((summary) => (
-                      <TableRow key={summary.year}>
-                        <TableCell>{summary.year}</TableCell>
-                        <TableCell align="right">
-                          {new Intl.NumberFormat('tr-TR', {
-                            style: 'currency',
-                            currency: 'TRY',
-                          }).format(summary.totalAmount)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {new Intl.NumberFormat('tr-TR', {
-                            style: 'currency',
-                            currency: 'TRY',
-                          }).format(summary.averageMonthlyAmount)}
-                        </TableCell>
-                        <TableCell align="right">{summary.memberCount}</TableCell>
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
+                  Yıllık Özet
+                </Typography>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: alpha(theme.palette.warning.main, 0.06) }}>
+                        <TableCell sx={{ fontWeight: 700 }}>Yıl</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Toplam Gelir</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Ortalama Aylık Gelir</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Ödeme Yapan Üye Sayısı</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {center.yearlySummary.map((summary) => (
+                        <TableRow key={summary.year} sx={{ '&:hover': { backgroundColor: alpha(theme.palette.warning.main, 0.02) } }}>
+                          <TableCell sx={{ fontWeight: 600 }}>{summary.year}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
+                            {new Intl.NumberFormat('tr-TR', {
+                              style: 'currency',
+                              currency: 'TRY',
+                            }).format(summary.totalAmount)}
+                          </TableCell>
+                          <TableCell align="right">
+                            {new Intl.NumberFormat('tr-TR', {
+                              style: 'currency',
+                              currency: 'TRY',
+                            }).format(summary.averageMonthlyAmount)}
+                          </TableCell>
+                          <TableCell align="right">{summary.memberCount}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
             </Card>
           </Grid>
         )}
@@ -394,39 +616,47 @@ const TevkifatCenterDetailPage: React.FC = () => {
               sx={{
                 borderRadius: 3,
                 border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                p: 3,
+                overflow: 'hidden',
+                transition: 'all 0.3s ease-in-out',
+                '&:hover': {
+                  boxShadow: `0 12px 28px ${alpha(theme.palette.info.main, 0.15)}`,
+                  transform: 'translateY(-4px)',
+                  borderColor: 'info.main',
+                }
               }}
             >
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                Aylık Özet (Son 12 Ay)
-              </Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Ay</TableCell>
-                      <TableCell>Yıl</TableCell>
-                      <TableCell align="right">Gelen Toplam Tutar</TableCell>
-                      <TableCell align="right">Ödeme Yapan Üye Sayısı</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {center.monthlySummary.map((summary, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{monthNames[summary.month - 1]}</TableCell>
-                        <TableCell>{summary.year}</TableCell>
-                        <TableCell align="right">
-                          {new Intl.NumberFormat('tr-TR', {
-                            style: 'currency',
-                            currency: 'TRY',
-                          }).format(summary.totalAmount)}
-                        </TableCell>
-                        <TableCell align="right">{summary.memberCount}</TableCell>
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
+                  Aylık Özet (Son 12 Ay)
+                </Typography>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: alpha(theme.palette.info.main, 0.06) }}>
+                        <TableCell sx={{ fontWeight: 700 }}>Ay</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Yıl</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Gelen Toplam Tutar</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Ödeme Yapan Üye Sayısı</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {center.monthlySummary.map((summary, index) => (
+                        <TableRow key={index} sx={{ '&:hover': { backgroundColor: alpha(theme.palette.info.main, 0.02) } }}>
+                          <TableCell sx={{ fontWeight: 600 }}>{monthNames[summary.month - 1]}</TableCell>
+                          <TableCell>{summary.year}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
+                            {new Intl.NumberFormat('tr-TR', {
+                              style: 'currency',
+                              currency: 'TRY',
+                            }).format(summary.totalAmount)}
+                          </TableCell>
+                          <TableCell align="right">{summary.memberCount}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
             </Card>
           </Grid>
         )}
@@ -439,93 +669,138 @@ const TevkifatCenterDetailPage: React.FC = () => {
             sx={{
               borderRadius: 3,
               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 3,
+              overflow: 'hidden',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.15)}`,
+                transform: 'translateY(-4px)',
+                borderColor: 'primary.main',
+              }
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <PeopleIcon sx={{ color: theme.palette.primary.main }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                Bağlı Üyeler ({members.length})
-              </Typography>
-            </Box>
-            {loadingMembers ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress />
-              </Box>
-            ) : members.length === 0 ? (
-              <Alert severity="info">Bu merkeze bağlı üye bulunmamaktadır</Alert>
-            ) : (
-              <Box
-                sx={{
-                  height: 400,
-                  '& .MuiDataGrid-root': {
-                    border: 'none',
-                  },
-                  '& .MuiDataGrid-cell': {
-                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  },
-                  '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  },
-                }}
-              >
-                <DataGrid
-                  rows={members}
-                  columns={[
-                    {
-                      field: 'registrationNumber',
-                      headerName: 'Kayıt No',
-                      width: 130,
-                      valueGetter: (value) => value || '-',
-                    },
-                    {
-                      field: 'fullName',
-                      headerName: 'Ad Soyad',
-                      flex: 1,
-                      minWidth: 200,
-                      valueGetter: (_value, row) => `${row.firstName} ${row.lastName}`,
-                    },
-                    {
-                      field: 'institution',
-                      headerName: 'Kurum',
-                      flex: 1,
-                      minWidth: 200,
-                      valueGetter: (_value, row) => row.institution?.name || '-',
-                    },
-                    {
-                      field: 'branch',
-                      headerName: 'Şube',
-                      flex: 1,
-                      minWidth: 150,
-                      valueGetter: (_value, row) => row.branch?.name || '-',
-                    },
-                    {
-                      field: 'actions',
-                      headerName: 'İşlemler',
-                      width: 100,
-                      sortable: false,
-                      renderCell: (params) => (
-                        <IconButton
-                          size="small"
-                          onClick={() => navigate(`/members/${params.row.id}`)}
-                          sx={{ color: theme.palette.info.main }}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      ),
-                    },
-                  ]}
-                  loading={loadingMembers}
-                  getRowId={(row) => row.id}
-                  pageSizeOptions={[10, 25, 50]}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 10 } },
+            <Box sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                  disableRowSelectionOnClick
-                />
+                >
+                  <PeopleIcon sx={{ color: theme.palette.primary.main, fontSize: '1.25rem' }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Bağlı Üyeler ({members.length})
+                </Typography>
               </Box>
-            )}
+              {loadingMembers ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : members.length === 0 ? (
+                <Alert 
+                  severity="info"
+                  sx={{
+                    borderRadius: 2,
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.1)}`,
+                  }}
+                >
+                  Bu merkeze bağlı üye bulunmamaktadır
+                </Alert>
+              ) : (
+                <Box
+                  sx={{
+                    height: 500,
+                    '& .MuiDataGrid-root': {
+                      border: 'none',
+                      borderRadius: 2,
+                    },
+                    '& .MuiDataGrid-cell': {
+                      borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                      fontSize: '0.875rem',
+                    },
+                    '& .MuiDataGrid-columnHeaders': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.06),
+                      borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+                    },
+                    '& .MuiDataGrid-columnHeaderTitle': {
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                    },
+                    '& .MuiDataGrid-row': {
+                      transition: 'background-color 0.2s ease',
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      },
+                    },
+                  }}
+                >
+                  <DataGrid
+                    rows={members}
+                    columns={[
+                      {
+                        field: 'registrationNumber',
+                        headerName: 'Kayıt No',
+                        width: 130,
+                        valueGetter: (value) => value || '-',
+                      },
+                      {
+                        field: 'fullName',
+                        headerName: 'Ad Soyad',
+                        flex: 1,
+                        minWidth: 200,
+                        valueGetter: (_value, row) => `${row.firstName} ${row.lastName}`,
+                      },
+                      {
+                        field: 'institution',
+                        headerName: 'Kurum',
+                        flex: 1,
+                        minWidth: 200,
+                        valueGetter: (_value, row) => row.institution?.name || '-',
+                      },
+                      {
+                        field: 'branch',
+                        headerName: 'Şube',
+                        flex: 1,
+                        minWidth: 150,
+                        valueGetter: (_value, row) => row.branch?.name || '-',
+                      },
+                      {
+                        field: 'actions',
+                        headerName: 'İşlemler',
+                        width: 100,
+                        sortable: false,
+                        renderCell: (params) => (
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/members/${params.row.id}`)}
+                            sx={{ 
+                              color: theme.palette.info.main,
+                              '&:hover': {
+                                backgroundColor: alpha(theme.palette.info.main, 0.1),
+                              },
+                            }}
+                          >
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        ),
+                      },
+                    ]}
+                    loading={loadingMembers}
+                    getRowId={(row) => row.id}
+                    pageSizeOptions={[10, 25, 50]}
+                    initialState={{
+                      pagination: { paginationModel: { pageSize: 10 } },
+                    }}
+                    disableRowSelectionOnClick
+                  />
+                </Box>
+              )}
+            </Box>
           </Card>
         </Grid>
 
@@ -536,55 +811,91 @@ const TevkifatCenterDetailPage: React.FC = () => {
             sx={{
               borderRadius: 3,
               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 3,
+              overflow: 'hidden',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.success.main, 0.15)}`,
+                transform: 'translateY(-4px)',
+                borderColor: 'success.main',
+              }
             }}
           >
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Bağlı Dosyalar
-            </Typography>
-            {loadingFiles ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress />
+            <Box sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.success.main, 0.1),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <DescriptionIcon sx={{ color: theme.palette.success.main, fontSize: '1.25rem' }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Bağlı Dosyalar
+                </Typography>
               </Box>
-            ) : files.length === 0 ? (
-              <Alert severity="info">Henüz dosya yüklenmemiş</Alert>
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Ay</TableCell>
-                      <TableCell>Yıl</TableCell>
-                      <TableCell align="right">Üye Sayısı</TableCell>
-                      <TableCell align="right">Toplam Tutar</TableCell>
-                      <TableCell>Onay Durumu</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {files.map((file) => (
-                      <TableRow key={file.id}>
-                        <TableCell>{monthNames[file.month - 1]}</TableCell>
-                        <TableCell>{file.year}</TableCell>
-                        <TableCell align="right">{file.memberCount}</TableCell>
-                        <TableCell align="right">
-                          {new Intl.NumberFormat('tr-TR', {
-                            style: 'currency',
-                            currency: 'TRY',
-                          }).format(Number(file.totalAmount))}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={getStatusLabel(file.status)}
-                            color={getStatusColor(file.status)}
-                            size="small"
-                          />
-                        </TableCell>
+              {loadingFiles ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : files.length === 0 ? (
+                <Alert 
+                  severity="info"
+                  sx={{
+                    borderRadius: 2,
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.1)}`,
+                  }}
+                >
+                  Henüz dosya yüklenmemiş
+                </Alert>
+              ) : (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: alpha(theme.palette.success.main, 0.06) }}>
+                        <TableCell sx={{ fontWeight: 700 }}>Ay</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Yıl</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Üye Sayısı</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Toplam Tutar</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Onay Durumu</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+                    </TableHead>
+                    <TableBody>
+                      {files.map((file) => (
+                        <TableRow key={file.id} sx={{ '&:hover': { backgroundColor: alpha(theme.palette.success.main, 0.02) } }}>
+                          <TableCell sx={{ fontWeight: 600 }}>{monthNames[file.month - 1]}</TableCell>
+                          <TableCell>{file.year}</TableCell>
+                          <TableCell align="right">{file.memberCount}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
+                            {new Intl.NumberFormat('tr-TR', {
+                              style: 'currency',
+                              currency: 'TRY',
+                            }).format(Number(file.totalAmount))}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={getStatusLabel(file.status)}
+                              color={getStatusColor(file.status)}
+                              size="small"
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                borderRadius: 1.5,
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Box>
           </Card>
         </Grid>
       </Grid>

@@ -13,15 +13,17 @@ import {
   CircularProgress,
   useTheme,
   alpha,
+  Fade,
+  Zoom,
+  Container,
 } from '@mui/material';
 import BadgeIcon from '@mui/icons-material/Badge';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PersonIcon from '@mui/icons-material/Person';
 import EmailIcon from '@mui/icons-material/Email';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import BusinessIcon from '@mui/icons-material/Business';
 import PlaceIcon from '@mui/icons-material/Place';
-import StoreIcon from '@mui/icons-material/Store';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 import { useAuth } from '../../context/AuthContext';
 import UserPermissionsSection from '../../components/users/UserPermissionsSection';
@@ -34,8 +36,10 @@ const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const [scopes, setScopes] = useState<UserScope[]>([]);
   const [loadingScopes, setLoadingScopes] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const loadScopes = async () => {
       if (!user) return;
       setLoadingScopes(true);
@@ -55,26 +59,37 @@ const ProfilePage: React.FC = () => {
 
   if (!user) {
     return (
-      <Box sx={{ mt: 4 }}>
-        <Paper
-          elevation={0}
-          sx={{
-            p: 4,
-            textAlign: 'center',
-            borderRadius: 3,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-          }}
-        >
-          <PersonIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h6" gutterBottom>
-            Profil Yüklenemedi
-          </Typography>
-          <Typography color="text.secondary">
-            Kullanıcı bilgileri yüklenemedi. Oturum süresi dolmuş olabilir.
-          </Typography>
-        </Paper>
-      </Box>
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Fade in timeout={600}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 6,
+              textAlign: 'center',
+              borderRadius: 4,
+              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              background: `linear-gradient(145deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.default, 0.4)} 100%)`,
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+            }}
+          >
+            <PersonIcon 
+              sx={{ 
+                fontSize: 80, 
+                color: 'text.secondary', 
+                mb: 3,
+                opacity: 0.5,
+              }} 
+            />
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
+              Profil Yüklenemedi
+            </Typography>
+            <Typography color="text.secondary" sx={{ fontSize: '1rem' }}>
+              Kullanıcı bilgileri yüklenemedi. Lütfen oturumunuzu yeniden başlatın.
+            </Typography>
+          </Paper>
+        </Fade>
+      </Container>
     );
   }
 
@@ -82,425 +97,611 @@ const ProfilePage: React.FC = () => {
   const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase();
 
   return (
-    <Box>
-      {/* Başlık Bölümü */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <PersonIcon sx={{ color: '#fff', fontSize: '1.5rem' }} />
-          </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              Profilim
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Kişisel bilgileriniz ve yetki alanlarınızı görüntüleyin
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
-
-      <Grid container spacing={3}>
-        {/* Sol Taraf - Kullanıcı Bilgileri */}
-        <Grid item xs={12} md={4}>
-          <Card
-            elevation={0}
-            sx={{
-              height: '100%',
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-              overflow: 'hidden',
-            }}
-          >
-            <Box
-              sx={{
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                height: 120,
-                position: 'relative',
-              }}
-            />
-            <Box
-              sx={{
-                p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                mt: -8,
-              }}
-            >
-              <Avatar
-                sx={{
-                  width: 120,
-                  height: 120,
-                  bgcolor: '#fff',
-                  color: theme.palette.primary.main,
-                  fontSize: '2.5rem',
-                  fontWeight: 700,
-                  border: `4px solid ${theme.palette.background.paper}`,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                  mb: 2,
-                }}
-              >
-                {initials}
-              </Avatar>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 700,
-                  mb: 0.5,
-                  textAlign: 'center',
-                }}
-              >
-                {user.firstName} {user.lastName}
-              </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  color: 'text.secondary',
-                  mb: 3,
-                }}
-              >
-                <EmailIcon sx={{ fontSize: '1rem' }} />
-                <Typography variant="body2">{user.email}</Typography>
-              </Box>
-
-              <Divider sx={{ width: '100%', mb: 3 }} />
-
-              {/* Roller */}
-              <Box sx={{ width: '100%' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <Box
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 1.5,
-                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <VerifiedUserIcon
-                      sx={{
-                        fontSize: '1.1rem',
-                        color: theme.palette.primary.main,
-                      }}
-                    />
-                  </Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    Rollerim
-                  </Typography>
+    <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
+      <Fade in={mounted} timeout={800}>
+        <Box>
+          {/* Başlık Bölümü */}
+          <Box sx={{ mb: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Zoom in={mounted} timeout={600}>
+                <Box
+                  sx={{
+                    width: { xs: 36, sm: 40 },
+                    height: { xs: 36, sm: 40 },
+                    borderRadius: 2,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mr: 2,
+                    boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      transform: 'rotate(5deg) scale(1.05)',
+                      boxShadow: `0 6px 24px ${alpha(theme.palette.primary.main, 0.5)}`,
+                    },
+                  }}
+                >
+                  <PersonIcon sx={{ color: '#fff', fontSize: { xs: '1.3rem', sm: '1.5rem' } }} />
                 </Box>
-                {roles.length > 0 ? (
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    {roles.map((r) => (
-                      <Chip
-                        key={r}
-                        label={r}
-                        size="small"
-                        sx={{
-                          fontWeight: 600,
-                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                          color: theme.palette.primary.main,
-                          border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                          '&:hover': {
-                            backgroundColor: alpha(theme.palette.primary.main, 0.15),
-                          },
-                        }}
-                      />
-                    ))}
-                  </Stack>
-                ) : (
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      textAlign: 'center',
-                      backgroundColor: alpha(theme.palette.grey[500], 0.05),
-                      borderRadius: 2,
-                    }}
-                  >
-                    <Typography variant="body2" color="text.secondary">
-                      Size henüz rol atanmadı.
-                    </Typography>
-                  </Paper>
-                )}
+              </Zoom>
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    mb: 0.5,
+                  }}
+                >
+                  Profilim
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    fontSize: { xs: '0.875rem', sm: '0.95rem' },
+                    fontWeight: 500,
+                  }}
+                >
+                  Kişisel bilgileriniz ve yetki alanlarınızı görüntüleyin
+                </Typography>
               </Box>
             </Box>
-          </Card>
-        </Grid>
+          </Box>
 
-        {/* Sağ Taraf - Detaylar */}
-        <Grid item xs={12} md={8}>
-          <Stack spacing={3}>
-            {/* İzinler */}
-            <Card
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-                overflow: 'hidden',
-              }}
-            >
-              <Box
-                sx={{
-                  p: 3,
-                  pb: 2,
-                  backgroundColor: alpha(theme.palette.info.main, 0.02),
-                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
+            {/* Sol Taraf - Kullanıcı Bilgileri */}
+            <Grid item xs={12} md={4}>
+              <Zoom in={mounted} timeout={700} style={{ transitionDelay: '100ms' }}>
+                <Card
+                  elevation={0}
+                  sx={{
+                    height: '100%',
+                    borderRadius: 4,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                    background: `linear-gradient(145deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.default, 0.6)} 100%)`,
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      boxShadow: '0 12px 48px rgba(0,0,0,0.12)',
+                      transform: 'translateY(-4px)',
+                    },
+                  }}
+                >
                   <Box
                     sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 1.5,
-                      background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: `0 4px 14px 0 ${alpha(theme.palette.info.main, 0.3)}`,
+                      background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                      height: { xs: 100, sm: 120 },
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'radial-gradient(circle at top right, rgba(255,255,255,0.2) 0%, transparent 60%)',
+                      },
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        bottom: -50,
+                        right: -50,
+                        width: 150,
+                        height: 150,
+                        borderRadius: '50%',
+                        background: alpha(theme.palette.primary.light, 0.2),
+                      },
                     }}
-                  >
-                    <BadgeIcon sx={{ color: '#fff', fontSize: '1.2rem' }} />
-                  </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    İzinlerim
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ p: 3 }}>
-                <UserPermissionsSection permissions={user.permissions} />
-              </Box>
-            </Card>
-
-            {/* Yetki Alanları */}
-            <Card
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-                overflow: 'hidden',
-              }}
-            >
-              <Box
-                sx={{
-                  p: 3,
-                  pb: 2,
-                  backgroundColor: alpha(theme.palette.success.main, 0.02),
-                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  />
                   <Box
                     sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 1.5,
-                      background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                      p: { xs: 2.5, sm: 3 },
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: `0 4px 14px 0 ${alpha(theme.palette.success.main, 0.3)}`,
+                      mt: { xs: -7, sm: -8 },
                     }}
                   >
-                    <LocationOnIcon sx={{ color: '#fff', fontSize: '1.2rem' }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      Yetkili Olduğum Bölgeler
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ color: 'text.secondary', fontSize: '0.875rem', mt: 0.5 }}
-                    >
-                      Hangi il / ilçe / işyeri / bayi üzerinde yetkili olduğunuzu gösterir
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-
-              <Box sx={{ p: 3 }}>
-                {loadingScopes ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                    <CircularProgress size={40} />
-                  </Box>
-                ) : scopes.length === 0 ? (
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 4,
-                      textAlign: 'center',
-                      backgroundColor: alpha(theme.palette.grey[500], 0.05),
-                      borderRadius: 2,
-                      border: `1px dashed ${alpha(theme.palette.divider, 0.2)}`,
-                    }}
-                  >
-                    <LocationOnIcon
+                    <Avatar
                       sx={{
-                        fontSize: 56,
-                        color: alpha(theme.palette.text.secondary, 0.5),
+                        width: { xs: 100, sm: 120 },
+                        height: { xs: 100, sm: 120 },
+                        bgcolor: '#fff',
+                        color: theme.palette.primary.main,
+                        fontSize: { xs: '2rem', sm: '2.5rem' },
+                        fontWeight: 800,
+                        border: `5px solid ${theme.palette.background.paper}`,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
                         mb: 2,
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'scale(1.05)',
+                          boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+                        },
                       }}
-                    />
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                      Bölgesel Yetki Yok
+                    >
+                      {initials}
+                    </Avatar>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 700,
+                        mb: 0.5,
+                        textAlign: 'center',
+                        fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                      }}
+                    >
+                      {user.firstName} {user.lastName}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Herhangi bir bölgesel yetkiniz bulunmuyor.
-                    </Typography>
-                  </Paper>
-                ) : (
-                  <Stack spacing={2}>
-                    {scopes.map((s, index) => (
-                      <Paper
-                        key={s.id}
-                        elevation={0}
-                        sx={{
-                          p: 2.5,
-                          borderRadius: 2,
-                          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                          backgroundColor: alpha(theme.palette.background.default, 0.5),
-                          transition: 'all 0.2s ease-in-out',
-                          '&:hover': {
-                            backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                            borderColor: alpha(theme.palette.primary.main, 0.3),
-                            boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.08)}`,
-                            transform: 'translateY(-2px)',
-                          },
-                        }}
-                      >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        color: 'text.secondary',
+                        mb: 3,
+                        px: 2,
+                        py: 0.5,
+                        borderRadius: 2,
+                        backgroundColor: alpha(theme.palette.grey[500], 0.05),
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                          color: 'primary.main',
+                        },
+                      }}
+                    >
+                      <EmailIcon sx={{ fontSize: '1.1rem' }} />
+                      <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                        {user.email}
+                      </Typography>
+                    </Box>
+
+                    <Divider sx={{ width: '100%', mb: 3 }} />
+
+                    {/* Roller */}
+                    <Box sx={{ width: '100%' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <Box
                           sx={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 2,
+                            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.15)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 1,
-                            mb: s.province || s.district || s.dealer ? 1.5 : 0,
+                            justifyContent: 'center',
+                            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                            transition: 'all 0.2s ease-in-out',
+                            '&:hover': {
+                              transform: 'rotate(5deg)',
+                              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.2)} 0%, ${alpha(theme.palette.primary.main, 0.1)} 100%)`,
+                            },
                           }}
                         >
-                          <Box
+                          <AdminPanelSettingsIcon
                             sx={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: 1,
-                              backgroundColor: alpha(theme.palette.success.main, 0.1),
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
+                              fontSize: '1.2rem',
+                              color: theme.palette.primary.main,
+                            }}
+                          />
+                        </Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                          Rollerim
+                        </Typography>
+                      </Box>
+                      {roles.length > 0 ? (
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          {roles.map((r, idx) => (
+                            <Zoom 
+                              in={mounted} 
+                              timeout={500} 
+                              style={{ transitionDelay: `${200 + idx * 50}ms` }}
+                              key={r}
+                            >
+                              <Chip
+                                label={r}
+                                size="small"
+                                icon={<VerifiedUserIcon sx={{ fontSize: '0.9rem' }} />}
+                                sx={{
+                                  fontWeight: 600,
+                                  fontSize: '0.875rem',
+                                  py: 1.5,
+                                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.12)} 0%, ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+                                  color: theme.palette.primary.main,
+                                  border: `1.5px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                                  transition: 'all 0.2s ease-in-out',
+                                  '& .MuiChip-icon': {
+                                    color: theme.palette.primary.main,
+                                  },
+                                  '&:hover': {
+                                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.2)} 0%, ${alpha(theme.palette.primary.main, 0.15)} 100%)`,
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+                                    borderColor: theme.palette.primary.main,
+                                  },
+                                }}
+                              />
+                            </Zoom>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 2.5,
+                            textAlign: 'center',
+                            backgroundColor: alpha(theme.palette.grey[500], 0.05),
+                            borderRadius: 2,
+                            border: `1px dashed ${alpha(theme.palette.divider, 0.3)}`,
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                            Henüz rol atanmadı
+                          </Typography>
+                        </Paper>
+                      )}
+                    </Box>
+                  </Box>
+                </Card>
+              </Zoom>
+            </Grid>
+
+            {/* Sağ Taraf - Detaylar */}
+            <Grid item xs={12} md={8}>
+              <Stack spacing={{ xs: 2, sm: 3 }}>
+                {/* İzinler */}
+                <Zoom in={mounted} timeout={700} style={{ transitionDelay: '200ms' }}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      borderRadius: 4,
+                      border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                      background: `linear-gradient(145deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.default, 0.6)} 100%)`,
+                      backdropFilter: 'blur(20px)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                      overflow: 'hidden',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        boxShadow: '0 12px 48px rgba(0,0,0,0.12)',
+                        transform: 'translateY(-2px)',
+                      },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        p: { xs: 2, sm: 3 },
+                        pb: 2,
+                        background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.06)} 0%, ${alpha(theme.palette.info.main, 0.02)} 100%)`,
+                        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            width: { xs: 32, sm: 40 },
+                            height: { xs: 32, sm: 40 },
+                            borderRadius: 2,
+                            background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: `0 4px 16px ${alpha(theme.palette.info.main, 0.4)}`,
+                            transition: 'all 0.3s ease-in-out',
+                            '&:hover': {
+                              transform: 'rotate(10deg) scale(1.1)',
+                              boxShadow: `0 6px 20px ${alpha(theme.palette.info.main, 0.5)}`,
+                            },
+                          }}
+                        >
+                          <BadgeIcon sx={{ color: '#fff', fontSize: { xs: '1rem', sm: '1.3rem' } }} />
+                        </Box>
+                        <Box>
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontWeight: 700,
+                              fontSize: { xs: '1.1rem', sm: '1.25rem' },
                             }}
                           >
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontWeight: 700,
-                                color: theme.palette.success.main,
-                              }}
-                            >
-                              {index + 1}
-                            </Typography>
-                          </Box>
+                            İzinlerim
+                          </Typography>
                           <Typography
-                            variant="subtitle2"
-                            sx={{ fontWeight: 600, color: 'text.secondary' }}
+                            variant="caption"
+                            sx={{ 
+                              color: 'text.secondary',
+                              display: { xs: 'none', sm: 'block' },
+                            }}
                           >
-                            Yetki Alanı #{index + 1}
+                            Sistemde sahip olduğunuz yetkiler
                           </Typography>
                         </Box>
+                      </Box>
+                    </Box>
+                    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+                      <UserPermissionsSection permissions={user.permissions} />
+                    </Box>
+                  </Card>
+                </Zoom>
 
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          {s.province && (
-                            <Chip
-                              icon={<PlaceIcon sx={{ fontSize: '1rem' }} />}
-                              size="small"
-                              label={s.province.name}
-                              sx={{
-                                fontWeight: 600,
-                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                color: theme.palette.primary.main,
-                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                                '& .MuiChip-icon': {
-                                  color: theme.palette.primary.main,
-                                },
-                              }}
-                            />
-                          )}
+                {/* Yetki Alanları */}
+                <Zoom in={mounted} timeout={700} style={{ transitionDelay: '300ms' }}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      borderRadius: 4,
+                      border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                      background: `linear-gradient(145deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.default, 0.6)} 100%)`,
+                      backdropFilter: 'blur(20px)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                      overflow: 'hidden',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        boxShadow: '0 12px 48px rgba(0,0,0,0.12)',
+                        transform: 'translateY(-2px)',
+                      },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        p: { xs: 2, sm: 3 },
+                        pb: 2,
+                        background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.06)} 0%, ${alpha(theme.palette.success.main, 0.02)} 100%)`,
+                        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            width: { xs: 32, sm: 40 },
+                            height: { xs: 32, sm: 40 },
+                            borderRadius: 2,
+                            background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.4)}`,
+                            transition: 'all 0.3s ease-in-out',
+                            '&:hover': {
+                              transform: 'rotate(-10deg) scale(1.1)',
+                              boxShadow: `0 6px 20px ${alpha(theme.palette.success.main, 0.5)}`,
+                            },
+                          }}
+                        >
+                          <LocationOnIcon sx={{ color: '#fff', fontSize: { xs: '1rem', sm: '1.3rem' } }} />
+                        </Box>
+                        <Box>
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontWeight: 700,
+                              fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                            }}
+                          >
+                            Yetkili Olduğum Bölgeler
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: 'text.secondary',
+                              display: { xs: 'none', sm: 'block' },
+                            }}
+                          >
+                            İl, ilçe ve bayi bazında yetki alanlarınız
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
 
-                          {s.district && (
-                            <Chip
-                              icon={<LocationOnIcon sx={{ fontSize: '1rem' }} />}
-                              size="small"
-                              label={s.district.name}
-                              sx={{
-                                fontWeight: 600,
-                                backgroundColor: alpha(theme.palette.info.main, 0.1),
-                                color: theme.palette.info.main,
-                                border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-                                '& .MuiChip-icon': {
-                                  color: theme.palette.info.main,
-                                },
-                              }}
-                            />
-                          )}
+                    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+                      {loadingScopes ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                          <CircularProgress size={48} thickness={4} />
+                        </Box>
+                      ) : scopes.length === 0 ? (
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: { xs: 3, sm: 5 },
+                            textAlign: 'center',
+                            backgroundColor: alpha(theme.palette.grey[500], 0.04),
+                            borderRadius: 3,
+                            border: `2px dashed ${alpha(theme.palette.divider, 0.2)}`,
+                          }}
+                        >
+                          <LocationOnIcon
+                            sx={{
+                              fontSize: { xs: 56, sm: 72 },
+                              color: alpha(theme.palette.text.secondary, 0.3),
+                              mb: 2,
+                            }}
+                          />
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontWeight: 700, 
+                              mb: 1,
+                              fontSize: { xs: '1rem', sm: '1.25rem' },
+                            }}
+                          >
+                            Bölgesel Yetki Bulunmuyor
+                          </Typography>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{ fontSize: { xs: '0.875rem', sm: '0.95rem' } }}
+                          >
+                            Herhangi bir il, ilçe veya bayi üzerinde yetkiniz bulunmamaktadır.
+                          </Typography>
+                        </Paper>
+                      ) : (
+                        <Stack spacing={{ xs: 1.5, sm: 2 }}>
+                          {scopes.map((s, index) => (
+                            <Fade 
+                              in={mounted} 
+                              timeout={500} 
+                              style={{ transitionDelay: `${400 + index * 80}ms` }}
+                              key={s.id}
+                            >
+                              <Paper
+                                elevation={0}
+                                sx={{
+                                  p: { xs: 2, sm: 2.5 },
+                                  borderRadius: 3,
+                                  border: `1.5px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                  background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.default, 0.4)} 100%)`,
+                                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                  '&::before': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: 4,
+                                    height: '100%',
+                                    background: `linear-gradient(180deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                                    transform: 'scaleY(0)',
+                                    transformOrigin: 'bottom',
+                                    transition: 'transform 0.3s ease-in-out',
+                                  },
+                                  '&:hover': {
+                                    backgroundColor: alpha(theme.palette.success.main, 0.04),
+                                    borderColor: alpha(theme.palette.success.main, 0.3),
+                                    boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.15)}`,
+                                    transform: 'translateX(4px)',
+                                    '&::before': {
+                                      transform: 'scaleY(1)',
+                                      transformOrigin: 'top',
+                                    },
+                                  },
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    mb: s.province || s.district ? 1.5 : 0,
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      width: { xs: 24, sm: 28 },
+                                      height: { xs: 24, sm: 28 },
+                                      borderRadius: 1.5,
+                                      background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.15)} 0%, ${alpha(theme.palette.success.main, 0.08)} 100%)`,
+                                      border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        fontWeight: 800,
+                                        color: theme.palette.success.main,
+                                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                      }}
+                                    >
+                                      {index + 1}
+                                    </Typography>
+                                  </Box>
+                                  <Typography
+                                    variant="subtitle2"
+                                    sx={{ 
+                                      fontWeight: 600, 
+                                      color: 'text.secondary',
+                                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                                    }}
+                                  >
+                                    Yetki Alanı #{index + 1}
+                                  </Typography>
+                                </Box>
 
-                          {s.dealer && (
-                            <Chip
-                              icon={<StoreIcon sx={{ fontSize: '1rem' }} />}
-                              size="small"
-                              label={s.dealer.name}
-                              sx={{
-                                fontWeight: 600,
-                                backgroundColor: alpha(theme.palette.warning.main, 0.1),
-                                color: theme.palette.warning.main,
-                                border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
-                                '& .MuiChip-icon': {
-                                  color: theme.palette.warning.main,
-                                },
-                              }}
-                            />
-                          )}
+                                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                  {s.province && (
+                                    <Chip
+                                      icon={<PlaceIcon sx={{ fontSize: '1rem' }} />}
+                                      size="small"
+                                      label={s.province.name}
+                                      sx={{
+                                        fontWeight: 600,
+                                        fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                                        py: { xs: 1.2, sm: 1.5 },
+                                        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.12)} 0%, ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+                                        color: theme.palette.primary.main,
+                                        border: `1.5px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                                        transition: 'all 0.2s ease-in-out',
+                                        '& .MuiChip-icon': {
+                                          color: theme.palette.primary.main,
+                                        },
+                                        '&:hover': {
+                                          background: theme.palette.primary.main,
+                                          color: '#fff',
+                                          transform: 'translateY(-2px)',
+                                          boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.4)}`,
+                                          '& .MuiChip-icon': {
+                                            color: '#fff',
+                                          },
+                                        },
+                                      }}
+                                    />
+                                  )}
+
+                                  {s.district && (
+                                    <Chip
+                                      icon={<LocationOnIcon sx={{ fontSize: '1rem' }} />}
+                                      size="small"
+                                      label={s.district.name}
+                                      sx={{
+                                        fontWeight: 600,
+                                        fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                                        py: { xs: 1.2, sm: 1.5 },
+                                        background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.12)} 0%, ${alpha(theme.palette.info.main, 0.08)} 100%)`,
+                                        color: theme.palette.info.main,
+                                        border: `1.5px solid ${alpha(theme.palette.info.main, 0.25)}`,
+                                        transition: 'all 0.2s ease-in-out',
+                                        '& .MuiChip-icon': {
+                                          color: theme.palette.info.main,
+                                        },
+                                        '&:hover': {
+                                          background: theme.palette.info.main,
+                                          color: '#fff',
+                                          transform: 'translateY(-2px)',
+                                          boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.4)}`,
+                                          '& .MuiChip-icon': {
+                                            color: '#fff',
+                                          },
+                                        },
+                                      }}
+                                    />
+                                  )}
+                                </Stack>
+                              </Paper>
+                            </Fade>
+                          ))}
                         </Stack>
-                      </Paper>
-                    ))}
-                  </Stack>
-                )}
-              </Box>
-            </Card>
-          </Stack>
-        </Grid>
-      </Grid>
-    </Box>
+                      )}
+                    </Box>
+                  </Card>
+                </Zoom>
+              </Stack>
+            </Grid>
+          </Grid>
+        </Box>
+      </Fade>
+    </Container>
   );
 };
 

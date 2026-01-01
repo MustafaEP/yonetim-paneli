@@ -61,6 +61,12 @@ export interface MemberDetail extends MemberListItem {
   institutionRegNo?: string | null;
   workUnit?: string | null;
   workUnitAddress?: string | null;
+  dutyUnit?: string | null;
+  institutionAddress?: string | null;
+  institutionProvince?: { id: string; name: string } | null;
+  institutionDistrict?: { id: string; name: string } | null;
+  profession?: { id: string; name: string } | null;
+  staffTitleCode?: string | null;
   tevkifatCenter?: { id: string; name: string; title?: string | null } | null;
   tevkifatTitle?: { id: string; name: string } | null;
   duesPlan?: {

@@ -95,47 +95,83 @@ const RegionsDistrictsPage: React.FC = () => {
   ];
 
   return (
-    <Box>
-      {/* Başlık Bölümü */}
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <LocationCityIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: (theme) => 
+        theme.palette.mode === 'light' 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
+          : theme.palette.background.default,
+      pb: 4,
+    }}>
+      {/* Modern Header */}
+      <Box sx={{ pt: { xs: 3, md: 4 }, pb: { xs: 3, md: 4 } }}>
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 4,
+            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            color: 'white',
+            overflow: 'visible',
+            position: 'relative',
+            boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 4,
+              padding: '2px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude',
+            }
+          }}
+        >
+          <Box sx={{ p: { xs: 3, md: 4 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
+              <Box
+                sx={{
+                  width: { xs: 60, md: 80 },
+                  height: { xs: 60, md: 80 },
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                <LocationCityIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'white' }} />
+              </Box>
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                    mb: 1,
+                  }}
+                >
+                  İlçeler
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    opacity: 0.95,
+                    fontSize: { xs: '0.875rem', md: '1rem' },
+                  }}
+                >
+                  İllere bağlı ilçeleri görüntüleyin ve filtreleyin
+                </Typography>
+              </Box>
+            </Box>
           </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              İlçeler
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              İllere bağlı ilçeleri görüntüleyin
-            </Typography>
-          </Box>
-        </Box>
+        </Card>
       </Box>
 
       {/* Ana Kart */}
@@ -146,6 +182,11 @@ const RegionsDistrictsPage: React.FC = () => {
           border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
           boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
           overflow: 'hidden',
+          transition: 'all 0.3s ease-in-out',
+          '&:hover': {
+            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
+            transform: 'translateY(-2px)',
+          }
         }}
       >
         {/* Filtre Bölümü */}

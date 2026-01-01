@@ -1,5 +1,5 @@
 // src/components/layout/MainLayout.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   AppBar,
   Box,
@@ -11,9 +11,10 @@ import {
   Link as MuiLink,
   IconButton,
   useMediaQuery,
+  CircularProgress,
 } from '@mui/material';
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
-import Sidebar from './Sidebar';
+import Sidebar, { drawerWidth } from './Sidebar';
 import ProfileMenu from './ProfileMenu';
 import NotificationCenter from '../notifications/NotificationCenter';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -34,7 +35,33 @@ const MainLayout: React.FC = () => {
 
   const siteName = getSettingValue('SITE_NAME', 'Sendika Yönetim Paneli');
   const siteLogoUrl = getSettingValue('SITE_LOGO_URL', '');
-  const footerText = getSettingValue('FOOTER_TEXT', `© ${new Date().getFullYear()} Sendika Yönetim Sistemi. Tüm hakları saklıdır.`);
+  
+  // Footer text'i useMemo ile optimize et
+  const footerText = useMemo(() => {
+    return getSettingValue('FOOTER_TEXT', `© ${new Date().getFullYear()} Sendika Yönetim Sistemi. Tüm hakları saklıdır.`);
+  }, [getSettingValue]);
+
+  // Logo URL'ini çözümle - environment variable veya window.location kullan
+  const resolvedLogoUrl = useMemo(() => {
+    if (!siteLogoUrl) return '';
+    
+    // Eğer zaten tam URL ise (http:// veya https:// ile başlıyorsa) direkt kullan
+    if (siteLogoUrl.startsWith('http://') || siteLogoUrl.startsWith('https://')) {
+      return siteLogoUrl;
+    }
+    
+    // Relative path ise, API base URL'ini kullan
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
+      ? import.meta.env.VITE_API_BASE_URL 
+      : (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
+    
+    try {
+      return new URL(siteLogoUrl, API_BASE_URL).toString();
+    } catch {
+      // URL oluşturulamazsa, basit concatenation yap
+      return `${API_BASE_URL}${siteLogoUrl.startsWith('/') ? '' : '/'}${siteLogoUrl}`;
+    }
+  }, [siteLogoUrl]);
 
   // Document title ve favicon'u güncelle
   useDocumentHead(
@@ -53,8 +80,25 @@ const MainLayout: React.FC = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  // Loading durumunda veya token yoksa hiçbir şey render etme
-  if (isLoading || !isAuthenticated) {
+  // Loading durumunda spinner göster
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          backgroundColor: '#f8f9fa',
+        }}
+      >
+        <CircularProgress size={48} />
+      </Box>
+    );
+  }
+
+  // Token yoksa hiçbir şey render etme (redirect zaten useEffect'te yapılıyor)
+  if (!isAuthenticated) {
     return null;
   }
 
@@ -105,14 +149,10 @@ const MainLayout: React.FC = () => {
           )}
 
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-            {siteLogoUrl ? (
+            {resolvedLogoUrl ? (
               <Avatar
-                key={siteLogoUrl}
-                src={
-                  siteLogoUrl.startsWith('http://') || siteLogoUrl.startsWith('https://')
-                    ? siteLogoUrl
-                    : `http://localhost:3000${siteLogoUrl}`
-                }
+                key={resolvedLogoUrl}
+                src={resolvedLogoUrl}
                 alt="Logo"
                 sx={{
                   width: { xs: 36, sm: 40 },
@@ -214,7 +254,7 @@ const MainLayout: React.FC = () => {
           backgroundColor: '#f8f9fa',
           display: 'flex',
           flexDirection: 'column',
-          width: { xs: '100%', md: `calc(100% - 260px)` },
+          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
           overflow: 'hidden',
           direction: 'ltr',
         }}

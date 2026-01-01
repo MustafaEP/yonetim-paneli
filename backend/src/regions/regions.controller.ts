@@ -17,6 +17,7 @@ import {
   AssignUserScopeDto,
   CreateBranchDto,
   UpdateBranchDto,
+  DeleteBranchDto,
   AssignBranchPresidentDto,
   CreateInstitutionDto,
   UpdateInstitutionDto,
@@ -212,12 +213,16 @@ export class RegionsController {
 
   @Permissions(Permission.BRANCH_MANAGE)
   @Delete('branches/:id')
-  @ApiOperation({ summary: 'Şube sil', description: 'Mevcut şubeyi siler' })
+  @ApiOperation({ 
+    summary: 'Şube sil', 
+    description: 'Mevcut şubeyi siler. Üyelere ne yapılacağını belirtmek için body içinde memberActionType ve targetBranchId gönderilmelidir.' 
+  })
   @ApiParam({ name: 'id', description: 'Şube ID', example: 'branch-uuid-123' })
+  @ApiBody({ type: DeleteBranchDto })
   @ApiResponse({ status: 200, description: 'Şube başarıyla silindi' })
-  @ApiResponse({ status: 404, description: 'Şube bulunamadı' })
-  async deleteBranch(@Param('id') id: string) {
-    await this.regionsService.deleteBranch(id);
+  @ApiResponse({ status: 404, description: 'Şube veya hedef şube bulunamadı' })
+  async deleteBranch(@Param('id') id: string, @Body() dto: DeleteBranchDto) {
+    await this.regionsService.deleteBranch(id, dto);
     return { message: 'Şube başarıyla silindi' };
   }
 

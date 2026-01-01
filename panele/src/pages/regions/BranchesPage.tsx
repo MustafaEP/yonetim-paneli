@@ -22,6 +22,11 @@ import {
   Chip,
   CircularProgress,
   Autocomplete,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormLabel,
+  Divider,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -33,7 +38,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { useNavigate } from 'react-router-dom';
 
-import type { Branch } from '../../api/branchesApi';
+import type { Branch, DeleteBranchDto } from '../../api/branchesApi';
 import {
   getBranches,
   createBranch,
@@ -65,6 +70,8 @@ const BranchesPage: React.FC = () => {
   const [assigning, setAssigning] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteActionType, setDeleteActionType] = useState<DeleteBranchDto['memberActionType']>('TRANSFER_TO_BRANCH');
+  const [deleteTargetBranchId, setDeleteTargetBranchId] = useState<string>('');
 
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [selectedPresidentId, setSelectedPresidentId] = useState<string>('');
@@ -73,10 +80,6 @@ const BranchesPage: React.FC = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    code: '',
-    address: '',
-    phone: '',
-    email: '',
     provinceId: '',
     districtId: '',
   });
@@ -142,10 +145,6 @@ const BranchesPage: React.FC = () => {
       const provinceId = branch.provinceId || '';
       setFormData({
         name: branch.name,
-        code: branch.code || '',
-        address: branch.address || '',
-        phone: branch.phone || '',
-        email: branch.email || '',
         provinceId,
         districtId: branch.districtId || '',
       });
@@ -158,10 +157,6 @@ const BranchesPage: React.FC = () => {
       setEditingBranch(null);
       setFormData({
         name: '',
-        code: '',
-        address: '',
-        phone: '',
-        email: '',
         provinceId: '',
         districtId: '',
       });
@@ -189,12 +184,8 @@ const BranchesPage: React.FC = () => {
     try {
       const payload = {
         name: formData.name,
-        code: formData.code || undefined,
-        address: formData.address || undefined,
-        phone: formData.phone || undefined,
-        email: formData.email || undefined,
-        provinceId: formData.provinceId || undefined,
-        districtId: formData.districtId || undefined,
+        provinceId: formData.provinceId && formData.provinceId.trim() !== '' ? formData.provinceId : undefined,
+        districtId: formData.districtId && formData.districtId.trim() !== '' ? formData.districtId : undefined,
       };
       if (editingBranch) {
         await updateBranch(editingBranch.id, payload);
@@ -235,12 +226,23 @@ const BranchesPage: React.FC = () => {
   const handleDelete = async () => {
     if (!branchToDelete) return;
 
+    if (!deleteTargetBranchId) {
+      toast.error('Lütfen hedef şube seçin');
+      return;
+    }
+
     setDeleting(true);
     try {
-      await deleteBranch(branchToDelete.id);
+      const dto: DeleteBranchDto = {
+        memberActionType: deleteActionType,
+        targetBranchId: deleteTargetBranchId,
+      };
+      await deleteBranch(branchToDelete.id, dto);
       toast.success('Şube başarıyla silindi');
       setDeleteDialogOpen(false);
       setBranchToDelete(null);
+      setDeleteActionType('TRANSFER_TO_BRANCH');
+      setDeleteTargetBranchId('');
       loadBranches();
     } catch (e: any) {
       console.error('Şube silinirken hata:', e);
@@ -256,11 +258,6 @@ const BranchesPage: React.FC = () => {
       headerName: 'Şube Adı',
       flex: 1,
       minWidth: 200,
-    },
-    {
-      field: 'code',
-      headerName: 'Kod',
-      width: 100,
     },
     {
       field: 'president',
@@ -337,7 +334,14 @@ const BranchesPage: React.FC = () => {
                   <IconButton
                     size="small"
                     onClick={() => {
+                      // Toplam şube sayısını kontrol et
+                      if (rows.length <= 1) {
+                        toast.error('Sistemde en az 1 şube bulunmalıdır. Son kalan şubeyi silemezsiniz.');
+                        return;
+                      }
                       setBranchToDelete(branch);
+                      setDeleteActionType('TRANSFER_TO_BRANCH');
+                      setDeleteTargetBranchId('');
                       setDeleteDialogOpen(true);
                     }}
                     sx={{ color: theme.palette.error.main }}
@@ -354,63 +358,106 @@ const BranchesPage: React.FC = () => {
   ];
 
   return (
-    <Box>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <BusinessIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: (theme) => 
+        theme.palette.mode === 'light' 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
+          : theme.palette.background.default,
+      pb: 4,
+    }}>
+      {/* Modern Header */}
+      <Box sx={{ pt: { xs: 3, md: 4 }, pb: { xs: 3, md: 4 } }}>
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 4,
+            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            color: 'white',
+            overflow: 'visible',
+            position: 'relative',
+            boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 4,
+              padding: '2px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude',
+            }
+          }}
+        >
+          <Box sx={{ p: { xs: 3, md: 4 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 }, flexWrap: 'wrap' }}>
+              <Box
+                sx={{
+                  width: { xs: 60, md: 80 },
+                  height: { xs: 60, md: 80 },
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                <BusinessIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'white' }} />
+              </Box>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                    mb: 1,
+                  }}
+                >
+                  Şube Yönetimi
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    opacity: 0.95,
+                    fontSize: { xs: '0.875rem', md: '1rem' },
+                  }}
+                >
+                  Şubeleri yönetin ve başkan atayın
+                </Typography>
+              </Box>
+              {canManage && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenDialog()}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1.5,
+                    backgroundColor: 'white',
+                    color: theme.palette.primary.main,
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                    '&:hover': {
+                      backgroundColor: alpha('#fff', 0.9),
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                    },
+                  }}
+                >
+                  Yeni Şube
+                </Button>
+              )}
+            </Box>
           </Box>
-          <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              Şube Yönetimi
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Şubeleri yönetin ve başkan atayın
-            </Typography>
-          </Box>
-        </Box>
-        {canManage && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 3,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            Yeni Şube
-          </Button>
-        )}
+        </Card>
       </Box>
 
       <Card
@@ -419,6 +466,12 @@ const BranchesPage: React.FC = () => {
           borderRadius: 3,
           border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
           boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
+          transition: 'all 0.3s ease-in-out',
+          '&:hover': {
+            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
+            transform: 'translateY(-2px)',
+          }
         }}
       >
         <DataGrid
@@ -436,65 +489,93 @@ const BranchesPage: React.FC = () => {
           sx={{
             border: 'none',
             '& .MuiDataGrid-cell': {
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
             },
             '& .MuiDataGrid-columnHeaders': {
               backgroundColor: alpha(theme.palette.primary.main, 0.04),
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+              borderRadius: 0,
+            },
+            '& .MuiDataGrid-columnHeaderTitle': {
+              fontWeight: 700,
+              fontSize: '0.875rem',
+            },
+            '& .MuiDataGrid-row': {
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.04),
+              },
+            },
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              backgroundColor: alpha(theme.palette.background.default, 0.5),
             },
           }}
         />
       </Card>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingBranch ? 'Şube Düzenle' : 'Yeni Şube Oluştur'}
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleCloseDialog} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, 0.2)}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+          color: 'white',
+          py: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+        }}>
+          <BusinessIcon />
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            {editingBranch ? 'Şube Düzenle' : 'Yeni Şube Oluştur'}
+          </Typography>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pt: 3 }}>
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 2, 
+                borderRadius: 2,
+                boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.15)}`,
+              }} 
+              onClose={() => setError(null)}
+            >
               {error}
             </Alert>
           )}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
               label="Şube Adı"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
               fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
             />
-            <TextField
-              label="Kod"
-              value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+            <FormControl 
               fullWidth
-            />
-            <TextField
-              label="Adres"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              multiline
-              rows={2}
-              fullWidth
-            />
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Telefon"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                fullWidth
-              />
-              <TextField
-                label="E-posta"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                fullWidth
-              />
-            </Box>
-            <FormControl fullWidth>
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            >
               <InputLabel>İl (Opsiyonel)</InputLabel>
               <Select
                 label="İl (Opsiyonel)"
@@ -519,7 +600,15 @@ const BranchesPage: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-            <FormControl fullWidth disabled={!formData.provinceId}>
+            <FormControl 
+              fullWidth 
+              disabled={!formData.provinceId}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            >
               <InputLabel>İlçe (Opsiyonel)</InputLabel>
               <Select
                 label="İlçe (Opsiyonel)"
@@ -540,8 +629,16 @@ const BranchesPage: React.FC = () => {
             </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} disabled={saving}>
+        <DialogActions sx={{ px: 3, py: 2.5, background: alpha(theme.palette.primary.main, 0.04) }}>
+          <Button 
+            onClick={handleCloseDialog} 
+            disabled={saving}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
             İptal
           </Button>
           <Button
@@ -549,6 +646,16 @@ const BranchesPage: React.FC = () => {
             variant="contained"
             disabled={saving}
             startIcon={saving ? <CircularProgress size={16} /> : <AddIcon />}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 160,
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+              }
+            }}
           >
             {saving ? 'Kaydediliyor...' : 'Kaydet'}
           </Button>
@@ -556,11 +663,41 @@ const BranchesPage: React.FC = () => {
       </Dialog>
 
       {/* Assign President Dialog */}
-      <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Şube Başkanı Ata</DialogTitle>
-        <DialogContent>
+      <Dialog 
+        open={assignDialogOpen} 
+        onClose={() => setAssignDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, 0.2)}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: `linear-gradient(135deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.dark})`,
+          color: 'white',
+          py: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+        }}>
+          <PersonIcon />
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Şube Başkanı Ata
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
           <Box sx={{ pt: 1 }}>
-            <FormControl fullWidth>
+            <FormControl 
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            >
               <InputLabel>Başkan Seçimi</InputLabel>
               <Select
                 value={selectedPresidentId}
@@ -579,15 +716,34 @@ const BranchesPage: React.FC = () => {
             </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAssignDialogOpen(false)} disabled={assigning}>
+        <DialogActions sx={{ px: 3, py: 2.5, background: alpha(theme.palette.secondary.main, 0.04) }}>
+          <Button 
+            onClick={() => setAssignDialogOpen(false)} 
+            disabled={assigning}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
             İptal
           </Button>
           <Button
             onClick={handleAssign}
             variant="contained"
+            color="secondary"
             disabled={assigning || !selectedPresidentId}
             startIcon={assigning ? <CircularProgress size={16} /> : <PersonIcon />}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 160,
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.3)}`,
+              }
+            }}
           >
             {assigning ? 'Atanıyor...' : 'Ata'}
           </Button>
@@ -595,26 +751,232 @@ const BranchesPage: React.FC = () => {
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Şubeyi Sil</DialogTitle>
-        <DialogContent>
-          <Typography>
-            "{branchToDelete?.name}" adlı şubeyi silmek istediğinize emin misiniz?
-            Bu işlem geri alınamaz.
-          </Typography>
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={() => !deleting && setDeleteDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${alpha(theme.palette.error.main, 0.15)}`,
+          },
+        }}
+      >
+        <DialogTitle 
+          sx={{ 
+            pb: 1,
+            pt: 3,
+            px: 3,
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            color: theme.palette.error.main,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.3)}`,
+              }}
+            >
+              <DeleteIcon />
+            </Box>
+            Şubeyi Sil
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, px: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+              <Typography variant="body2" fontWeight={600} gutterBottom>
+                "{branchToDelete?.name}" adlı şubeyi silmek istediğinize emin misiniz?
+              </Typography>
+              <Typography variant="body2">
+                Bu şubeye bağlı {branchToDelete?.memberCount || 0} üye bulunmaktadır. 
+                Şubeyi silmeden önce üyelere ne yapılacağını seçmeniz gerekmektedir.
+              </Typography>
+            </Alert>
+
+            <Box>
+              <FormLabel sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.95rem', display: 'block' }}>
+                Üyelere Ne Yapılacak?
+              </FormLabel>
+              <RadioGroup
+                value={deleteActionType}
+                onChange={(e) => setDeleteActionType(e.target.value as DeleteBranchDto['memberActionType'])}
+                sx={{ gap: 1 }}
+              >
+                <FormControlLabel
+                  value="TRANSFER_TO_BRANCH"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Başka Bir Şubeye Taşı
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler seçilen şubeye taşınacak, durumları değişmeyecek
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.04),
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  value="TRANSFER_AND_DEACTIVATE"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Başka Bir Şubeye Taşı ve Pasif Et
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler seçilen şubeye taşınacak ve pasif duruma getirilecek
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.warning.main, 0.04),
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  value="TRANSFER_AND_CANCEL"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Başka Bir Şubeye Taşı ve İptal Et
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler seçilen şubeye taşınacak ve üyelikleri iptal edilecek (İstifa)
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.error.main, 0.04),
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  value="TRANSFER_DEACTIVATE_AND_CANCEL"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600}>
+                        Başka Bir Şubeye Taşı, Pasif Et ve İptal Et
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Üyeler seçilen şubeye taşınacak, pasif edilecek ve üyelikleri iptal edilecek
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                    p: 1.5,
+                    m: 0,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.error.main, 0.04),
+                    },
+                  }}
+                />
+              </RadioGroup>
+            </Box>
+
+            <Divider />
+
+            <FormControl fullWidth required>
+              <InputLabel>Hedef Şube</InputLabel>
+              <Select
+                value={deleteTargetBranchId}
+                onChange={(e) => setDeleteTargetBranchId(e.target.value)}
+                label="Hedef Şube"
+                disabled={deleting}
+                sx={{
+                  borderRadius: 2,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(theme.palette.divider, 0.2),
+                  },
+                }}
+              >
+                <MenuItem value="">
+                  <em>Hedef şube seçin</em>
+                </MenuItem>
+                {rows
+                  .filter(branch => branch.id !== branchToDelete?.id && branch.isActive)
+                  .map((branch) => (
+                    <MenuItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                      {branch.memberCount !== undefined && ` (${branch.memberCount} üye)`}
+                    </MenuItem>
+                  ))}
+              </Select>
+              <Alert severity="info" sx={{ mt: 1.5, borderRadius: 2 }}>
+                Üyeler bu şubeye taşınacaktır
+              </Alert>
+            </FormControl>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+        <DialogActions sx={{ p: 3, pt: 2, gap: 1.5 }}>
+          <Button 
+            onClick={() => {
+              setDeleteDialogOpen(false);
+              setBranchToDelete(null);
+              setDeleteActionType('TRANSFER_TO_BRANCH');
+              setDeleteTargetBranchId('');
+            }} 
+            disabled={deleting}
+            sx={{ 
+              borderRadius: 2,
+              px: 3,
+              fontWeight: 600,
+            }}
+          >
             İptal
           </Button>
           <Button
             onClick={handleDelete}
             color="error"
             variant="contained"
-            disabled={deleting}
+            disabled={deleting || !deleteTargetBranchId}
             startIcon={deleting ? <CircularProgress size={16} /> : <DeleteIcon />}
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              fontWeight: 600,
+              boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.3)}`,
+              '&:hover': {
+                boxShadow: `0 6px 16px ${alpha(theme.palette.error.main, 0.4)}`,
+              },
+            }}
           >
-            {deleting ? 'Siliniyor...' : 'Sil'}
+            {deleting ? 'Siliniyor...' : 'Şubeyi Sil'}
           </Button>
         </DialogActions>
       </Dialog>

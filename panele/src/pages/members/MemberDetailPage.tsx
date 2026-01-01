@@ -39,6 +39,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import WarningIcon from '@mui/icons-material/Warning';
 import PaymentIcon from '@mui/icons-material/Payment';
+import SettingsIcon from '@mui/icons-material/Settings';
 import GetAppIcon from '@mui/icons-material/GetApp';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BadgeIcon from '@mui/icons-material/Badge';
@@ -50,7 +51,8 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import { getMemberById, exportMemberDetailToPdf } from '../../api/membersApi';
+import { getMemberById, exportMemberDetailToPdf, updateMember } from '../../api/membersApi';
+import MemberStatusChangeDialog from '../../components/members/MemberStatusChangeDialog';
 import { getMemberPayments, createPayment, type CreateMemberPaymentDto, type PaymentType } from '../../api/paymentsApi';
 import { 
   getMemberDocuments, 
@@ -64,7 +66,7 @@ import {
   type GenerateDocumentDto,
 } from '../../api/documentsApi';
 import { getDocumentTypeLabel, DOCUMENT_TYPES } from '../../utils/documentTypes';
-import type { MemberDetail } from '../../types/member';
+import type { MemberDetail, MemberStatus } from '../../types/member';
 import type { MemberPayment } from '../../api/paymentsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
@@ -102,6 +104,11 @@ const MemberDetailPage = () => {
 
   const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
   const canUploadDocument = hasPermission('DOCUMENT_GENERATE_PDF');
+  const canChangeStatus = hasPermission('MEMBER_STATUS_CHANGE');
+
+  // Durum değiştirme dialog state
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Evrak ekleme dialog state
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -260,6 +267,30 @@ const MemberDetailPage = () => {
     }
   };
 
+  // Durum değiştirme handler
+  const handleStatusChange = async (status: MemberStatus, reason?: string) => {
+    if (!id || !member) return;
+
+    setUpdatingStatus(true);
+    try {
+      const updateData: { status: MemberStatus; cancellationReason?: string } = { status };
+      if (reason && (status === 'RESIGNED' || status === 'EXPELLED')) {
+        updateData.cancellationReason = reason;
+      }
+      await updateMember(id, updateData);
+      toast.showSuccess('Üye durumu başarıyla güncellendi');
+      setStatusDialogOpen(false);
+      // Üye bilgilerini yeniden yükle
+      const updatedMember = await getMemberById(id);
+      setMember(updatedMember);
+    } catch (error: any) {
+      console.error('Durum güncellenirken hata:', error);
+      toast.showError(error.response?.data?.message || 'Durum güncellenirken bir hata oluştu');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   // Ödeme ekleme handler
   const handleSubmitPayment = async () => {
     if (!id || !member) return;
@@ -333,24 +364,48 @@ const MemberDetailPage = () => {
         icon: <CheckCircleIcon fontSize="small" />,
         label: 'Aktif',
         bgColor: alpha(theme.palette.success.main, 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.95)} 0%, ${theme.palette.success.dark} 100%)`,
+        headerShadow: theme.palette.success.main,
       },
       PENDING: {
         color: 'warning',
         icon: <WarningIcon fontSize="small" />,
         label: 'Beklemede',
         bgColor: alpha(theme.palette.warning.main, 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.95)} 0%, ${theme.palette.warning.dark} 100%)`,
+        headerShadow: theme.palette.warning.main,
       },
       REJECTED: {
         color: 'error',
         icon: <CancelIcon fontSize="small" />,
         label: 'Reddedildi',
         bgColor: alpha(theme.palette.error.main, 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.95)} 0%, ${theme.palette.error.dark} 100%)`,
+        headerShadow: theme.palette.error.main,
       },
       EXPELLED: {
         color: 'error',
         icon: <CancelIcon fontSize="small" />,
         label: 'İhraç',
         bgColor: alpha(theme.palette.error.main, 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.95)} 0%, ${theme.palette.error.dark} 100%)`,
+        headerShadow: theme.palette.error.main,
+      },
+      RESIGNED: {
+        color: 'default',
+        icon: <CancelIcon fontSize="small" />,
+        label: 'İstifa',
+        bgColor: alpha(theme.palette.grey[500], 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.grey[600], 0.95)} 0%, ${theme.palette.grey[800]} 100%)`,
+        headerShadow: theme.palette.grey[600],
+      },
+      INACTIVE: {
+        color: 'default',
+        icon: <CancelIcon fontSize="small" />,
+        label: 'Pasif',
+        bgColor: alpha(theme.palette.grey[500], 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.grey[600], 0.95)} 0%, ${theme.palette.grey[800]} 100%)`,
+        headerShadow: theme.palette.grey[600],
       },
     };
     return configs[status] || configs.ACTIVE;
@@ -364,13 +419,16 @@ const MemberDetailPage = () => {
         display: 'flex',
         alignItems: 'flex-start',
         gap: 1.5,
-        py: 2,
-        px: 2.5,
+        py: 1.5,
+        px: 2,
         borderRadius: 2,
         transition: 'all 0.2s ease',
+        bgcolor: alpha(theme.palette.divider, 0.02),
+        border: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
         '&:hover': {
-          bgcolor: alpha(theme.palette.primary.main, 0.03),
-          transform: 'translateX(4px)',
+          bgcolor: alpha(theme.palette.primary.main, 0.04),
+          borderColor: alpha(theme.palette.primary.main, 0.15),
+          transform: 'translateX(2px)',
         },
       }}
     >
@@ -378,11 +436,11 @@ const MemberDetailPage = () => {
         <Box
           sx={{
             color: theme.palette.primary.main,
-            mt: 0.3,
-            opacity: 0.9,
+            mt: 0.2,
+            opacity: 0.85,
             display: 'flex',
             alignItems: 'center',
-            fontSize: '1.2rem',
+            fontSize: '1.1rem',
           }}
         >
           {icon}
@@ -395,10 +453,10 @@ const MemberDetailPage = () => {
             color: theme.palette.text.secondary,
             fontWeight: 700,
             textTransform: 'uppercase',
-            letterSpacing: 0.8,
-            fontSize: '0.7rem',
+            letterSpacing: 0.6,
+            fontSize: '0.65rem',
             display: 'block',
-            mb: 0.5,
+            mb: 0.4,
           }}
         >
           {label}
@@ -408,7 +466,7 @@ const MemberDetailPage = () => {
           sx={{
             fontWeight: 600,
             color: theme.palette.text.primary,
-            fontSize: '0.95rem',
+            fontSize: '0.875rem',
             wordBreak: 'break-word',
           }}
         >
@@ -492,7 +550,7 @@ const MemberDetailPage = () => {
           </Box>
         )}
       </Box>
-      <CardContent sx={{ p: 3 }}>{children}</CardContent>
+      <CardContent sx={{ p: 2.5 }}>{children}</CardContent>
     </Card>
   );
 
@@ -504,12 +562,12 @@ const MemberDetailPage = () => {
         sx={{
           mb: 3,
           borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.95)} 0%, ${theme.palette.primary.dark} 100%)`,
+          background: statusConfig.headerGradient,
           color: '#fff',
           overflow: 'hidden',
           position: 'relative',
           border: 'none',
-          boxShadow: `0 12px 40px ${alpha(theme.palette.primary.main, 0.35)}`,
+          boxShadow: `0 12px 40px ${alpha(statusConfig.headerShadow, 0.35)}`,
         }}
       >
         {/* Dekoratif arka plan elemanları */}
@@ -679,83 +737,222 @@ const MemberDetailPage = () => {
                   Ödeme Ekle
                 </Button>
               )}
+              {canChangeStatus && member?.status !== 'PENDING' && (
+                <Button
+                  variant="contained"
+                  startIcon={<SettingsIcon />}
+                  onClick={() => setStatusDialogOpen(true)}
+                  fullWidth={true}
+                  sx={{
+                    bgcolor: alpha('#fff', 0.2),
+                    color: '#fff',
+                    fontWeight: 600,
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${alpha('#fff', 0.3)}`,
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                    py: { xs: 1, sm: 1.5 },
+                    '&:hover': {
+                      bgcolor: alpha('#fff', 0.3),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
+                    },
+                    transition: 'all 0.3s ease',
+                    display: { xs: 'flex', sm: 'inline-flex' },
+                  }}
+                >
+                  Durum Değiştir
+                </Button>
+              )}
             </Stack>
           </Box>
         </CardContent>
       </Card>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {/* İlk Satır: Kişisel Bilgiler ve Kurum/Şube */}
-        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' } }}>
-          {/* Kişisel Bilgiler */}
-          <SectionCard title="Kişisel Bilgiler" icon={<PersonIcon />}>
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
-              <InfoRow label="TC Kimlik Numarası" value={member?.nationalId || '-'} icon={<BadgeIcon />} />
-              <InfoRow label="Üye Numarası" value={member?.registrationNumber || '-'} icon={<BadgeIcon />} />
-              <InfoRow label="Adı" value={member?.firstName || '-'} icon={<PersonIcon />} />
-              <InfoRow label="Soyadı" value={member?.lastName || '-'} icon={<PersonIcon />} />
-              <InfoRow label="Anne Adı" value={member?.motherName || '-'} icon={<PersonIcon />} />
-              <InfoRow label="Baba Adı" value={member?.fatherName || '-'} icon={<PersonIcon />} />
-              <InfoRow
-                label="Doğum Tarihi"
-                value={member?.birthDate ? new Date(member.birthDate).toLocaleDateString('tr-TR') : '-'}
-                icon={<CalendarTodayIcon />}
-              />
-              <InfoRow label="Doğum Yeri" value={member?.birthplace || '-'} icon={<PlaceIcon />} />
-              <InfoRow
-                label="Cinsiyet"
-                value={member?.gender === 'MALE' ? 'Erkek' : member?.gender === 'FEMALE' ? 'Kadın' : '-'}
-                icon={<PersonIcon />}
-              />
-              <InfoRow
-                label="Öğrenim Durumu"
-                value={
-                  member?.educationStatus === 'COLLEGE'
-                    ? 'Yüksekokul'
-                    : member?.educationStatus === 'HIGH_SCHOOL'
-                      ? 'Lise'
-                      : member?.educationStatus === 'PRIMARY'
-                        ? 'İlköğretim'
-                        : '-'
-                }
-                icon={<SchoolIcon />}
-              />
-              <InfoRow label="Telefon" value={member?.phone || '-'} icon={<PhoneIcon />} />
-              <InfoRow label="E-posta" value={member?.email || '-'} icon={<EmailIcon />} />
+        {/* İhraç/İstifa Açıklaması */}
+        {(member?.status === 'EXPELLED' || member?.status === 'RESIGNED') && member?.cancellationReason && (
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: `2px solid ${alpha(
+                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600],
+                0.3
+              )}`,
+              background: `linear-gradient(135deg, ${alpha(
+                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600],
+                0.08
+              )} 0%, ${alpha(
+                member.status === 'EXPELLED' ? theme.palette.error.light : theme.palette.grey[400],
+                0.05
+              )} 100%)`,
+              boxShadow: `0 4px 16px ${alpha(
+                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600],
+                0.15
+              )}`,
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    background: `linear-gradient(135deg, ${
+                      member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600]
+                    } 0%, ${
+                      member.status === 'EXPELLED' ? theme.palette.error.dark : theme.palette.grey[800]
+                    } 100%)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 4px 12px ${alpha(
+                      member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600],
+                      0.3
+                    )}`,
+                    flexShrink: 0,
+                  }}
+                >
+                  <CancelIcon sx={{ color: '#fff', fontSize: '1.5rem' }} />
+                </Box>
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 700,
+                      mb: 1.5,
+                      fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                      color: member.status === 'EXPELLED' ? theme.palette.error.dark : theme.palette.grey[800],
+                    }}
+                  >
+                    {member.status === 'EXPELLED' ? 'İhraç Nedeni' : 'İstifa Nedeni'}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: theme.palette.text.primary,
+                      lineHeight: 1.7,
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {member.cancellationReason}
+                  </Typography>
+                  {member.cancelledAt && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: 'block',
+                        mt: 2,
+                        color: theme.palette.text.secondary,
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Tarih: {new Date(member.cancelledAt).toLocaleDateString('tr-TR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Kişisel Bilgiler */}
+        <SectionCard title="Kişisel Bilgiler" icon={<PersonIcon />}>
+          <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }}>
+            <InfoRow label="TC Kimlik Numarası" value={member?.nationalId || '-'} icon={<BadgeIcon />} />
+            <InfoRow label="Üye Numarası" value={member?.registrationNumber || '-'} icon={<BadgeIcon />} />
+            <InfoRow label="Adı" value={member?.firstName || '-'} icon={<PersonIcon />} />
+            <InfoRow label="Soyadı" value={member?.lastName || '-'} icon={<PersonIcon />} />
+            <InfoRow label="Anne Adı" value={member?.motherName || '-'} icon={<PersonIcon />} />
+            <InfoRow label="Baba Adı" value={member?.fatherName || '-'} icon={<PersonIcon />} />
+            <InfoRow
+              label="Doğum Tarihi"
+              value={member?.birthDate ? new Date(member.birthDate).toLocaleDateString('tr-TR') : '-'}
+              icon={<CalendarTodayIcon />}
+            />
+            <InfoRow label="Doğum Yeri" value={member?.birthplace || '-'} icon={<PlaceIcon />} />
+            <InfoRow
+              label="Cinsiyet"
+              value={member?.gender === 'MALE' ? 'Erkek' : member?.gender === 'FEMALE' ? 'Kadın' : '-'}
+              icon={<PersonIcon />}
+            />
+            <InfoRow
+              label="Öğrenim Durumu"
+              value={
+                member?.educationStatus === 'COLLEGE'
+                  ? 'Yüksekokul'
+                  : member?.educationStatus === 'HIGH_SCHOOL'
+                    ? 'Lise'
+                    : member?.educationStatus === 'PRIMARY'
+                      ? 'İlköğretim'
+                      : '-'
+              }
+              icon={<SchoolIcon />}
+            />
+            <InfoRow label="Telefon" value={member?.phone || '-'} icon={<PhoneIcon />} />
+            <InfoRow label="E-posta" value={member?.email || '-'} icon={<EmailIcon />} />
+            <InfoRow 
+              label="İl (Kayıtlı Olduğu Yer)" 
+              value={member?.province?.name || '-'} 
+              icon={<PlaceIcon />} 
+            />
+            <InfoRow 
+              label="İlçe (Kayıtlı Olduğu Yer)" 
+              value={member?.district?.name || '-'} 
+              icon={<PlaceIcon />} 
+            />
+          </Box>
+        </SectionCard>
+
+        {/* Kurum ve Şube Bilgileri */}
+        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' } }}>
+          {/* Kurum Bilgileri */}
+          <SectionCard title="Kurum Bilgileri" icon={<WorkIcon />}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <InfoRow label="Kurum Adı" value={member?.institution?.name || '-'} icon={<AccountBalanceIcon />} />
+              <InfoRow label="Görev Birimi" value={member?.dutyUnit || '-'} icon={<WorkIcon />} />
+              <InfoRow label="Kurum Adresi" value={member?.institutionAddress || '-'} icon={<PlaceIcon />} />
+              <InfoRow label="Kurum İli" value={member?.institutionProvince?.name || '-'} icon={<PlaceIcon />} />
+              <InfoRow label="Kurum İlçesi" value={member?.institutionDistrict?.name || '-'} icon={<PlaceIcon />} />
+              <InfoRow label="Meslek/Unvan" value={member?.profession?.name || '-'} icon={<WorkIcon />} />
+              <InfoRow label="Kurum Sicil No" value={member?.institutionRegNo || '-'} icon={<BadgeIcon />} />
+              <InfoRow label="Kadro Unvan Kodu" value={member?.staffTitleCode || '-'} icon={<BadgeIcon />} />
             </Box>
           </SectionCard>
 
-          {/* Sağ taraf: Kurum ve Şube Bilgileri */}
-          <Stack spacing={3}>
-            {/* Kurum Bilgileri */}
-            <SectionCard title="Kurum Bilgileri" icon={<WorkIcon />}>
-              <InfoRow label="Kurum Adı" value={member?.institution?.name || '-'} icon={<AccountBalanceIcon />} />
-            </SectionCard>
-
-            {/* Şube Alanı */}
-            <SectionCard title="Şube Bilgileri" icon={<CorporateFareIcon />}>
+          {/* Şube Bilgileri */}
+          <SectionCard title="Şube Bilgileri" icon={<CorporateFareIcon />}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <InfoRow
                 label="Şube"
                 value={member?.branch?.name ? `${member.branch.name}${member.branch.code ? ` (${member.branch.code})` : ''}` : '-'}
                 icon={<AccountBalanceIcon />}
               />
-            </SectionCard>
-          </Stack>
+            </Box>
+          </SectionCard>
         </Box>
 
-        {/* İkinci Satır: Tevkifat ve Üyelik */}
-        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
+        {/* Tevkifat ve Üyelik Bilgileri */}
+        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' } }}>
           {/* Tevkifat */}
           <SectionCard title="Tevkifat Bilgileri" icon={<AccountBalanceIcon />}>
-            <Stack spacing={0}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <InfoRow label="Tevkifat Kurumu" value={member?.tevkifatCenter?.name || '-'} icon={<CorporateFareIcon />} />
               <InfoRow label="Tevkifat Ünvanı" value={member?.tevkifatTitle?.name || '-'} icon={<WorkIcon />} />
-            </Stack>
+            </Box>
           </SectionCard>
 
-          {/* Üye Grubu */}
+          {/* Üyelik Bilgileri */}
           <SectionCard title="Üyelik Bilgileri" icon={<PersonIcon />}>
-            <Stack spacing={0}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <InfoRow label="Üyelik Durumu" value={statusConfig.label} icon={<CheckCircleIcon />} />
               <InfoRow label="Üye Grubu" value={member?.membershipInfoOption?.label || '-'} icon={<PersonIcon />} />
               <InfoRow label="Yönetim Karar Defteri No" value={member?.boardDecisionBookNo || '-'} icon={<BadgeIcon />} />
@@ -764,7 +961,7 @@ const MemberDetailPage = () => {
                 value={member?.boardDecisionDate ? new Date(member.boardDecisionDate).toLocaleDateString('tr-TR') : '-'}
                 icon={<CalendarTodayIcon />}
               />
-            </Stack>
+            </Box>
           </SectionCard>
         </Box>
 
@@ -1657,6 +1854,18 @@ const MemberDetailPage = () => {
           </Alert>
         )}
       </Box>
+
+      {/* Durum Değiştirme Dialog */}
+      {member && (
+        <MemberStatusChangeDialog
+          open={statusDialogOpen}
+          onClose={() => setStatusDialogOpen(false)}
+          onConfirm={handleStatusChange}
+          currentStatus={member.status}
+          memberName={`${member.firstName} ${member.lastName}`}
+          loading={updatingStatus}
+        />
+      )}
     </Box>
   );
 };
