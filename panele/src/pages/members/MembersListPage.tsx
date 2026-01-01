@@ -19,20 +19,34 @@ import {
   useTheme,
   alpha,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormLabel,
+  CircularProgress,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import SettingsIcon from '@mui/icons-material/Settings';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 
 import type { MemberListItem, MemberStatus } from '../../types/member';
-import { getMembers, exportMembersToPdf } from '../../api/membersApi';
+import { getMembers, exportMembersToPdf, updateMember, deleteMember } from '../../api/membersApi';
+import MemberStatusChangeDialog from '../../components/members/MemberStatusChangeDialog';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../hooks/useToast';
 import { getBranches } from '../../api/branchesApi';
 import { getInstitutions } from '../../api/institutionsApi';
 import type { Province, District } from '../../types/region';
@@ -43,6 +57,9 @@ import {
 
 const MembersListPage: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
+  const { hasPermission, hasRole } = useAuth();
+  const toast = useToast();
   const [rows, setRows] = useState<MemberListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -56,8 +73,21 @@ const MembersListPage: React.FC = () => {
   const [districts, setDistricts] = useState<District[]>([]);
   const [institutions, setInstitutions] = useState<Array<{ id: string; name: string }>>([]);
   const [error, setError] = useState<string | null>(null);
+  
+  // Durum değiştirme dialog state
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<MemberListItem | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  const navigate = useNavigate();
+  // Silme dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<MemberListItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deletePayments, setDeletePayments] = useState(false);
+  const [deleteDocuments, setDeleteDocuments] = useState(false);
+
+  const canChangeStatus = hasPermission('MEMBER_STATUS_CHANGE');
+  const canDeleteMember = hasRole('ADMIN');
 
   // Şubeleri yükle
   useEffect(() => {
@@ -217,6 +247,8 @@ const MembersListPage: React.FC = () => {
       headerName: 'Üye Kayıt No',
       flex: 1,
       minWidth: 130,
+      align: 'center',
+      headerAlign: 'center',
       valueGetter: (_value, row: MemberListItem) => row.registrationNumber ?? '-',
     },
     {
@@ -224,6 +256,8 @@ const MembersListPage: React.FC = () => {
       headerName: 'Ad Soyad',
       flex: 1.5,
       minWidth: 180,
+      align: 'center',
+      headerAlign: 'center',
       valueGetter: (_value, row: MemberListItem) => `${row.firstName} ${row.lastName}`,
       renderCell: (params: GridRenderCellParams<MemberListItem>) => (
         <Typography
@@ -242,6 +276,8 @@ const MembersListPage: React.FC = () => {
       headerName: 'TC Kimlik No',
       flex: 1,
       minWidth: 130,
+      align: 'center',
+      headerAlign: 'center',
       valueGetter: (_value, row: MemberListItem) => row.nationalId ?? '-',
     },
     {
@@ -249,6 +285,8 @@ const MembersListPage: React.FC = () => {
       headerName: 'Çalıştığı Kurum',
       flex: 1.5,
       minWidth: 200,
+      align: 'center',
+      headerAlign: 'center',
       valueGetter: (_value, row: MemberListItem) => row.institution?.name ?? '-',
     },
     {
@@ -256,24 +294,50 @@ const MembersListPage: React.FC = () => {
       headerName: 'Üyelik Durumu',
       flex: 1,
       minWidth: 150,
-      renderCell: (params: GridRenderCellParams<MemberListItem>) => (
-        <Chip
-          label={getStatusLabel(params.row.status)}
-          size="small"
-          color={getStatusColor(params.row.status)}
-          sx={{ 
-            fontWeight: 600,
-            fontSize: '0.75rem',
-            borderRadius: 1.5,
-          }}
-        />
-      ),
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params: GridRenderCellParams<MemberListItem>) => {
+        const statusColor = getStatusColor(params.row.status);
+        
+        // Safely get the color from palette with fallback
+        const getShadowColor = (color: string): string => {
+          const palette = theme.palette as any;
+          const colorObj = palette[color];
+          if (colorObj && colorObj.main) {
+            return colorObj.main;
+          }
+          // Fallback to grey if color not found
+          return theme.palette.grey[500];
+        };
+        
+        const shadowColor = getShadowColor(statusColor);
+        
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Chip
+              label={getStatusLabel(params.row.status)}
+              size="medium"
+              color={statusColor}
+              sx={{ 
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                height: '32px',
+                borderRadius: 2,
+                px: 1,
+                boxShadow: `0 2px 8px ${alpha(shadowColor, 0.25)}`,
+              }}
+            />
+          </Box>
+        );
+      },
     },
     {
       field: 'createdAt',
       headerName: 'Kayıt Tarihi',
       flex: 1,
       minWidth: 130,
+      align: 'center',
+      headerAlign: 'center',
       valueGetter: (_value, row: MemberListItem) => {
         if (row.createdAt) {
           return new Date(row.createdAt).toLocaleDateString('tr-TR');
@@ -284,32 +348,149 @@ const MembersListPage: React.FC = () => {
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 100,
+      width: canDeleteMember ? 250 : 200,
       sortable: false,
       filterable: false,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params: GridRenderCellParams<MemberListItem>) => (
-        <Tooltip title="Detayları Görüntüle" arrow>
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/members/${params.row.id}`);
-            }}
-            sx={{
-              color: theme.palette.primary.main,
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                transform: 'scale(1.1)',
-              },
-            }}
-          >
-            <VisibilityIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          <Tooltip title="Detayları Görüntüle" arrow placement="top">
+            <IconButton
+              size="medium"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/members/${params.row.id}`);
+              }}
+              sx={{
+                width: 38,
+                height: 38,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                color: theme.palette.primary.main,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  color: '#fff',
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                },
+              }}
+            >
+              <VisibilityIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          {canChangeStatus && params.row.status !== 'PENDING' && (
+            <Tooltip title="Durum Değiştir" arrow placement="top">
+              <IconButton
+                size="medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedMember(params.row);
+                  setStatusDialogOpen(true);
+                }}
+                sx={{
+                  width: 38,
+                  height: 38,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.light, 0.05)} 100%)`,
+                  border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+                  color: theme.palette.secondary.main,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+                    color: '#fff',
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.35)}`,
+                  },
+                }}
+              >
+                <SettingsIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {canDeleteMember && (
+            <Tooltip title="Üyeyi Sil" arrow placement="top">
+              <IconButton
+                size="medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMemberToDelete(params.row);
+                  setDeleteDialogOpen(true);
+                }}
+                sx={{
+                  width: 38,
+                  height: 38,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.1)} 0%, ${alpha(theme.palette.error.light, 0.05)} 100%)`,
+                  border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                  color: theme.palette.error.main,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                    color: '#fff',
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.35)}`,
+                  },
+                }}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
       ),
     },
   ];
+
+  // Durum değiştirme handler
+  const handleStatusChange = async (status: MemberStatus, reason?: string) => {
+    if (!selectedMember) return;
+
+    setUpdatingStatus(true);
+    try {
+      const updateData: { status: MemberStatus; cancellationReason?: string } = { status };
+      if (reason && (status === 'RESIGNED' || status === 'EXPELLED')) {
+        updateData.cancellationReason = reason;
+      }
+      await updateMember(selectedMember.id, updateData);
+      toast.showSuccess('Üye durumu başarıyla güncellendi');
+      setStatusDialogOpen(false);
+      setSelectedMember(null);
+      // Listeyi yeniden yükle
+      const data = await getMembers();
+      setRows(data);
+    } catch (error: any) {
+      console.error('Durum güncellenirken hata:', error);
+      toast.showError(error.response?.data?.message || 'Durum güncellenirken bir hata oluştu');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // Silme handler
+  const handleDeleteMember = async () => {
+    if (!memberToDelete) return;
+
+    setDeleting(true);
+    try {
+      await deleteMember(memberToDelete.id, {
+        deletePayments,
+        deleteDocuments,
+      });
+      toast.showSuccess('Üye başarıyla silindi');
+      setDeleteDialogOpen(false);
+      setMemberToDelete(null);
+      setDeletePayments(false);
+      setDeleteDocuments(false);
+      // Listeyi yeniden yükle
+      const data = await getMembers();
+      setRows(data);
+    } catch (error: any) {
+      console.error('Üye silinirken hata:', error);
+      toast.showError(error.response?.data?.message || 'Üye silinirken bir hata oluştu');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -332,99 +513,126 @@ const MembersListPage: React.FC = () => {
   }, []);
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
-      {/* Başlık Bölümü */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, flexWrap: 'wrap', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2.5,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
-              transition: 'transform 0.3s ease',
-              '&:hover': {
-                transform: 'scale(1.05)',
-              },
-            }}
-          >
-            <PeopleIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-          </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
+    <Box sx={{ pb: 4 }}>
+      {/* Modern Başlık Bölümü */}
+      <Box
+        sx={{
+          mb: 4,
+          p: { xs: 3, sm: 4, md: 5 },
+          borderRadius: 4,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '300px',
+            height: '300px',
+            background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
+            borderRadius: '50%',
+            transform: 'translate(30%, -30%)',
+          },
+        }}
+      >
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
+                sx={{
+                  width: { xs: 56, sm: 64 },
+                  height: { xs: 56, sm: 64 },
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px) scale(1.05)',
+                    boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.45)}`,
+                  },
+                }}
+              >
+                <PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
+                    color: theme.palette.text.primary,
+                    mb: 0.5,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  Üyeler
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                    fontWeight: 500,
+                  }}
+                >
+                  Yetkili olduğunuz bölgedeki tüm üyeleri görüntüleyin ve yönetin
+                </Typography>
+              </Box>
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={<PersonAddIcon />}
+              onClick={() => navigate('/members/applications/new')}
+              size="large"
               sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.875rem', md: '2.125rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-                letterSpacing: '-0.02em',
+                display: { xs: 'none', sm: 'flex' },
+                borderRadius: 2.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 4,
+                py: 1.5,
+                fontSize: '1rem',
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.45)}`,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                },
               }}
             >
-              Üyeler
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                fontWeight: 500,
-              }}
-            >
-              Yetkili olduğunuz bölgedeki tüm üyeleri görüntüleyin ve yönetin
-            </Typography>
+              Yeni Üye Ekle
+            </Button>
           </Box>
+
+          {/* Mobile Button */}
           <Button
             variant="contained"
             startIcon={<PersonAddIcon />}
+            fullWidth
             onClick={() => navigate('/members/applications/new')}
+            size="large"
             sx={{
-              display: { xs: 'none', sm: 'flex' },
+              display: { xs: 'flex', sm: 'none' },
+              mt: 3,
               borderRadius: 2.5,
               textTransform: 'none',
               fontWeight: 600,
-              px: 3,
               py: 1.5,
-              fontSize: '0.9375rem',
-              boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.35)}`,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                boxShadow: `0 8px 28px ${alpha(theme.palette.primary.main, 0.45)}`,
-                transform: 'translateY(-2px)',
-              },
+              fontSize: '1rem',
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+              boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
             }}
           >
             Yeni Üye Ekle
           </Button>
         </Box>
-
-        {/* Mobile New Member Button */}
-        <Button
-          variant="contained"
-          startIcon={<PersonAddIcon />}
-          fullWidth
-          onClick={() => navigate('/members/applications/new')}
-          sx={{
-            display: { xs: 'flex', sm: 'none' },
-            mt: 2,
-            borderRadius: 2.5,
-            textTransform: 'none',
-            fontWeight: 600,
-            py: 1.75,
-            fontSize: '0.9375rem',
-            boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.35)}`,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              boxShadow: `0 8px 28px ${alpha(theme.palette.primary.main, 0.45)}`,
-            },
-          }}
-        >
-          Yeni Üye Başvurusu
-        </Button>
       </Box>
 
       {/* Hata Mesajı */}
@@ -432,8 +640,8 @@ const MembersListPage: React.FC = () => {
         <Alert 
           severity="error" 
           sx={{ 
-            mb: 3,
-            borderRadius: 2.5,
+            mb: 4,
+            borderRadius: 3,
             boxShadow: `0 4px 16px ${alpha(theme.palette.error.main, 0.15)}`,
             border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
           }} 
@@ -443,33 +651,30 @@ const MembersListPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Ana Kart */}
+      {/* Ana Kart - Filtre ve Tablo */}
       <Card
         elevation={0}
         sx={{
           borderRadius: 4,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: `0 4px 24px ${alpha(theme.palette.primary.main, 0.08)}`,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
-          transition: 'box-shadow 0.3s ease',
-          '&:hover': {
-            boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.12)}`,
-          },
+          background: '#fff',
         }}
       >
-        {/* Filtre Bölümü */}
+        {/* Gelişmiş Filtre Bölümü */}
         <Box
           sx={{
-            p: { xs: 2.5, sm: 3.5 },
-            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            p: { xs: 3, sm: 4 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
             <Box
               sx={{
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
                 borderRadius: 2,
                 background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
                 display: 'flex',
@@ -478,33 +683,30 @@ const MembersListPage: React.FC = () => {
                 boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
               }}
             >
-              <FilterListIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              <FilterListIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
             </Box>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 700,
-                fontSize: '1.125rem',
-                color: theme.palette.text.primary,
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Filtreler
-            </Typography>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Filtrele ve Ara
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                Üyeleri hızlıca bulun ve filtreleyin
+              </Typography>
+            </Box>
           </Box>
           <Grid container spacing={2.5}>
             {/* Arama */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <TextField
-                placeholder="Ad, Soyad..."
-                size="small"
+                placeholder="Ad, Soyad ile arayın..."
+                size="medium"
                 fullWidth
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <SearchIcon sx={{ color: 'text.secondary', fontSize: '1.4rem' }} />
                     </InputAdornment>
                   ),
                 }}
@@ -514,12 +716,14 @@ const MembersListPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: theme.palette.primary.main,
+                        borderWidth: '2px',
                       },
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
@@ -528,28 +732,29 @@ const MembersListPage: React.FC = () => {
             {/* Durum */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <FormControl 
-                size="small" 
+                size="medium" 
                 fullWidth
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
-                    '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
                     },
                   },
                 }}
               >
-                <InputLabel>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    Durum
-                  </Box>
-                </InputLabel>
+                <InputLabel>Durum Filtresi</InputLabel>
                 <Select
                   value={statusFilter}
-                  label="Durum"
+                  label="Durum Filtresi"
                   onChange={(e) => setStatusFilter(e.target.value as MemberStatus | 'ALL')}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
                   MenuProps={{
                     disablePortal: false,
                     disableScrollLock: true,
@@ -561,37 +766,56 @@ const MembersListPage: React.FC = () => {
                     },
                   }}
                 >
-                  <MenuItem value="ALL">Tümü</MenuItem>
-                  <MenuItem value="ACTIVE">Aktif</MenuItem>
-                  <MenuItem value="PENDING">Onay Bekliyor</MenuItem>
-                  <MenuItem value="INACTIVE">Pasif</MenuItem>
-                  <MenuItem value="RESIGNED">İstifa</MenuItem>
-                  <MenuItem value="EXPELLED">İhraç</MenuItem>
-                  <MenuItem value="REJECTED">Reddedildi</MenuItem>
+                  <MenuItem value="ALL">
+                    <Typography>Tümü</Typography>
+                  </MenuItem>
+                  <MenuItem value="ACTIVE">
+                    <Typography>Aktif</Typography>
+                  </MenuItem>
+                  <MenuItem value="PENDING">
+                    <Typography>Onay Bekliyor</Typography>
+                  </MenuItem>
+                  <MenuItem value="INACTIVE">
+                    <Typography>Pasif</Typography>
+                  </MenuItem>
+                  <MenuItem value="RESIGNED">
+                    <Typography>İstifa</Typography>
+                  </MenuItem>
+                  <MenuItem value="EXPELLED">
+                    <Typography>İhraç</Typography>
+                  </MenuItem>
+                  <MenuItem value="REJECTED">
+                    <Typography>Reddedildi</Typography>
+                  </MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             {/* Şube */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <FormControl 
-                size="small" 
+                size="medium" 
                 fullWidth
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
-                    '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
                     },
                   },
                 }}
               >
-                <InputLabel>Şube</InputLabel>
+                <InputLabel>Şube Filtresi</InputLabel>
                 <Select
                   value={branchFilter}
-                  label="Şube"
+                  label="Şube Filtresi"
                   onChange={(e) => setBranchFilter(e.target.value)}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
                   MenuProps={{
                     disablePortal: false,
                     disableScrollLock: true,
@@ -603,10 +827,12 @@ const MembersListPage: React.FC = () => {
                     },
                   }}
                 >
-                  <MenuItem value="ALL">Tümü</MenuItem>
+                  <MenuItem value="ALL">
+                    <Typography>Tümü</Typography>
+                  </MenuItem>
                   {branches.map((branch) => (
                     <MenuItem key={branch.id} value={branch.id}>
-                      {branch.name}
+                      <Typography>{branch.name}</Typography>
                     </MenuItem>
                   ))}
                 </Select>
@@ -615,28 +841,33 @@ const MembersListPage: React.FC = () => {
             {/* İl */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <FormControl 
-                size="small" 
+                size="medium" 
                 fullWidth
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
-                    '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
                     },
                   },
                 }}
               >
-                <InputLabel>İl</InputLabel>
+                <InputLabel>İl Filtresi</InputLabel>
                 <Select
                   multiple
                   value={provinceFilter}
-                  label="İl"
+                  label="İl Filtresi"
                   onChange={(e) => {
                     const value = e.target.value;
                     setProvinceFilter(typeof value === 'string' ? value.split(',') : value);
                   }}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
                   renderValue={(selected) => {
                     if (selected.length === 0) return 'Tümü';
                     if (selected.length === 1) {
@@ -658,7 +889,7 @@ const MembersListPage: React.FC = () => {
                 >
                   {provinces.map((province) => (
                     <MenuItem key={province.id} value={province.id}>
-                      {province.name}
+                      <Typography>{province.name}</Typography>
                     </MenuItem>
                   ))}
                 </Select>
@@ -667,29 +898,34 @@ const MembersListPage: React.FC = () => {
             {/* İlçe */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <FormControl 
-                size="small" 
+                size="medium" 
                 fullWidth
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
-                    '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
                     },
                   },
                 }}
               >
-                <InputLabel>İlçe</InputLabel>
+                <InputLabel>İlçe Filtresi</InputLabel>
                 <Select
                   multiple
                   value={districtFilter}
-                  label="İlçe"
+                  label="İlçe Filtresi"
                   onChange={(e) => {
                     const value = e.target.value;
                     setDistrictFilter(typeof value === 'string' ? value.split(',') : value);
                   }}
                   disabled={provinceFilter.length === 0}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
                   renderValue={(selected) => {
                     if (selected.length === 0) return 'Tümü';
                     if (selected.length === 1) {
@@ -711,7 +947,7 @@ const MembersListPage: React.FC = () => {
                 >
                   {districts.map((district) => (
                     <MenuItem key={district.id} value={district.id}>
-                      {district.name}
+                      <Typography>{district.name}</Typography>
                     </MenuItem>
                   ))}
                 </Select>
@@ -720,28 +956,33 @@ const MembersListPage: React.FC = () => {
             {/* Kurum */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <FormControl 
-                size="small" 
+                size="medium" 
                 fullWidth
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#fff',
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
-                    '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
                     },
                   },
                 }}
               >
-                <InputLabel>Kurum</InputLabel>
+                <InputLabel>Kurum Filtresi</InputLabel>
                 <Select
                   multiple
                   value={institutionFilter}
-                  label="Kurum"
+                  label="Kurum Filtresi"
                   onChange={(e) => {
                     const value = e.target.value;
                     setInstitutionFilter(typeof value === 'string' ? value.split(',') : value);
                   }}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
                   renderValue={(selected) => {
                     if (selected.length === 0) return 'Tümü';
                     if (selected.length === 1) {
@@ -763,160 +1004,164 @@ const MembersListPage: React.FC = () => {
                 >
                   {institutions.map((institution) => (
                     <MenuItem key={institution.id} value={institution.id}>
-                      {institution.name}
+                      <Typography>{institution.name}</Typography>
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
           </Grid>
-        </Box>
 
-        {/* İçerik Bölümü */}
-        <Box sx={{ p: { xs: 2.5, sm: 3.5 } }}>
-          {/* Sonuç Sayısı ve Export Butonları */}
+          {/* Sonuç Sayısı - Filtre içine taşındı */}
           {!loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-              <Paper
-                elevation={0}
+            <Box
+              sx={{
+                mt: 3,
+                p: 2,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.info.light, 0.05)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.info.main, 0.15)}`,
+              }}
+            >
+              <Typography
+                variant="body2"
                 sx={{
-                  p: 2.5,
-                  backgroundColor: alpha(theme.palette.info.main, 0.08),
-                  borderRadius: 2.5,
-                  border: `1px solid ${alpha(theme.palette.info.main, 0.15)}`,
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.1)}`,
+                  fontWeight: 600,
+                  color: theme.palette.info.dark,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  fontSize: '0.9rem',
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: 700,
-                    color: theme.palette.info.main,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                    fontSize: '0.9375rem',
-                  }}
-                >
-                  <PeopleIcon fontSize="small" />
-                  Toplam {filteredRows.length} üye bulundu
-                </Typography>
-              </Paper>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<FileDownloadIcon />}
-                  onClick={() => {
-                    const exportColumns: ExportColumn[] = columns.map((col) => ({
-                      field: col.field,
-                      headerName: col.headerName,
-                      width: col.width,
-                      valueGetter: col.valueGetter,
-                    }));
-                    exportToExcel(filteredRows, exportColumns, 'uyeler');
-                  }}
-                  fullWidth={true}
-                  sx={{ 
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    py: 1,
-                    borderWidth: 1.5,
-                    display: { xs: 'flex', sm: 'inline-flex' },
-                    '&:hover': {
-                      borderWidth: 1.5,
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    },
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  Excel İndir
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<PictureAsPdfIcon />}
-                  onClick={async () => {
-                    try {
-                      await exportMembersToPdf();
-                    } catch (error) {
-                      console.error('PDF export hatası:', error);
-                      alert('PDF export sırasında bir hata oluştu');
-                    }
-                  }}
-                  fullWidth={true}
-                  sx={{ 
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    py: 1,
-                    borderWidth: 1.5,
-                    display: { xs: 'flex', sm: 'inline-flex' },
-                    '&:hover': {
-                      borderWidth: 1.5,
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    },
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  PDF İndir
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<FileDownloadIcon />}
-                  onClick={() => {
-                    const exportColumns: ExportColumn[] = columns.map((col) => ({
-                      field: col.field,
-                      headerName: col.headerName,
-                      width: col.width,
-                      valueGetter: col.valueGetter,
-                    }));
-                    exportToPDF(filteredRows, exportColumns, 'uyeler', 'Üyeler Listesi');
-                  }}
-                  fullWidth={true}
-                  sx={{ 
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    py: 1,
-                    borderWidth: 1.5,
-                    display: { xs: 'flex', sm: 'inline-flex' },
-                    '&:hover': {
-                      borderWidth: 1.5,
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    },
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  HTML İndir
-                </Button>
-              </Stack>
+                <PeopleIcon fontSize="small" />
+                {filteredRows.length} üye listeleniyor
+                {filteredRows.length !== rows.length && ` (Toplam ${rows.length} üyeden)`}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        {/* Tablo Bölümü */}
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          {/* Export Butonları */}
+          {!loading && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1.5 }}>
+              <Button
+                variant="outlined"
+                size="medium"
+                startIcon={<FileDownloadIcon />}
+                onClick={() => {
+                  const exportColumns: ExportColumn[] = columns.map((col) => ({
+                    field: col.field,
+                    headerName: col.headerName,
+                    width: col.width,
+                    valueGetter: col.valueGetter,
+                  }));
+                  exportToExcel(filteredRows, exportColumns, 'uyeler');
+                }}
+                sx={{ 
+                  textTransform: 'none',
+                  borderRadius: 2.5,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.25,
+                  fontSize: '0.9rem',
+                  borderWidth: 2,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    borderWidth: 2,
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                  },
+                }}
+              >
+                Excel İndir
+              </Button>
+              <Button
+                variant="outlined"
+                size="medium"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={async () => {
+                  try {
+                    await exportMembersToPdf();
+                  } catch (error) {
+                    console.error('PDF export hatası:', error);
+                    toast.showError('PDF export sırasında bir hata oluştu');
+                  }
+                }}
+                sx={{ 
+                  textTransform: 'none',
+                  borderRadius: 2.5,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.25,
+                  fontSize: '0.9rem',
+                  borderWidth: 2,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    borderWidth: 2,
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                  },
+                }}
+              >
+                PDF İndir
+              </Button>
+              <Button
+                variant="outlined"
+                size="medium"
+                startIcon={<FileDownloadIcon />}
+                onClick={() => {
+                  const exportColumns: ExportColumn[] = columns.map((col) => ({
+                    field: col.field,
+                    headerName: col.headerName,
+                    width: col.width,
+                    valueGetter: col.valueGetter,
+                  }));
+                  exportToPDF(filteredRows, exportColumns, 'uyeler', 'Üyeler Listesi');
+                }}
+                sx={{ 
+                  textTransform: 'none',
+                  borderRadius: 2.5,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.25,
+                  fontSize: '0.9rem',
+                  borderWidth: 2,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    borderWidth: 2,
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                  },
+                }}
+              >
+                HTML İndir
+              </Button>
             </Box>
           )}
 
-          {/* Tablo - Her zaman render edilir, loading state'i DataGrid'e geçirilir */}
           <Box
             sx={{
-              height: { xs: 400, sm: 500, md: 650 },
-              minHeight: { xs: 400, sm: 500, md: 650 },
+              borderRadius: 3,
+              overflow: 'hidden',
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              height: { xs: 450, sm: 550, md: 650 },
+              minHeight: { xs: 450, sm: 550, md: 650 },
               '& .MuiDataGrid-root': {
                 border: 'none',
-                borderRadius: 2.5,
-                overflow: 'hidden',
               },
               '& .MuiDataGrid-cell': {
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
-                fontSize: '0.875rem',
+                py: 2,
               },
               '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.06),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
                 borderRadius: 0,
+                minHeight: '56px !important',
+                maxHeight: '56px !important',
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,
@@ -924,20 +1169,19 @@ const MembersListPage: React.FC = () => {
                 color: theme.palette.text.primary,
               },
               '& .MuiDataGrid-row': {
-                transition: 'background-color 0.2s ease',
+                transition: 'all 0.2s ease',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                  backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                  boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
                 },
-                '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                  },
+                '&:nth-of-type(even)': {
+                  backgroundColor: alpha(theme.palette.grey[50], 0.3),
                 },
               },
               '& .MuiDataGrid-footerContainer': {
-                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                backgroundColor: alpha(theme.palette.background.default, 0.5),
+                borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+                backgroundColor: alpha(theme.palette.grey[50], 0.5),
+                minHeight: '52px',
               },
               '& .MuiDataGrid-virtualScroller': {
                 minHeight: '200px',
@@ -954,10 +1198,260 @@ const MembersListPage: React.FC = () => {
               }}
               pageSizeOptions={[10, 25, 50, 100]}
               disableRowSelectionOnClick
+              localeText={{
+                noRowsLabel: 'Üye bulunamadı',
+                MuiTablePagination: {
+                  labelRowsPerPage: 'Sayfa başına satır:',
+                },
+              }}
             />
           </Box>
         </Box>
       </Card>
+
+      {/* Durum Değiştirme Dialog */}
+      {selectedMember && (
+        <MemberStatusChangeDialog
+          open={statusDialogOpen}
+          onClose={() => {
+            setStatusDialogOpen(false);
+            setSelectedMember(null);
+          }}
+          onConfirm={handleStatusChange}
+          currentStatus={selectedMember.status}
+          memberName={`${selectedMember.firstName} ${selectedMember.lastName}`}
+          loading={updatingStatus}
+        />
+      )}
+
+      {/* Silme Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteDialogOpen(false);
+            setMemberToDelete(null);
+            setDeletePayments(false);
+            setDeleteDocuments(false);
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.12)}`,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.1)} 0%, ${alpha(theme.palette.error.light, 0.05)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.error.main, 0.2)}`,
+            pb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+          }}
+        >
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 2,
+              background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+            }}
+          >
+            <DeleteIcon />
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Üyeyi Sil
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Bu işlem geri alınamaz
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+            <Typography variant="body1" fontWeight={600} gutterBottom>
+              "{memberToDelete?.firstName} {memberToDelete?.lastName}" adlı üyeyi silmek istediğinize emin misiniz?
+            </Typography>
+            <Typography variant="body2">
+              Üye silindiğinde listeden kaldırılacaktır. Üyeye bağlı kayıtlara ne yapılacağını seçmeniz gerekmektedir.
+            </Typography>
+          </Alert>
+
+          <Box sx={{ mb: 3 }}>
+            <FormLabel sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.95rem', display: 'block' }}>
+              Ödemeler
+            </FormLabel>
+            <RadioGroup
+              value={deletePayments ? 'delete' : 'keep'}
+              onChange={(e) => setDeletePayments(e.target.value === 'delete')}
+              sx={{ gap: 1 }}
+            >
+              <FormControlLabel
+                value="keep"
+                control={<Radio />}
+                label={
+                  <Box>
+                    <Typography variant="body1" fontWeight={600}>
+                      Ödemeleri Koru
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Ödeme kayıtları silinmeyecek, üye silinse bile kayıtlarda kalacak
+                    </Typography>
+                  </Box>
+                }
+                sx={{
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                  p: 1.5,
+                  m: 0,
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.success.main, 0.04),
+                  },
+                }}
+              />
+              <FormControlLabel
+                value="delete"
+                control={<Radio />}
+                label={
+                  <Box>
+                    <Typography variant="body1" fontWeight={600}>
+                      Ödemeleri Sil
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Tüm ödeme kayıtları silinecek
+                    </Typography>
+                  </Box>
+                }
+                sx={{
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                  p: 1.5,
+                  m: 0,
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.error.main, 0.04),
+                  },
+                }}
+              />
+            </RadioGroup>
+          </Box>
+
+          <Box>
+            <FormLabel sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.95rem', display: 'block' }}>
+              Dökümanlar
+            </FormLabel>
+            <RadioGroup
+              value={deleteDocuments ? 'delete' : 'keep'}
+              onChange={(e) => setDeleteDocuments(e.target.value === 'delete')}
+              sx={{ gap: 1 }}
+            >
+              <FormControlLabel
+                value="keep"
+                control={<Radio />}
+                label={
+                  <Box>
+                    <Typography variant="body1" fontWeight={600}>
+                      Dökümanları Koru
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Döküman kayıtları silinmeyecek, üye silinse bile kayıtlarda kalacak
+                    </Typography>
+                  </Box>
+                }
+                sx={{
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                  p: 1.5,
+                  m: 0,
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.success.main, 0.04),
+                  },
+                }}
+              />
+              <FormControlLabel
+                value="delete"
+                control={<Radio />}
+                label={
+                  <Box>
+                    <Typography variant="body1" fontWeight={600}>
+                      Dökümanları Sil
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Tüm döküman kayıtları ve dosyaları silinecek
+                    </Typography>
+                  </Box>
+                }
+                sx={{
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                  p: 1.5,
+                  m: 0,
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.error.main, 0.04),
+                  },
+                }}
+              />
+            </RadioGroup>
+          </Box>
+
+          <Alert severity="info" sx={{ mt: 3, borderRadius: 2 }}>
+            <Typography variant="body2">
+              <strong>Not:</strong> Üye geçmişi kayıtları her durumda korunacaktır.
+            </Typography>
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+          <Button
+            onClick={() => {
+              setDeleteDialogOpen(false);
+              setMemberToDelete(null);
+              setDeletePayments(false);
+              setDeleteDocuments(false);
+            }}
+            disabled={deleting}
+            sx={{
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            İptal
+          </Button>
+          <Button
+            onClick={handleDeleteMember}
+            disabled={deleting}
+            variant="contained"
+            color="error"
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+            sx={{
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+              boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.35)}`,
+              '&:hover': {
+                boxShadow: `0 6px 16px ${alpha(theme.palette.error.main, 0.45)}`,
+                transform: 'translateY(-1px)',
+              },
+            }}
+          >
+            {deleting ? 'Siliniyor...' : 'Üyeyi Sil'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UploadTevkifatFileDto } from './dto/upload-tevkifat-file.dto';
 import { CreateTevkifatCenterDto } from './dto/create-tevkifat-center.dto';
 import { UpdateTevkifatCenterDto } from './dto/update-tevkifat-center.dto';
+import { DeleteTevkifatCenterDto, MemberActionOnTevkifatCenterDelete } from './dto/delete-tevkifat-center.dto';
 import { CreateTevkifatTitleDto } from './dto/create-tevkifat-title.dto';
 import { UpdateTevkifatTitleDto } from './dto/update-tevkifat-title.dto';
 import { ApprovalStatus, MemberStatus } from '@prisma/client';
@@ -56,7 +57,6 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
-            title: true,
           },
         },
         branch: {
@@ -124,7 +124,6 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
-            title: true,
           },
         },
         uploadedByUser: {
@@ -173,7 +172,6 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
-            title: true,
           },
         },
         uploadedByUser: {
@@ -229,7 +227,6 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
-            title: true,
           },
         },
         approvedByUser: {
@@ -300,7 +297,6 @@ export class AccountingService {
           select: {
             id: true,
             name: true,
-            code: true,
           },
         },
         district: {
@@ -331,8 +327,17 @@ export class AccountingService {
     });
 
     return centers.map((center) => ({
-      ...center,
-      lastTevkifatMonth: center.files[0]
+      id: center.id,
+      name: center.name,
+      isActive: center.isActive,
+      provinceId: center.provinceId,
+      districtId: center.districtId,
+      province: center.province,
+      district: center.district,
+      createdAt: center.createdAt,
+      updatedAt: center.updatedAt,
+      memberCount: center._count.members,
+      lastTevkifatMonth: center.files && center.files[0]
         ? `${center.files[0].month}/${center.files[0].year}`
         : null,
     }));
@@ -416,23 +421,9 @@ export class AccountingService {
    * Tevkifat merkezi oluştur
    */
   async createTevkifatCenter(dto: CreateTevkifatCenterDto) {
-    // Kod benzersizlik kontrolü
-    if (dto.code) {
-      const existing = await this.prisma.tevkifatCenter.findUnique({
-        where: { code: dto.code },
-      });
-      if (existing) {
-        throw new BadRequestException('Bu kod zaten kullanılıyor');
-      }
-    }
-
     return this.prisma.tevkifatCenter.create({
       data: {
         name: dto.name,
-        title: dto.title || null,
-        code: dto.code || null,
-        description: dto.description || null,
-        address: dto.address || null,
         provinceId: dto.provinceId || null,
         districtId: dto.districtId || null,
         isActive: true,
@@ -452,24 +443,10 @@ export class AccountingService {
       throw new NotFoundException('Tevkifat merkezi bulunamadı');
     }
 
-    // Kod benzersizlik kontrolü
-    if (dto.code && dto.code !== center.code) {
-      const existing = await this.prisma.tevkifatCenter.findUnique({
-        where: { code: dto.code },
-      });
-      if (existing) {
-        throw new BadRequestException('Bu kod zaten kullanılıyor');
-      }
-    }
-
     return this.prisma.tevkifatCenter.update({
       where: { id },
       data: {
         ...(dto.name && { name: dto.name }),
-        ...(dto.title !== undefined && { title: dto.title || null }),
-        ...(dto.code !== undefined && { code: dto.code || null }),
-        ...(dto.description !== undefined && { description: dto.description || null }),
-        ...(dto.address !== undefined && { address: dto.address || null }),
         ...(dto.provinceId !== undefined && { provinceId: dto.provinceId || null }),
         ...(dto.districtId !== undefined && { districtId: dto.districtId || null }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
@@ -480,15 +457,107 @@ export class AccountingService {
   /**
    * Tevkifat merkezi sil (soft delete - isActive: false)
    */
-  async deleteTevkifatCenter(id: string) {
+  async deleteTevkifatCenter(id: string, dto: DeleteTevkifatCenterDto) {
     const center = await this.prisma.tevkifatCenter.findUnique({
       where: { id },
+      include: {
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
     });
 
     if (!center) {
       throw new NotFoundException('Tevkifat merkezi bulunamadı');
     }
 
+    // Üyelere göre işlem yap
+    switch (dto.memberActionType) {
+      case MemberActionOnTevkifatCenterDelete.REMOVE_TEVKIFAT_CENTER:
+        // Üyelerin tevkifat merkezi bilgisini kaldır (tevkifatCenterId = null)
+        await this.prisma.member.updateMany({
+          where: { tevkifatCenterId: id },
+          data: { tevkifatCenterId: null },
+        });
+        break;
+
+      case MemberActionOnTevkifatCenterDelete.TRANSFER_TO_TEVKIFAT_CENTER:
+        // Üyeleri başka bir tevkifat merkezine taşı
+        if (!dto.targetTevkifatCenterId) {
+          throw new BadRequestException('TRANSFER_TO_TEVKIFAT_CENTER seçeneği için targetTevkifatCenterId gereklidir');
+        }
+        const targetCenter = await this.prisma.tevkifatCenter.findUnique({
+          where: { id: dto.targetTevkifatCenterId },
+        });
+        if (!targetCenter) {
+          throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
+        }
+        await this.prisma.member.updateMany({
+          where: { tevkifatCenterId: id },
+          data: { tevkifatCenterId: dto.targetTevkifatCenterId },
+        });
+        break;
+
+      case MemberActionOnTevkifatCenterDelete.REMOVE_AND_DEACTIVATE:
+        // Üyelerin tevkifat merkezi bilgisini kaldır ve pasif et
+        await this.prisma.member.updateMany({
+          where: { tevkifatCenterId: id },
+          data: {
+            tevkifatCenterId: null,
+            status: 'INACTIVE',
+            isActive: false,
+          },
+        });
+        break;
+
+      case MemberActionOnTevkifatCenterDelete.TRANSFER_AND_DEACTIVATE:
+        // Üyeleri başka bir tevkifat merkezine taşı ve pasif et
+        if (!dto.targetTevkifatCenterId) {
+          throw new BadRequestException('TRANSFER_AND_DEACTIVATE seçeneği için targetTevkifatCenterId gereklidir');
+        }
+        const targetCenter2 = await this.prisma.tevkifatCenter.findUnique({
+          where: { id: dto.targetTevkifatCenterId },
+        });
+        if (!targetCenter2) {
+          throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
+        }
+        await this.prisma.member.updateMany({
+          where: { tevkifatCenterId: id },
+          data: {
+            tevkifatCenterId: dto.targetTevkifatCenterId,
+            status: 'INACTIVE',
+            isActive: false,
+          },
+        });
+        break;
+
+      case MemberActionOnTevkifatCenterDelete.TRANSFER_AND_CANCEL:
+        // Üyeleri başka bir tevkifat merkezine taşı ve iptal et
+        if (!dto.targetTevkifatCenterId) {
+          throw new BadRequestException('TRANSFER_AND_CANCEL seçeneği için targetTevkifatCenterId gereklidir');
+        }
+        const targetCenter3 = await this.prisma.tevkifatCenter.findUnique({
+          where: { id: dto.targetTevkifatCenterId },
+        });
+        if (!targetCenter3) {
+          throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
+        }
+        await this.prisma.member.updateMany({
+          where: { tevkifatCenterId: id },
+          data: {
+            tevkifatCenterId: dto.targetTevkifatCenterId,
+            status: 'RESIGNED',
+          },
+        });
+        break;
+
+      default:
+        throw new BadRequestException('Geçersiz memberActionType');
+    }
+
+    // Tevkifat merkezini pasif yap (soft delete)
     return this.prisma.tevkifatCenter.update({
       where: { id },
       data: { isActive: false },

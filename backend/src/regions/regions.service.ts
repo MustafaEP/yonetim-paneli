@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateProvinceDto,
@@ -7,6 +7,8 @@ import {
   CreateBranchDto,
   UpdateBranchDto,
   AssignBranchPresidentDto,
+  DeleteBranchDto,
+  MemberActionOnBranchDelete,
   CreateInstitutionDto,
   UpdateInstitutionDto,
 } from './dto';
@@ -273,12 +275,8 @@ export class RegionsService {
     return this.prisma.branch.create({
       data: {
         name: dto.name,
-        code: dto.code,
-        address: dto.address,
-        phone: dto.phone,
-        email: dto.email,
-        ...(dto.provinceId && { provinceId: dto.provinceId }),
-        ...(dto.districtId && { districtId: dto.districtId }),
+        ...(dto.provinceId && typeof dto.provinceId === 'string' && dto.provinceId.trim() !== '' && { provinceId: dto.provinceId }),
+        ...(dto.districtId && typeof dto.districtId === 'string' && dto.districtId.trim() !== '' && { districtId: dto.districtId }),
       },
     });
   }
@@ -296,10 +294,6 @@ export class RegionsService {
       where: { id },
       data: {
         name: dto.name,
-        code: dto.code,
-        address: dto.address,
-        phone: dto.phone,
-        email: dto.email,
         isActive: dto.isActive,
         ...(dto.provinceId !== undefined && { provinceId: dto.provinceId }),
         ...(dto.districtId !== undefined && { districtId: dto.districtId }),
@@ -317,15 +311,89 @@ export class RegionsService {
     });
   }
 
-  async deleteBranch(id: string) {
+  async deleteBranch(id: string, dto: DeleteBranchDto) {
     const existing = await this.prisma.branch.findUnique({
       where: { id },
+      include: {
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
     });
 
     if (!existing) {
       throw new NotFoundException('Şube bulunamadı');
     }
 
+    // Toplam şube sayısını kontrol et
+    const totalBranchCount = await this.prisma.branch.count();
+    if (totalBranchCount <= 1) {
+      throw new BadRequestException('Sistemde en az 1 şube bulunmalıdır. Son kalan şubeyi silemezsiniz.');
+    }
+
+    // Hedef şubenin var olduğunu kontrol et
+    if (!dto.targetBranchId) {
+      throw new Error('targetBranchId gereklidir');
+    }
+    const targetBranch = await this.prisma.branch.findUnique({
+      where: { id: dto.targetBranchId },
+    });
+    if (!targetBranch) {
+      throw new NotFoundException('Hedef şube bulunamadı');
+    }
+
+    // Üyelere göre işlem yap (tüm seçenekler üyeleri başka bir şubeye taşır)
+    switch (dto.memberActionType) {
+      case MemberActionOnBranchDelete.TRANSFER_TO_BRANCH:
+        // Üyeleri başka bir şubeye taşı (sadece şube değişir)
+        await this.prisma.member.updateMany({
+          where: { branchId: id },
+          data: { branchId: dto.targetBranchId },
+        });
+        break;
+
+      case MemberActionOnBranchDelete.TRANSFER_AND_DEACTIVATE:
+        // Üyeleri başka bir şubeye taşı ve pasif et
+        await this.prisma.member.updateMany({
+          where: { branchId: id },
+          data: {
+            branchId: dto.targetBranchId,
+            status: 'INACTIVE',
+            isActive: false,
+          },
+        });
+        break;
+
+      case MemberActionOnBranchDelete.TRANSFER_AND_CANCEL:
+        // Üyeleri başka bir şubeye taşı ve iptal et
+        await this.prisma.member.updateMany({
+          where: { branchId: id },
+          data: {
+            branchId: dto.targetBranchId,
+            status: 'RESIGNED',
+          },
+        });
+        break;
+
+      case MemberActionOnBranchDelete.TRANSFER_DEACTIVATE_AND_CANCEL:
+        // Üyeleri başka bir şubeye taşı, pasif et ve iptal et
+        await this.prisma.member.updateMany({
+          where: { branchId: id },
+          data: {
+            branchId: dto.targetBranchId,
+            status: 'RESIGNED',
+            isActive: false,
+          },
+        });
+        break;
+
+      default:
+        throw new Error('Geçersiz memberActionType');
+    }
+
+    // Şubeyi sil
     await this.prisma.branch.delete({
       where: { id },
     });
@@ -402,21 +470,28 @@ export class RegionsService {
             name: true,
           },
         },
-        _count: {
-          select: {
-            members: true,
-          },
-        },
       },
       orderBy: { name: 'asc' },
     });
 
-    // _count'ları memberCount'a dönüştür
-    return institutions.map((institution) => ({
-      ...institution,
-      memberCount: institution._count.members,
-      _count: undefined,
-    }));
+    // Her kurum için üye sayısını ayrı ayrı hesapla (silinmiş ve aktif olmayan üyeleri hariç tut)
+    const institutionsWithMemberCount = await Promise.all(
+      institutions.map(async (institution) => {
+        const memberCount = await this.prisma.member.count({
+          where: {
+            institutionId: institution.id,
+            deletedAt: null,
+          },
+        });
+
+        return {
+          ...institution,
+          memberCount,
+        };
+      }),
+    );
+
+    return institutionsWithMemberCount;
   }
 
   async getInstitutionById(id: string) {
@@ -439,11 +514,6 @@ export class RegionsService {
             name: true,
           },
         },
-        _count: {
-          select: {
-            members: true,
-          },
-        },
       },
     });
 
@@ -451,10 +521,17 @@ export class RegionsService {
       throw new NotFoundException('Kurum bulunamadı');
     }
 
+    // Üye sayısını hesapla (silinmiş üyeleri hariç tut)
+    const memberCount = await this.prisma.member.count({
+      where: {
+        institutionId: institution.id,
+        deletedAt: null,
+      },
+    });
+
     return {
       ...institution,
-      memberCount: institution._count.members,
-      _count: undefined,
+      memberCount,
     };
   }
 
@@ -464,10 +541,6 @@ export class RegionsService {
         name: dto.name,
         ...(dto.provinceId ? { provinceId: dto.provinceId } : {}),
         ...(dto.districtId ? { districtId: dto.districtId } : {}),
-        ...(dto.kurumSicilNo ? { kurumSicilNo: dto.kurumSicilNo } : {}),
-        ...(dto.gorevBirimi ? { gorevBirimi: dto.gorevBirimi } : {}),
-        ...(dto.kurumAdresi ? { kurumAdresi: dto.kurumAdresi } : {}),
-        ...(dto.kadroUnvanKodu ? { kadroUnvanKodu: dto.kadroUnvanKodu } : {}),
         ...(createdBy ? { createdBy } : {}),
         isActive: false, // Admin onayı gerekli
       } as Prisma.InstitutionCreateInput,
@@ -507,10 +580,6 @@ export class RegionsService {
         name: dto.name,
         provinceId: dto.provinceId !== undefined ? dto.provinceId : undefined,
         districtId: dto.districtId !== undefined ? dto.districtId : undefined,
-        kurumSicilNo: dto.kurumSicilNo,
-        gorevBirimi: dto.gorevBirimi,
-        kurumAdresi: dto.kurumAdresi,
-        kadroUnvanKodu: dto.kadroUnvanKodu,
         isActive: dto.isActive,
       },
       include: {
@@ -589,3 +658,4 @@ export class RegionsService {
     });
   }
 }
+

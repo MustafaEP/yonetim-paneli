@@ -14,11 +14,15 @@ import {
   Chip,
   useTheme,
   alpha,
+  Grid,
+  Paper,
 } from '@mui/material';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
+import PaymentIcon from '@mui/icons-material/Payment';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 
 import { useAuth } from '../../context/AuthContext';
@@ -199,6 +203,11 @@ const MemberPaymentsPage: React.FC = () => {
             params.row.paymentType === 'TEVKIFAT' ? 'primary' :
             params.row.paymentType === 'ELDEN' ? 'secondary' : 'default'
           }
+          sx={{
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            borderRadius: 1.5,
+          }}
         />
       ),
     },
@@ -214,6 +223,11 @@ const MemberPaymentsPage: React.FC = () => {
             label="Onaylı"
             color="success"
             size="small"
+            sx={{
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              borderRadius: 1.5,
+            }}
           />
         ) : (
           <Chip
@@ -221,6 +235,11 @@ const MemberPaymentsPage: React.FC = () => {
             label="Beklemede"
             color="warning"
             size="small"
+            sx={{
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              borderRadius: 1.5,
+            }}
           />
         )
       ),
@@ -228,114 +247,342 @@ const MemberPaymentsPage: React.FC = () => {
   ];
 
   return (
-    <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          Üye Ödemeleri
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Muhasebe için ödeme listesi - Excel ve PDF export mevcut
-        </Typography>
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: (theme) => 
+        theme.palette.mode === 'light' 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.success.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
+          : theme.palette.background.default,
+      pb: 4,
+    }}>
+      {/* Modern Header */}
+      <Box sx={{ pt: { xs: 3, md: 4 }, pb: { xs: 3, md: 4 } }}>
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 4,
+            background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+            color: 'white',
+            overflow: 'visible',
+            position: 'relative',
+            boxShadow: `0 8px 32px ${alpha(theme.palette.success.main, 0.3)}`,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 4,
+              padding: '2px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude',
+            }
+          }}
+        >
+          <Box sx={{ p: { xs: 3, md: 4 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
+              <Box
+                sx={{
+                  width: { xs: 60, md: 80 },
+                  height: { xs: 60, md: 80 },
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                <PaymentIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'white' }} />
+              </Box>
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                    mb: 1,
+                  }}
+                >
+                  Üye Ödemeleri
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    opacity: 0.95,
+                    fontSize: { xs: '0.875rem', md: '1rem' },
+                  }}
+                >
+                  Muhasebe için ödeme listesi - Excel ve PDF export mevcut
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Card>
       </Box>
 
-      <Card sx={{ mb: 3, p: 2 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>Şube</InputLabel>
-            <Select
-              value={branchFilter}
-              label="Şube"
-              onChange={(e) => setBranchFilter(e.target.value)}
-            >
-              <MenuItem value="ALL">Tümü</MenuItem>
-              {branches.map((branch) => (
-                <MenuItem key={branch.id} value={branch.id}>
-                  {branch.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Yıl</InputLabel>
-            <Select
-              value={yearFilter}
-              label="Yıl"
-              onChange={(e) => setYearFilter(Number(e.target.value))}
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
-                <MenuItem key={year} value={year}>
-                  {year}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Ay</InputLabel>
-            <Select
-              value={monthFilter}
-              label="Ay"
-              onChange={(e) => setMonthFilter(Number(e.target.value))}
-            >
-              {[
-                { value: 1, label: 'Ocak' },
-                { value: 2, label: 'Şubat' },
-                { value: 3, label: 'Mart' },
-                { value: 4, label: 'Nisan' },
-                { value: 5, label: 'Mayıs' },
-                { value: 6, label: 'Haziran' },
-                { value: 7, label: 'Temmuz' },
-                { value: 8, label: 'Ağustos' },
-                { value: 9, label: 'Eylül' },
-                { value: 10, label: 'Ekim' },
-                { value: 11, label: 'Kasım' },
-                { value: 12, label: 'Aralık' },
-              ].map((month) => (
-                <MenuItem key={month.value} value={month.value}>
-                  {month.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {canExport && (
-            <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
-              <Button
-                variant="outlined"
-                startIcon={<FileDownloadIcon />}
-                onClick={handleExportExcel}
+      {/* Ana Kart */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
+          transition: 'all 0.3s ease-in-out',
+          '&:hover': {
+            boxShadow: `0 12px 28px ${alpha(theme.palette.success.main, 0.12)}`,
+            transform: 'translateY(-2px)',
+          }
+        }}
+      >
+        {/* Filtre Bölümü */}
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3 },
+            backgroundColor: alpha(theme.palette.success.main, 0.02),
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          }}
+        >
+          <Grid container spacing={2.5} alignItems="center">
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl 
+                size="small" 
+                fullWidth
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2,
+                  },
+                }}
               >
-                Excel İndir
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<PictureAsPdfIcon />}
-                onClick={handleExportPDF}
+                <InputLabel>Şube</InputLabel>
+                <Select
+                  value={branchFilter}
+                  label="Şube"
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  MenuProps={{
+                    disablePortal: false,
+                    disableScrollLock: true,
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300,
+                        borderRadius: 12,
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="ALL">Tümü</MenuItem>
+                  {branches.map((branch) => (
+                    <MenuItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={2}>
+              <FormControl 
+                size="small" 
+                fullWidth
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2,
+                  },
+                }}
               >
-                PDF İndir
-              </Button>
+                <InputLabel>Yıl</InputLabel>
+                <Select
+                  value={yearFilter}
+                  label="Yıl"
+                  onChange={(e) => setYearFilter(Number(e.target.value))}
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                    <MenuItem key={year} value={year}>
+                      {year}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={2}>
+              <FormControl 
+                size="small" 
+                fullWidth
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <InputLabel>Ay</InputLabel>
+                <Select
+                  value={monthFilter}
+                  label="Ay"
+                  onChange={(e) => setMonthFilter(Number(e.target.value))}
+                >
+                  {[
+                    { value: 1, label: 'Ocak' },
+                    { value: 2, label: 'Şubat' },
+                    { value: 3, label: 'Mart' },
+                    { value: 4, label: 'Nisan' },
+                    { value: 5, label: 'Mayıs' },
+                    { value: 6, label: 'Haziran' },
+                    { value: 7, label: 'Temmuz' },
+                    { value: 8, label: 'Ağustos' },
+                    { value: 9, label: 'Eylül' },
+                    { value: 10, label: 'Ekim' },
+                    { value: 11, label: 'Kasım' },
+                    { value: 12, label: 'Aralık' },
+                  ].map((month) => (
+                    <MenuItem key={month.value} value={month.value}>
+                      {month.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {canExport && (
+              <Grid item xs={12} md={5}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<FileDownloadIcon />}
+                    onClick={handleExportExcel}
+                    fullWidth={true}
+                    sx={{
+                      textTransform: 'none',
+                      borderRadius: 2,
+                      fontWeight: 600,
+                      py: 1,
+                      borderWidth: 1.5,
+                      display: { xs: 'flex', sm: 'inline-flex' },
+                      '&:hover': {
+                        borderWidth: 1.5,
+                      },
+                    }}
+                  >
+                    Excel İndir
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={handleExportPDF}
+                    fullWidth={true}
+                    sx={{
+                      textTransform: 'none',
+                      borderRadius: 2,
+                      fontWeight: 600,
+                      py: 1,
+                      borderWidth: 1.5,
+                      display: { xs: 'flex', sm: 'inline-flex' },
+                      '&:hover': {
+                        borderWidth: 1.5,
+                      },
+                    }}
+                  >
+                    PDF İndir
+                  </Button>
+                </Stack>
+              </Grid>
+            )}
+          </Grid>
+        </Box>
+
+        {/* İçerik Bölümü */}
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+          {/* Sonuç Sayısı */}
+          {!loading && (
+            <Box sx={{ mb: 3 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  backgroundColor: alpha(theme.palette.info.main, 0.05),
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    color: theme.palette.info.main,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <ReceiptIcon fontSize="small" />
+                  Toplam {payments.length} ödeme bulundu
+                </Typography>
+              </Paper>
             </Box>
           )}
-        </Stack>
-      </Card>
 
-      <Card>
-        <Box sx={{ p: 3 }}>
+          {/* Tablo */}
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
               <CircularProgress />
             </Box>
           ) : (
-            <Box sx={{ height: 600 }}>
+            <Box
+              sx={{
+                height: { xs: 400, sm: 500, md: 600 },
+                minHeight: { xs: 400, sm: 500, md: 600 },
+                '& .MuiDataGrid-root': {
+                  border: 'none',
+                  borderRadius: 2,
+                },
+                '& .MuiDataGrid-cell': {
+                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                },
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: alpha(theme.palette.success.main, 0.04),
+                  borderBottom: `2px solid ${alpha(theme.palette.success.main, 0.1)}`,
+                  borderRadius: 0,
+                },
+                '& .MuiDataGrid-columnHeaderTitle': {
+                  fontWeight: 700,
+                  fontSize: '0.875rem',
+                },
+                '& .MuiDataGrid-row': {
+                  cursor: 'default',
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.success.main, 0.02),
+                  },
+                },
+                '& .MuiDataGrid-footerContainer': {
+                  borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  backgroundColor: alpha(theme.palette.background.default, 0.5),
+                },
+                '& .MuiDataGrid-virtualScroller': {
+                  minHeight: '200px',
+                },
+              }}
+            >
               <DataGrid
                 rows={payments}
                 columns={columns}
                 getRowId={(row) => row.id}
+                loading={loading}
                 initialState={{
-                  pagination: { paginationModel: { pageSize: 25 } },
+                  pagination: { paginationModel: { pageSize: 25, page: 0 } },
                 }}
                 pageSizeOptions={[10, 25, 50, 100]}
+                disableRowSelectionOnClick
               />
             </Box>
           )}

@@ -8,7 +8,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 
     // Soft delete middleware
     this.$use(async (params, next) => {
-      const softDeleteModels = ['User', 'Member', 'CustomRole'];
+      const softDeleteModels = ['User', 'Member', 'CustomRole', 'MemberPayment', 'MemberDocument'];
 
       if (params.model && softDeleteModels.includes(params.model)) {
         // findMany, findFirst, findUnique -> deletedAt null filtrele
@@ -33,18 +33,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         // delete → soft delete
         if (params.action === 'delete') {
           params.action = 'update';
+          const modelsWithIsActive = ['User', 'Member', 'CustomRole'];
           params.args['data'] = {
             deletedAt: new Date(),
-            isActive: false,
+            ...(modelsWithIsActive.includes(params.model || '') && { isActive: false }),
           };
         }
 
         // deleteMany → soft deleteMany
         if (params.action === 'deleteMany') {
           params.action = 'updateMany';
+          const modelsWithIsActive = ['User', 'Member', 'CustomRole'];
           params.args['data'] = {
             deletedAt: new Date(),
-            isActive: false,
+            ...(modelsWithIsActive.includes(params.model || '') && { isActive: false }),
           };
         }
       }

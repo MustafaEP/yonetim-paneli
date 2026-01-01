@@ -159,6 +159,20 @@ model Member {
   tevkifatTitle  TevkifatTitle?  @relation(fields: [tevkifatTitleId], references: [id])
   branch         Branch          @relation("MemberBranch", fields: [branchId], references: [id])
 
+  // 🔹 Kurum Detay Bilgileri (Üyeye özel)
+  dutyUnit              String? // Görev Birimi
+  institutionAddress    String? // Kurum Adresi
+  institutionProvinceId String? // Kurum İli
+  institutionDistrictId String? // Kurum İlçesi
+  professionId          String? // Meslek(Unvan)
+  institutionRegNo      String? // Kurum Sicil No
+  staffTitleCode        String? // Kadro Unvan Kodu
+
+  // 🔹 Kurum detay ilişkileri
+  institutionProvince Province? @relation("MemberInstitutionProvince", fields: [institutionProvinceId], references: [id])
+  institutionDistrict District? @relation("MemberInstitutionDistrict", fields: [institutionDistrictId], references: [id])
+  profession          Profession? @relation(fields: [professionId], references: [id])
+
   createdByUserId  String?
   approvedByUserId String?
   approvedAt       DateTime?
@@ -198,6 +212,9 @@ model Member {
   @@index([tevkifatCenterId])
   @@index([tevkifatTitleId])
   @@index([status])
+  @@index([professionId])
+  @@index([institutionProvinceId])
+  @@index([institutionDistrictId])
 }
 
 model Province {
@@ -205,11 +222,12 @@ model Province {
   name String
   code String? @unique
 
-  districts       District[]
-  members         Member[]         @relation("MemberProvince")
-  tevkifatCenters TevkifatCenter[] @relation("ProvinceTevkifatCenters")
-  institutions    Institution[]    @relation("ProvinceInstitutions")
-  branches        Branch[]         @relation("ProvinceBranches")
+  districts                District[]
+  members                  Member[]         @relation("MemberProvince")
+  memberInstitutionProvinces Member[]        @relation("MemberInstitutionProvince")
+  tevkifatCenters          TevkifatCenter[] @relation("ProvinceTevkifatCenters")
+  institutions             Institution[]    @relation("ProvinceInstitutions")
+  branches                 Branch[]         @relation("ProvinceBranches")
 
   userScopes   UserScope[]
   customRoles  CustomRole[]
@@ -221,10 +239,11 @@ model District {
   provinceId String
   province   Province @relation(fields: [provinceId], references: [id])
 
-  members         Member[]         @relation("MemberDistrict")
-  tevkifatCenters TevkifatCenter[] @relation("DistrictTevkifatCenters")
-  institutions    Institution[]    @relation("DistrictInstitutions")
-  branches        Branch[]         @relation("DistrictBranches")
+  members                  Member[]         @relation("MemberDistrict")
+  memberInstitutionDistricts Member[]        @relation("MemberInstitutionDistrict")
+  tevkifatCenters          TevkifatCenter[] @relation("DistrictTevkifatCenters")
+  institutions             Institution[]    @relation("DistrictInstitutions")
+  branches                 Branch[]         @relation("DistrictBranches")
 
   userScopes   UserScope[]
   customRoles  CustomRole[]
@@ -354,6 +373,8 @@ model MemberDocument {
   generatedAt     DateTime          @default(now())
   generatedBy     String
   generatedByUser User?             @relation("DocumentGeneratedBy", fields: [generatedBy], references: [id])
+
+  deletedAt DateTime?
 
   createdAt DateTime @default(now())
 
@@ -636,12 +657,8 @@ model SystemLog {
 model Branch {
   id                 String  @id @default(cuid())
   name               String
-  code               String? @unique
   presidentId        String?
   president          User?   @relation("BranchPresident", fields: [presidentId], references: [id])
-  address            String? @db.Text
-  phone              String?
-  email              String?
   isActive           Boolean @default(true)
   branchSharePercent Decimal @default(40) @db.Decimal(5, 2) // Şube payı %40
   provinceId         String? // İl'e bağlıysa
@@ -662,18 +679,14 @@ model Branch {
 
 // 🔹 Kurumlar (Institutions)
 model Institution {
-  id             String    @id @default(cuid())
-  name           String
-  provinceId     String?   // İl'e bağlıysa
-  districtId     String?   // İlçe'ye bağlıysa
-  kurumSicilNo   String?   // Kurum Sicil No
-  gorevBirimi    String?   // Görev Birimi
-  kurumAdresi    String?   @db.Text // Kurum Adresi
-  kadroUnvanKodu String?   // Kadro Ünvan Kodu
-  isActive       Boolean   @default(false) // Admin onayı olmadan aktif olmaz
-  approvedAt     DateTime? // Admin onay tarihi
-  approvedBy     String?   // Admin kullanıcı ID
-  createdBy      String?   // İl/İlçe başkanı kullanıcı ID
+  id         String    @id @default(cuid())
+  name       String
+  provinceId String?   // İl'e bağlıysa
+  districtId String?   // İlçe'ye bağlıysa
+  isActive   Boolean   @default(false) // Admin onayı olmadan aktif olmaz
+  approvedAt DateTime? // Admin onay tarihi
+  approvedBy String?   // Admin kullanıcı ID
+  createdBy  String?   // İl/İlçe başkanı kullanıcı ID
 
   province Province? @relation("ProvinceInstitutions", fields: [provinceId], references: [id])
   district District? @relation("DistrictInstitutions", fields: [districtId], references: [id])
@@ -702,21 +715,17 @@ model TevkifatTitle {
 }
 
 model TevkifatCenter {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  title       String? // Tevkifat ünvanı (deprecated - artık tevkifatTitleId kullanılacak)
-  code        String? @unique
-  description String? @db.Text
-  address     String? @db.Text // Adres
-  isActive    Boolean @default(true)
-  provinceId  String? // İl'e bağlıysa
-  districtId  String? // İlçe'ye bağlıysa
+  id         String  @id @default(cuid())
+  name       String  @unique
+  isActive   Boolean @default(true)
+  provinceId String? // İl'e bağlıysa
+  districtId String? // İlçe'ye bağlıysa
 
   province Province? @relation("ProvinceTevkifatCenters", fields: [provinceId], references: [id])
   district District? @relation("DistrictTevkifatCenters", fields: [districtId], references: [id])
-  members   Member[]
-  files     TevkifatFile[]
-  payments  MemberPayment[]
+  members  Member[]
+  files    TevkifatFile[]
+  payments MemberPayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -852,6 +861,8 @@ model MemberPayment {
   ipAddress          String? // İşlem IP adresi
   userAgent          String? // User agent (log için)
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -881,4 +892,18 @@ model MembershipInfoOption {
 
   @@index([isActive])
   @@index([order])
+}
+
+// 🔹 Meslek/Unvan (Profession)
+model Profession {
+  id       String  @id @default(cuid())
+  name     String  @unique // Meslek/Unvan adı
+  isActive Boolean @default(true)
+
+  members Member[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
 }

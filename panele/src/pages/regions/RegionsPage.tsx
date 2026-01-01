@@ -305,10 +305,6 @@ const RegionsPage: React.FC = () => {
             name: institution.name,
             provinceId: selectedProvinceId,
             districtId: selectedDistrictId || institution.districtId || undefined,
-            kurumSicilNo: institution.kurumSicilNo || undefined,
-            gorevBirimi: institution.gorevBirimi || undefined,
-            kurumAdresi: institution.kurumAdresi || undefined,
-            kadroUnvanKodu: institution.kadroUnvanKodu || undefined,
             isActive: institution.isActive,
           });
         })
@@ -346,10 +342,6 @@ const RegionsPage: React.FC = () => {
             name: center.name,
             provinceId: selectedProvinceId,
             districtId: selectedDistrictId || center.districtId || undefined,
-            title: center.title || undefined,
-            code: center.code || undefined,
-            description: center.description || undefined,
-            address: center.address || undefined,
             isActive: center.isActive,
           });
         })
@@ -387,10 +379,6 @@ const RegionsPage: React.FC = () => {
             name: branch.name,
             provinceId: selectedProvinceId,
             districtId: selectedDistrictId || branch.districtId || undefined,
-            code: branch.code || undefined,
-            address: branch.address || undefined,
-            phone: branch.phone || undefined,
-            email: branch.email || undefined,
             isActive: branch.isActive,
           });
         })
@@ -432,10 +420,6 @@ const RegionsPage: React.FC = () => {
           name: institution.name,
           provinceId: null as any,
           districtId: null as any,
-          kurumSicilNo: institution.kurumSicilNo || undefined,
-          gorevBirimi: institution.gorevBirimi || undefined,
-          kurumAdresi: institution.kurumAdresi || undefined,
-          kadroUnvanKodu: institution.kadroUnvanKodu || undefined,
           isActive: institution.isActive,
         });
         
@@ -450,10 +434,6 @@ const RegionsPage: React.FC = () => {
           name: center.name,
           provinceId: null as any,
           districtId: null as any,
-          title: center.title || undefined,
-          code: center.code || undefined,
-          description: center.description || undefined,
-          address: center.address || undefined,
           isActive: center.isActive,
         });
         
@@ -468,10 +448,6 @@ const RegionsPage: React.FC = () => {
           name: branch.name,
           provinceId: null as any,
           districtId: null as any,
-          code: branch.code || undefined,
-          address: branch.address || undefined,
-          phone: branch.phone || undefined,
-          email: branch.email || undefined,
           isActive: branch.isActive,
         });
         

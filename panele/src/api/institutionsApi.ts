@@ -4,12 +4,8 @@ import httpClient from './httpClient';
 export interface Institution {
   id: string;
   name: string;
-  provinceId: string;
-  districtId?: string;
-  kurumSicilNo?: string;
-  gorevBirimi?: string;
-  kurumAdresi?: string;
-  kadroUnvanKodu?: string;
+  provinceId?: string | null;
+  districtId?: string | null;
   isActive: boolean;
   approvedAt?: string;
   province?: {

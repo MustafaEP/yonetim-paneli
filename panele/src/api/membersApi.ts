@@ -122,24 +122,32 @@ export const updateMember = async (
     lastName?: string;
     phone?: string;
     email?: string;
-    membershipInfo?: string;
+    membershipInfoOptionId?: string;
     registrationNumber?: string;
     boardDecisionDate?: string;
     boardDecisionBookNo?: string;
     motherName?: string;
     fatherName?: string;
+    birthDate?: string;
     birthplace?: string;
     gender?: 'MALE' | 'FEMALE' | 'OTHER';
     educationStatus?: 'PRIMARY' | 'HIGH_SCHOOL' | 'COLLEGE';
-    workingProvinceId?: string;
-    workingDistrictId?: string;
+    provinceId?: string;
+    districtId?: string;
     institutionId?: string;
-    positionTitle?: 'KADRO_657' | 'SOZLESMELI_4B' | 'KADRO_663' | 'AILE_HEKIMLIGI' | 'UNVAN_4924' | 'DIGER_SAGLIK_PERSONELI';
-    institutionRegNo?: string;
-    workUnit?: string;
-    workUnitAddress?: string;
     tevkifatCenterId?: string;
+    tevkifatTitleId?: string;
     branchId?: string;
+    // Kurum Detay Bilgileri
+    dutyUnit?: string;
+    institutionAddress?: string;
+    institutionProvinceId?: string;
+    institutionDistrictId?: string;
+    professionId?: string;
+    institutionRegNo?: string;
+    staffTitleCode?: string;
+    status?: 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'RESIGNED' | 'EXPELLED' | 'REJECTED';
+    cancellationReason?: string;
   },
 ): Promise<MemberDetail> => {
   const res = await httpClient.patch<MemberDetail>(`/members/${memberId}`, data);
@@ -188,4 +196,17 @@ export const exportMemberDetailToPdf = async (memberId: string): Promise<void> =
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+};
+
+// 🔹 Üyeyi soft delete et: DELETE /members/:id
+export const deleteMember = async (
+  memberId: string,
+  options?: {
+    deletePayments?: boolean;
+    deleteDocuments?: boolean;
+  },
+): Promise<void> => {
+  await httpClient.delete(`/members/${memberId}`, {
+    data: options,
+  });
 };

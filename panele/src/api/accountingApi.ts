@@ -101,10 +101,6 @@ export const rejectTevkifatFile = async (id: string): Promise<TevkifatFile> => {
 export interface TevkifatCenter {
   id: string;
   name: string;
-  title: string | null;
-  code: string | null;
-  description: string | null;
-  address: string | null;
   isActive: boolean;
   provinceId?: string | null;
   districtId?: string | null;
@@ -145,20 +141,12 @@ export interface TevkifatCenterDetail extends TevkifatCenter {
 
 export interface CreateTevkifatCenterDto {
   name: string;
-  title?: string;
-  code?: string;
-  description?: string;
-  address?: string;
   provinceId?: string;
   districtId?: string;
 }
 
 export interface UpdateTevkifatCenterDto {
   name?: string;
-  title?: string;
-  code?: string;
-  description?: string;
-  address?: string;
   isActive?: boolean;
   provinceId?: string | null;
   districtId?: string | null;
@@ -192,8 +180,13 @@ export const updateTevkifatCenter = async (
   return res.data;
 };
 
-export const deleteTevkifatCenter = async (id: string): Promise<TevkifatCenter> => {
-  const res = await httpClient.delete<TevkifatCenter>(`/accounting/tevkifat-centers/${id}`);
+export interface DeleteTevkifatCenterDto {
+  memberActionType: 'REMOVE_TEVKIFAT_CENTER' | 'TRANSFER_TO_TEVKIFAT_CENTER' | 'REMOVE_AND_DEACTIVATE' | 'TRANSFER_AND_DEACTIVATE' | 'TRANSFER_AND_CANCEL';
+  targetTevkifatCenterId?: string;
+}
+
+export const deleteTevkifatCenter = async (id: string, dto: DeleteTevkifatCenterDto): Promise<TevkifatCenter> => {
+  const res = await httpClient.delete<TevkifatCenter>(`/accounting/tevkifat-centers/${id}`, { data: dto });
   return res.data;
 };
 

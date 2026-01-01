@@ -26,6 +26,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  FormHelperText,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -61,9 +62,11 @@ import { getRoles } from '../../api/rolesApi';
 import { getBranches } from '../../api/branchesApi';
 import { getInstitutions } from '../../api/institutionsApi';
 import { getTevkifatCenters, getTevkifatTitles } from '../../api/accountingApi';
+import { getProfessions } from '../../api/professionsApi';
 import type { CustomRole } from '../../types/role';
 import type { Branch } from '../../api/branchesApi';
 import type { Institution } from '../../api/institutionsApi';
+import type { Profession } from '../../api/professionsApi';
 
 const MemberApplicationCreatePage: React.FC = () => {
   const theme = useTheme();
@@ -104,6 +107,14 @@ const MemberApplicationCreatePage: React.FC = () => {
     tevkifatTitle: string;
     // Üye Grubu
     membershipInfoOptionId: string;
+    // Kurum Detay Bilgileri
+    dutyUnit: string;
+    institutionAddress: string;
+    institutionProvinceId: string;
+    institutionDistrictId: string;
+    professionId: string;
+    institutionRegNo: string;
+    staffTitleCode: string;
   }>({
     firstName: '',
     lastName: '',
@@ -123,6 +134,13 @@ const MemberApplicationCreatePage: React.FC = () => {
     tevkifatCenterId: '',
     tevkifatTitle: '',
     membershipInfoOptionId: '',
+    dutyUnit: '',
+    institutionAddress: '',
+    institutionProvinceId: '',
+    institutionDistrictId: '',
+    professionId: '',
+    institutionRegNo: '',
+    staffTitleCode: '',
   });
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -134,6 +152,9 @@ const MemberApplicationCreatePage: React.FC = () => {
   const [tevkifatCenters, setTevkifatCenters] = useState<Array<{ id: string; name: string; title: string | null }>>([]);
   const [tevkifatTitles, setTevkifatTitles] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
   const [membershipInfoOptions, setMembershipInfoOptions] = useState<Array<{ id: string; label: string; value: string }>>([]);
+  const [professions, setProfessions] = useState<Profession[]>([]);
+  const [institutionProvinces, setInstitutionProvinces] = useState<Province[]>([]);
+  const [institutionDistricts, setInstitutionDistricts] = useState<District[]>([]);
   const [provinceDisabled, setProvinceDisabled] = useState(false);
   const [districtDisabled, setDistrictDisabled] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -291,6 +312,53 @@ const MemberApplicationCreatePage: React.FC = () => {
     };
     loadMembershipInfoOptions();
   }, []);
+
+  // Meslek/Unvanları yükle
+  useEffect(() => {
+    const loadProfessions = async () => {
+      try {
+        const data = await getProfessions();
+        setProfessions(data);
+      } catch (e) {
+        console.error('Meslek/Unvanlar yüklenirken hata:', e);
+      }
+    };
+    loadProfessions();
+  }, []);
+
+  // Kurum İli için illeri yükle (tüm iller)
+  useEffect(() => {
+    const loadInstitutionProvinces = async () => {
+      try {
+        const data = await getProvinces();
+        setInstitutionProvinces(data);
+      } catch (e) {
+        console.error('Kurum illeri yüklenirken hata:', e);
+      }
+    };
+    loadInstitutionProvinces();
+  }, []);
+
+  // Kurum İli değiştiğinde ilçeleri yükle
+  useEffect(() => {
+    const loadForInstitutionProvince = async () => {
+      const provinceId = form.institutionProvinceId;
+      if (!provinceId) {
+        setInstitutionDistricts([]);
+        return;
+      }
+
+      try {
+        const dists = await getDistricts(provinceId);
+        setInstitutionDistricts(dists);
+      } catch (e) {
+        console.error('Kurum ili değişince ilçe verisi alınırken hata:', e);
+      }
+    };
+
+    loadForInstitutionProvince();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.institutionProvinceId]);
 
 
 
@@ -749,6 +817,14 @@ const MemberApplicationCreatePage: React.FC = () => {
         // Tevkifat
         tevkifatCenterId: form.tevkifatCenterId || undefined,
         tevkifatTitleId: form.tevkifatTitle || undefined,
+        // Kurum Detay Bilgileri
+        dutyUnit: form.dutyUnit.trim() || undefined,
+        institutionAddress: form.institutionAddress.trim() || undefined,
+        institutionProvinceId: form.institutionProvinceId || undefined,
+        institutionDistrictId: form.institutionDistrictId || undefined,
+        professionId: form.professionId || undefined,
+        institutionRegNo: form.institutionRegNo.trim() || undefined,
+        staffTitleCode: form.staffTitleCode.trim() || undefined,
         previousCancelledMemberId: previousCancelledMemberId,
         // registrationNumber backend'de otomatik oluşturulacak (zaman damgası veya sıralı numara)
       };
@@ -829,77 +905,70 @@ const MemberApplicationCreatePage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, sm: 3 } }}>
-      {/* Başlık Bölümü */}
-      <Card
-        elevation={0}
+    <Box sx={{ pb: 4 }}>
+      {/* Modern Başlık Bölümü */}
+      <Box
         sx={{
-          mb: 3,
+          mb: 4,
+          p: { xs: 3, sm: 4, md: 5 },
           borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.95)} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: '#fff',
-          overflow: 'hidden',
+          background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.08)} 0%, ${alpha(theme.palette.success.light, 0.05)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`,
           position: 'relative',
-          boxShadow: `0 12px 40px ${alpha(theme.palette.primary.main, 0.35)}`,
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '300px',
+            height: '300px',
+            background: `radial-gradient(circle, ${alpha(theme.palette.success.main, 0.1)} 0%, transparent 70%)`,
+            borderRadius: '50%',
+            transform: 'translate(30%, -30%)',
+          },
         }}
       >
-        {/* Dekoratif arka plan elemanları */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -100,
-            right: -100,
-            width: 300,
-            height: 300,
-            borderRadius: '50%',
-            background: alpha('#fff', 0.08),
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: -50,
-            left: -50,
-            width: 200,
-            height: 200,
-            borderRadius: '50%',
-            background: alpha('#fff', 0.05),
-          }}
-        />
-
-        <Box sx={{ p: { xs: 2.5, sm: 4 }, position: 'relative', zIndex: 1 }}>
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box
               sx={{
-                width: { xs: 48, sm: 56 },
-                height: { xs: 48, sm: 56 },
-                borderRadius: 2.5,
-                bgcolor: alpha('#fff', 0.2),
-                border: `3px solid ${alpha('#fff', 0.3)}`,
+                width: { xs: 56, sm: 64 },
+                height: { xs: 56, sm: 64 },
+                borderRadius: 3,
+                background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 8px 24px ${alpha('#000', 0.25)}`,
+                boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.35)}`,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px) scale(1.05)',
+                  boxShadow: `0 12px 32px ${alpha(theme.palette.success.main, 0.45)}`,
+                },
               }}
             >
-              <PersonAddIcon sx={{ color: '#fff', fontSize: { xs: '1.5rem', sm: '1.75rem' } }} />
+              <PersonAddIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
             </Box>
             <Box>
               <Typography
-                variant="h4"
+                variant="h3"
                 sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                  fontWeight: 800,
+                  fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
+                  color: theme.palette.text.primary,
                   mb: 0.5,
+                  letterSpacing: '-0.02em',
                 }}
               >
                 Yeni Üye Başvurusu
               </Typography>
               <Typography
-                variant="body2"
+                variant="body1"
                 sx={{
-                  opacity: 0.9,
-                  fontSize: { xs: '0.875rem', sm: '0.9rem' },
+                  color: theme.palette.text.secondary,
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
+                  fontWeight: 500,
                 }}
               >
                 Panel üzerinden yeni bir üye başvurusu oluşturun
@@ -907,7 +976,7 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Box>
           </Box>
         </Box>
-      </Card>
+      </Box>
 
       {/* Hata Mesajı */}
       {error && (
@@ -928,10 +997,11 @@ const MemberApplicationCreatePage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: `0 2px 12px ${alpha(theme.palette.primary.main, 0.06)}`,
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
+          background: '#fff',
         }}
       >
         <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
@@ -1333,6 +1403,110 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
           </Grid>
 
+          {/* Bölge Bilgileri */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1.5, 
+              mb: 3, 
+              mt: 4,
+              pb: 2,
+              borderBottom: `2px solid ${alpha(theme.palette.info.main, 0.1)}`,
+            }}
+          >
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
+              }}
+            >
+              <PlaceIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+              Bölge Bilgileri (Kayıtlı Olduğu Yer - İkamet)
+            </Typography>
+          </Box>
+
+          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+            {/* İl - İlçe (2 sütun) */}
+            <Grid item xs={12} md={6}>
+              <FormControl 
+                fullWidth
+                required
+                disabled={provinceDisabled}
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <InputLabel>İl *</InputLabel>
+                <Select
+                  label="İl *"
+                  value={form.provinceId}
+                  onChange={(e) => handleChange('provinceId', e.target.value)}
+                  required
+                  disabled={provinceDisabled}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
+                    </InputAdornment>
+                  }
+                >
+                  <MenuItem value="">İl Seçin</MenuItem>
+                  {provinces.map((province) => (
+                    <MenuItem key={province.id} value={province.id}>
+                      {province.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl 
+                fullWidth
+                required
+                disabled={districtDisabled || !form.provinceId}
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <InputLabel>İlçe *</InputLabel>
+                <Select
+                  label="İlçe *"
+                  value={form.districtId}
+                  onChange={(e) => handleChange('districtId', e.target.value)}
+                  required
+                  disabled={districtDisabled || !form.provinceId}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
+                    </InputAdornment>
+                  }
+                >
+                  <MenuItem value="">İlçe Seçin</MenuItem>
+                  {districts.map((district) => (
+                    <MenuItem key={district.id} value={district.id}>
+                      {district.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+
           {/* Kurum Bilgileri */}
           <Box 
             sx={{ 
@@ -1396,6 +1570,210 @@ const MemberApplicationCreatePage: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
+            </Grid>
+
+            {/* Görev Birimi */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Görev Birimi"
+                value={form.dutyUnit}
+                onChange={(e) => handleChange('dutyUnit', e.target.value)}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <WorkIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              />
+              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
+            </Grid>
+
+            {/* Meslek(Unvan) */}
+            <Grid item xs={12} md={6}>
+              <FormControl 
+                fullWidth
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <InputLabel>Meslek(Unvan)</InputLabel>
+                <Select
+                  label="Meslek(Unvan)"
+                  value={form.professionId}
+                  onChange={(e) => handleChange('professionId', e.target.value)}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
+                    </InputAdornment>
+                  }
+                >
+                  <MenuItem value="">Meslek/Unvan Seçin</MenuItem>
+                  {professions.map((profession) => (
+                    <MenuItem key={profession.id} value={profession.id}>
+                      {profession.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>Zorunlu değildir</FormHelperText>
+              </FormControl>
+            </Grid>
+
+            {/* Kurum Adresi */}
+            <Grid item xs={12}>
+              <TextField
+                label="Kurum Adresi"
+                value={form.institutionAddress}
+                onChange={(e) => handleChange('institutionAddress', e.target.value)}
+                fullWidth
+                multiline
+                rows={2}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              />
+              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
+            </Grid>
+
+            {/* Kurum İli - Kurum İlçesi */}
+            <Grid item xs={12} md={6}>
+              <FormControl 
+                fullWidth
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <InputLabel>Kurum İli</InputLabel>
+                <Select
+                  label="Kurum İli"
+                  value={form.institutionProvinceId}
+                  onChange={(e) => handleChange('institutionProvinceId', e.target.value)}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
+                    </InputAdornment>
+                  }
+                >
+                  <MenuItem value="">İl Seçin</MenuItem>
+                  {institutionProvinces.length > 0 ? (
+                    institutionProvinces.map((province) => (
+                      <MenuItem key={province.id} value={province.id}>
+                        {province.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    provinces.map((province) => (
+                      <MenuItem key={province.id} value={province.id}>
+                        {province.name}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+                <FormHelperText>Zorunlu değildir</FormHelperText>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl 
+                fullWidth
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <InputLabel>Kurum İlçesi</InputLabel>
+                <Select
+                  label="Kurum İlçesi"
+                  value={form.institutionDistrictId}
+                  onChange={(e) => handleChange('institutionDistrictId', e.target.value)}
+                  disabled={!form.institutionProvinceId}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
+                    </InputAdornment>
+                  }
+                >
+                  <MenuItem value="">İlçe Seçin</MenuItem>
+                  {institutionDistricts.map((district) => (
+                    <MenuItem key={district.id} value={district.id}>
+                      {district.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>Zorunlu değildir</FormHelperText>
+              </FormControl>
+            </Grid>
+
+            {/* Kurum Sicil No - Kadro Unvan Kodu */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Kurum Sicil No"
+                value={form.institutionRegNo}
+                onChange={(e) => handleChange('institutionRegNo', e.target.value)}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              />
+              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Kadro Unvan Kodu"
+                value={form.staffTitleCode}
+                onChange={(e) => handleChange('staffTitleCode', e.target.value)}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 300,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              />
+              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
             </Grid>
           </Grid>
 

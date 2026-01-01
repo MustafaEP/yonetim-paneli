@@ -11,6 +11,7 @@ import { MemberScopeService } from './member-scope.service';
 import { MemberHistoryService } from './member-history.service';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
 import { UpdateMemberDto } from './dto/update-member.dto';
+import { DeleteMemberDto } from './dto/delete-member.dto';
 import { ConfigService } from '../config/config.service';
 
 @Injectable()
@@ -341,12 +342,20 @@ export class MembersService {
         email: dto.email,
         source: source,
         status: initialStatus,
-        createdByUserId,
-        approvedByUserId,
+        createdByUserId: createdByUserId || null,
+        approvedByUserId: approvedByUserId || null,
         approvedAt,
         previousCancelledMemberId: previousCancelledMemberId || null,
-        provinceId: provinceId,
-        districtId: districtId,
+        provinceId: provinceId || null,
+        districtId: districtId || null,
+        // Kurum Detay Bilgileri
+        dutyUnit: dto.dutyUnit,
+        institutionAddress: dto.institutionAddress,
+        institutionProvinceId: dto.institutionProvinceId,
+        institutionDistrictId: dto.institutionDistrictId,
+        professionId: dto.professionId,
+        institutionRegNo: dto.institutionRegNo,
+        staffTitleCode: dto.staffTitleCode,
         
         // 🔹 Üyelik & Yönetim Kurulu Bilgileri
         membershipInfoOptionId: dto.membershipInfoOptionId,
@@ -464,7 +473,6 @@ export class MembersService {
           select: {
             id: true,
             name: true,
-            code: true,
           },
         },
       },
@@ -540,11 +548,28 @@ export class MembersService {
             name: true,
           },
         },
+        institutionProvince: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        institutionDistrict: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        profession: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         tevkifatCenter: {
           select: {
             id: true,
             name: true,
-            title: true,
           },
         },
         tevkifatTitle: {
@@ -557,7 +582,6 @@ export class MembersService {
           select: {
             id: true,
             name: true,
-            code: true,
           },
         },
         membershipInfoOption: {
@@ -637,6 +661,14 @@ export class MembersService {
       tevkifatCenterId: oldMember.tevkifatCenterId,
       tevkifatTitleId: oldMember.tevkifatTitleId,
       branchId: oldMember.branchId,
+      // Kurum Detay Bilgileri
+      dutyUnit: oldMember.dutyUnit,
+      institutionAddress: oldMember.institutionAddress,
+      institutionProvinceId: oldMember.institutionProvinceId,
+      institutionDistrictId: oldMember.institutionDistrictId,
+      professionId: oldMember.professionId,
+      institutionRegNo: oldMember.institutionRegNo,
+      staffTitleCode: oldMember.staffTitleCode,
     };
 
     // Yeni veriyi hazırla
@@ -651,6 +683,20 @@ export class MembersService {
       }
     });
 
+    // RESIGNED veya EXPELLED durumları için cancelledAt ve cancelledByUserId set et
+    if (dto.status === MemberStatus.RESIGNED || dto.status === MemberStatus.EXPELLED) {
+      updateData.cancelledAt = new Date();
+      updateData.cancelledByUserId = updatedByUserId;
+      if (dto.cancellationReason) {
+        updateData.cancellationReason = dto.cancellationReason;
+      }
+    } else if (dto.status) {
+      // Eğer durum RESIGNED veya EXPELLED değilse, cancellation alanlarını temizle
+      updateData.cancelledAt = null;
+      updateData.cancelledByUserId = null;
+      updateData.cancellationReason = null;
+    }
+
     // Güncelle
     const updatedMember = await this.prisma.member.update({
       where: { id },
@@ -658,10 +704,13 @@ export class MembersService {
       include: {
         province: { select: { id: true, name: true } },
         district: { select: { id: true, name: true } },
+        institutionProvince: { select: { id: true, name: true } },
+        institutionDistrict: { select: { id: true, name: true } },
+        profession: { select: { id: true, name: true } },
         institution: { select: { id: true, name: true } },
-        tevkifatCenter: { select: { id: true, name: true, title: true } },
+        tevkifatCenter: { select: { id: true, name: true } },
         tevkifatTitle: { select: { id: true, name: true } },
-        branch: { select: { id: true, name: true, code: true } },
+        branch: { select: { id: true, name: true } },
       },
     });
 
@@ -736,7 +785,37 @@ export class MembersService {
     });
   }
 
-  async softDelete(id: string) {
+  async softDelete(id: string, dto?: DeleteMemberDto) {
+    // Önce üyeyi kontrol et
+    const member = await this.prisma.member.findUnique({
+      where: { id },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Üye bulunamadı');
+    }
+
+    // Ödemeleri sil (eğer istenirse)
+    if (dto?.deletePayments) {
+      await this.prisma.memberPayment.updateMany({
+        where: { memberId: id },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+    }
+
+    // Dökümanları sil (eğer istenirse)
+    if (dto?.deleteDocuments) {
+      await this.prisma.memberDocument.updateMany({
+        where: { memberId: id },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+    }
+
+    // Üyeyi soft delete yap (prisma middleware otomatik olarak soft delete yapar)
     return this.prisma.member.delete({
       where: { id },
     });

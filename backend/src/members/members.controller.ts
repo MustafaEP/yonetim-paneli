@@ -16,6 +16,7 @@ import { CreateMemberApplicationDto } from './dto/create-member-application.dto'
 import { CancelMemberDto } from './dto/cancel-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { ApproveMemberDto } from './dto/approve-member.dto';
+import { DeleteMemberDto } from './dto/delete-member.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permission.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -175,13 +176,17 @@ export class MembersController {
   @Delete(':id')
   @ApiOperation({ summary: 'Üyeyi sil', description: 'Üyeyi soft delete yapar' })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
+  @ApiBody({ type: DeleteMemberDto, required: false })
   @ApiResponse({
     status: 200,
     description: 'Üye silindi',
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
-  async softDelete(@Param('id') id: string) {
-    return this.membersService.softDelete(id);
+  async softDelete(
+    @Param('id') id: string,
+    @Body() dto?: DeleteMemberDto,
+  ) {
+    return this.membersService.softDelete(id, dto);
   }
 
   @Permissions(Permission.MEMBER_STATUS_CHANGE)
@@ -449,8 +454,22 @@ export class MembersController {
     const getEducationLabel = (education: string) => {
       if (education === 'COLLEGE') return 'Yüksekokul';
       if (education === 'HIGH_SCHOOL') return 'Lise';
-      if (education === 'PRIMARY') return 'İlkokul';
+      if (education === 'PRIMARY') return 'İlköğretim';
       return education || '-';
+    };
+
+    const formatDate = (date: string | Date | null | undefined) => {
+      if (!date) return '-';
+      try {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        return d.toLocaleDateString('tr-TR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      } catch {
+        return '-';
+      }
     };
 
     return `
@@ -468,60 +487,63 @@ export class MembersController {
           }
           body {
             font-family: 'Arial', sans-serif;
-            font-size: 11px;
+            font-size: 10px;
             color: #333;
             padding: 20px;
-            line-height: 1.6;
+            line-height: 1.5;
           }
           .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             border-bottom: 3px solid #1976d2;
-            padding-bottom: 20px;
+            padding-bottom: 15px;
           }
           .header h1 {
             color: #1976d2;
-            font-size: 24px;
-            margin-bottom: 10px;
+            font-size: 22px;
+            margin-bottom: 8px;
           }
           .header .subtitle {
             color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 12px;
+            margin-bottom: 3px;
           }
           .section {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             page-break-inside: avoid;
           }
           .section-title {
             background-color: #1976d2;
             color: white;
-            padding: 10px 15px;
-            font-size: 14px;
+            padding: 8px 12px;
+            font-size: 12px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             border-radius: 4px;
           }
           .info-grid {
             display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 10px;
-            margin-bottom: 10px;
+            grid-template-columns: 1.2fr 2fr;
+            gap: 8px;
+            margin-bottom: 8px;
           }
           .info-label {
             font-weight: bold;
             color: #555;
+            font-size: 9.5px;
           }
           .info-value {
             color: #333;
+            font-size: 9.5px;
+            word-wrap: break-word;
           }
           .footer {
-            margin-top: 30px;
+            margin-top: 25px;
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
             color: #666;
             border-top: 1px solid #ddd;
-            padding-top: 10px;
+            padding-top: 8px;
           }
         </style>
       </head>
@@ -541,36 +563,82 @@ export class MembersController {
             <div class="info-value">${member.lastName || '-'}</div>
             <div class="info-label">TC Kimlik No:</div>
             <div class="info-value">${member.nationalId || '-'}</div>
-            <div class="info-label">Kayıt No:</div>
+            <div class="info-label">Üye Numarası:</div>
             <div class="info-value">${member.registrationNumber || '-'}</div>
-            <div class="info-label">Telefon:</div>
-            <div class="info-value">${member.phone || '-'}</div>
-            <div class="info-label">E-posta:</div>
-            <div class="info-value">${member.email || '-'}</div>
             <div class="info-label">Anne Adı:</div>
             <div class="info-value">${member.motherName || '-'}</div>
             <div class="info-label">Baba Adı:</div>
             <div class="info-value">${member.fatherName || '-'}</div>
+            <div class="info-label">Doğum Tarihi:</div>
+            <div class="info-value">${formatDate(member.birthDate)}</div>
             <div class="info-label">Doğum Yeri:</div>
             <div class="info-value">${member.birthplace || '-'}</div>
             <div class="info-label">Cinsiyet:</div>
             <div class="info-value">${getGenderLabel(member.gender)}</div>
             <div class="info-label">Öğrenim Durumu:</div>
             <div class="info-value">${getEducationLabel(member.educationStatus)}</div>
-            <div class="info-label">Kayıtlı Bölge:</div>
-            <div class="info-value">${member.province?.name && member.district?.name ? `${member.province.name} / ${member.district.name}` : '-'}</div>
-            <div class="info-label">Durum:</div>
+            <div class="info-label">Telefon:</div>
+            <div class="info-value">${member.phone || '-'}</div>
+            <div class="info-label">E-posta:</div>
+            <div class="info-value">${member.email || '-'}</div>
+            <div class="info-label">İl (Kayıtlı Olduğu Yer):</div>
+            <div class="info-value">${member.province?.name || '-'}</div>
+            <div class="info-label">İlçe (Kayıtlı Olduğu Yer):</div>
+            <div class="info-value">${member.district?.name || '-'}</div>
+            <div class="info-label">Üyelik Durumu:</div>
             <div class="info-value">${getStatusLabel(member.status)}</div>
           </div>
         </div>
 
         <div class="section">
-          <div class="section-title">İş Bilgileri</div>
+          <div class="section-title">Kurum Bilgileri</div>
           <div class="info-grid">
-            <div class="info-label">Kurum:</div>
+            <div class="info-label">Kurum Adı:</div>
             <div class="info-value">${member.institution?.name || '-'}</div>
+            <div class="info-label">Görev Birimi:</div>
+            <div class="info-value">${member.dutyUnit || '-'}</div>
+            <div class="info-label">Kurum Adresi:</div>
+            <div class="info-value">${member.institutionAddress || '-'}</div>
+            <div class="info-label">Kurum İli:</div>
+            <div class="info-value">${member.institutionProvince?.name || '-'}</div>
+            <div class="info-label">Kurum İlçesi:</div>
+            <div class="info-value">${member.institutionDistrict?.name || '-'}</div>
+            <div class="info-label">Meslek/Unvan:</div>
+            <div class="info-value">${member.profession?.name || '-'}</div>
+            <div class="info-label">Kurum Sicil No:</div>
+            <div class="info-value">${member.institutionRegNo || '-'}</div>
+            <div class="info-label">Kadro Unvan Kodu:</div>
+            <div class="info-value">${member.staffTitleCode || '-'}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Şube Bilgileri</div>
+          <div class="info-grid">
             <div class="info-label">Şube:</div>
-            <div class="info-value">${member.branch?.name || '-'}</div>
+            <div class="info-value">${member.branch?.name || '-'}${member.branch?.code ? ` (${member.branch.code})` : ''}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Tevkifat Bilgileri</div>
+          <div class="info-grid">
+            <div class="info-label">Tevkifat Kurumu:</div>
+            <div class="info-value">${member.tevkifatCenter?.name || '-'}</div>
+            <div class="info-label">Tevkifat Ünvanı:</div>
+            <div class="info-value">${member.tevkifatTitle?.name || '-'}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Üyelik Bilgileri</div>
+          <div class="info-grid">
+            <div class="info-label">Üye Grubu:</div>
+            <div class="info-value">${member.membershipInfoOption?.label || '-'}</div>
+            <div class="info-label">Yönetim Karar Defteri No:</div>
+            <div class="info-value">${member.boardDecisionBookNo || '-'}</div>
+            <div class="info-label">Yönetim Kurulu Karar Tarihi:</div>
+            <div class="info-value">${formatDate(member.boardDecisionDate)}</div>
           </div>
         </div>
 
