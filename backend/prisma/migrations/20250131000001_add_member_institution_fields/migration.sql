@@ -16,29 +16,48 @@ CREATE UNIQUE INDEX "Profession_name_key" ON "Profession"("name");
 CREATE INDEX "Profession_isActive_idx" ON "Profession"("isActive");
 
 -- AlterTable
-ALTER TABLE "Member" ADD COLUMN "dutyUnit" TEXT,
-ADD COLUMN "institutionAddress" TEXT,
-ADD COLUMN "institutionProvinceId" TEXT,
-ADD COLUMN "institutionDistrictId" TEXT,
-ADD COLUMN "professionId" TEXT,
-ADD COLUMN "institutionRegNo" TEXT,
-ADD COLUMN "staffTitleCode" TEXT;
+ALTER TABLE "Member" ADD COLUMN IF NOT EXISTS "dutyUnit" TEXT;
+ALTER TABLE "Member" ADD COLUMN IF NOT EXISTS "institutionAddress" TEXT;
+ALTER TABLE "Member" ADD COLUMN IF NOT EXISTS "institutionProvinceId" TEXT;
+ALTER TABLE "Member" ADD COLUMN IF NOT EXISTS "institutionDistrictId" TEXT;
+ALTER TABLE "Member" ADD COLUMN IF NOT EXISTS "professionId" TEXT;
+ALTER TABLE "Member" ADD COLUMN IF NOT EXISTS "institutionRegNo" TEXT;
+ALTER TABLE "Member" ADD COLUMN IF NOT EXISTS "staffTitleCode" TEXT;
 
 -- CreateIndex
-CREATE INDEX "Member_professionId_idx" ON "Member"("professionId");
+CREATE INDEX IF NOT EXISTS "Member_professionId_idx" ON "Member"("professionId");
 
 -- CreateIndex
-CREATE INDEX "Member_institutionProvinceId_idx" ON "Member"("institutionProvinceId");
+CREATE INDEX IF NOT EXISTS "Member_institutionProvinceId_idx" ON "Member"("institutionProvinceId");
 
 -- CreateIndex
-CREATE INDEX "Member_institutionDistrictId_idx" ON "Member"("institutionDistrictId");
+CREATE INDEX IF NOT EXISTS "Member_institutionDistrictId_idx" ON "Member"("institutionDistrictId");
 
--- AddForeignKey
-ALTER TABLE "Member" ADD CONSTRAINT "Member_professionId_fkey" FOREIGN KEY ("professionId") REFERENCES "Profession"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey (IF NOT EXISTS constraint için DO block kullanıyoruz)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'Member_professionId_fkey'
+    ) THEN
+        ALTER TABLE "Member" ADD CONSTRAINT "Member_professionId_fkey" 
+        FOREIGN KEY ("professionId") REFERENCES "Profession"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
 
--- AddForeignKey
-ALTER TABLE "Member" ADD CONSTRAINT "Member_institutionProvinceId_fkey" FOREIGN KEY ("institutionProvinceId") REFERENCES "Province"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'Member_institutionProvinceId_fkey'
+    ) THEN
+        ALTER TABLE "Member" ADD CONSTRAINT "Member_institutionProvinceId_fkey" 
+        FOREIGN KEY ("institutionProvinceId") REFERENCES "Province"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
 
--- AddForeignKey
-ALTER TABLE "Member" ADD CONSTRAINT "Member_institutionDistrictId_fkey" FOREIGN KEY ("institutionDistrictId") REFERENCES "District"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'Member_institutionDistrictId_fkey'
+    ) THEN
+        ALTER TABLE "Member" ADD CONSTRAINT "Member_institutionDistrictId_fkey" 
+        FOREIGN KEY ("institutionDistrictId") REFERENCES "District"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
