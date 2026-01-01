@@ -1,3 +1,3 @@
 -- AlterTable
-ALTER TABLE "Member" ADD COLUMN "birthDate" TIMESTAMP(3);
+ALTER TABLE "Member" ADD COLUMN IF NOT EXISTS "birthDate" TIMESTAMP(3);
 

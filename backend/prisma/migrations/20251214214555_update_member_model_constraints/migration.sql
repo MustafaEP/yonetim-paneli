@@ -14,25 +14,25 @@
 
 */
 -- DropForeignKey
-ALTER TABLE "Member" DROP CONSTRAINT "Member_branchId_fkey";
+ALTER TABLE "Member" DROP CONSTRAINT IF EXISTS "Member_branchId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Member" DROP CONSTRAINT "Member_dealerId_fkey";
+ALTER TABLE "Member" DROP CONSTRAINT IF EXISTS "Member_dealerId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Member" DROP CONSTRAINT "Member_institutionId_fkey";
+ALTER TABLE "Member" DROP CONSTRAINT IF EXISTS "Member_institutionId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Member" DROP CONSTRAINT "Member_workingDistrictId_fkey";
+ALTER TABLE "Member" DROP CONSTRAINT IF EXISTS "Member_workingDistrictId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Member" DROP CONSTRAINT "Member_workingProvinceId_fkey";
+ALTER TABLE "Member" DROP CONSTRAINT IF EXISTS "Member_workingProvinceId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Member" DROP CONSTRAINT "Member_workplaceId_fkey";
+ALTER TABLE "Member" DROP CONSTRAINT IF EXISTS "Member_workplaceId_fkey";
 
 -- DropIndex
-DROP INDEX "Member_registrationNumber_idx";
+DROP INDEX IF EXISTS "Member_registrationNumber_idx";
 
 -- AlterTable
 ALTER TABLE "Member" DROP COLUMN "dealerId",
@@ -48,19 +48,48 @@ ALTER COLUMN "workingDistrictId" SET NOT NULL,
 ALTER COLUMN "workingProvinceId" SET NOT NULL;
 
 -- CreateIndex
-CREATE INDEX "Member_status_idx" ON "Member"("status");
+CREATE INDEX IF NOT EXISTS "Member_status_idx" ON "Member"("status");
 
--- AddForeignKey
-ALTER TABLE "Member" ADD CONSTRAINT "Member_membershipInfoOptionId_fkey" FOREIGN KEY ("membershipInfoOptionId") REFERENCES "MembershipInfoOption"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey (IF NOT EXISTS constraint için DO block kullanıyoruz)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'Member_membershipInfoOptionId_fkey'
+    ) THEN
+        ALTER TABLE "Member" ADD CONSTRAINT "Member_membershipInfoOptionId_fkey" 
+        FOREIGN KEY ("membershipInfoOptionId") REFERENCES "MembershipInfoOption"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
 
--- AddForeignKey
-ALTER TABLE "Member" ADD CONSTRAINT "Member_workingProvinceId_fkey" FOREIGN KEY ("workingProvinceId") REFERENCES "Province"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'Member_workingProvinceId_fkey'
+    ) THEN
+        ALTER TABLE "Member" ADD CONSTRAINT "Member_workingProvinceId_fkey" 
+        FOREIGN KEY ("workingProvinceId") REFERENCES "Province"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
 
--- AddForeignKey
-ALTER TABLE "Member" ADD CONSTRAINT "Member_workingDistrictId_fkey" FOREIGN KEY ("workingDistrictId") REFERENCES "District"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'Member_workingDistrictId_fkey'
+    ) THEN
+        ALTER TABLE "Member" ADD CONSTRAINT "Member_workingDistrictId_fkey" 
+        FOREIGN KEY ("workingDistrictId") REFERENCES "District"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
 
--- AddForeignKey
-ALTER TABLE "Member" ADD CONSTRAINT "Member_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "Institution"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'Member_institutionId_fkey'
+    ) THEN
+        ALTER TABLE "Member" ADD CONSTRAINT "Member_institutionId_fkey" 
+        FOREIGN KEY ("institutionId") REFERENCES "Institution"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
 
--- AddForeignKey
-ALTER TABLE "Member" ADD CONSTRAINT "Member_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'Member_branchId_fkey'
+    ) THEN
+        ALTER TABLE "Member" ADD CONSTRAINT "Member_branchId_fkey" 
+        FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
+END $$;
