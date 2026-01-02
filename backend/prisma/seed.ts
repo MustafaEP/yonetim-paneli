@@ -771,6 +771,9 @@ async function main() {
       email: generateEmail('Burcu', 'Doğan'),
       status: MemberStatus.ACTIVE,
       source: MemberSource.DIRECT,
+      // DB constraint: Member.positionTitle is required in some schemas
+      positionTitle:
+        positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
       provinceId: burcuProvinceId,
       districtId: burcuDistrictId,
       branchId: defaultBranchId, // Zorunlu
@@ -874,6 +877,9 @@ async function main() {
         email: generateEmail(firstName, lastName),
         status,
         source,
+        // DB constraint: Member.positionTitle is required in some schemas
+        positionTitle:
+          positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
         provinceId,
         districtId,
         branchId, // Zorunlu
@@ -1187,6 +1193,9 @@ async function main() {
           email: cancelledMember.email,
           source: cancelledMember.source || MemberSource.DIRECT,
           status: MemberStatus.PENDING,
+          // DB constraint: Member.positionTitle is required in some schemas
+          positionTitle:
+            positionTitlesForMembers[Math.floor(Math.random() * positionTitlesForMembers.length)],
           provinceId: cancelledMember.provinceId,
           districtId: cancelledMember.districtId,
           branchId: branchIdForReRegister, // Zorunlu
