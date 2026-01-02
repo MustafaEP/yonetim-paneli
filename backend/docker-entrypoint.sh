@@ -8,8 +8,23 @@ sleep 5
 
 echo "Checking for failed migrations..."
 # Bilinen problemli migration'ları önce applied olarak işaretle (atla)
-# Bu migration'lar tablo/enum bağımlılıkları nedeniyle sıralama sorunları yaşayabilir
-PROBLEM_MIGRATIONS="20250118000000_comprehensive_notification_system 20250119000000_add_audit_category 20250119000000_add_province_district_to_branch_tevkifat_center 20250128164533_add_province_district_address_to_tevkifat_center 20250130000001_update_dealer_to_contracted_institution 20251228230102_remove_contracted_institutions_feature 20251229000706_remove_workplace_feature"
+# Bu repo'da bazı eski (2025-01) migration'lar, daha sonra oluşturulan tablolara ALTER/UPDATE atıyor.
+# Fresh DB kurulumunda bu durum relation does not exist hatasına sebep olabiliyor.
+#
+# Çözüm: 202501* migration'larını otomatik applied işaretle (skip) + ayrıca bilinen bazı migration'ları liste halinde tut.
+#
+# Not: Bu yaklaşım, migration geçmişi karışmış projelerde production deploy'u unblock etmek içindir.
+
+# 1) Otomatik: tüm 202501* migration'ları applied olarak işaretle
+if [ -d "prisma/migrations" ]; then
+  for MIGRATION in $(ls -1 prisma/migrations 2>/dev/null | grep -E '^202501' || true); do
+    echo "Auto-skipping migration (mark as applied): $MIGRATION"
+    npx prisma migrate resolve --applied "$MIGRATION" 2>/dev/null || true
+  done
+fi
+
+# 2) Manuel liste: ek problemli migration'lar
+PROBLEM_MIGRATIONS="20251228230102_remove_contracted_institutions_feature 20251229000706_remove_workplace_feature"
 for MIGRATION in $PROBLEM_MIGRATIONS; do
   echo "Attempting to mark migration as applied: $MIGRATION"
   npx prisma migrate resolve --applied "$MIGRATION" 2>/dev/null || echo "Migration $MIGRATION already resolved or not found, continuing..."
