@@ -16,7 +16,13 @@ ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 # Build application
-RUN npm run build
+RUN npm run build -- --outDir dist
+
+# Verify build output exists and show contents (helps debug VPS builds)
+RUN echo "=== Frontend build output directory ===" && \
+    ls -la /app && \
+    (test -d /app/dist && ls -la /app/dist) || \
+    (echo "Build succeeded but /app/dist not found. Listing directories for debugging:" && find /app -maxdepth 2 -type d -print && exit 1)
 
 # ---- Production stage ----
 FROM nginx:alpine

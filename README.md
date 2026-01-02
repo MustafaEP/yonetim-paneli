@@ -1,5 +1,9 @@
 # Sendika Yönetim Sistemi - RBAC Dokümantasyonu
 
+## 🚀 Kurulum / VPS Deploy
+
+- **Docker Compose ile VPS kurulumu**: `DEPLOYMENT.md`
+
 ## 🏗️ Teknoloji Stack
 - **Frontend:** React + TypeScript + Material-UI (MUI)
 - **Backend:** Node.js + NestJS + TypeScript
