@@ -27,6 +27,9 @@ RUN echo "=== Frontend build output directory ===" && \
 # ---- Production stage ----
 FROM nginx:alpine
 
+# Install tools used by HEALTHCHECK (wget may not be present by default)
+RUN apk add --no-cache wget
+
 # Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
