@@ -2895,8 +2895,8 @@ Sendika Yönetimi
           description = `${paymentMonth}/${paymentYear} havale/EFT ödemesi`;
         }
 
-        // Tutar (200-500 TL arası)
-        const amount = (200 + Math.random() * 300).toFixed(2);
+        // Tutar (seed için sıfırlandı)
+        const amount = '0.00';
 
         // Ödeme tarihi (dönem ayının rastgele bir günü)
         const paymentDate = new Date(paymentYear, paymentMonth - 1, 1 + Math.floor(Math.random() * 28));
