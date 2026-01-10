@@ -731,6 +731,7 @@ const RoleCreateEditPage: React.FC = () => {
           borderRadius: 3,
           border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
           boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          mt: 3,
           mb: 3,
           overflow: 'hidden',
         }}
