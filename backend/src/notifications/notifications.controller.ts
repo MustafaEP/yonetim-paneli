@@ -88,7 +88,7 @@ export class NotificationsController {
     @Body() dto: CreateNotificationDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    return this.notificationsService.create(dto, user.userId);
+    return this.notificationsService.create(dto, user.userId, user);
   }
 
   @Permissions(
@@ -103,7 +103,7 @@ export class NotificationsController {
     @Body() dto: CreateNotificationDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    const notification = await this.notificationsService.create(dto, user.userId);
+    const notification = await this.notificationsService.create(dto, user.userId, user);
     return this.notificationsService.send(notification.id);
   }
 

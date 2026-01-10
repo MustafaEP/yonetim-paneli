@@ -22,6 +22,8 @@ import {
   Select,
   MenuItem,
   InputLabel,
+  IconButton,
+  Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
@@ -51,8 +53,13 @@ import {
   PERMISSION_LABELS,
   type Permission as PermissionType,
 } from '../../types/role';
-import { getProvinces, getDistricts } from '../../api/regionsApi';
-import type { Province, District } from '../../types/region';
+import {
+  getAllDependencies,
+  getMissingDependencies,
+  getRequiredBy,
+} from '../../utils/permissionDependencies';
+import WarningIcon from '@mui/icons-material/Warning';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const RoleCreateEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -71,27 +78,9 @@ const RoleCreateEditPage: React.FC = () => {
     new Set(),
   );
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [provinces, setProvinces] = useState<Province[]>([]);
-  const [provincesLoading, setProvincesLoading] = useState(false);
-  const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [districtsLoading, setDistrictsLoading] = useState(false);
-  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('');
 
-  useEffect(() => {
-    const fetchProvinces = async () => {
-      setProvincesLoading(true);
-      try {
-        const data = await getProvinces();
-        setProvinces(data);
-      } catch (e) {
-        console.error('İller alınırken hata:', e);
-      } finally {
-        setProvincesLoading(false);
-      }
-    };
-    fetchProvinces();
-  }, []);
+  // Yetki alanı state'i
+  const [hasScopeRestriction, setHasScopeRestriction] = useState(false);
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -107,23 +96,14 @@ const RoleCreateEditPage: React.FC = () => {
           setDescription(role.description || '');
           setIsActive(role.isActive);
           setSelectedPermissions(new Set(role.permissions));
-          setSelectedProvinceId(role.provinceId || '');
-          setSelectedDistrictId(role.districtId || '');
+          
+          // Yetki alanı bilgilerini yükle
+          if (role.hasScopeRestriction) {
+            setHasScopeRestriction(true);
+          }
+          
           // Tüm grupları başlangıçta aç
           setExpandedGroups(new Set(Object.keys(PERMISSION_GROUPS)));
-          
-          // Eğer provinceId varsa ilçeleri yükle
-          if (role.provinceId) {
-            const fetchDistricts = async () => {
-              try {
-                const districtData = await getDistricts(role.provinceId!);
-                setDistricts(districtData);
-              } catch (e) {
-                console.error('İlçeler alınırken hata:', e);
-              }
-            };
-            fetchDistricts();
-          }
         } catch (e) {
           console.error('Rol alınırken hata:', e);
           setError('Rol bilgileri alınamadı');
@@ -154,9 +134,26 @@ const RoleCreateEditPage: React.FC = () => {
     setSelectedPermissions((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(permission)) {
+        // İzin kaldırılıyor - bağımlı izinleri kontrol et
         newSet.delete(permission);
+        
+        // Bu izni gerektiren diğer izinleri kontrol et
+        const requiredBy = getRequiredBy(permission);
+        requiredBy.forEach((reqBy) => {
+          if (newSet.has(reqBy)) {
+            // Eğer bu izni gerektiren başka bir izin seçiliyse, uyarı ver ama kaldırma
+            // (Kullanıcı manuel olarak kaldırmak isterse kaldırabilir)
+          }
+        });
       } else {
+        // İzin ekleniyor - bağımlı izinleri otomatik ekle
         newSet.add(permission);
+        
+        // Tüm bağımlı izinleri al ve ekle
+        const dependencies = getAllDependencies(permission);
+        dependencies.forEach((dep) => {
+          newSet.add(dep);
+        });
       }
       return newSet;
     });
@@ -165,14 +162,17 @@ const RoleCreateEditPage: React.FC = () => {
   const handleGroupToggle = (permissions: Permission[], checked: boolean) => {
     setSelectedPermissions((prev) => {
       const newSet = new Set(prev);
+      // MEMBER_LIST_BY_PROVINCE iznini filtrele (checkbox'ta gösterilmiyor)
+      const filteredPermissions = permissions.filter(p => p !== 'MEMBER_LIST_BY_PROVINCE');
       if (checked) {
-        permissions.forEach((p) => newSet.add(p));
+        filteredPermissions.forEach((p) => newSet.add(p));
       } else {
-        permissions.forEach((p) => newSet.delete(p));
+        filteredPermissions.forEach((p) => newSet.delete(p));
       }
       return newSet;
     });
   };
+
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -196,32 +196,13 @@ const RoleCreateEditPage: React.FC = () => {
     try {
       const permissionsArray = Array.from(selectedPermissions);
 
-      // MEMBER_LIST_BY_PROVINCE izni seçildiyse provinceId zorunlu
-      const hasProvincePermission = permissionsArray.includes('MEMBER_LIST_BY_PROVINCE');
-      if (hasProvincePermission && !selectedProvinceId) {
-        setError('MEMBER_LIST_BY_PROVINCE izni seçildiğinde il seçimi zorunludur');
-        return;
-      }
-      
-      // İlçe seçilmişse il seçilmiş olmalı
-      if (selectedDistrictId && !selectedProvinceId) {
-        setError('İlçe seçmek için önce il seçmelisiniz');
-        return;
-      }
-      
-      // İlçe seçilmişse il seçilmiş olmalı
-      if (selectedDistrictId && !selectedProvinceId) {
-        setError('İlçe seçmek için önce il seçmelisiniz');
-        return;
-      }
-
       if (isEditMode && id) {
         const updateDto: UpdateRoleDto = {
           name: name.trim(),
           description: description.trim() || undefined,
           isActive,
-          provinceId: hasProvincePermission ? selectedProvinceId : undefined,
-          districtId: hasProvincePermission && selectedDistrictId ? selectedDistrictId : undefined,
+          hasScopeRestriction: hasScopeRestriction || undefined,
+          // Scope'ları göndermiyoruz, sadece flag'i gönderiyoruz
         };
         await updateRole(id, updateDto);
         await updateRolePermissions(id, { permissions: permissionsArray });
@@ -230,8 +211,8 @@ const RoleCreateEditPage: React.FC = () => {
           name: name.trim(),
           description: description.trim() || undefined,
           permissions: permissionsArray,
-          provinceId: hasProvincePermission ? selectedProvinceId : undefined,
-          districtId: hasProvincePermission && selectedDistrictId ? selectedDistrictId : undefined,
+          hasScopeRestriction: hasScopeRestriction || undefined,
+          // Scope'ları göndermiyoruz, sadece flag'i gönderiyoruz
         };
         await createRole(createDto);
       }
@@ -266,6 +247,11 @@ const RoleCreateEditPage: React.FC = () => {
     REPORTS: 'Raporlar',
     NOTIFICATIONS: 'Bildirimler',
     SYSTEM: 'Sistem',
+    INSTITUTION_MANAGEMENT: 'Kurum Yönetimi',
+    ACCOUNTING: 'Muhasebe',
+    MEMBER_PAYMENTS: 'Üye Ödemeleri',
+    APPROVALS: 'Onay Süreçleri',
+    PANEL_USER_APPLICATIONS: 'Panel Kullanıcı Başvuruları',
   };
 
   return (
@@ -413,99 +399,6 @@ const RoleCreateEditPage: React.FC = () => {
                 },
               }}
             />
-            {selectedPermissions.has('MEMBER_LIST_BY_PROVINCE') && (
-              <Box sx={{ mt: 1 }}>
-                <Alert
-                  severity="info"
-                  icon={<InfoIcon />}
-                  sx={{
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.info.main, 0.08),
-                    border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-                    '& .MuiAlert-icon': {
-                      color: theme.palette.info.main,
-                    },
-                  }}
-                >
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    İl ve İlçe Seçimi
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 1.5 }}>
-                    "Belirli İldeki Üyeleri Görüntüleme" iznini seçtiğiniz için aşağıda il seçmeniz zorunludur. İlçe seçimi opsiyoneldir. 
-                    İlçe seçmezseniz, bu role sahip kullanıcılar seçtiğiniz ilin tüm ilçelerindeki üyeleri görebilir. 
-                    İlçe seçerseniz, sadece o ilçedeki üyeleri görebilirler.
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <FormControl fullWidth required>
-                      <InputLabel>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <LocationOnIcon fontSize="small" />
-                          İl Seçimi *
-                        </Box>
-                      </InputLabel>
-                      <Select
-                        value={selectedProvinceId || ''}
-                        onChange={(e) => setSelectedProvinceId(e.target.value)}
-                        label="İl Seçimi *"
-                        disabled={provincesLoading}
-                        sx={{
-                          borderRadius: 2,
-                          backgroundColor: '#fff',
-                          '&:hover': {
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              borderColor: theme.palette.primary.main,
-                            },
-                          },
-                        }}
-                      >
-                        <MenuItem value="">
-                          <em>İl seçiniz</em>
-                        </MenuItem>
-                        {provinces.map((province) => (
-                          <MenuItem key={province.id} value={province.id}>
-                            {province.name} {province.code ? `(${province.code})` : ''}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    {selectedProvinceId && (
-                      <FormControl fullWidth>
-                        <InputLabel>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <LocationOnIcon fontSize="small" />
-                            İlçe Seçimi (Opsiyonel)
-                          </Box>
-                        </InputLabel>
-                        <Select
-                          value={selectedDistrictId}
-                          onChange={(e) => setSelectedDistrictId(e.target.value)}
-                          label="İlçe Seçimi (Opsiyonel)"
-                          disabled={districtsLoading || !selectedProvinceId}
-                          sx={{
-                            borderRadius: 2,
-                            backgroundColor: '#fff',
-                            '&:hover': {
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: theme.palette.primary.main,
-                              },
-                            },
-                          }}
-                        >
-                          <MenuItem value="">
-                            <em>İlçe seçmeyin (Tüm ilçeler)</em>
-                          </MenuItem>
-                          {districts.map((district) => (
-                            <MenuItem key={district.id} value={district.id}>
-                              {district.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                  </Box>
-                </Alert>
-              </Box>
-            )}
             {isEditMode && (
               <Paper
                 elevation={0}
@@ -573,6 +466,53 @@ const RoleCreateEditPage: React.FC = () => {
           </Box>
         </Box>
         <Box sx={{ p: 3 }}>
+          {/* Eksik Bağımlılık Uyarısı */}
+          {(() => {
+            const allPermissions = Object.values(PERMISSION_GROUPS).flat() as Permission[];
+            const missingDeps = getMissingDependencies(
+              Array.from(selectedPermissions),
+              allPermissions,
+            );
+            
+            if (missingDeps.length > 0) {
+              return (
+                <Alert
+                  severity="warning"
+                  icon={<WarningIcon />}
+                  sx={{
+                    mb: 3,
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.08),
+                    border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                    '& .MuiAlert-icon': {
+                      color: theme.palette.warning.main,
+                    },
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Eksik Bağımlı İzinler
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontSize: '0.875rem', mb: 1.5 }}>
+                    Seçtiğiniz izinler için aşağıdaki bağımlı izinler otomatik olarak eklenecektir:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                    {missingDeps.map((dep) => (
+                      <Chip
+                        key={dep}
+                        label={PERMISSION_LABELS[dep]}
+                        size="small"
+                        color="warning"
+                        icon={<CheckCircleIcon />}
+                        sx={{ fontWeight: 500 }}
+                      />
+                    ))}
+                  </Box>
+                </Alert>
+              );
+            }
+            return null;
+          })()}
+          
           <Box
             sx={{
               display: 'grid',
@@ -585,10 +525,12 @@ const RoleCreateEditPage: React.FC = () => {
             }}
           >
             {Object.entries(PERMISSION_GROUPS).map(([groupKey, permissions]) => {
-              const allSelected = permissions.every((p) =>
+              // MEMBER_LIST_BY_PROVINCE iznini filtrele (checkbox'ta gösterilmiyor)
+              const filteredPermissions = permissions.filter(p => p !== 'MEMBER_LIST_BY_PROVINCE');
+              const allSelected = filteredPermissions.length > 0 && filteredPermissions.every((p) =>
                 selectedPermissions.has(p),
               );
-              const someSelected = permissions.some((p) =>
+              const someSelected = filteredPermissions.some((p) =>
                 selectedPermissions.has(p),
               );
               const isExpanded = expandedGroups.has(groupKey);
@@ -631,7 +573,7 @@ const RoleCreateEditPage: React.FC = () => {
                         indeterminate={someSelected && !allSelected}
                         onChange={(e) => {
                           e.stopPropagation();
-                          handleGroupToggle(permissions, e.target.checked);
+                          handleGroupToggle(filteredPermissions, e.target.checked);
                         }}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
@@ -650,7 +592,7 @@ const RoleCreateEditPage: React.FC = () => {
                         {groupLabels[groupKey]}
                       </Typography>
                       <Chip
-                        label={`${permissions.filter((p) => selectedPermissions.has(p)).length}/${permissions.length}`}
+                        label={`${filteredPermissions.filter((p) => selectedPermissions.has(p)).length}/${filteredPermissions.length}`}
                         size="small"
                         color={someSelected ? 'primary' : 'default'}
                         sx={{ fontWeight: 600, ml: 1 }}
@@ -666,7 +608,7 @@ const RoleCreateEditPage: React.FC = () => {
                 <Collapse in={isExpanded}>
                   <FormGroup sx={{ p: 2, pt: 1.5 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      {permissions.map((permission) => (
+                      {filteredPermissions.map((permission) => (
                         <React.Fragment key={permission}>
                           <Paper
                             elevation={0}
@@ -702,23 +644,69 @@ const RoleCreateEditPage: React.FC = () => {
                               }
                               label={
                                 <Box>
-                                  <Typography sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
-                                    {PERMISSION_LABELS[permission]}
-                                  </Typography>
-                                  {permission === 'MEMBER_LIST_BY_PROVINCE' && (
-                                    <Typography
-                                      variant="caption"
-                                      sx={{
-                                        display: 'block',
-                                        mt: 0.5,
-                                        color: theme.palette.text.secondary,
-                                        fontSize: '0.75rem',
-                                        lineHeight: 1.4,
-                                      }}
-                                    >
-                                      Bu izni seçersen, il ve ilçe (opsiyonel) seçmen gerekiyor. Seçmen halinde bu role sahip olan kişi sadece o il ve ilçedeki üyeleri görebilir.
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Typography sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
+                                      {PERMISSION_LABELS[permission]}
                                     </Typography>
-                                  )}
+                                    {(() => {
+                                      const deps = getAllDependencies(permission);
+                                      if (deps.length > 0) {
+                                        return (
+                                          <Chip
+                                            label={`${deps.length} bağımlı`}
+                                            size="small"
+                                            sx={{
+                                              height: 18,
+                                              fontSize: '0.65rem',
+                                              backgroundColor: alpha(theme.palette.info.main, 0.1),
+                                              color: theme.palette.info.main,
+                                              fontWeight: 600,
+                                            }}
+                                          />
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+                                  </Box>
+                                  {(() => {
+                                    const deps = getAllDependencies(permission);
+                                    if (deps.length > 0 && selectedPermissions.has(permission)) {
+                                      return (
+                                        <Box sx={{ mt: 0.5 }}>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              display: 'block',
+                                              color: theme.palette.info.main,
+                                              fontSize: '0.7rem',
+                                              fontWeight: 500,
+                                              mb: 0.5,
+                                            }}
+                                          >
+                                            Otomatik eklenen bağımlı izinler:
+                                          </Typography>
+                                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                            {deps.map((dep) => (
+                                              <Chip
+                                                key={dep}
+                                                label={PERMISSION_LABELS[dep]}
+                                                size="small"
+                                                sx={{
+                                                  height: 20,
+                                                  fontSize: '0.65rem',
+                                                  backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                                  color: theme.palette.success.main,
+                                                  fontWeight: 500,
+                                                }}
+                                                icon={<CheckCircleIcon sx={{ fontSize: '0.75rem !important' }} />}
+                                              />
+                                            ))}
+                                          </Box>
+                                        </Box>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                 </Box>
                               }
                               sx={{ m: 0, width: '100%' }}
@@ -733,6 +721,63 @@ const RoleCreateEditPage: React.FC = () => {
             );
           })}
           </Box>
+        </Box>
+      </Card>
+
+      {/* Yetki Alanı Seçimi Kartı */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          mb: 3,
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            p: 3,
+            backgroundColor: alpha(theme.palette.info.main, 0.02),
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <LocationOnIcon sx={{ color: theme.palette.info.main }} />
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Yetki Alanı Ayarları
+            </Typography>
+          </Box>
+        </Box>
+        <Box sx={{ p: 3 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={hasScopeRestriction}
+                onChange={(e) => {
+                  setHasScopeRestriction(e.target.checked);
+                }}
+                sx={{
+                  '&.Mui-checked': {
+                    color: theme.palette.info.main,
+                  },
+                }}
+              />
+            }
+            label={
+              <Box>
+                <Typography sx={{ fontWeight: 600, mb: 0.5 }}>
+                  Bu role il/ilçe bazlı yetki alanı eklenecek
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Bu seçenek işaretlendiğinde, kullanıcılara bu rol atandığında (panel kullanıcı başvurusu oluşturulurken veya onaylanırken) 
+                  yetki alanı (il/ilçe) seçimi zorunlu olacaktır. Rol seviyesinde scope tanımlanmaz, 
+                  scope'lar her kullanıcıya rol atanırken belirlenir.
+                </Typography>
+              </Box>
+            }
+          />
+
         </Box>
       </Card>
 

@@ -1,5 +1,43 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Permission } from '../../auth/permission.enum';
+
+export class RoleScopeResponseDto {
+  @ApiProperty({
+    description: 'Scope ID',
+    example: 'scope-uuid-123',
+  })
+  id: string;
+
+  @ApiPropertyOptional({
+    description: 'İl ID',
+    example: 'province-uuid-123',
+  })
+  provinceId?: string;
+
+  @ApiPropertyOptional({
+    description: 'İl bilgisi',
+  })
+  province?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+
+  @ApiPropertyOptional({
+    description: 'İlçe ID',
+    example: 'district-uuid-123',
+  })
+  districtId?: string;
+
+  @ApiPropertyOptional({
+    description: 'İlçe bilgisi',
+  })
+  district?: {
+    id: string;
+    name: string;
+    provinceId: string;
+  };
+}
 
 export class RoleResponseDto {
   @ApiProperty({
@@ -46,38 +84,17 @@ export class RoleResponseDto {
   updatedAt: Date;
 
   @ApiProperty({
-    description: 'İl ID (MEMBER_LIST_BY_PROVINCE izni için)',
-    example: 'province-uuid-123',
-    required: false,
+    description: 'Bu role il/ilçe bazlı yetki alanı eklenecek mi?',
+    example: false,
   })
-  provinceId?: string;
+  hasScopeRestriction: boolean;
 
-  @ApiProperty({
-    description: 'İl bilgisi (MEMBER_LIST_BY_PROVINCE izni için)',
-    required: false,
+  @ApiPropertyOptional({
+    description: 'Yetki alanları (hasScopeRestriction true ise)',
+    type: [RoleScopeResponseDto],
+    isArray: true,
   })
-  province?: {
-    id: string;
-    name: string;
-    code?: string;
-  };
-
-  @ApiProperty({
-    description: 'İlçe ID (MEMBER_LIST_BY_PROVINCE izni için ilçe bazlı)',
-    example: 'district-uuid-123',
-    required: false,
-  })
-  districtId?: string;
-
-  @ApiProperty({
-    description: 'İlçe bilgisi (MEMBER_LIST_BY_PROVINCE izni için ilçe bazlı)',
-    required: false,
-  })
-  district?: {
-    id: string;
-    name: string;
-    provinceId: string;
-  };
+  scopes?: RoleScopeResponseDto[];
 }
 
 export class SystemRoleResponseDto {

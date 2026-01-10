@@ -35,6 +35,13 @@ import SendIcon from '@mui/icons-material/Send';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import WorkIcon from '@mui/icons-material/Work';
 import BadgeIcon from '@mui/icons-material/Badge';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import CancelIcon from '@mui/icons-material/Cancel';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import PauseCircleIcon from '@mui/icons-material/PauseCircle';
+import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
+import SearchIcon from '@mui/icons-material/Search';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import type { SxProps, Theme } from '@mui/material';
@@ -84,6 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
   const { hasPermission } = useAuth();
   
   const showUsers = hasPermission('USER_LIST');
+  const showPanelUserApplications = hasPermission('PANEL_USER_APPLICATION_LIST');
   const showMembers = hasPermission('MEMBER_LIST') || hasPermission('MEMBER_LIST_BY_PROVINCE');
   const showMemberApplications =
     hasPermission('MEMBER_APPROVE') ||
@@ -168,72 +176,67 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             }}
           />
         </ListItemButton>
+      </List>
 
-        {showMembers && (
-          <ListItemButton
-            component={Link}
-            to="/members"
-            selected={
-              location.pathname.startsWith('/members') &&
-              !location.pathname.startsWith('/members/applications')
-            }
-            onClick={handleLinkClick}
-            sx={getNavItemSx(theme)}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>
-              <GroupIcon />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Üyeler" 
-              primaryTypographyProps={{
-                fontSize: '0.9rem',
-                fontWeight: 500,
-              }}
-            />
-          </ListItemButton>
-        )}
+      <Divider sx={{ my: 2, mx: 2 }} />
 
-        {showMemberApplications && (
-          <ListItemButton
-            component={Link}
-            to="/members/applications"
-            selected={location.pathname.startsWith('/members/applications')}
-            onClick={handleLinkClick}
-            sx={getNavItemSx(theme)}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>
-              <AssignmentIcon />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Üye Başvuruları" 
-              primaryTypographyProps={{
-                fontSize: '0.9rem',
-                fontWeight: 500,
-              }}
-            />
-          </ListItemButton>
-        )}
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: theme.palette.text.secondary,
+            letterSpacing: '0.08em',
+            px: 2,
+          }}
+        >
+          KULLANICI İŞLEMLERİ
+        </Typography>
+      </Box>
 
-
+      <List sx={{ px: 1 }}>
         {showUsers && (
-          <ListItemButton
-            component={Link}
-            to="/users"
-            selected={location.pathname.startsWith('/users')}
-            onClick={handleLinkClick}
-            sx={getNavItemSx(theme)}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>
-              <PeopleIcon />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Panel Kullanıcıları" 
-              primaryTypographyProps={{
-                fontSize: '0.9rem',
-                fontWeight: 500,
-              }}
-            />
-          </ListItemButton>
+          <>
+            <ListItemButton
+              component={Link}
+              to="/users"
+              selected={location.pathname === '/users' || (location.pathname.startsWith('/users/') && !location.pathname.startsWith('/users/applications'))}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <PeopleIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Panel Kullanıcıları" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            {showPanelUserApplications && (
+              <ListItemButton
+                component={Link}
+                to="/users/applications"
+                selected={location.pathname === '/users/applications'}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <BadgeIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Panel Kullanıcı Başvuruları" 
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
+          </>
         )}
 
         {showRoles && (
@@ -255,6 +258,164 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               }}
             />
           </ListItemButton>
+        )}
+      </List>
+
+      <Divider sx={{ my: 2, mx: 2 }} />
+
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: theme.palette.text.secondary,
+            letterSpacing: '0.08em',
+            px: 2,
+          }}
+        >
+          ÜYELER
+        </Typography>
+      </Box>
+
+      <List sx={{ px: 1 }}>
+        {showMembers && (
+          <>
+            <ListItemButton
+              component={Link}
+              to="/members/status/active"
+              selected={location.pathname === '/members/status/active'}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <CheckCircleIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Aktif Üyeler" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            {showMemberApplications && (
+              <ListItemButton
+                component={Link}
+                to="/members/applications"
+                selected={location.pathname.startsWith('/members/applications')}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <AssignmentIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Üye Başvuruları" 
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
+            <ListItemButton
+              component={Link}
+              to="/members/status/rejected"
+              selected={location.pathname === '/members/status/rejected'}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <CancelIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Reddedilen Üyeler" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/members/status/resigned"
+              selected={location.pathname === '/members/status/resigned'}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <ExitToAppIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="İstifa Eden Üyeler" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/members/status/inactive"
+              selected={location.pathname === '/members/status/inactive'}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <PauseCircleIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Pasif Üyeler" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/members/status/expelled"
+              selected={location.pathname === '/members/status/expelled'}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <RemoveCircleIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="İhraç Edilen Üyeler" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/members"
+              selected={
+                location.pathname === '/members' ||
+                (location.pathname.startsWith('/members/') &&
+                 !location.pathname.startsWith('/members/applications') &&
+                 !location.pathname.startsWith('/members/status') &&
+                 /^\/members\/[^/]+$/.test(location.pathname))
+              }
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <GroupIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Tüm Üyeler" 
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+          </>
         )}
       </List>
 
@@ -339,66 +500,25 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               </ListItemButton>
             )}
 
-            {showProfessions && (
+            {showAccounting && (
               <ListItemButton
                 component={Link}
-                to="/professions"
-                selected={location.pathname.startsWith('/professions')}
+                to="/accounting/tevkifat-centers"
+                selected={location.pathname.startsWith('/accounting/tevkifat-centers')}
                 onClick={handleLinkClick}
                 sx={getNavItemSx(theme)}
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>
-                  <WorkIcon />
+                  <AccountBalanceIcon />
                 </ListItemIcon>
                 <ListItemText 
-                  primary="Meslek/Unvan" 
+                  primary="Tevkifat Merkezleri" 
                   primaryTypographyProps={{
                     fontSize: '0.9rem',
                     fontWeight: 500,
                   }}
                 />
               </ListItemButton>
-            )}
-
-            {showAccounting && (
-              <>
-                <ListItemButton
-                  component={Link}
-                  to="/accounting/tevkifat-centers"
-                  selected={location.pathname.startsWith('/accounting/tevkifat-centers') && !location.pathname.startsWith('/accounting/tevkifat-titles')}
-                  onClick={handleLinkClick}
-                  sx={getNavItemSx(theme)}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <AccountBalanceIcon />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Tevkifat Merkezleri" 
-                    primaryTypographyProps={{
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-                <ListItemButton
-                  component={Link}
-                  to="/accounting/tevkifat-titles"
-                  selected={location.pathname.startsWith('/accounting/tevkifat-titles')}
-                  onClick={handleLinkClick}
-                  sx={getNavItemSx(theme)}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <BadgeIcon />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Tevkifat Unvanları" 
-                    primaryTypographyProps={{
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-              </>
             )}
           </>
         )}
@@ -506,24 +626,44 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
 
       <List sx={{ px: 1 }}>
         {showPayments && (
-          <ListItemButton
-            component={Link}
-            to="/payments"
-            selected={location.pathname.startsWith('/payments')}
-            onClick={handleLinkClick}
-            sx={getNavItemSx(theme)}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>
-              <PaymentIcon />
-            </ListItemIcon>
-            <ListItemText
-              primary="Ödemeler"
-              primaryTypographyProps={{
-                fontSize: '0.9rem',
-                fontWeight: 500,
-              }}
-            />
-          </ListItemButton>
+          <>
+            <ListItemButton
+              component={Link}
+              to="/payments"
+              selected={location.pathname === '/payments' || (location.pathname.startsWith('/payments/') && !location.pathname.startsWith('/payments/inquiry') && !/^\/payments\/[^/]+$/.test(location.pathname))}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <PaymentIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary="Ödemeler"
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/payments/inquiry"
+              selected={location.pathname === '/payments/inquiry'}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <SearchIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary="Ödeme Sorgulama"
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+          </>
         )}
 
         {showReports && (

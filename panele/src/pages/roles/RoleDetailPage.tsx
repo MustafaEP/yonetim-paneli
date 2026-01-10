@@ -32,11 +32,14 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import type { CustomRole } from '../../types/role';
 import { getRoleById } from '../../api/rolesApi';
 import { PERMISSION_GROUPS, PERMISSION_LABELS } from '../../types/role';
+import { getUserById } from '../../api/usersApi';
+import { useToast } from '../../hooks/useToast';
 
 const RoleDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const theme = useTheme();
+  const toast = useToast();
 
   const [role, setRole] = useState<CustomRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -384,30 +387,21 @@ const RoleDetailPage: React.FC = () => {
               {role.description || '-'}
             </Typography>
           </Box>
-          {role.provinceId && role.province && (
+          {role.hasScopeRestriction && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 600 }}>
-                İl (MEMBER_LIST_BY_PROVINCE İzni)
+                Yetki Alanı Kısıtlaması
               </Typography>
               <Chip
-                label={role.province.name}
-                color="primary"
+                label="Bu rol yetki alanı gerektirir"
+                color="info"
                 variant="outlined"
                 sx={{ fontWeight: 500 }}
               />
-            </Box>
-          )}
-          {role.districtId && role.district && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 600 }}>
-                İlçe (MEMBER_LIST_BY_PROVINCE İzni)
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Bu role sahip kullanıcılara rol atanırken (panel kullanıcı başvurusu oluşturulurken veya onaylanırken) 
+                yetki alanı (il/ilçe) seçimi zorunludur.
               </Typography>
-              <Chip
-                label={`${role.district.name} (${role.province?.name || ''})`}
-                color="secondary"
-                variant="outlined"
-                sx={{ fontWeight: 500 }}
-              />
             </Box>
           )}
         </Box>
@@ -479,7 +473,22 @@ const RoleDetailPage: React.FC = () => {
                           backgroundColor: alpha(theme.palette.primary.main, 0.02),
                         },
                       }}
-                      onClick={() => navigate(`/users/${user.id}`)}
+                      onClick={async () => {
+                        try {
+                          // Kullanıcı detayını çek ve member bilgisini kontrol et
+                          const userDetail = await getUserById(user.id);
+                          if (userDetail.member?.id) {
+                            // Üye varsa üye detay sayfasına yönlendir
+                            navigate(`/members/${userDetail.member.id}`);
+                          } else {
+                            // Admin kullanıcı veya üye bilgisi yok
+                            toast.showWarning('Bu kullanıcının üye bilgisi bulunmuyor. Admin kullanıcılar üye detay sayfasına sahip değildir.');
+                          }
+                        } catch (error) {
+                          console.error('Kullanıcı detayı alınırken hata:', error);
+                          toast.showError('Kullanıcı bilgileri alınırken bir hata oluştu.');
+                        }
+                      }}
                     >
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>

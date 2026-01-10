@@ -18,6 +18,8 @@ import { AccountingModule } from './accounting/accounting.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ProfessionsModule } from './professions/professions.module';
+import { MemberGroupsModule } from './member-groups/member-groups.module';
+import { PanelUserApplicationsModule } from './panel-user-applications/panel-user-applications.module';
 import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
 
 @Module({
@@ -38,6 +40,8 @@ import { SystemLogInterceptor } from './common/interceptors/system-log.intercept
     PaymentsModule,
     DocumentsModule,
     ProfessionsModule,
+    MemberGroupsModule,
+    PanelUserApplicationsModule,
   ],
   providers: [
     // 1. JWT

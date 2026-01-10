@@ -275,26 +275,44 @@ export class DocumentsService {
     }
 
     // Dosya adını oluştur: Özel dosya adı varsa onu kullan, yoksa orijinal dosya adını kullan
-    const fileExtension = '.pdf';
-    let baseName: string;
+    let uniqueFileName: string;
     
     if (customFileName && customFileName.trim()) {
-      // Özel dosya adı temizle (güvenlik için)
-      baseName = customFileName.trim().replace(/[^a-zA-Z0-9_\-ğüşıöçĞÜŞİÖÇ\s]/g, '').replace(/\s+/g, '_');
+      // Özel dosya adı temizle (güvenlik için) - uzantıyla birlikte geliyor
+      const cleanedName = customFileName.trim().replace(/[^a-zA-Z0-9_\-ğüşıöçĞÜŞİÖÇ\s\.]/g, '').replace(/\s+/g, '_');
+      // Uzantıyı kontrol et, yoksa dosyadan al
+      const hasExtension = path.extname(cleanedName);
+      if (hasExtension) {
+        uniqueFileName = cleanedName;
+      } else {
+        const fileExtension = path.extname(file.originalname) || '.pdf';
+        uniqueFileName = `${cleanedName}${fileExtension}`;
+      }
     } else {
       // Orijinal dosya adını kullan
       const originalName = file.originalname || 'document.pdf';
-      baseName = path.basename(originalName, path.extname(originalName) || fileExtension);
+      const fileExtension = path.extname(originalName) || '.pdf';
+      const baseName = path.basename(originalName, fileExtension);
+      uniqueFileName = `${baseName}${fileExtension}`;
     }
     
-    // Benzersiz dosya adı oluştur (aynı isimde dosya varsa üzerine yazılmasın)
-    const timestamp = Date.now();
-    const uniqueFileName = `${baseName}_${timestamp}${fileExtension}`;
+    // Dosya adını oluştur (format: BelgeTipi_TC_AdSoyad veya UyeKayidi_BelgeTipi_TC_AdSoyad)
+    // Aynı isimde dosya varsa timestamp ekle
     const filePath = path.join(uploadsDir, uniqueFileName);
+    
+    // Aynı isimde dosya varsa timestamp ekle
+    if (fs.existsSync(filePath)) {
+      const timestamp = Date.now();
+      const fileExtension = path.extname(uniqueFileName) || '.pdf';
+      const nameWithoutExt = path.basename(uniqueFileName, fileExtension);
+      uniqueFileName = `${nameWithoutExt}_${timestamp}${fileExtension}`;
+    }
+    
+    const finalFilePath = path.join(uploadsDir, uniqueFileName);
     const fileUrl = `/uploads/documents/${uniqueFileName}`;
 
     // Dosyayı kaydet
-    fs.writeFileSync(filePath, file.buffer);
+    fs.writeFileSync(finalFilePath, file.buffer);
 
     // Veritabanına kaydet
     const document = await this.prisma.memberDocument.create({
@@ -327,6 +345,88 @@ export class DocumentsService {
     });
 
     return document;
+  }
+
+  // Üye onaylandığında evrak dosya isimlerini güncelle (kayıt numarası ekle)
+  async updateMemberDocumentFileNames(memberId: string, registrationNumber: string) {
+    // Üyeyi kontrol et
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        nationalId: true,
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException(`Üye bulunamadı: ${memberId}`);
+    }
+
+    // Üyenin tüm evraklarını al
+    const documents = await this.prisma.memberDocument.findMany({
+      where: {
+        memberId,
+        deletedAt: null,
+      },
+    });
+
+    if (documents.length === 0) {
+      return; // Evrak yoksa işlem yapma
+    }
+
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
+    const updatedDocuments: Array<{ oldName: string; newName: string }> = [];
+
+    for (const doc of documents) {
+      const currentFileName = doc.fileName;
+      const fileExtension = path.extname(currentFileName);
+      const nameWithoutExt = path.basename(currentFileName, fileExtension);
+
+      // Eğer dosya adında kayıt numarası zaten varsa, güncelleme
+      if (nameWithoutExt.startsWith(registrationNumber + '_')) {
+        continue; // Zaten güncellenmiş
+      }
+
+      // Yeni dosya adı: UyeKayidi_BelgeTipi_TC_AdSoyad
+      const newFileName = `${registrationNumber}_${nameWithoutExt}${fileExtension}`;
+      const oldFilePath = path.join(uploadsDir, currentFileName);
+      const newFilePath = path.join(uploadsDir, newFileName);
+
+      // Dosya sisteminde dosyayı yeniden adlandır
+      if (fs.existsSync(oldFilePath)) {
+        // Aynı isimde dosya varsa timestamp ekle
+        let finalNewFileName = newFileName;
+        if (fs.existsSync(newFilePath)) {
+          const timestamp = Date.now();
+          const nameWithoutExt2 = path.basename(newFileName, fileExtension);
+          finalNewFileName = `${nameWithoutExt2}_${timestamp}${fileExtension}`;
+        }
+
+        const finalNewFilePath = path.join(uploadsDir, finalNewFileName);
+        fs.renameSync(oldFilePath, finalNewFilePath);
+
+        // Veritabanında dosya adını güncelle
+        await this.prisma.memberDocument.update({
+          where: { id: doc.id },
+          data: {
+            fileName: finalNewFileName,
+            fileUrl: `/uploads/documents/${finalNewFileName}`,
+          },
+        });
+
+        updatedDocuments.push({
+          oldName: currentFileName,
+          newName: finalNewFileName,
+        });
+      }
+    }
+
+    return {
+      updatedCount: updatedDocuments.length,
+      documents: updatedDocuments,
+    };
   }
 
   // PDF görüntüle (inline)

@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '../config/config.service';
 import { CreateSystemSettingDto, UpdateSystemSettingDto } from './dto';
 import { SystemSettingCategory } from '@prisma/client';
+import { MemberScopeService } from '../members/member-scope.service';
+import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
 
 @Injectable()
 export class SystemService {
@@ -10,6 +12,7 @@ export class SystemService {
     private prisma: PrismaService,
     @Inject(forwardRef(() => ConfigService))
     private configService: ConfigService,
+    private memberScopeService: MemberScopeService,
   ) {}
 
   // Public Info - Logo ve sistem adı için (login sayfasında kullanılır)
@@ -143,8 +146,9 @@ export class SystemService {
     action?: string;
     startDate?: string;
     endDate?: string;
+    user?: CurrentUserData; // Scope filtreleme için
   }) {
-    const { limit = 25, offset = 0, userId, entityType, action, startDate, endDate } = params || {};
+    const { limit = 25, offset = 0, userId, entityType, action, startDate, endDate, user } = params || {};
 
     const where: any = {};
     if (userId) where.userId = userId;
@@ -162,6 +166,34 @@ export class SystemService {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
         where.createdAt.lte = end;
+      }
+    }
+
+    // Scope bazlı filtreleme: LOG_VIEW_OWN_SCOPE izni varsa ve LOG_VIEW_ALL yoksa
+    const hasViewAll = user?.permissions?.includes('LOG_VIEW_ALL' as any);
+    const hasViewOwnScope = user?.permissions?.includes('LOG_VIEW_OWN_SCOPE' as any);
+    
+    if (user && hasViewOwnScope && !hasViewAll) {
+      // Kullanıcının scope'unu al
+      const scopeIds = await this.memberScopeService.getUserScopeIds(user);
+      
+      if (scopeIds.provinceId || scopeIds.districtId) {
+        // Scope'a göre filtreleme yapılacak entity ID'lerini topla
+        const scopeEntityIds = await this.getEntityIdsByScope(scopeIds, entityType);
+        
+        if (scopeEntityIds.length > 0) {
+          // Scope'daki entity'lerle ilgili logları göster
+          where.OR = [
+            { userId: user.userId }, // Kullanıcının kendi işlemleri
+            { entityId: { in: scopeEntityIds } }, // Scope'daki entity'lerle ilgili loglar
+          ];
+        } else {
+          // Scope'da entity yoksa sadece kullanıcının kendi loglarını göster
+          where.userId = user.userId;
+        }
+      } else {
+        // Scope yoksa sadece kullanıcının kendi loglarını göster
+        where.userId = user.userId;
       }
     }
 
@@ -191,7 +223,72 @@ export class SystemService {
     };
   }
 
-  async getLogById(id: string) {
+  // Scope'a göre entity ID'lerini getir (performans için sadece önemli entity type'lar için)
+  private async getEntityIdsByScope(
+    scopeIds: { provinceId?: string; districtId?: string },
+    entityType?: string,
+  ): Promise<string[]> {
+    const entityIds: string[] = [];
+
+    if (!scopeIds.provinceId && !scopeIds.districtId) {
+      return entityIds;
+    }
+
+    // MEMBER entity type için
+    if (!entityType || entityType === 'MEMBER') {
+      const memberWhere: any = {};
+      if (scopeIds.districtId) {
+        memberWhere.districtId = scopeIds.districtId;
+      } else if (scopeIds.provinceId) {
+        memberWhere.provinceId = scopeIds.provinceId;
+      }
+
+      const members = await this.prisma.member.findMany({
+        where: memberWhere,
+        select: { id: true },
+      });
+      entityIds.push(...members.map(m => m.id));
+    }
+
+    // BRANCH entity type için
+    if (!entityType || entityType === 'BRANCH') {
+      const branchWhere: any = {};
+      if (scopeIds.districtId) {
+        branchWhere.districtId = scopeIds.districtId;
+      } else if (scopeIds.provinceId) {
+        branchWhere.provinceId = scopeIds.provinceId;
+      }
+
+      const branches = await this.prisma.branch.findMany({
+        where: branchWhere,
+        select: { id: true },
+      });
+      entityIds.push(...branches.map(b => b.id));
+    }
+
+    // INSTITUTION entity type için
+    if (!entityType || entityType === 'INSTITUTION') {
+      const institutionWhere: any = { deletedAt: null };
+      if (scopeIds.districtId) {
+        institutionWhere.districtId = scopeIds.districtId;
+      } else if (scopeIds.provinceId) {
+        institutionWhere.OR = [
+          { provinceId: scopeIds.provinceId },
+          { district: { provinceId: scopeIds.provinceId } },
+        ];
+      }
+
+      const institutions = await this.prisma.institution.findMany({
+        where: institutionWhere,
+        select: { id: true },
+      });
+      entityIds.push(...institutions.map(i => i.id));
+    }
+
+    return entityIds;
+  }
+
+  async getLogById(id: string, user?: CurrentUserData) {
     const log = await this.prisma.systemLog.findUnique({
       where: { id },
       include: {
@@ -210,7 +307,91 @@ export class SystemService {
       throw new NotFoundException('Log bulunamadı');
     }
 
+    // Scope kontrolü için helper metod
+    if (user) {
+      const hasViewAll = user.permissions?.includes('LOG_VIEW_ALL' as any);
+      const hasViewOwnScope = user.permissions?.includes('LOG_VIEW_OWN_SCOPE' as any);
+      
+      if (hasViewOwnScope && !hasViewAll) {
+        // Kendi logu değilse scope kontrolü yap
+        if (log.userId !== user.userId) {
+          const scopeIds = await this.memberScopeService.getUserScopeIds(user);
+          const hasAccess = await this.checkLogAccessByScope(log, scopeIds);
+          
+          if (!hasAccess) {
+            throw new NotFoundException('Log bulunamadı');
+          }
+        }
+      }
+    }
+
     return log;
+  }
+
+  // Log'un scope'a erişim kontrolü
+  private async checkLogAccessByScope(
+    log: { entityType: string; entityId?: string | null },
+    scopeIds: { provinceId?: string; districtId?: string },
+  ): Promise<boolean> {
+    if (!log.entityId || !log.entityType) {
+      return false;
+    }
+
+    // MEMBER entity type için
+    if (log.entityType === 'MEMBER') {
+      const member = await this.prisma.member.findUnique({
+        where: { id: log.entityId },
+        select: { provinceId: true, districtId: true },
+      });
+
+      if (!member) return false;
+
+      if (scopeIds.districtId) {
+        return member.districtId === scopeIds.districtId;
+      }
+      if (scopeIds.provinceId) {
+        return member.provinceId === scopeIds.provinceId;
+      }
+    }
+
+    // BRANCH entity type için
+    if (log.entityType === 'BRANCH') {
+      const branch = await this.prisma.branch.findUnique({
+        where: { id: log.entityId },
+        select: { provinceId: true, districtId: true },
+      });
+
+      if (!branch) return false;
+
+      if (scopeIds.districtId) {
+        return branch.districtId === scopeIds.districtId;
+      }
+      if (scopeIds.provinceId) {
+        return branch.provinceId === scopeIds.provinceId;
+      }
+    }
+
+    // INSTITUTION entity type için
+    if (log.entityType === 'INSTITUTION') {
+      const institution = await this.prisma.institution.findFirst({
+        where: {
+          id: log.entityId,
+          deletedAt: null,
+        },
+        select: { provinceId: true, districtId: true },
+      });
+
+      if (!institution) return false;
+
+      if (scopeIds.districtId) {
+        return institution.districtId === scopeIds.districtId;
+      }
+      if (scopeIds.provinceId) {
+        return institution.provinceId === scopeIds.provinceId;
+      }
+    }
+
+    return false;
   }
 
   async createLog(data: {

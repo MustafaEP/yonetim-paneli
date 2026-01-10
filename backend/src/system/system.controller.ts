@@ -103,7 +103,7 @@ export class SystemController {
     @Query('endDate') endDate?: string,
     @CurrentUser() user?: CurrentUserData,
   ) {
-    // Eğer sadece LOG_VIEW_OWN_SCOPE izni varsa, sadece kendi loglarını göster
+    // Eğer sadece LOG_VIEW_OWN_SCOPE izni varsa, scope bazlı filtreleme yapılacak
     const hasViewAll = user?.permissions?.includes(Permission.LOG_VIEW_ALL);
     const finalUserId = hasViewAll ? userId : user?.userId;
 
@@ -115,6 +115,7 @@ export class SystemController {
       action,
       startDate,
       endDate,
+      user, // Scope filtreleme için user bilgisini gönder
     });
   }
 
@@ -127,15 +128,7 @@ export class SystemController {
     @Param('id') id: string,
     @CurrentUser() user?: CurrentUserData,
   ) {
-    const log = await this.systemService.getLogById(id);
-    
-    // Eğer sadece LOG_VIEW_OWN_SCOPE izni varsa, sadece kendi loglarını görebilir
-    const hasViewAll = user?.permissions?.includes(Permission.LOG_VIEW_ALL);
-    if (!hasViewAll && log.userId !== user?.userId) {
-      throw new NotFoundException('Log bulunamadı');
-    }
-
-    return log;
+    return this.systemService.getLogById(id, user);
   }
 
   // Logo yükleme

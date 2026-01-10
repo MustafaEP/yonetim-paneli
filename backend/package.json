@@ -19,6 +19,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "prisma:seed2": "ts-node -r tsconfig-paths/register prisma/seed2.ts",
     "prisma:seed:prod": "node dist/prisma/seed.js"
   },
   "dependencies": {
@@ -41,7 +42,6 @@
     "notistack": "^3.0.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "prisma": "6.1",
     "puppeteer": "^23.10.4",
     "recharts": "^3.5.1",
     "reflect-metadata": "^0.2.2",
@@ -67,6 +67,7 @@
     "globals": "^16.0.0",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
+    "prisma": "^7.2.0",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",

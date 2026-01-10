@@ -8,6 +8,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberPaymentDto } from './dto/create-member-payment.dto';
 import { PaymentType, MemberStatus } from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
+import * as fs from 'fs';
+import * as path from 'path';
+import type { Response } from 'express';
 
 @Injectable()
 export class PaymentsService {
@@ -101,7 +104,9 @@ export class PaymentsService {
         tevkifatFileId: dto.tevkifatFileId || null,
         description: dto.description || null,
         documentUrl: dto.documentUrl || null,
-        isApproved: false, // Varsayılan olarak onaysız
+        isApproved: true, // Otomatik olarak onaylanmış olarak kaydedilir
+        approvedByUserId: createdBy,
+        approvedAt: new Date(),
         createdByUserId: createdBy,
         ipAddress: ipAddress || null,
         userAgent: userAgent || null,
@@ -529,6 +534,220 @@ export class PaymentsService {
         { paymentPeriodMonth: 'desc' },
         { member: { registrationNumber: 'asc' } },
       ],
+    });
+  }
+
+  /**
+   * Ödeme için dosya yükle
+   */
+  async uploadPaymentDocument(
+    file: Express.Multer.File,
+    memberId: string,
+    paymentPeriodMonth: number,
+    paymentPeriodYear: number,
+    customFileName?: string,
+  ) {
+    // Dosya kontrolü
+    if (!file) {
+      throw new BadRequestException('Dosya yüklenmedi');
+    }
+
+    // Sadece PDF kabul et
+    if (file.mimetype !== 'application/pdf') {
+      throw new BadRequestException('Sadece PDF dosyaları kabul edilir');
+    }
+
+    // Üyeyi kontrol et
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        registrationNumber: true,
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Üye bulunamadı');
+    }
+
+    // Uploads klasörünü oluştur (yoksa)
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'payments');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    // Dosya adını oluştur
+    let fileName: string;
+    
+    if (customFileName && customFileName.trim()) {
+      // Özel dosya adı varsa onu kullan
+      const cleanedName = customFileName.trim().replace(/[^a-zA-Z0-9_\-ğüşıöçĞÜŞİÖÇ\s\.]/g, '').replace(/\s+/g, '_');
+      // Uzantıyı kontrol et, yoksa .pdf ekle
+      const hasExtension = path.extname(cleanedName);
+      if (hasExtension) {
+        fileName = cleanedName;
+      } else {
+        fileName = `${cleanedName}.pdf`;
+      }
+    } else {
+      // Otomatik dosya adı oluştur: Odeme_[UyeAdi]_[AyYil]_[Tarih].pdf
+      const monthNames = [
+        'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran',
+        'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'
+      ];
+      const monthName = monthNames[paymentPeriodMonth - 1] || `Ay${paymentPeriodMonth}`;
+      
+      // Üye adını temizle (Türkçe karakterleri koru, özel karakterleri kaldır)
+      const memberName = `${member.firstName}_${member.lastName}`
+        .replace(/[^a-zA-Z0-9_ğüşıöçĞÜŞİÖÇ]/g, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 50); // Maksimum 50 karakter
+      
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const timestamp = Date.now();
+      
+      fileName = `Odeme_${memberName}_${monthName}${paymentPeriodYear}_${dateStr}_${timestamp}.pdf`;
+    }
+    
+    const filePath = path.join(uploadsDir, fileName);
+    const fileUrl = `/uploads/payments/${fileName}`;
+
+    // Dosyayı kaydet
+    fs.writeFileSync(filePath, file.buffer);
+
+    return {
+      fileUrl,
+      fileName,
+    };
+  }
+
+  /**
+   * Ödeme belgesi görüntüle (inline)
+   */
+  async viewPaymentDocument(paymentId: string, res: Response): Promise<void> {
+    const payment = await this.prisma.memberPayment.findUnique({
+      where: { id: paymentId },
+      select: {
+        id: true,
+        documentUrl: true,
+        memberId: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Ödeme kaydı bulunamadı: ${paymentId}`);
+    }
+
+    if (!payment.documentUrl) {
+      throw new NotFoundException('Bu ödeme için belge bulunamadı');
+    }
+
+    // documentUrl formatı: /uploads/payments/fileName.pdf
+    // Dosya yolunu oluştur
+    const fileName = payment.documentUrl.split('/').pop() || 'document.pdf';
+    const filePath = path.join(process.cwd(), 'uploads', 'payments', fileName);
+
+    // Dosyanın var olup olmadığını kontrol et
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException(`Dosya bulunamadı: ${fileName}`);
+    }
+
+    // Content-Type header'ını ayarla (inline olarak göster)
+    res.setHeader('Content-Type', 'application/pdf');
+    
+    // HTTP header'larında sadece ASCII karakterler kullanılabilir
+    const asciiFileName = fileName
+      .replace(/ğ/g, 'g')
+      .replace(/Ğ/g, 'G')
+      .replace(/ü/g, 'u')
+      .replace(/Ü/g, 'U')
+      .replace(/ş/g, 's')
+      .replace(/Ş/g, 'S')
+      .replace(/ı/g, 'i')
+      .replace(/İ/g, 'I')
+      .replace(/ö/g, 'o')
+      .replace(/Ö/g, 'O')
+      .replace(/ç/g, 'c')
+      .replace(/Ç/g, 'C')
+      .replace(/[^\x00-\x7F]/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    
+    const safeAsciiFileName = asciiFileName.replace(/"/g, '').replace(/;/g, '_');
+    res.setHeader('Content-Disposition', `inline; filename="${safeAsciiFileName}"`);
+
+    // Dosyayı gönder
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+    return new Promise<void>((resolve, reject) => {
+      fileStream.on('end', () => resolve());
+      fileStream.on('error', (error) => reject(error));
+    });
+  }
+
+  /**
+   * Ödeme belgesi indir
+   */
+  async downloadPaymentDocument(paymentId: string, res: Response): Promise<void> {
+    const payment = await this.prisma.memberPayment.findUnique({
+      where: { id: paymentId },
+      select: {
+        id: true,
+        documentUrl: true,
+        memberId: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Ödeme kaydı bulunamadı: ${paymentId}`);
+    }
+
+    if (!payment.documentUrl) {
+      throw new NotFoundException('Bu ödeme için belge bulunamadı');
+    }
+
+    // documentUrl formatı: /uploads/payments/fileName.pdf
+    const fileName = payment.documentUrl.split('/').pop() || 'payment-document.pdf';
+    const filePath = path.join(process.cwd(), 'uploads', 'payments', fileName);
+
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException(`Dosya bulunamadı: ${fileName}`);
+    }
+
+    // Content-Type header'ını ayarla
+    res.setHeader('Content-Type', 'application/pdf');
+    
+    // ASCII-safe dosya adı oluştur
+    const asciiFileName = fileName
+      .replace(/ğ/g, 'g')
+      .replace(/Ğ/g, 'G')
+      .replace(/ü/g, 'u')
+      .replace(/Ü/g, 'U')
+      .replace(/ş/g, 's')
+      .replace(/Ş/g, 'S')
+      .replace(/ı/g, 'i')
+      .replace(/İ/g, 'I')
+      .replace(/ö/g, 'o')
+      .replace(/Ö/g, 'O')
+      .replace(/ç/g, 'c')
+      .replace(/Ç/g, 'C')
+      .replace(/[^\x00-\x7F]/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    
+    // UTF-8 encoding ile dosya adını ayarla (RFC 5987)
+    const safeAsciiFileName = asciiFileName.replace(/"/g, '').replace(/;/g, '_');
+    const encodedFileName = encodeURIComponent(fileName).replace(/'/g, '%27');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeAsciiFileName}"; filename*=UTF-8''${encodedFileName}`);
+
+    // Dosyayı gönder
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+    return new Promise<void>((resolve, reject) => {
+      fileStream.on('end', () => resolve());
+      fileStream.on('error', (error) => reject(error));
     });
   }
 }

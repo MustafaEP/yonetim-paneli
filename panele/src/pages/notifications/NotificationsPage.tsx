@@ -130,11 +130,17 @@ const NotificationsPage: React.FC = () => {
       defaultType = 'SMS';
     }
 
+    // NOTIFY_OWN_SCOPE izni varsa ve diğer izinler yoksa, otomatik olarak SCOPE seç
+    let defaultTargetType: 'ALL_MEMBERS' | 'REGION' | 'SCOPE' | 'USER' = 'USER';
+    if (canNotifyScope && !canNotifyAll && !canNotifyRegion) {
+      defaultTargetType = 'SCOPE';
+    }
+
     setFormData({
       title: '',
       message: '',
       type: defaultType,
-      targetType: 'USER',
+      targetType: defaultTargetType,
     });
     setSelectedProvince(null);
     setSelectedUsers([]);
@@ -157,9 +163,22 @@ const NotificationsPage: React.FC = () => {
     }
 
     // Hedef kontrolü
-    if (formData.targetType === 'REGION' || formData.targetType === 'SCOPE') {
+    if (formData.targetType === 'REGION') {
       if (!selectedProvince) {
-        setError(`${formData.targetType === 'REGION' ? 'Bölge' : 'Kapsam'} seçimi gereklidir`);
+        setError('Bölge seçimi gereklidir');
+        return;
+      }
+      if (!selectedProvince.id) {
+        setError('Geçerli bir il seçiniz');
+        return;
+      }
+    }
+    
+    // SCOPE için: Eğer sadece NOTIFY_OWN_SCOPE izni varsa, il seçimi gerekmez (backend otomatik yapıyor)
+    // Ama eğer NOTIFY_REGION da varsa, kullanıcı manuel seçim yapabilir
+    if (formData.targetType === 'SCOPE' && canNotifyRegion) {
+      if (!selectedProvince) {
+        setError('Kapsam seçimi gereklidir');
         return;
       }
       if (!selectedProvince.id) {
@@ -215,7 +234,11 @@ const NotificationsPage: React.FC = () => {
       ...formData,
     };
 
-    if (formData.targetType !== 'ALL_MEMBERS' && selectedProvince?.id) {
+    // SCOPE için: Eğer sadece NOTIFY_OWN_SCOPE izni varsa, targetId gönderme (backend otomatik scope kullanacak)
+    // Ama eğer NOTIFY_REGION da varsa ve kullanıcı manuel seçim yaptıysa, targetId gönder
+    if (formData.targetType === 'SCOPE' && canNotifyScope && !canNotifyAll && !canNotifyRegion) {
+      // Backend otomatik olarak kullanıcının scope'unu kullanacak, targetId gerekmez
+    } else if (formData.targetType !== 'ALL_MEMBERS' && selectedProvince?.id) {
       payload.targetId = selectedProvince.id;
     }
 
@@ -546,7 +569,7 @@ const NotificationsPage: React.FC = () => {
                 }
               />
             )}
-            {(formData.targetType === 'REGION' || formData.targetType === 'SCOPE') && (
+            {formData.targetType === 'REGION' && (
               <Autocomplete
                 options={provinces}
                 getOptionLabel={(option) => `${option.name}${option.code ? ` (${option.code})` : ''}`}
@@ -556,6 +579,26 @@ const NotificationsPage: React.FC = () => {
                   <TextField {...params} label="İl Seçimi" required />
                 )}
               />
+            )}
+            {formData.targetType === 'SCOPE' && (
+              <>
+                {canNotifyScope && !canNotifyAll && !canNotifyRegion ? (
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    Bildirim, sizin yetki alanınızdaki (scope) üyelere otomatik olarak gönderilecektir.
+                    İl seçimi yapmanıza gerek yoktur.
+                  </Alert>
+                ) : (
+                  <Autocomplete
+                    options={provinces}
+                    getOptionLabel={(option) => `${option.name}${option.code ? ` (${option.code})` : ''}`}
+                    value={selectedProvince}
+                    onChange={(_, newValue) => setSelectedProvince(newValue)}
+                    renderInput={(params) => (
+                      <TextField {...params} label="İl Seçimi" required />
+                    )}
+                  />
+                )}
+              </>
             )}
           </Box>
         </DialogContent>

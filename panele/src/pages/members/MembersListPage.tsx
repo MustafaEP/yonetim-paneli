@@ -40,6 +40,8 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CloseIcon from '@mui/icons-material/Close';
+import ClearIcon from '@mui/icons-material/Clear';
 import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 
 import type { MemberListItem, MemberStatus } from '../../types/member';
@@ -260,15 +262,17 @@ const MembersListPage: React.FC = () => {
       headerAlign: 'center',
       valueGetter: (_value, row: MemberListItem) => `${row.firstName} ${row.lastName}`,
       renderCell: (params: GridRenderCellParams<MemberListItem>) => (
-        <Typography
-          sx={{
-            fontWeight: 600,
-            color: theme.palette.text.primary,
-            fontSize: '0.9rem',
-          }}
-        >
-          {`${params.row.firstName} ${params.row.lastName}`}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          <Typography
+            sx={{
+              fontWeight: 600,
+              color: theme.palette.text.primary,
+              fontSize: '0.9rem',
+            }}
+          >
+            {`${params.row.firstName} ${params.row.lastName}`}
+          </Typography>
+        </Box>
       ),
     },
     {
@@ -513,7 +517,11 @@ const MembersListPage: React.FC = () => {
   }, []);
 
   return (
-    <Box sx={{ pb: 4 }}>
+    <Box
+      sx={{
+        pb: 4,
+      }}
+    >
       {/* Modern Başlık Bölümü */}
       <Box
         sx={{
@@ -568,6 +576,7 @@ const MembersListPage: React.FC = () => {
                     color: theme.palette.text.primary,
                     mb: 0.5,
                     letterSpacing: '-0.02em',
+                    textAlign: 'left',
                   }}
                 >
                   Üyeler
@@ -578,6 +587,7 @@ const MembersListPage: React.FC = () => {
                     color: theme.palette.text.secondary,
                     fontSize: { xs: '0.9rem', sm: '1rem' },
                     fontWeight: 500,
+                    textAlign: 'left',
                   }}
                 >
                   Yetkili olduğunuz bölgedeki tüm üyeleri görüntüleyin ve yönetin
@@ -686,10 +696,10 @@ const MembersListPage: React.FC = () => {
               <FilterListIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
             </Box>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5, textAlign: 'left' }}>
                 Filtrele ve Ara
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left' }}>
                 Üyeleri hızlıca bulun ve filtreleyin
               </Typography>
             </Box>
@@ -755,6 +765,16 @@ const MembersListPage: React.FC = () => {
                       <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
                     </InputAdornment>
                   }
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: statusFilter !== 'ALL' ? 600 : 400,
+                      color: statusFilter !== 'ALL' ? theme.palette.primary.main : 'inherit',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: statusFilter !== 'ALL' ? theme.palette.primary.main : undefined,
+                      borderWidth: statusFilter !== 'ALL' ? 2 : 1,
+                    },
+                  }}
                   MenuProps={{
                     disablePortal: false,
                     disableScrollLock: true,
@@ -770,22 +790,52 @@ const MembersListPage: React.FC = () => {
                     <Typography>Tümü</Typography>
                   </MenuItem>
                   <MenuItem value="ACTIVE">
-                    <Typography>Aktif</Typography>
+                    <Typography sx={{ 
+                      fontWeight: statusFilter === 'ACTIVE' ? 700 : 400,
+                      color: statusFilter === 'ACTIVE' ? theme.palette.primary.main : 'inherit',
+                    }}>
+                      Aktif
+                    </Typography>
                   </MenuItem>
                   <MenuItem value="PENDING">
-                    <Typography>Onay Bekliyor</Typography>
+                    <Typography sx={{ 
+                      fontWeight: statusFilter === 'PENDING' ? 700 : 400,
+                      color: statusFilter === 'PENDING' ? theme.palette.primary.main : 'inherit',
+                    }}>
+                      Onay Bekliyor
+                    </Typography>
                   </MenuItem>
                   <MenuItem value="INACTIVE">
-                    <Typography>Pasif</Typography>
+                    <Typography sx={{ 
+                      fontWeight: statusFilter === 'INACTIVE' ? 700 : 400,
+                      color: statusFilter === 'INACTIVE' ? theme.palette.primary.main : 'inherit',
+                    }}>
+                      Pasif
+                    </Typography>
                   </MenuItem>
                   <MenuItem value="RESIGNED">
-                    <Typography>İstifa</Typography>
+                    <Typography sx={{ 
+                      fontWeight: statusFilter === 'RESIGNED' ? 700 : 400,
+                      color: statusFilter === 'RESIGNED' ? theme.palette.primary.main : 'inherit',
+                    }}>
+                      İstifa
+                    </Typography>
                   </MenuItem>
                   <MenuItem value="EXPELLED">
-                    <Typography>İhraç</Typography>
+                    <Typography sx={{ 
+                      fontWeight: statusFilter === 'EXPELLED' ? 700 : 400,
+                      color: statusFilter === 'EXPELLED' ? theme.palette.primary.main : 'inherit',
+                    }}>
+                      İhraç
+                    </Typography>
                   </MenuItem>
                   <MenuItem value="REJECTED">
-                    <Typography>Reddedildi</Typography>
+                    <Typography sx={{ 
+                      fontWeight: statusFilter === 'REJECTED' ? 700 : 400,
+                      color: statusFilter === 'REJECTED' ? theme.palette.primary.main : 'inherit',
+                    }}>
+                      Reddedildi
+                    </Typography>
                   </MenuItem>
                 </Select>
               </FormControl>
@@ -816,6 +866,16 @@ const MembersListPage: React.FC = () => {
                       <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
                     </InputAdornment>
                   }
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: branchFilter !== 'ALL' ? 600 : 400,
+                      color: branchFilter !== 'ALL' ? theme.palette.primary.main : 'inherit',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: branchFilter !== 'ALL' ? theme.palette.primary.main : undefined,
+                      borderWidth: branchFilter !== 'ALL' ? 2 : 1,
+                    },
+                  }}
                   MenuProps={{
                     disablePortal: false,
                     disableScrollLock: true,
@@ -830,11 +890,32 @@ const MembersListPage: React.FC = () => {
                   <MenuItem value="ALL">
                     <Typography>Tümü</Typography>
                   </MenuItem>
-                  {branches.map((branch) => (
-                    <MenuItem key={branch.id} value={branch.id}>
-                      <Typography>{branch.name}</Typography>
-                    </MenuItem>
-                  ))}
+                  {branches.map((branch) => {
+                    const isSelected = branchFilter === branch.id;
+                    return (
+                      <MenuItem 
+                        key={branch.id} 
+                        value={branch.id}
+                        sx={{
+                          backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          '&:hover': {
+                            backgroundColor: isSelected 
+                              ? alpha(theme.palette.primary.main, 0.15) 
+                              : alpha(theme.palette.action.hover, 0.05),
+                          },
+                        }}
+                      >
+                        <Typography 
+                          sx={{ 
+                            fontWeight: isSelected ? 700 : 400,
+                            color: isSelected ? theme.palette.primary.main : 'inherit',
+                          }}
+                        >
+                          {branch.name}
+                        </Typography>
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Grid>
@@ -872,9 +953,31 @@ const MembersListPage: React.FC = () => {
                     if (selected.length === 0) return 'Tümü';
                     if (selected.length === 1) {
                       const province = provinces.find(p => p.id === selected[0]);
-                      return province?.name || selected[0];
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                            {province?.name || selected[0]}
+                          </Typography>
+                        </Box>
+                      );
                     }
-                    return `${selected.length} il seçildi`;
+                    return (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                          {selected.length} il seçildi
+                        </Typography>
+                      </Box>
+                    );
+                  }}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: provinceFilter.length > 0 ? 600 : 400,
+                      color: provinceFilter.length > 0 ? theme.palette.primary.main : 'inherit',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: provinceFilter.length > 0 ? theme.palette.primary.main : undefined,
+                      borderWidth: provinceFilter.length > 0 ? 2 : 1,
+                    },
                   }}
                   MenuProps={{
                     disablePortal: false,
@@ -887,11 +990,32 @@ const MembersListPage: React.FC = () => {
                     },
                   }}
                 >
-                  {provinces.map((province) => (
-                    <MenuItem key={province.id} value={province.id}>
-                      <Typography>{province.name}</Typography>
-                    </MenuItem>
-                  ))}
+                  {provinces.map((province) => {
+                    const isSelected = provinceFilter.includes(province.id);
+                    return (
+                      <MenuItem 
+                        key={province.id} 
+                        value={province.id}
+                        sx={{
+                          backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          '&:hover': {
+                            backgroundColor: isSelected 
+                              ? alpha(theme.palette.primary.main, 0.15) 
+                              : alpha(theme.palette.action.hover, 0.05),
+                          },
+                        }}
+                      >
+                        <Typography 
+                          sx={{ 
+                            fontWeight: isSelected ? 700 : 400,
+                            color: isSelected ? theme.palette.primary.main : 'inherit',
+                          }}
+                        >
+                          {province.name}
+                        </Typography>
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Grid>
@@ -930,9 +1054,31 @@ const MembersListPage: React.FC = () => {
                     if (selected.length === 0) return 'Tümü';
                     if (selected.length === 1) {
                       const district = districts.find(d => d.id === selected[0]);
-                      return district?.name || selected[0];
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                            {district?.name || selected[0]}
+                          </Typography>
+                        </Box>
+                      );
                     }
-                    return `${selected.length} ilçe seçildi`;
+                    return (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                          {selected.length} ilçe seçildi
+                        </Typography>
+                      </Box>
+                    );
+                  }}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: districtFilter.length > 0 ? 600 : 400,
+                      color: districtFilter.length > 0 ? theme.palette.primary.main : 'inherit',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: districtFilter.length > 0 ? theme.palette.primary.main : undefined,
+                      borderWidth: districtFilter.length > 0 ? 2 : 1,
+                    },
                   }}
                   MenuProps={{
                     disablePortal: false,
@@ -945,11 +1091,32 @@ const MembersListPage: React.FC = () => {
                     },
                   }}
                 >
-                  {districts.map((district) => (
-                    <MenuItem key={district.id} value={district.id}>
-                      <Typography>{district.name}</Typography>
-                    </MenuItem>
-                  ))}
+                  {districts.map((district) => {
+                    const isSelected = districtFilter.includes(district.id);
+                    return (
+                      <MenuItem 
+                        key={district.id} 
+                        value={district.id}
+                        sx={{
+                          backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          '&:hover': {
+                            backgroundColor: isSelected 
+                              ? alpha(theme.palette.primary.main, 0.15) 
+                              : alpha(theme.palette.action.hover, 0.05),
+                          },
+                        }}
+                      >
+                        <Typography 
+                          sx={{ 
+                            fontWeight: isSelected ? 700 : 400,
+                            color: isSelected ? theme.palette.primary.main : 'inherit',
+                          }}
+                        >
+                          {district.name}
+                        </Typography>
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Grid>
@@ -987,9 +1154,31 @@ const MembersListPage: React.FC = () => {
                     if (selected.length === 0) return 'Tümü';
                     if (selected.length === 1) {
                       const institution = institutions.find(i => i.id === selected[0]);
-                      return institution?.name || selected[0];
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                            {institution?.name || selected[0]}
+                          </Typography>
+                        </Box>
+                      );
                     }
-                    return `${selected.length} kurum seçildi`;
+                    return (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                          {selected.length} kurum seçildi
+                        </Typography>
+                      </Box>
+                    );
+                  }}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: institutionFilter.length > 0 ? 600 : 400,
+                      color: institutionFilter.length > 0 ? theme.palette.primary.main : 'inherit',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: institutionFilter.length > 0 ? theme.palette.primary.main : undefined,
+                      borderWidth: institutionFilter.length > 0 ? 2 : 1,
+                    },
                   }}
                   MenuProps={{
                     disablePortal: false,
@@ -1002,15 +1191,205 @@ const MembersListPage: React.FC = () => {
                     },
                   }}
                 >
-                  {institutions.map((institution) => (
-                    <MenuItem key={institution.id} value={institution.id}>
-                      <Typography>{institution.name}</Typography>
-                    </MenuItem>
-                  ))}
+                  {institutions.map((institution) => {
+                    const isSelected = institutionFilter.includes(institution.id);
+                    return (
+                      <MenuItem 
+                        key={institution.id} 
+                        value={institution.id}
+                        sx={{
+                          backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          '&:hover': {
+                            backgroundColor: isSelected 
+                              ? alpha(theme.palette.primary.main, 0.15) 
+                              : alpha(theme.palette.action.hover, 0.05),
+                          },
+                        }}
+                      >
+                        <Typography 
+                          sx={{ 
+                            fontWeight: isSelected ? 700 : 400,
+                            color: isSelected ? theme.palette.primary.main : 'inherit',
+                          }}
+                        >
+                          {institution.name}
+                        </Typography>
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Grid>
           </Grid>
+
+          {/* Seçili Filtreler */}
+          {(statusFilter !== 'ALL' || branchFilter !== 'ALL' || provinceFilter.length > 0 || districtFilter.length > 0 || institutionFilter.length > 0 || searchText.trim()) && (
+            <Box
+              sx={{
+                mt: 3,
+                p: 2.5,
+                borderRadius: 2.5,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 700,
+                    color: theme.palette.primary.main,
+                    fontSize: '0.95rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <FilterListIcon fontSize="small" />
+                  Aktif Filtreler
+                </Typography>
+                <Button
+                  size="small"
+                  startIcon={<ClearIcon />}
+                  onClick={() => {
+                    setStatusFilter('ALL');
+                    setBranchFilter('ALL');
+                    setProvinceFilter([]);
+                    setDistrictFilter([]);
+                    setInstitutionFilter([]);
+                    setSearchText('');
+                  }}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    color: theme.palette.error.main,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.error.main, 0.1),
+                    },
+                  }}
+                >
+                  Tümünü Temizle
+                </Button>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                {statusFilter !== 'ALL' && (
+                  <Chip
+                    label={`Durum: ${getStatusLabel(statusFilter)}`}
+                    onDelete={() => setStatusFilter('ALL')}
+                    deleteIcon={<CloseIcon />}
+                    color="primary"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      height: 32,
+                      '& .MuiChip-deleteIcon': {
+                        fontSize: '1.1rem',
+                      },
+                    }}
+                  />
+                )}
+                {branchFilter !== 'ALL' && (
+                  <Chip
+                    label={`Şube: ${branches.find(b => b.id === branchFilter)?.name || branchFilter}`}
+                    onDelete={() => setBranchFilter('ALL')}
+                    deleteIcon={<CloseIcon />}
+                    color="primary"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      height: 32,
+                      '& .MuiChip-deleteIcon': {
+                        fontSize: '1.1rem',
+                      },
+                    }}
+                  />
+                )}
+                {provinceFilter.map((provinceId) => {
+                  const province = provinces.find(p => p.id === provinceId);
+                  return (
+                    <Chip
+                      key={provinceId}
+                      label={`İl: ${province?.name || provinceId}`}
+                      onDelete={() => {
+                        setProvinceFilter(prev => prev.filter(id => id !== provinceId));
+                      }}
+                      deleteIcon={<CloseIcon />}
+                      color="primary"
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        height: 32,
+                        '& .MuiChip-deleteIcon': {
+                          fontSize: '1.1rem',
+                        },
+                      }}
+                    />
+                  );
+                })}
+                {districtFilter.map((districtId) => {
+                  const district = districts.find(d => d.id === districtId);
+                  return (
+                    <Chip
+                      key={districtId}
+                      label={`İlçe: ${district?.name || districtId}`}
+                      onDelete={() => {
+                        setDistrictFilter(prev => prev.filter(id => id !== districtId));
+                      }}
+                      deleteIcon={<CloseIcon />}
+                      color="primary"
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        height: 32,
+                        '& .MuiChip-deleteIcon': {
+                          fontSize: '1.1rem',
+                        },
+                      }}
+                    />
+                  );
+                })}
+                {institutionFilter.map((institutionId) => {
+                  const institution = institutions.find(i => i.id === institutionId);
+                  return (
+                    <Chip
+                      key={institutionId}
+                      label={`Kurum: ${institution?.name || institutionId}`}
+                      onDelete={() => {
+                        setInstitutionFilter(prev => prev.filter(id => id !== institutionId));
+                      }}
+                      deleteIcon={<CloseIcon />}
+                      color="primary"
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        height: 32,
+                        '& .MuiChip-deleteIcon': {
+                          fontSize: '1.1rem',
+                        },
+                      }}
+                    />
+                  );
+                })}
+                {searchText.trim() && (
+                  <Chip
+                    label={`Arama: "${searchText}"`}
+                    onDelete={() => setSearchText('')}
+                    deleteIcon={<CloseIcon />}
+                    color="primary"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      height: 32,
+                      '& .MuiChip-deleteIcon': {
+                        fontSize: '1.1rem',
+                      },
+                    }}
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
 
           {/* Sonuç Sayısı - Filtre içine taşındı */}
           {!loading && (
@@ -1155,6 +1534,8 @@ const MembersListPage: React.FC = () => {
               '& .MuiDataGrid-cell': {
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
                 py: 2,
+                display: 'flex',
+                alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
                 background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
@@ -1162,6 +1543,9 @@ const MembersListPage: React.FC = () => {
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
+              },
+              '& .MuiDataGrid-columnHeaderTitleContainer': {
+                justifyContent: 'center',
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,

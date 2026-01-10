@@ -169,11 +169,14 @@ async function main() {
   await prisma.content.deleteMany();
   await prisma.systemLog.deleteMany();
   await prisma.systemSetting.deleteMany();
+  await prisma.panelUserApplicationScope.deleteMany(); // PanelUserApplication'a bağlı
+  await prisma.panelUserApplication.deleteMany(); // Member'a bağlı, Member'dan önce silinmeli
   await prisma.member.deleteMany(); // Institution'a bağlı, önce silmeliyiz
   await prisma.institution.deleteMany(); // Member'lardan sonra silinebilir
   await prisma.tevkifatTitle.deleteMany();
   await prisma.tevkifatCenter.deleteMany();
   await prisma.membershipInfoOption.deleteMany();
+  await prisma.memberGroup.deleteMany();
   await prisma.profession.deleteMany();
   await prisma.branch.deleteMany();
   await prisma.userScope.deleteMany();
@@ -239,7 +242,7 @@ async function main() {
       'USER_LIST', 'USER_VIEW', 'USER_CREATE', 'USER_UPDATE', 'USER_SOFT_DELETE', 'USER_ASSIGN_ROLE',
       'ROLE_LIST', 'ROLE_VIEW', 'ROLE_CREATE', 'ROLE_UPDATE', 'ROLE_DELETE', 'ROLE_MANAGE_PERMISSIONS',
       'MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_CREATE_APPLICATION', 'MEMBER_APPROVE', 'MEMBER_REJECT',
-      'MEMBER_UPDATE', 'MEMBER_STATUS_CHANGE', 'MEMBER_LIST_BY_PROVINCE',
+      'MEMBER_UPDATE', 'MEMBER_STATUS_CHANGE',
       'DUES_PLAN_MANAGE', 'DUES_PAYMENT_ADD', 'DUES_REPORT_VIEW', 'DUES_DEBT_LIST_VIEW', 'DUES_EXPORT',
       'REGION_LIST', 'BRANCH_MANAGE', 'BRANCH_ASSIGN_PRESIDENT',
       'CONTENT_MANAGE', 'CONTENT_PUBLISH',
@@ -259,17 +262,20 @@ async function main() {
       'REPORT_GLOBAL_VIEW', 'REPORT_REGION_VIEW', 'REPORT_MEMBER_STATUS_VIEW', 'REPORT_DUES_VIEW',
       'CONTENT_MANAGE', 'CONTENT_PUBLISH', 'NOTIFY_ALL_MEMBERS', 'NOTIFY_REGION',
       'REGION_LIST', 'BRANCH_MANAGE',
+      'INSTITUTION_LIST', 'INSTITUTION_VIEW',
     ],
     GENEL_BASKAN_YRD: [
       'USER_LIST', 'USER_VIEW', 'MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_CREATE_APPLICATION',
       'MEMBER_APPROVE', 'MEMBER_REJECT', 'MEMBER_UPDATE',
       'DUES_REPORT_VIEW', 'DUES_PAYMENT_ADD', 'REPORT_GLOBAL_VIEW', 'REPORT_REGION_VIEW',
       'CONTENT_MANAGE', 'NOTIFY_REGION',
+      'INSTITUTION_LIST', 'INSTITUTION_VIEW',
     ],
     GENEL_SEKRETER: [
       'MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_CREATE_APPLICATION', 'MEMBER_UPDATE',
       'DUES_PAYMENT_ADD', 'DUES_REPORT_VIEW', 'REPORT_REGION_VIEW',
       'DOCUMENT_TEMPLATE_MANAGE', 'DOCUMENT_GENERATE_PDF', 'NOTIFY_OWN_SCOPE',
+      'INSTITUTION_LIST', 'INSTITUTION_VIEW',
     ],
     UYE: [], // Üye için varsayılan olarak hiçbir izin yok
   };
@@ -321,11 +327,11 @@ async function main() {
   const ilBaskaniRole = await prisma.customRole.create({
     data: {
       name: 'IL_BASKANI',
-      description: 'İl Başkanı - İl bazlı üye yönetimi yapabilir',
+      description: 'İl Başkanı - İl bazlı üye yönetimi yapabilir (Yetki alanı gerektirir)',
       isActive: true,
+      hasScopeRestriction: true,
       permissions: {
         create: [
-          { permission: 'MEMBER_LIST_BY_PROVINCE' },
           { permission: 'MEMBER_VIEW' },
           { permission: 'MEMBER_CREATE_APPLICATION' },
           { permission: 'MEMBER_APPROVE' },
@@ -335,6 +341,8 @@ async function main() {
           { permission: 'DUES_REPORT_VIEW' },
           { permission: 'REPORT_REGION_VIEW' },
           { permission: 'NOTIFY_OWN_SCOPE' },
+          { permission: 'INSTITUTION_LIST' },
+          { permission: 'INSTITUTION_VIEW' },
         ],
       },
     },
@@ -344,11 +352,11 @@ async function main() {
   const ilceTemsilcisiRole = await prisma.customRole.create({
     data: {
       name: 'ILCE_TEMSILCISI',
-      description: 'İlçe Temsilcisi - İlçe bazlı üye yönetimi yapabilir',
+      description: 'İlçe Temsilcisi - İlçe bazlı üye yönetimi yapabilir (Yetki alanı gerektirir)',
       isActive: true,
+      hasScopeRestriction: true,
       permissions: {
         create: [
-          { permission: 'MEMBER_LIST_BY_PROVINCE' },
           { permission: 'MEMBER_VIEW' },
           { permission: 'MEMBER_CREATE_APPLICATION' },
           { permission: 'MEMBER_APPROVE' },
@@ -358,6 +366,8 @@ async function main() {
           { permission: 'DUES_REPORT_VIEW' },
           { permission: 'REPORT_REGION_VIEW' },
           { permission: 'NOTIFY_OWN_SCOPE' },
+          { permission: 'INSTITUTION_LIST' },
+          { permission: 'INSTITUTION_VIEW' },
         ],
       },
     },
@@ -389,162 +399,8 @@ async function main() {
     },
   });
 
-  // Bursa İl Başkanı için özel role oluştur
-  const bursaProvinceId = provinceMap['Bursa'];
-  const bursaIlBaskaniRole = await prisma.customRole.create({
-    data: {
-      name: 'BURSA_IL_BASKANI',
-      description: 'Bursa İl Başkanı - Bursa ilindeki üyeleri yönetebilir',
-      isActive: true,
-      provinceId: bursaProvinceId,
-      permissions: {
-        create: [
-          { permission: 'MEMBER_LIST_BY_PROVINCE' },
-          { permission: 'MEMBER_VIEW' },
-          { permission: 'MEMBER_CREATE_APPLICATION' },
-          { permission: 'MEMBER_APPROVE' },
-          { permission: 'MEMBER_REJECT' },
-          { permission: 'MEMBER_UPDATE' },
-          { permission: 'DUES_PAYMENT_ADD' },
-          { permission: 'DUES_REPORT_VIEW' },
-          { permission: 'REPORT_REGION_VIEW' },
-          { permission: 'NOTIFY_OWN_SCOPE' },
-        ],
-      },
-    },
-  });
-
-  // Ankara İl Başkanı için özel role oluştur
-  const ankaraProvinceId = provinceMap['Ankara'];
-  const ankaraIlBaskaniRole = await prisma.customRole.create({
-    data: {
-      name: 'ANKARA_IL_BASKANI',
-      description: 'Ankara İl Başkanı - Ankara ilindeki üyeleri yönetebilir',
-      isActive: true,
-      provinceId: ankaraProvinceId,
-      permissions: {
-        create: [
-          { permission: 'MEMBER_LIST_BY_PROVINCE' },
-          { permission: 'MEMBER_VIEW' },
-          { permission: 'MEMBER_CREATE_APPLICATION' },
-          { permission: 'MEMBER_APPROVE' },
-          { permission: 'MEMBER_REJECT' },
-          { permission: 'MEMBER_UPDATE' },
-          { permission: 'DUES_PAYMENT_ADD' },
-          { permission: 'DUES_REPORT_VIEW' },
-          { permission: 'REPORT_REGION_VIEW' },
-          { permission: 'NOTIFY_OWN_SCOPE' },
-        ],
-      },
-    },
-  });
-
-  // Bursa İl Başkanı kullanıcısı
-  const bursaIlBaskani = await prisma.user.create({
-    data: {
-      email: 'bursa.il.baskani@sendika.local',
-      passwordHash,
-      firstName: 'Mehmet',
-      lastName: 'Yılmaz',
-      customRoles: {
-        connect: { id: bursaIlBaskaniRole.id },
-      },
-    },
-  });
-
-  // Ankara İl Başkanı kullanıcısı
-  const ankaraIlBaskani = await prisma.user.create({
-    data: {
-      email: 'ankara.il.baskani@sendika.local',
-      passwordHash,
-      firstName: 'Ahmet',
-      lastName: 'Kaya',
-      customRoles: {
-        connect: { id: ankaraIlBaskaniRole.id },
-      },
-    },
-  });
-
-  // Bursa Mudanya İlçe Başkanı için özel role oluştur
-  const mudanyaDistrictId = districtMap['Bursa_Mudanya'];
-  const bursaMudanyaIlceBaskaniRole = await prisma.customRole.create({
-    data: {
-      name: 'BURSA_MUDANYA_ILCE_BASKANI',
-      description: 'Bursa Mudanya İlçe Başkanı - Mudanya ilçesindeki üyeleri yönetebilir',
-      isActive: true,
-      provinceId: bursaProvinceId,
-      districtId: mudanyaDistrictId,
-      permissions: {
-        create: [
-          { permission: 'MEMBER_LIST_BY_PROVINCE' },
-          { permission: 'MEMBER_VIEW' },
-          { permission: 'MEMBER_CREATE_APPLICATION' },
-          { permission: 'MEMBER_APPROVE' },
-          { permission: 'MEMBER_REJECT' },
-          { permission: 'MEMBER_UPDATE' },
-          { permission: 'DUES_PAYMENT_ADD' },
-          { permission: 'DUES_REPORT_VIEW' },
-          { permission: 'REPORT_REGION_VIEW' },
-          { permission: 'NOTIFY_OWN_SCOPE' },
-        ],
-      },
-    },
-  });
-
-  // Ankara Çankaya İlçe Başkanı için özel role oluştur
-  const cankayaDistrictId = districtMap['Ankara_Çankaya'];
-  const ankaraCankayaIlceBaskaniRole = await prisma.customRole.create({
-    data: {
-      name: 'ANKARA_CANKAYA_ILCE_BASKANI',
-      description: 'Ankara Çankaya İlçe Başkanı - Çankaya ilçesindeki üyeleri yönetebilir',
-      isActive: true,
-      provinceId: ankaraProvinceId,
-      districtId: cankayaDistrictId,
-      permissions: {
-        create: [
-          { permission: 'MEMBER_LIST_BY_PROVINCE' },
-          { permission: 'MEMBER_VIEW' },
-          { permission: 'MEMBER_CREATE_APPLICATION' },
-          { permission: 'MEMBER_APPROVE' },
-          { permission: 'MEMBER_REJECT' },
-          { permission: 'MEMBER_UPDATE' },
-          { permission: 'DUES_PAYMENT_ADD' },
-          { permission: 'DUES_REPORT_VIEW' },
-          { permission: 'REPORT_REGION_VIEW' },
-          { permission: 'NOTIFY_OWN_SCOPE' },
-        ],
-      },
-    },
-  });
-
-  // Bursa Mudanya İlçe Başkanı kullanıcısı
-  const bursaMudanyaIlceBaskani = await prisma.user.create({
-    data: {
-      email: 'bursa.mudanya.ilce.baskani@sendika.local',
-      passwordHash,
-      firstName: 'Ali',
-      lastName: 'Demir',
-      customRoles: {
-        connect: { id: bursaMudanyaIlceBaskaniRole.id },
-      },
-    },
-  });
-
-  // Ankara Çankaya İlçe Başkanı kullanıcısı
-  const ankaraCankayaIlceBaskani = await prisma.user.create({
-    data: {
-      email: 'ankara.cankaya.ilce.baskani@sendika.local',
-      passwordHash,
-      firstName: 'Zeynep',
-      lastName: 'Şahin',
-      customRoles: {
-        connect: { id: ankaraCankayaIlceBaskaniRole.id },
-      },
-    },
-  });
-
   // Kullanıcılar dizisi (UYE rolüne sahip kullanıcılar kaldırıldı)
-  const users: string[] = [adminUser.id, genelBaskan.id, ilBaskani.id, ilceTemsilcisi.id, bursaIlBaskani.id, ankaraIlBaskani.id, bursaMudanyaIlceBaskani.id, ankaraCankayaIlceBaskani.id];
+  const users: string[] = [adminUser.id, genelBaskan.id, ilBaskani.id, ilceTemsilcisi.id];
 
   // Province IDs array (üye oluşturma için kullanılacak)
   const provinceIds = Object.values(provinceMap);
@@ -706,20 +562,9 @@ async function main() {
   // 9. Üyeler ekle
   console.log('👤 Üyeler ekleniyor...');
   const memberIds: string[] = [];
-  const statuses: MemberStatus[] = [
-    MemberStatus.PENDING,
-    MemberStatus.ACTIVE,
-    MemberStatus.ACTIVE,
-    MemberStatus.ACTIVE,
-    MemberStatus.ACTIVE,
-    MemberStatus.ACTIVE,
-    MemberStatus.INACTIVE,
-    MemberStatus.REJECTED,
-    MemberStatus.REJECTED,
-  ];
   const sources: MemberSource[] = [
     MemberSource.DIRECT,
-    MemberSource.DIRECT,
+    MemberSource.OTHER,
   ];
 
   // Şu anki tarih
@@ -787,17 +632,52 @@ async function main() {
   memberRegistrationCounter++;
   console.log(`   - Özel üye: ${burcuMember.firstName} ${burcuMember.lastName} (Haziran 2025'te kayıt)`);
 
-  // Sadece 2 üye daha oluştur (toplam 3 üye)
-  for (let i = 0; i < 2; i++) {
+  // 99 üye daha oluştur (toplam 100 üye)
+  // Status dağılımı: ACTIVE %60, PENDING %15, INACTIVE %10, REJECTED %8, RESIGNED %4, EXPELLED %3
+  const totalMembersToCreate = 99;
+  const statusDistribution = [
+    { status: MemberStatus.ACTIVE, count: 60 },
+    { status: MemberStatus.PENDING, count: 15 },
+    { status: MemberStatus.INACTIVE, count: 10 },
+    { status: MemberStatus.REJECTED, count: 8 },
+    { status: MemberStatus.RESIGNED, count: 4 },
+    { status: MemberStatus.EXPELLED, count: 2 },
+  ];
+  
+  // Status listesi oluştur
+  const statusList: MemberStatus[] = [];
+  for (const dist of statusDistribution) {
+    for (let i = 0; i < dist.count; i++) {
+      statusList.push(dist.status);
+    }
+  }
+  // Listeyi karıştır
+  for (let i = statusList.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [statusList[i], statusList[j]] = [statusList[j], statusList[i]];
+  }
+
+  // Institution listesini önceden al (performans için)
+  const institutionsList = await prisma.institution.findMany({ take: 3 });
+  if (institutionsList.length === 0) {
+    console.error('⚠️  Institution bulunamadı! Lütfen önce institution oluşturun.');
+    return;
+  }
+
+  let createdCount = 0;
+  let skippedCount = 0;
+
+  for (let i = 0; i < totalMembersToCreate; i++) {
     const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
     const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
     
     // Aynı isimdeki Burcu Doğan'ı atla
     if (firstName === 'Burcu' && lastName === 'Doğan') {
+      skippedCount++;
       continue;
     }
     
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const status = statusList[i] || statusList[Math.floor(Math.random() * statusList.length)];
     const source = sources[Math.floor(Math.random() * sources.length)];
     
     const provinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
@@ -813,38 +693,75 @@ async function main() {
     if (districtsInProvince.length > 0) {
       districtId = districtsInProvince[Math.floor(Math.random() * districtsInProvince.length)].id;
     }
-    
 
-    // Gerçekçi kayıt tarihi: 6-12 ay önce (bazıları bu ay içinde onaylanmış olabilir)
-    const monthsAgo = 6 + Math.floor(Math.random() * 6); // 6-12 ay önce
+    // Gerçekçi kayıt tarihi: 1-24 ay önce arası rastgele
+    const monthsAgo = 1 + Math.floor(Math.random() * 24); // 1-24 ay önce
     const memberCreatedAt = new Date(now);
     memberCreatedAt.setMonth(memberCreatedAt.getMonth() - monthsAgo);
-    memberCreatedAt.setDate(1); // Ayın ilk günü
+    memberCreatedAt.setDate(1 + Math.floor(Math.random() * 28)); // Ayın rastgele bir günü
 
-    // %20 şansla bu ay içinde onaylanmış olabilir (bu ay gelen üye)
-    const isThisMonthNew = status === MemberStatus.ACTIVE && Math.random() < 0.2;
+    // Onay tarihi belirleme
     let approvedAt: Date | null = null;
+    let cancelledAt: Date | null = null;
+    let cancellationReason: string | null = null;
+    let cancelledByUserId: string | null = null;
     
     if (status === MemberStatus.ACTIVE) {
+      // Aktif üyeler için onay tarihi
+      const isThisMonthNew = Math.random() < 0.15; // %15 şansla bu ay içinde onaylanmış
       if (isThisMonthNew) {
         // Bu ay içinde onaylanmış
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth(); // 0-11
-        // Ayın son gününü kontrol et
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const thisMonthDay = 1 + Math.floor(Math.random() * Math.min(28, daysInMonth));
         approvedAt = new Date(currentYear, currentMonth, thisMonthDay);
-        // Gelecekteki tarih olmamalı
         if (approvedAt > now) {
-          approvedAt = new Date(now.getTime() - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000); // Bugünden 0-7 gün önce
+          approvedAt = new Date(now.getTime() - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000);
         }
       } else {
         // Geçmişte onaylanmış - kayıt tarihinden sonra ama bugünden önce
-        approvedAt = new Date(memberCreatedAt.getTime() + 7 * 24 * 60 * 60 * 1000); // Kayıttan 7 gün sonra onaylanmış
-        // Eğer gelecekteyse, bugünden önce bir tarih yap
+        const daysAfterCreation = 3 + Math.floor(Math.random() * 14); // 3-16 gün sonra
+        approvedAt = new Date(memberCreatedAt.getTime() + daysAfterCreation * 24 * 60 * 60 * 1000);
         if (approvedAt > now) {
-          approvedAt = new Date(now.getTime() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000); // Bugünden 0-30 gün önce
+          approvedAt = new Date(now.getTime() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000);
         }
+      }
+    } else if (status === MemberStatus.REJECTED) {
+      // Reddedilen üyeler için red tarihi
+      const daysAfterCreation = 3 + Math.floor(Math.random() * 10); // 3-12 gün sonra reddedilmiş
+      const rejectedAt = new Date(memberCreatedAt.getTime() + daysAfterCreation * 24 * 60 * 60 * 1000);
+      if (rejectedAt > now) {
+        approvedAt = null;
+      }
+    } else if (status === MemberStatus.RESIGNED || status === MemberStatus.EXPELLED || status === MemberStatus.INACTIVE) {
+      // İptal edilmiş üyeler için iptal tarihi
+      // Önce onaylanmış olmalı (eğer aktif olmuşsa)
+      const wasActive = Math.random() < 0.8; // %80 şansla önce aktif olmuş
+      if (wasActive) {
+        const daysAfterCreation = 3 + Math.floor(Math.random() * 14);
+        approvedAt = new Date(memberCreatedAt.getTime() + daysAfterCreation * 24 * 60 * 60 * 1000);
+        
+        // İptal tarihi onay tarihinden sonra
+        const monthsAfterApproval = 1 + Math.floor(Math.random() * 12); // 1-12 ay sonra iptal edilmiş
+        cancelledAt = new Date(approvedAt.getTime());
+        cancelledAt.setMonth(cancelledAt.getMonth() + monthsAfterApproval);
+        cancelledAt.setDate(1 + Math.floor(Math.random() * 28));
+        
+        if (cancelledAt > now) {
+          cancelledAt = new Date(now.getTime() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000);
+        }
+        
+        const cancellationReasons = [
+          'İstifa talebi',
+          'Üyelik aidatını ödememe',
+          'Sendika tüzüğüne aykırı davranış',
+          'Kendi isteği ile ayrılma',
+          'İşyerinden ayrılma',
+          'Üyelik şartlarını yerine getirememe',
+        ];
+        cancellationReason = cancellationReasons[Math.floor(Math.random() * cancellationReasons.length)];
+        cancelledByUserId = users[Math.floor(Math.random() * users.length)];
       }
     }
 
@@ -853,45 +770,45 @@ async function main() {
       ? allBranches[Math.floor(Math.random() * allBranches.length)].id
       : defaultBranchId;
 
-    // Institution seç (zorunlu) - institutions üyelerden önce oluşturuldu
-    const institutionsList = await prisma.institution.findMany({ take: 3 });
-    const institutionId = institutionsList.length > 0 
-      ? institutionsList[Math.floor(Math.random() * institutionsList.length)].id 
-      : null;
+    // Institution seç (zorunlu)
+    const institutionId = institutionsList[Math.floor(Math.random() * institutionsList.length)].id;
 
-    // Eğer institution yoksa, oluşturma işlemini atla
-    if (!institutionId) {
-      console.warn(`⚠️  Institution bulunamadı, üye ${firstName} ${lastName} atlanıyor`);
-      continue;
+    try {
+      const member = await prisma.member.create({
+        data: {
+          firstName,
+          lastName,
+          nationalId: generateNationalId(),
+          phone: generatePhone(),
+          email: generateEmail(firstName, lastName),
+          status,
+          source,
+          provinceId,
+          districtId,
+          branchId, // Zorunlu
+          registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
+          institutionId,
+          createdByUserId: users[Math.floor(Math.random() * users.length)],
+          approvedByUserId: status === MemberStatus.ACTIVE 
+            ? users[Math.floor(Math.random() * users.length)]
+            : (status === MemberStatus.REJECTED ? users[Math.floor(Math.random() * users.length)] : null),
+          approvedAt,
+          cancelledAt,
+          cancellationReason,
+          cancelledByUserId,
+          createdAt: memberCreatedAt,
+          updatedAt: cancelledAt || approvedAt || memberCreatedAt,
+        },
+      });
+      memberIds.push(member.id);
+      memberRegistrationCounter++;
+      createdCount++;
+    } catch (error) {
+      console.error(`   ⚠️  Üye ${firstName} ${lastName} oluşturulurken hata:`, error);
+      skippedCount++;
     }
-
-    const member = await prisma.member.create({
-      data: {
-        firstName,
-        lastName,
-        nationalId: generateNationalId(),
-        phone: generatePhone(),
-        email: generateEmail(firstName, lastName),
-        status,
-        source,
-        provinceId,
-        districtId,
-        branchId, // Zorunlu
-        registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
-        institutionId,
-        createdByUserId: users[Math.floor(Math.random() * users.length)],
-        approvedByUserId: status === MemberStatus.ACTIVE 
-          ? users[Math.floor(Math.random() * users.length)]
-          : null,
-        approvedAt,
-        createdAt: memberCreatedAt,
-        updatedAt: memberCreatedAt,
-      },
-    });
-    memberIds.push(member.id);
-    memberRegistrationCounter++;
   }
-  console.log(`   - 2 ek üye eklendi (toplam 3 üye)`);
+  console.log(`   - ${createdCount} üye eklendi (toplam ${memberIds.length} üye, ${skippedCount} atlandı)`);
 
   // Tüm diğer üye oluşturma döngüleri kaldırıldı - sadece 3 üye oluşturuluyor
 
@@ -967,8 +884,9 @@ async function main() {
   });
 
   if (allActiveMembers.length > 0) {
-    // Bu ay gelen üyeler: 1-2 üyeyi bu ay içinde onaylanmış olarak işaretle (3 üye için)
-    const thisMonthNewCount = Math.min(1 + Math.floor(Math.random() * 2), allActiveMembers.length);
+    // Bu ay gelen üyeler: Aktif üyelerin %10-15'i bu ay içinde onaylanmış olabilir
+    const thisMonthNewPercentage = 0.10 + Math.random() * 0.05; // %10-15
+    const thisMonthNewCount = Math.max(1, Math.floor(allActiveMembers.length * thisMonthNewPercentage));
     const thisMonthNewMembers = allActiveMembers.slice(0, thisMonthNewCount);
     
     const currentYear = now.getFullYear();
@@ -988,11 +906,12 @@ async function main() {
     }
     console.log(`   - ${thisMonthNewMembers.length} üye bu ay içinde onaylanmış olarak işaretlendi`);
 
-    // Bu ay iptal edilen üyeler: 0-1 üyeyi iptal et (3 üye için)
+    // Bu ay iptal edilen üyeler: Aktif üyelerin %2-5'i bu ay içinde iptal edilmiş olabilir
     const remainingMembers = allActiveMembers.slice(thisMonthNewCount);
     let thisMonthCancelledCount = 0;
     if (remainingMembers.length > 0) {
-      thisMonthCancelledCount = Math.min(Math.floor(Math.random() * 2), remainingMembers.length);
+      const thisMonthCancelledPercentage = 0.02 + Math.random() * 0.03; // %2-5
+      thisMonthCancelledCount = Math.max(0, Math.floor(remainingMembers.length * thisMonthCancelledPercentage));
       const thisMonthCancelledMembers = remainingMembers.slice(0, thisMonthCancelledCount);
       
       const cancellationReasons = [
@@ -1034,10 +953,11 @@ async function main() {
       console.log(`   - ${thisMonthCancelledMembers.length} üye bu ay içinde iptal edildi`);
     }
 
-    // Geçmiş aylarda iptal edilmiş üyeler: 0-1 üyeyi geçmiş aylarda iptal et (3 üye için)
+    // Geçmiş aylarda iptal edilmiş üyeler: Aktif üyelerin %5-10'u geçmiş aylarda iptal edilmiş olabilir
     const remainingForPastCancellation = allActiveMembers.slice(thisMonthNewCount + (remainingMembers.length > 0 ? thisMonthCancelledCount : 0));
     if (remainingForPastCancellation.length > 0) {
-      const pastCancelledCount = Math.min(Math.floor(Math.random() * 2), remainingForPastCancellation.length);
+      const pastCancelledPercentage = 0.05 + Math.random() * 0.05; // %5-10
+      const pastCancelledCount = Math.max(0, Math.floor(remainingForPastCancellation.length * pastCancelledPercentage));
       const pastCancelledMembers = remainingForPastCancellation.slice(0, pastCancelledCount);
       
       const cancellationReasons = [
@@ -1117,8 +1037,9 @@ async function main() {
   });
 
   if (cancelledMembers.length > 0) {
-    // 0-1 iptal edilmiş üyeyi yeniden üye yap (3 üye için)
-    const reRegisterCount = Math.min(Math.floor(Math.random() * 2), cancelledMembers.length);
+    // İptal edilmiş üyelerin %10-20'si yeniden üye olmuş olabilir
+    const reRegisterPercentage = 0.10 + Math.random() * 0.10; // %10-20
+    const reRegisterCount = Math.max(0, Math.min(Math.floor(cancelledMembers.length * reRegisterPercentage), cancelledMembers.length));
     const membersToReRegister = cancelledMembers.slice(0, reRegisterCount);
 
     for (const cancelledMember of membersToReRegister) {
@@ -2671,6 +2592,18 @@ Sendika Yönetimi
   }
   console.log(`   - ${membershipInfoOptions.length} üyelik bilgisi seçeneği eklendi`);
 
+  // 🔹 Üye Grubu
+  console.log('👥 Üye grupları ekleniyor...');
+  const memberGroups = [
+    { name: 'Normal Üye', description: 'Normal üye grubu', order: 1 },
+  ];
+  for (const group of memberGroups) {
+    await prisma.memberGroup.create({
+      data: group,
+    });
+  }
+  console.log(`   - ${memberGroups.length} üye grubu eklendi`);
+
   // 🔹 Meslek/Unvan (Profession)
   console.log('💼 Meslek/Unvan ekleniyor...');
   const professions = [
@@ -2707,12 +2640,228 @@ Sendika Yönetimi
 
   // 🔹 Kurumlar (Institutions) - Zaten üyelerden önce oluşturuldu (8.6. bölümünde)
 
+  // 🔹 300 Aktif Üye Oluştur (Tüm alanlar dolu)
+  console.log('👥 300 aktif üye oluşturuluyor (tüm alanlar dolu)...');
+  const allInstitutionsForNewMembers = await prisma.institution.findMany();
+  const allBranchesForNewMembers = await prisma.branch.findMany();
+  const allProvincesForNewMembers = await prisma.province.findMany();
+  const tevkifatCenterIdsForNewMembers = Object.values(tevkifatCenterMap);
+  const tevkifatTitleIdsForNewMembers = Object.values(tevkifatTitleMap);
+  const membershipInfoOptionsForNewMembers = await prisma.membershipInfoOption.findMany();
+  const memberGroupsForNewMembers = await prisma.memberGroup.findMany();
+  const professionIdsForNewMembers = Object.values(professionMap);
+  
+  if (allInstitutionsForNewMembers.length === 0 || allBranchesForNewMembers.length === 0) {
+    console.error('⚠️  Kurum veya şube bulunamadı! 300 aktif üye oluşturulamıyor.');
+  } else {
+    let newActiveMemberCount = 0;
+    let skippedNewMemberCount = 0;
+    
+    // Mevcut kayıt numarasını al
+    const lastMember = await prisma.member.findFirst({
+      orderBy: { registrationNumber: 'desc' },
+      select: { registrationNumber: true },
+    });
+    
+    let currentRegistrationCounter = memberRegistrationCounter;
+    if (lastMember?.registrationNumber) {
+      const lastNumber = lastMember.registrationNumber.replace('UYE-', '');
+      const lastNum = parseInt(lastNumber, 10);
+      if (!isNaN(lastNum)) {
+        currentRegistrationCounter = lastNum + 1;
+      }
+    }
+    
+    const dutyUnits = ['Acil Servis', 'Yoğun Bakım', 'Klinik', 'Poliklinik', 'Ameliyathane', 'Laboratuvar', 'Radyoloji', 'Eczane', 'Yönetim', 'Eğitim Birimi', 'Enfeksiyon Kontrolü', 'Hasta Bakım Hizmetleri'];
+    const staffTitleCodes = ['657-001', '657-002', '4B-001', '4B-002', '663-001', '663-002', '4924-001', '4924-002'];
+    const provinceNamesForAddress = Object.keys(provinceMap);
+    
+    for (let i = 0; i < 300; i++) {
+      try {
+        // İsim ve soyisim
+        const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+        const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+        
+        // TC Kimlik No (benzersiz olmalı)
+        let nationalId: string;
+        let isUnique = false;
+        let attempts = 0;
+        while (!isUnique && attempts < 10) {
+          nationalId = generateNationalId();
+          const existing = await prisma.member.findUnique({
+            where: { nationalId },
+            select: { id: true },
+          });
+          if (!existing) {
+            isUnique = true;
+          }
+          attempts++;
+        }
+        if (!isUnique) {
+          nationalId = `${generateNationalId()}_${Date.now()}_${i}`;
+        }
+        
+        // İl ve ilçe seç
+        const provinceId = provinceIds[Math.floor(Math.random() * provinceIds.length)];
+        const districtsInProvince = await prisma.district.findMany({
+          where: { provinceId },
+          select: { id: true },
+        });
+        const districtId = districtsInProvince.length > 0
+          ? districtsInProvince[Math.floor(Math.random() * districtsInProvince.length)].id
+          : undefined;
+        
+        // Kurum bilgileri
+        const institutionId = allInstitutionsForNewMembers[Math.floor(Math.random() * allInstitutionsForNewMembers.length)].id;
+        const branchId = allBranchesForNewMembers[Math.floor(Math.random() * allBranchesForNewMembers.length)].id;
+        
+        // Tevkifat bilgileri
+        const tevkifatCenterId = tevkifatCenterIdsForNewMembers.length > 0
+          ? tevkifatCenterIdsForNewMembers[i % tevkifatCenterIdsForNewMembers.length]
+          : null;
+        const tevkifatTitleId = tevkifatTitleIdsForNewMembers.length > 0
+          ? tevkifatTitleIdsForNewMembers[i % tevkifatTitleIdsForNewMembers.length]
+          : null;
+        
+        // Üyelik bilgileri
+        const membershipInfoOptionId = membershipInfoOptionsForNewMembers.length > 0
+          ? (() => {
+              const random = Math.random();
+              if (random < 0.8 && membershipInfoOptionsForNewMembers[0]) {
+                return membershipInfoOptionsForNewMembers[0].id; // Normal üye
+              } else if (random < 0.95 && membershipInfoOptionsForNewMembers[1]) {
+                return membershipInfoOptionsForNewMembers[1].id; // Fahri üye
+              } else if (membershipInfoOptionsForNewMembers[2]) {
+                return membershipInfoOptionsForNewMembers[2].id; // Onursal üye
+              }
+              return membershipInfoOptionsForNewMembers[0]?.id || null;
+            })()
+          : null;
+        
+        const memberGroupId = memberGroupsForNewMembers.length > 0
+          ? memberGroupsForNewMembers[0].id
+          : null;
+        
+        // Profesyon bilgisi
+        const professionId = professionIdsForNewMembers.length > 0
+          ? professionIdsForNewMembers[i % professionIdsForNewMembers.length]
+          : null;
+        
+        // Kişisel bilgiler
+        const gender = generateGender(firstName);
+        const birthDate = generateBirthDate();
+        const motherName = generateParentName();
+        const fatherName = generateParentName();
+        const birthplace = generateBirthplace();
+        const educationStatus = generateEducationStatus();
+        
+        // Kurum detay bilgileri
+        const institutionProvinceId = allProvincesForNewMembers.length > 0
+          ? allProvincesForNewMembers[i % allProvincesForNewMembers.length].id
+          : null;
+        
+        let institutionDistrictId: string | null = null;
+        if (institutionProvinceId) {
+          const instDistricts = await prisma.district.findMany({
+            where: { provinceId: institutionProvinceId },
+            select: { id: true },
+          });
+          if (instDistricts.length > 0) {
+            institutionDistrictId = instDistricts[i % instDistricts.length].id;
+          }
+        }
+        
+        const dutyUnit = dutyUnits[i % dutyUnits.length];
+        const institutionAddress = `${provinceNamesForAddress[i % provinceNamesForAddress.length]} Merkez, Sağlık Bakanlığı`;
+        const institutionRegNo = `KUR-${String(currentRegistrationCounter + i).padStart(6, '0')}`;
+        const staffTitleCode = staffTitleCodes[i % staffTitleCodes.length];
+        
+        // Tarih bilgileri
+        const monthsAgo = 1 + Math.floor(Math.random() * 24); // 1-24 ay önce
+        const memberCreatedAt = new Date(now);
+        memberCreatedAt.setMonth(memberCreatedAt.getMonth() - monthsAgo);
+        memberCreatedAt.setDate(1 + Math.floor(Math.random() * 28));
+        
+        // Onay tarihi
+        const daysAfterCreation = 3 + Math.floor(Math.random() * 14);
+        const approvedAt = new Date(memberCreatedAt.getTime() + daysAfterCreation * 24 * 60 * 60 * 1000);
+        if (approvedAt > now) {
+          approvedAt.setTime(now.getTime() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000);
+        }
+        
+        // Yönetim kurulu karar tarihi
+        const boardDecisionDate = generateBoardDecisionDate(memberCreatedAt);
+        const boardDecisionBookNo = generateBoardDecisionBookNo();
+        
+        // Kullanıcı bilgileri
+        const createdByUserId = users[Math.floor(Math.random() * users.length)];
+        const approvedByUserId = users[Math.floor(Math.random() * users.length)];
+        
+        // Kayıt numarası (benzersiz olmalı)
+        const registrationNumber = `UYE-${String(currentRegistrationCounter + i).padStart(5, '0')}`;
+        
+        // Üye oluştur
+        const newActiveMember = await prisma.member.create({
+          data: {
+            firstName,
+            lastName,
+            nationalId: nationalId!,
+            phone: generatePhone(),
+            email: generateEmail(firstName, lastName),
+            status: MemberStatus.ACTIVE,
+            source: MemberSource.DIRECT,
+            provinceId,
+            districtId,
+            branchId,
+            registrationNumber,
+            institutionId,
+            tevkifatCenterId,
+            tevkifatTitleId,
+            membershipInfoOptionId,
+            memberGroupId,
+            boardDecisionDate,
+            boardDecisionBookNo,
+            motherName,
+            fatherName,
+            birthDate,
+            birthplace,
+            gender,
+            educationStatus,
+            professionId,
+            dutyUnit,
+            institutionAddress,
+            institutionProvinceId,
+            institutionDistrictId,
+            institutionRegNo,
+            staffTitleCode,
+            createdByUserId,
+            approvedByUserId,
+            approvedAt,
+            createdAt: memberCreatedAt,
+            updatedAt: approvedAt,
+            isActive: true,
+          },
+        });
+        
+        memberIds.push(newActiveMember.id);
+        newActiveMemberCount++;
+      } catch (error) {
+        console.error(`   ⚠️  ${i + 1}. aktif üye oluşturulurken hata:`, error);
+        skippedNewMemberCount++;
+      }
+    }
+    
+    memberRegistrationCounter = currentRegistrationCounter + 300;
+    console.log(`   - ${newActiveMemberCount} aktif üye eklendi (${skippedNewMemberCount} atlandı)`);
+    console.log(`   - Toplam üye sayısı: ${memberIds.length}`);
+  }
+
   // 🔹 Üyelere ek alanları ekle (institutionId, tevkifatCenterId, vs.)
   console.log('👤 Üyelere ek alanlar ekleniyor...');
   const allMembersForUpdate = await prisma.member.findMany();
   const genders: Gender[] = [Gender.MALE, Gender.FEMALE];
   const educationStatuses: EducationStatus[] = [EducationStatus.PRIMARY, EducationStatus.HIGH_SCHOOL, EducationStatus.COLLEGE];
-  const institutionsList = await prisma.institution.findMany();
+  const allInstitutions = await prisma.institution.findMany();
   const tevkifatCenterIds = Object.values(tevkifatCenterMap);
   const provinceNames = Object.keys(provinceMap);
   const membershipInfoOptionsList = await prisma.membershipInfoOption.findMany();
@@ -2745,8 +2894,8 @@ Sendika Yönetimi
     };
 
     // institutionId atanmamışsa ekle
-    if (!member.institutionId && institutionsList.length > 0) {
-      updateData.institutionId = institutionsList[i % institutionsList.length].id;
+    if (!member.institutionId && allInstitutions.length > 0) {
+      updateData.institutionId = allInstitutions[i % allInstitutions.length].id;
     }
     
     // tevkifatCenterId her zaman atanmalı (boş olmamalı)
@@ -2874,25 +3023,19 @@ Sendika Yönetimi
           paymentYear -= 1;
         }
 
-        // Ödeme türü seç (TEVKIFAT %60, ELDEN %30, HAVALE %10)
-        const paymentTypeRandom = Math.random();
+        // Ödeme türü sadece TEVKIFAT olabilir
         let paymentType: PaymentType;
         let tevkifatCenterId: string | null = null;
         let description: string | null = null;
 
-        if (paymentTypeRandom < 0.6 && member.tevkifatCenterId) {
-          // Tevkifat ödemesi
+        // Tevkifat ödemesi (sadece tevkifatCenterId varsa)
+        if (member.tevkifatCenterId) {
           paymentType = PaymentType.TEVKIFAT;
           tevkifatCenterId = member.tevkifatCenterId;
           description = `${paymentMonth}/${paymentYear} tevkifat ödemesi`;
-        } else if (paymentTypeRandom < 0.9) {
-          // Elden ödeme
-          paymentType = PaymentType.ELDEN;
-          description = `${paymentMonth}/${paymentYear} elden ödeme`;
         } else {
-          // Havale ödemesi
-          paymentType = PaymentType.HAVALE;
-          description = `${paymentMonth}/${paymentYear} havale/EFT ödemesi`;
+          // Eğer üyenin tevkifatCenterId'si yoksa bu ödemeyi atla
+          continue;
         }
 
         // Tutar (seed için sıfırlandı)
@@ -2936,12 +3079,9 @@ Sendika Yönetimi
       });
     }
 
-    console.log(`   - ${payments.length} ödeme kaydı eklendi`);
+    console.log(`   - ${payments.length} ödeme kaydı eklendi (tümü tevkifat)`);
     console.log(`   - Onaylı: ${payments.filter(p => p.isApproved).length}`);
     console.log(`   - Onaysız: ${payments.filter(p => !p.isApproved).length}`);
-    console.log(`   - Tevkifat: ${payments.filter(p => p.paymentType === PaymentType.TEVKIFAT).length}`);
-    console.log(`   - Elden: ${payments.filter(p => p.paymentType === PaymentType.ELDEN).length}`);
-    console.log(`   - Havale: ${payments.filter(p => p.paymentType === PaymentType.HAVALE).length}`);
 
     // 🔹 Tevkifat Dosyaları Oluştur (Son Tevkifat Ayı için)
     console.log('📁 Tevkifat dosyaları oluşturuluyor...');

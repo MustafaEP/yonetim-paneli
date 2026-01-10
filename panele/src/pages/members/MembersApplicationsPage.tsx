@@ -496,7 +496,11 @@ const MembersApplicationsPage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ pb: 4 }}>
+    <Box
+      sx={{
+        pb: 4,
+      }}
+    >
       {/* Modern Başlık Bölümü */}
       <Box
         sx={{
@@ -551,6 +555,7 @@ const MembersApplicationsPage: React.FC = () => {
                     color: theme.palette.text.primary,
                     mb: 0.5,
                     letterSpacing: '-0.02em',
+                    textAlign: 'left',
                   }}
                 >
                   Üye Başvuruları
@@ -561,6 +566,7 @@ const MembersApplicationsPage: React.FC = () => {
                     color: theme.palette.text.secondary,
                     fontSize: { xs: '0.9rem', sm: '1rem' },
                     fontWeight: 500,
+                    textAlign: 'left',
                   }}
                 >
                   Başvuruları yönetin, onaylayın ve takip edin
@@ -653,10 +659,10 @@ const MembersApplicationsPage: React.FC = () => {
               <FilterListIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
             </Box>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5, textAlign: 'left' }}>
                 Filtrele ve Ara
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left' }}>
                 Başvuruları hızlıca bulun ve filtreleyin
               </Typography>
             </Box>
@@ -824,6 +830,8 @@ const MembersApplicationsPage: React.FC = () => {
               '& .MuiDataGrid-cell': {
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
                 py: 2,
+                display: 'flex',
+                alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
                 background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
@@ -831,6 +839,9 @@ const MembersApplicationsPage: React.FC = () => {
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
+              },
+              '& .MuiDataGrid-columnHeaderTitleContainer': {
+                justifyContent: 'center',
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,

@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Param,
   Query,
@@ -15,6 +16,7 @@ import {
   CreateProvinceDto,
   CreateDistrictDto,
   AssignUserScopeDto,
+  UpdateUserScopeDto,
   CreateBranchDto,
   UpdateBranchDto,
   DeleteBranchDto,
@@ -135,8 +137,7 @@ export class RegionsController {
   @Get('user-scope/:userId')
   @ApiOperation({ summary: 'Kullanıcı scope bilgilerini getir', description: 'Kullanıcının atanmış scope bilgilerini getirir' })
   @ApiParam({ name: 'userId', description: 'Kullanıcı ID', example: 'user-uuid-123' })
-  @ApiResponse({ status: 200, description: 'Kullanıcı scope bilgileri' })
-  @ApiResponse({ status: 404, description: 'Kullanıcı veya scope bulunamadı' })
+  @ApiResponse({ status: 200, description: 'Kullanıcı scope bilgileri (array)' })
   @ApiResponse({ status: 403, description: 'Bu kullanıcının scope bilgilerini görme yetkiniz yok' })
   async getUserScope(
     @Param('userId') userId: string,
@@ -154,6 +155,32 @@ export class RegionsController {
     }
     
     return this.regionsService.getUserScope(userId);
+  }
+
+  @Permissions(Permission.BRANCH_MANAGE)
+  @Patch('user-scope/:scopeId')
+  @ApiOperation({ summary: 'Kullanıcı scope\'unu güncelle', description: 'Belirtilen scope kaydını günceller' })
+  @ApiParam({ name: 'scopeId', description: 'Scope ID', example: 'scope-uuid-123' })
+  @ApiBody({ type: UpdateUserScopeDto })
+  @ApiResponse({ status: 200, description: 'Scope başarıyla güncellendi' })
+  @ApiResponse({ status: 404, description: 'Scope bulunamadı' })
+  @ApiResponse({ status: 400, description: 'Geçersiz scope bilgisi veya duplicate scope' })
+  async updateUserScope(
+    @Param('scopeId') scopeId: string,
+    @Body() dto: UpdateUserScopeDto,
+  ) {
+    return this.regionsService.updateUserScope(scopeId, dto);
+  }
+
+  @Permissions(Permission.BRANCH_MANAGE)
+  @Delete('user-scope/:scopeId')
+  @ApiOperation({ summary: 'Kullanıcı scope\'unu sil', description: 'Belirtilen scope kaydını siler' })
+  @ApiParam({ name: 'scopeId', description: 'Scope ID', example: 'scope-uuid-123' })
+  @ApiResponse({ status: 200, description: 'Scope başarıyla silindi' })
+  @ApiResponse({ status: 404, description: 'Scope bulunamadı' })
+  async deleteUserScope(@Param('scopeId') scopeId: string) {
+    await this.regionsService.deleteUserScope(scopeId);
+    return { message: 'Scope başarıyla silindi' };
   }
 
   // -------- BRANCH --------
@@ -242,9 +269,15 @@ export class RegionsController {
 
   // -------- INSTITUTION --------
 
-  @Permissions(Permission.INSTITUTION_LIST)
+  // Kurum listesi: INSTITUTION_LIST veya MEMBER_CREATE_APPLICATION veya MEMBER_UPDATE izni yeterli
+  // (Üye kayıt/güncelleme sayfalarında kurum seçimi için)
+  @Permissions(
+    Permission.INSTITUTION_LIST,
+    Permission.MEMBER_CREATE_APPLICATION,
+    Permission.MEMBER_UPDATE,
+  )
   @Get('institutions')
-  @ApiOperation({ summary: 'Kurumları listele', description: 'Tüm kurumları veya filtrelenmiş listeyi getirir' })
+  @ApiOperation({ summary: 'Kurumları listele', description: 'Tüm kurumları veya filtrelenmiş listeyi getirir. Üye kayıt/güncelleme için MEMBER_CREATE_APPLICATION veya MEMBER_UPDATE izni de yeterlidir.' })
   @ApiQuery({ name: 'provinceId', required: false, description: 'İl ID (filtreleme için)', example: 'province-uuid-123' })
   @ApiQuery({ name: 'districtId', required: false, description: 'İlçe ID (filtreleme için)', example: 'district-uuid-456' })
   @ApiQuery({ name: 'isActive', required: false, description: 'Aktif mi?', example: true, type: Boolean })

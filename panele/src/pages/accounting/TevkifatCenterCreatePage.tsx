@@ -13,6 +13,11 @@ import {
   useTheme,
   alpha,
   Paper,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  FormHelperText,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
@@ -28,6 +33,7 @@ import {
   type UpdateTevkifatCenterDto,
   type TevkifatCenter,
 } from '../../api/accountingApi';
+import { getProvinces, getDistricts, type Province, type District } from '../../api/regionsApi';
 
 const TevkifatCenterCreatePage: React.FC = () => {
   const theme = useTheme();
@@ -43,33 +49,63 @@ const TevkifatCenterCreatePage: React.FC = () => {
   const [center, setCenter] = useState<TevkifatCenter | null>(null);
   const [form, setForm] = useState<CreateTevkifatCenterDto>({
     name: '',
-    title: '',
-    code: '',
-    description: '',
-    address: '',
+    provinceId: undefined,
+    districtId: undefined,
   });
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
 
   const canManage = hasPermission('ACCOUNTING_VIEW'); // ACCOUNTING_VIEW yetkisi yeterli
 
   useEffect(() => {
-    if (canManage && isEditMode && id) {
-      loadCenter(id);
+    if (canManage) {
+      loadProvinces();
+      if (isEditMode && id) {
+        loadCenter(id);
+      }
     }
   }, [canManage, isEditMode, id]);
+
+  const loadProvinces = async () => {
+    try {
+      const data = await getProvinces();
+      setProvinces(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('İller alınırken hata:', e);
+      setProvinces([]);
+    }
+  };
+
+  const loadDistrictsForProvince = async (provinceId?: string) => {
+    if (!provinceId) {
+      setDistricts([]);
+      return;
+    }
+    try {
+      const data = await getDistricts(provinceId);
+      setDistricts(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('İlçeler alınırken hata:', e);
+      setDistricts([]);
+    }
+  };
 
   const loadCenter = async (centerId: string) => {
     setLoading(true);
     try {
       const data = await getTevkifatCenterById(centerId);
       setCenter(data);
-      // Düzenleme modunda sadece ad set edilir
+      // Düzenleme modunda tüm alanlar set edilir
       setForm({
         name: data.name,
-        title: '',
-        code: '',
-        description: '',
-        address: '',
+        provinceId: data.provinceId || undefined,
+        districtId: data.districtId || undefined,
       });
+      
+      // İl seçilmişse ilçeleri yükle
+      if (data.provinceId) {
+        await loadDistrictsForProvince(data.provinceId);
+      }
     } catch (e: any) {
       console.error('Tevkifat merkezi yüklenirken hata:', e);
       toast.showError('Tevkifat merkezi yüklenirken bir hata oluştu');
@@ -91,9 +127,11 @@ const TevkifatCenterCreatePage: React.FC = () => {
 
     try {
       if (isEditMode && id) {
-        // Düzenleme modunda sadece ad gönderilir
+        // Düzenleme modunda tüm alanlar gönderilir
         const payload: UpdateTevkifatCenterDto = {
           name: form.name.trim(),
+          provinceId: form.provinceId || null,
+          districtId: form.districtId || null,
         };
         await updateTevkifatCenter(id, payload);
         toast.showSuccess('Tevkifat merkezi başarıyla güncellendi');
@@ -102,10 +140,8 @@ const TevkifatCenterCreatePage: React.FC = () => {
         // Oluşturma modunda tüm alanlar gönderilir
         const payload: CreateTevkifatCenterDto = {
           name: form.name.trim(),
-          title: form.title?.trim() || undefined,
-          code: form.code?.trim() || undefined,
-          description: form.description?.trim() || undefined,
-          address: form.address?.trim() || undefined,
+          provinceId: form.provinceId,
+          districtId: form.districtId,
         };
         const created = await createTevkifatCenter(payload);
         toast.showSuccess('Tevkifat merkezi başarıyla oluşturuldu');
@@ -117,6 +153,22 @@ const TevkifatCenterCreatePage: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleProvinceChange = (provinceId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      provinceId: provinceId || undefined,
+      districtId: undefined, // İl değiştiğinde ilçe sıfırlanır
+    }));
+    loadDistrictsForProvince(provinceId);
+  };
+
+  const handleDistrictChange = (districtId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      districtId: districtId || undefined,
+    }));
   };
 
   if (!canManage) {
@@ -303,89 +355,67 @@ const TevkifatCenterCreatePage: React.FC = () => {
                 />
               </Grid>
 
-              {!isEditMode && (
-                <>
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Tevkifat Ünvanı (Opsiyonel)"
-                      value={form.title || ''}
-                      onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                      fullWidth
-                      helperText="Tevkifat merkezi ünvanı"
-                      sx={{ 
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 2.5,
-                          transition: 'all 0.3s ease',
-                          '&.Mui-focused': {
-                            boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
-                          },
-                        },
-                      }}
-                    />
-                  </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="province-label">İl (Opsiyonel)</InputLabel>
+                  <Select
+                    labelId="province-label"
+                    label="İl (Opsiyonel)"
+                    value={form.provinceId || ''}
+                    onChange={(e) => handleProvinceChange(e.target.value)}
+                    sx={{ 
+                      borderRadius: 2.5,
+                      transition: 'all 0.3s ease',
+                      '&.Mui-focused': {
+                        boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      },
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Seçiniz</em>
+                    </MenuItem>
+                    {provinces.map((province) => (
+                      <MenuItem key={province.id} value={province.id}>
+                        {province.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>Tevkifat merkezini bir ile bağlayabilirsiniz</FormHelperText>
+                </FormControl>
+              </Grid>
 
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      label="Kod (Opsiyonel)"
-                      value={form.code || ''}
-                      onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
-                      fullWidth
-                      helperText="Benzersiz bir kod girebilirsiniz"
-                      sx={{ 
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 2.5,
-                          transition: 'all 0.3s ease',
-                          '&.Mui-focused': {
-                            boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
-                          },
-                        },
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Adres"
-                      value={form.address || ''}
-                      onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-                      fullWidth
-                      multiline
-                      rows={3}
-                      helperText="Tevkifat merkezi adresi"
-                      sx={{ 
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 2.5,
-                          transition: 'all 0.3s ease',
-                          '&.Mui-focused': {
-                            boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
-                          },
-                        },
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Açıklama"
-                      value={form.description || ''}
-                      onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                      fullWidth
-                      multiline
-                      rows={4}
-                      helperText="Tevkifat merkezi hakkında açıklama"
-                      sx={{ 
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 2.5,
-                          transition: 'all 0.3s ease',
-                          '&.Mui-focused': {
-                            boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
-                          },
-                        },
-                      }}
-                    />
-                  </Grid>
-                </>
-              )}
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth disabled={!form.provinceId}>
+                  <InputLabel id="district-label">İlçe (Opsiyonel)</InputLabel>
+                  <Select
+                    labelId="district-label"
+                    label="İlçe (Opsiyonel)"
+                    value={form.districtId || ''}
+                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    sx={{ 
+                      borderRadius: 2.5,
+                      transition: 'all 0.3s ease',
+                      '&.Mui-focused': {
+                        boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      },
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Seçiniz</em>
+                    </MenuItem>
+                    {districts.map((district) => (
+                      <MenuItem key={district.id} value={district.id}>
+                        {district.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {form.provinceId 
+                      ? 'Tevkifat merkezini bir ilçeye bağlayabilirsiniz' 
+                      : 'İlçe seçmek için önce bir il seçmelisiniz'}
+                  </FormHelperText>
+                </FormControl>
+              </Grid>
 
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>

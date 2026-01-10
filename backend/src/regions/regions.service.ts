@@ -4,6 +4,7 @@ import {
   CreateProvinceDto,
   CreateDistrictDto,
   AssignUserScopeDto,
+  UpdateUserScopeDto,
   CreateBranchDto,
   UpdateBranchDto,
   AssignBranchPresidentDto,
@@ -129,46 +130,188 @@ export class RegionsService {
 
   // ---------- USER SCOPE ----------
   async assignUserScope(dto: AssignUserScopeDto) {
-    // En az bir scope alanı dolu mu kontrol edebilirsin, şimdilik opsiyonel bırakıyorum
-
-    const existing = await this.prisma.userScope.findFirst({
-      where: { userId: dto.userId },
-    });
-
-    const data = {
-      provinceId: dto.provinceId || null,
-      districtId: dto.districtId || null,
-    };
-
-    if (existing) {
-      return this.prisma.userScope.update({
-        where: { id: existing.id },
-        data,
-      });
+    // En az bir scope alanı dolu olmalı
+    if (!dto.provinceId && !dto.districtId) {
+      throw new BadRequestException('En az bir yetki alanı (il veya ilçe) seçmelisiniz.');
     }
 
+    // İlçe seçildiyse il de seçilmiş olmalı
+    if (dto.districtId && !dto.provinceId) {
+      throw new BadRequestException('İlçe seçmek için önce il seçmelisiniz.');
+    }
+
+    // Kullanıcının var olduğunu kontrol et
+    const user = await this.prisma.user.findUnique({
+      where: { id: dto.userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    // İl varsa kontrol et
+    if (dto.provinceId) {
+      const province = await this.prisma.province.findUnique({
+        where: { id: dto.provinceId },
+      });
+      if (!province) {
+        throw new NotFoundException('İl bulunamadı');
+      }
+    }
+
+    // İlçe varsa kontrol et
+    if (dto.districtId) {
+      const district = await this.prisma.district.findUnique({
+        where: { id: dto.districtId },
+      });
+      if (!district) {
+        throw new NotFoundException('İlçe bulunamadı');
+      }
+      // İlçenin seçili ile ait olduğunu kontrol et
+      if (dto.provinceId && district.provinceId !== dto.provinceId) {
+        throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil');
+      }
+    }
+
+    // Duplicate scope kontrolü: Aynı scope zaten var mı? (soft delete edilmemiş olanlar)
+    const normalizedProvinceId = dto.provinceId && dto.provinceId.trim() !== '' ? dto.provinceId : null;
+    const normalizedDistrictId = dto.districtId && dto.districtId.trim() !== '' ? dto.districtId : null;
+
+    const existingScope = await this.prisma.userScope.findFirst({
+      where: {
+        userId: dto.userId,
+        provinceId: normalizedProvinceId,
+        districtId: normalizedDistrictId,
+        deletedAt: null, // Soft delete edilmemiş olanları kontrol et
+      },
+    });
+
+    if (existingScope) {
+      throw new BadRequestException('Bu kullanıcıya aynı scope zaten atanmış.');
+    }
+
+    // Her zaman yeni scope oluştur (mevcut scope'ları güncelleme)
     return this.prisma.userScope.create({
       data: {
         userId: dto.userId,
-        ...data,
+        provinceId: normalizedProvinceId,
+        districtId: normalizedDistrictId,
+      },
+      include: {
+        province: true,
+        district: true,
+      },
+    });
+  }
+
+  async updateUserScope(scopeId: string, dto: UpdateUserScopeDto) {
+    const scope = await this.prisma.userScope.findUnique({
+      where: { id: scopeId },
+    });
+
+    if (!scope) {
+      throw new NotFoundException('Scope bulunamadı');
+    }
+
+    // En az bir scope alanı dolu olmalı
+    if (!dto.provinceId && !dto.districtId) {
+      throw new BadRequestException('En az bir yetki alanı (il veya ilçe) seçmelisiniz.');
+    }
+
+    // İlçe seçildiyse il de seçilmiş olmalı
+    if (dto.districtId && !dto.provinceId) {
+      throw new BadRequestException('İlçe seçmek için önce il seçmelisiniz.');
+    }
+
+    // İl varsa kontrol et
+    if (dto.provinceId) {
+      const province = await this.prisma.province.findUnique({
+        where: { id: dto.provinceId },
+      });
+      if (!province) {
+        throw new NotFoundException('İl bulunamadı');
+      }
+    }
+
+    // İlçe varsa kontrol et
+    if (dto.districtId) {
+      const district = await this.prisma.district.findUnique({
+        where: { id: dto.districtId },
+      });
+      if (!district) {
+        throw new NotFoundException('İlçe bulunamadı');
+      }
+      // İlçenin seçili ile ait olduğunu kontrol et
+      if (dto.provinceId && district.provinceId !== dto.provinceId) {
+        throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil');
+      }
+    }
+
+    // Duplicate scope kontrolü: Aynı scope başka bir kayıtta var mı? (mevcut kayıt hariç, soft delete edilmemiş)
+    const normalizedProvinceId = dto.provinceId && dto.provinceId.trim() !== '' ? dto.provinceId : null;
+    const normalizedDistrictId = dto.districtId && dto.districtId.trim() !== '' ? dto.districtId : null;
+
+    const existingScope = await this.prisma.userScope.findFirst({
+      where: {
+        userId: scope.userId,
+        provinceId: normalizedProvinceId,
+        districtId: normalizedDistrictId,
+        id: { not: scopeId }, // Mevcut kayıt hariç
+        deletedAt: null, // Soft delete edilmemiş olanları kontrol et
+      },
+    });
+
+    if (existingScope) {
+      throw new BadRequestException('Bu kullanıcıya aynı scope zaten atanmış.');
+    }
+
+    return this.prisma.userScope.update({
+      where: { id: scopeId },
+      data: {
+        provinceId: normalizedProvinceId,
+        districtId: normalizedDistrictId,
+      },
+      include: {
+        province: true,
+        district: true,
+      },
+    });
+  }
+
+  async deleteUserScope(scopeId: string) {
+    const scope = await this.prisma.userScope.findFirst({
+      where: { 
+        id: scopeId,
+        deletedAt: null, // Soft delete edilmemiş olanları kontrol et
+      },
+    });
+
+    if (!scope) {
+      throw new NotFoundException('Scope bulunamadı');
+    }
+
+    // Soft delete
+    await this.prisma.userScope.update({
+      where: { id: scopeId },
+      data: {
+        deletedAt: new Date(),
       },
     });
   }
 
   async getUserScope(userId: string) {
-    const scope = await this.prisma.userScope.findFirst({
-      where: { userId },
+    const scopes = await this.prisma.userScope.findMany({
+      where: { 
+        userId,
+        deletedAt: null, // Sadece soft delete edilmemiş scope'ları getir
+      },
       include: {
         province: true,
         district: true,
       },
     });
 
-    if (!scope) {
-      throw new NotFoundException('Kullanıcı için scope kaydı bulunamadı');
-    }
-
-    return scope;
+    return scopes;
   }
 
   // ---------- BRANCH ----------
