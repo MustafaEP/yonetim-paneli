@@ -19,19 +19,15 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PaymentIcon from '@mui/icons-material/Payment';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
-import EditIcon from '@mui/icons-material/Edit';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import {
   getPaymentById,
-  approvePayment,
-  deletePayment,
   type MemberPayment,
   type PaymentType,
 } from '../../api/paymentsApi';
+import { httpClient } from '../../api/httpClient';
 
 const PaymentDetailPage: React.FC = () => {
   const theme = useTheme();
@@ -42,11 +38,8 @@ const PaymentDetailPage: React.FC = () => {
 
   const [payment, setPayment] = useState<MemberPayment | null>(null);
   const [loading, setLoading] = useState(true);
-  const [approving, setApproving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
 
   const canView = hasPermission('MEMBER_PAYMENT_VIEW');
-  const canApprove = hasPermission('MEMBER_PAYMENT_APPROVE');
 
   useEffect(() => {
     if (id && canView) {
@@ -68,38 +61,6 @@ const PaymentDetailPage: React.FC = () => {
     }
   };
 
-  const handleApprove = async () => {
-    if (!payment || !id) return;
-    setApproving(true);
-    try {
-      await approvePayment(id);
-      toast.showSuccess('Ödeme başarıyla onaylandı');
-      loadPayment();
-    } catch (e: any) {
-      console.error('Ödeme onaylanırken hata:', e);
-      toast.showError(e.response?.data?.message || 'Ödeme onaylanırken bir hata oluştu');
-    } finally {
-      setApproving(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!payment || !id) return;
-    if (!window.confirm('Bu ödemeyi silmek istediğinizden emin misiniz?')) {
-      return;
-    }
-    setRejecting(true);
-    try {
-      await deletePayment(id);
-      toast.showSuccess('Ödeme başarıyla silindi');
-      navigate('/payments');
-    } catch (e: any) {
-      console.error('Ödeme silinirken hata:', e);
-      toast.showError(e.response?.data?.message || 'Ödeme silinirken bir hata oluştu');
-    } finally {
-      setRejecting(false);
-    }
-  };
 
   const monthNames = [
     'Ocak',
@@ -147,69 +108,139 @@ const PaymentDetailPage: React.FC = () => {
   }
 
   return (
-    <Box>
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: (theme) => 
+        theme.palette.mode === 'light' 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
+          : theme.palette.background.default,
+      pb: 4,
+    }}>
       <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/payments')}
-          sx={{ mb: 2 }}
+          sx={{ 
+            mb: 2,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 3,
+            py: 1,
+          }}
         >
           Geri Dön
         </Button>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 2,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              <PaymentIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-            </Box>
-            <Box>
-              <Typography
-                variant="h4"
+      </Box>
+
+      {/* Modern Header Card */}
+      <Card
+        elevation={0}
+        sx={{
+          mb: 3,
+          borderRadius: 4,
+          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+          color: '#fff',
+          overflow: 'hidden',
+          position: 'relative',
+          border: 'none',
+          boxShadow: `0 12px 40px ${alpha(theme.palette.primary.main, 0.35)}`,
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            borderRadius: 4,
+            padding: '2px',
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
+            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+            WebkitMaskComposite: 'xor',
+            maskComposite: 'exclude',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: -100,
+            right: -100,
+            width: 300,
+            height: 300,
+            borderRadius: '50%',
+            background: alpha('#fff', 0.08),
+          }}
+        />
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: -50,
+            left: -50,
+            width: 200,
+            height: 200,
+            borderRadius: '50%',
+            background: alpha('#fff', 0.05),
+          }}
+        />
+        
+        <Box sx={{ p: { xs: 2.5, sm: 4 }, position: 'relative', zIndex: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: { xs: 2, sm: 3 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
                 sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                  color: theme.palette.text.primary,
-                  mb: 0.5,
+                  width: { xs: 56, sm: 64 },
+                  height: { xs: 56, sm: 64 },
+                  borderRadius: 3,
+                  background: alpha('#fff', 0.2),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha('#000', 0.25)}`,
                 }}
               >
-                Ödeme Detayı
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                }}
-              >
-                {payment.member
-                  ? `${payment.member.firstName} ${payment.member.lastName}`
-                  : 'Üye bilgisi yok'}
-              </Typography>
+                <PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                    mb: 0.5,
+                  }}
+                >
+                  Ödeme Detayı
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    opacity: 0.9,
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                  }}
+                >
+                  {payment.member?.firstName && payment.member?.lastName
+                    ? `${payment.member.firstName} ${payment.member.lastName}`
+                    : payment.createdByUser
+                    ? `${payment.createdByUser.firstName} ${payment.createdByUser.lastName}`
+                    : 'Üye bilgisi yok'}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Chip
-              label={payment.isApproved ? 'Onaylandı' : 'Onay Bekliyor'}
-              color={payment.isApproved ? 'success' : 'warning'}
-            />
-            <Chip
-              label={paymentTypeLabels[payment.paymentType]}
-              color={payment.paymentType === 'TEVKIFAT' ? 'primary' : 'default'}
-            />
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              <Chip
+                label={paymentTypeLabels[payment.paymentType]}
+                sx={{
+                  bgcolor: alpha('#fff', 0.2),
+                  color: '#fff',
+                  fontWeight: 600,
+                  border: `1px solid ${alpha('#fff', 0.3)}`,
+                }}
+              />
+            </Box>
           </Box>
         </Box>
-      </Box>
+      </Card>
 
       <Grid container spacing={3}>
         {/* Üye Bilgisi */}
@@ -219,12 +250,59 @@ const PaymentDetailPage: React.FC = () => {
             sx={{
               borderRadius: 3,
               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 3,
+              overflow: 'hidden',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
+                borderColor: alpha(theme.palette.primary.main, 0.2),
+                transform: 'translateY(-2px)',
+              },
+              height: '100%',
             }}
           >
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Üye Bilgisi
-            </Typography>
+            <Box
+              sx={{
+                p: 2.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 2.5,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  transition: 'transform 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                  },
+                }}
+              >
+                <PaymentIcon />
+              </Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '1.15rem',
+                  color: theme.palette.text.primary,
+                  letterSpacing: 0.2,
+                }}
+              >
+                Üye Bilgisi
+              </Typography>
+            </Box>
+            <Box sx={{ p: 2.5 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Box>
                 <Typography variant="body2" color="text.secondary">
@@ -238,9 +316,11 @@ const PaymentDetailPage: React.FC = () => {
                 <Typography variant="body2" color="text.secondary">
                   Ad Soyad
                 </Typography>
-                <Typography variant="body1">
-                  {payment.member
+                <Typography variant="body1" fontWeight={600}>
+                  {payment.member?.firstName && payment.member?.lastName
                     ? `${payment.member.firstName} ${payment.member.lastName}`
+                    : payment.createdByUser
+                    ? `${payment.createdByUser.firstName} ${payment.createdByUser.lastName}`
                     : '-'}
                 </Typography>
               </Box>
@@ -261,6 +341,7 @@ const PaymentDetailPage: React.FC = () => {
                 </Box>
               )}
             </Box>
+            </Box>
           </Card>
         </Grid>
 
@@ -271,12 +352,59 @@ const PaymentDetailPage: React.FC = () => {
             sx={{
               borderRadius: 3,
               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 3,
+              overflow: 'hidden',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
+                borderColor: alpha(theme.palette.primary.main, 0.2),
+                transform: 'translateY(-2px)',
+              },
+              height: '100%',
             }}
           >
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Ödeme Bilgileri
-            </Typography>
+            <Box
+              sx={{
+                p: 2.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 2.5,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  transition: 'transform 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                  },
+                }}
+              >
+                <PaymentIcon />
+              </Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '1.15rem',
+                  color: theme.palette.text.primary,
+                  letterSpacing: 0.2,
+                }}
+              >
+                Ödeme Bilgileri
+              </Typography>
+            </Box>
+            <Box sx={{ p: 2.5 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Box>
                 <Typography variant="body2" color="text.secondary">
@@ -322,6 +450,7 @@ const PaymentDetailPage: React.FC = () => {
                 </Box>
               )}
             </Box>
+            </Box>
           </Card>
         </Grid>
 
@@ -332,32 +461,105 @@ const PaymentDetailPage: React.FC = () => {
             sx={{
               borderRadius: 3,
               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 3,
+              overflow: 'hidden',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              '&:hover': {
+                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
+                borderColor: alpha(theme.palette.primary.main, 0.2),
+                transform: 'translateY(-2px)',
+              },
             }}
           >
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Belge ve İşlem Bilgileri
-            </Typography>
+            <Box
+              sx={{
+                p: 2.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 2.5,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  transition: 'transform 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                  },
+                }}
+              >
+                <PictureAsPdfIcon />
+              </Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '1.15rem',
+                  color: theme.palette.text.primary,
+                  letterSpacing: 0.2,
+                }}
+              >
+                Belge ve İşlem Bilgileri
+              </Typography>
+            </Box>
+            <Box sx={{ p: 2.5 }}>
             <Grid container spacing={2}>
               {payment.documentUrl && (
                 <Grid item xs={12} md={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <PictureAsPdfIcon color="error" />
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Belge (PDF)
+                    <PictureAsPdfIcon color="error" sx={{ fontSize: '2rem' }} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                        Ödeme Evrakı (PDF)
                       </Typography>
                       <Button
+                        variant="contained"
                         size="small"
-                        onClick={() => window.open(payment.documentUrl || '', '_blank')}
-                        sx={{ textTransform: 'none' }}
+                        startIcon={<PictureAsPdfIcon />}
+                        onClick={() => {
+                          // Backend base URL'ini kullan
+                          const baseURL = httpClient.defaults.baseURL || 'http://localhost:3000';
+                          const fileUrl = payment.documentUrl?.startsWith('/') 
+                            ? `${baseURL}${payment.documentUrl}` 
+                            : payment.documentUrl;
+                          if (fileUrl) {
+                            window.open(fileUrl, '_blank');
+                          }
+                        }}
+                        sx={{ 
+                          textTransform: 'none',
+                          borderRadius: 2,
+                          fontWeight: 600,
+                        }}
                       >
-                        Belgeyi Görüntüle
+                        Evrakı Görüntüle
                       </Button>
                     </Box>
                   </Box>
                 </Grid>
               )}
+              <Grid item xs={12} md={6}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Ödeme Yapan
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600}>
+                    {payment.createdByUser
+                      ? `${payment.createdByUser.firstName} ${payment.createdByUser.lastName}`
+                      : '-'}
+                  </Typography>
+                </Box>
+              </Grid>
               <Grid item xs={12} md={6}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
@@ -405,57 +607,10 @@ const PaymentDetailPage: React.FC = () => {
                 </Grid>
               )}
             </Grid>
+            </Box>
           </Card>
         </Grid>
 
-        {/* İşlemler */}
-        {canApprove && !payment.isApproved && (
-          <Grid item xs={12}>
-            <Card
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                p: 3,
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                İşlemler
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={<CheckCircleIcon />}
-                  onClick={handleApprove}
-                  disabled={approving}
-                  sx={{ borderRadius: 2, textTransform: 'none' }}
-                >
-                  {approving ? 'Onaylanıyor...' : 'Onayla'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<CancelIcon />}
-                  onClick={handleReject}
-                  disabled={rejecting}
-                  sx={{ borderRadius: 2, textTransform: 'none' }}
-                >
-                  {rejecting ? 'Reddediliyor...' : 'Reddet'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  disabled
-                  sx={{ borderRadius: 2, textTransform: 'none' }}
-                  title="Düzenleme sayfası henüz mevcut değil"
-                >
-                  Düzeltme İste
-                </Button>
-              </Box>
-            </Card>
-          </Grid>
-        )}
       </Grid>
     </Box>
   );

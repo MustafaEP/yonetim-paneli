@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
-import { RoleResponseDto } from './dto/role-response.dto';
+import { RoleResponseDto, RoleScopeResponseDto } from './dto/role-response.dto';
 // Role enum artık kullanılmıyor, CustomRole kullanılıyor
 import { Permission } from '../auth/permission.enum';
 import { ALL_PERMISSIONS } from '../auth/role-permissions.map';
@@ -25,8 +25,6 @@ export class RolesService {
       },
       include: {
         permissions: true,
-        province: true,
-        district: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -50,18 +48,8 @@ export class RolesService {
         description: role.description ?? undefined,
         isActive: role.isActive,
         permissions,
-        provinceId: role.provinceId ?? undefined,
-        province: role.province ? {
-          id: role.province.id,
-          name: role.province.name,
-          code: role.province.code ?? undefined,
-        } : undefined,
-        districtId: role.districtId ?? undefined,
-        district: role.district ? {
-          id: role.district.id,
-          name: role.district.name,
-          provinceId: role.district.provinceId,
-        } : undefined,
+        hasScopeRestriction: role.hasScopeRestriction,
+        // Scope'ları burada döndürmüyoruz - scope'lar rol seviyesinde değil, kullanıcıya rol atanırken belirlenir
         createdAt: role.createdAt,
         updatedAt: role.updatedAt,
       };
@@ -78,8 +66,6 @@ export class RolesService {
       },
       include: {
         permissions: true,
-        province: true,
-        district: true,
         users: {
           where: {
             deletedAt: null,
@@ -110,18 +96,8 @@ export class RolesService {
       description: role.description ?? undefined,
       isActive: role.isActive,
       permissions,
-      provinceId: role.provinceId ?? undefined,
-      province: role.province ? {
-        id: role.province.id,
-        name: role.province.name,
-        code: role.province.code ?? undefined,
-      } : undefined,
-      districtId: role.districtId ?? undefined,
-      district: role.district ? {
-        id: role.district.id,
-        name: role.district.name,
-        provinceId: role.district.provinceId,
-      } : undefined,
+      hasScopeRestriction: role.hasScopeRestriction,
+      // Scope'ları burada döndürmüyoruz - scope'lar rol seviyesinde değil, kullanıcıya rol atanırken belirlenir
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
       users: role.users.map(u => ({
@@ -154,23 +130,24 @@ export class RolesService {
     // ADMIN izinleri kontrolü
     this.validatePermissions(dto.permissions);
 
+    // Scope validasyonunu kaldırdık - scope'lar rol oluşturulurken değil, 
+    // kullanıcıya rol atanırken belirlenir
+
     // Rolü oluştur
     const role = await this.prisma.customRole.create({
       data: {
         name: dto.name,
         description: dto.description,
-        provinceId: dto.provinceId,
-        districtId: dto.districtId,
+        hasScopeRestriction: dto.hasScopeRestriction ?? false,
         permissions: {
           create: dto.permissions.map((permission) => ({
             permission,
           })),
         },
+        // Scope'ları burada oluşturmuyoruz - kullanıcıya rol atanırken belirlenir
       },
       include: {
         permissions: true,
-        province: true,
-        district: true,
       },
     });
 
@@ -180,18 +157,8 @@ export class RolesService {
       description: role.description ?? undefined,
       isActive: role.isActive,
       permissions: role.permissions.map((p) => p.permission as Permission),
-      provinceId: role.provinceId ?? undefined,
-      province: role.province ? {
-        id: role.province.id,
-        name: role.province.name,
-        code: role.province.code ?? undefined,
-      } : undefined,
-      districtId: role.districtId ?? undefined,
-      district: role.district ? {
-        id: role.district.id,
-        name: role.district.name,
-        provinceId: role.district.provinceId,
-      } : undefined,
+      hasScopeRestriction: role.hasScopeRestriction,
+      // Scope'ları burada döndürmüyoruz - scope'lar rol seviyesinde değil, kullanıcıya rol atanırken belirlenir
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
     };
@@ -234,19 +201,24 @@ export class RolesService {
       }
     }
 
+    // Yetki alanı güncellemesi - sadece flag'i güncelliyoruz
+    const hasScopeRestriction = dto.hasScopeRestriction !== undefined 
+      ? dto.hasScopeRestriction 
+      : role.hasScopeRestriction;
+
+    // Scope validasyonu ve güncellemesi kaldırıldı - scope'lar rol oluşturulurken değil,
+    // kullanıcıya rol atanırken belirlenir
+
     const updatedRole = await this.prisma.customRole.update({
       where: { id },
       data: {
         name: dto.name,
         description: dto.description,
         isActive: dto.isActive,
-        provinceId: dto.provinceId,
-        districtId: dto.districtId,
+        hasScopeRestriction: hasScopeRestriction,
       },
       include: {
         permissions: true,
-        province: true,
-        district: true,
       },
     });
 
@@ -256,18 +228,8 @@ export class RolesService {
       description: updatedRole.description ?? undefined,
       isActive: updatedRole.isActive,
       permissions: updatedRole.permissions.map((p) => p.permission as Permission),
-      provinceId: updatedRole.provinceId ?? undefined,
-      province: updatedRole.province ? {
-        id: updatedRole.province.id,
-        name: updatedRole.province.name,
-        code: updatedRole.province.code ?? undefined,
-      } : undefined,
-      districtId: updatedRole.districtId ?? undefined,
-      district: updatedRole.district ? {
-        id: updatedRole.district.id,
-        name: updatedRole.district.name,
-        provinceId: updatedRole.district.provinceId,
-      } : undefined,
+      hasScopeRestriction: updatedRole.hasScopeRestriction,
+      // Scope'ları burada döndürmüyoruz - scope'lar rol seviyesinde değil, kullanıcıya rol atanırken belirlenir
       createdAt: updatedRole.createdAt,
       updatedAt: updatedRole.updatedAt,
     };

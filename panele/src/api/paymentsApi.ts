@@ -140,3 +140,129 @@ export const getPaymentsForAccounting = async (filters?: {
   const res = await httpClient.get<MemberPayment[]>('/payments/accounting/list', { params: filters });
   return Array.isArray(res.data) ? res.data : [];
 };
+
+// 🔹 Ödeme evrakı yükle: POST /payments/upload-document
+export const uploadPaymentDocument = async (
+  file: File,
+  memberId: string,
+  paymentPeriodMonth: number,
+  paymentPeriodYear: number,
+  fileName?: string,
+): Promise<{ fileUrl: string; fileName: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('memberId', memberId);
+  formData.append('paymentPeriodMonth', paymentPeriodMonth.toString());
+  formData.append('paymentPeriodYear', paymentPeriodYear.toString());
+  if (fileName) {
+    formData.append('fileName', fileName);
+  }
+
+  const res = await httpClient.post<{ fileUrl: string; fileName: string }>(
+    '/payments/upload-document',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+  return res.data;
+};
+
+// 🔹 Ödeme belgesi görüntüle (yeni sekmede aç)
+export const viewPaymentDocument = async (paymentId: string): Promise<void> => {
+  const token = localStorage.getItem('accessToken');
+  const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+  const url = `${API_BASE_URL}/payments/${paymentId}/document/view`;
+  
+  // Yeni sekmede PDF'i aç
+  const newWindow = window.open('', '_blank');
+  if (!newWindow) {
+    throw new Error('Popup engellendi. Lütfen popup engelleyiciyi kapatın.');
+  }
+
+  // Token ile PDF'i yükle
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    newWindow.close();
+    const errorText = await response.text();
+    throw new Error(errorText || 'Dosya görüntülenemedi');
+  }
+
+  // Blob oluştur ve yeni sekmede göster
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  newWindow.location.href = blobUrl;
+  
+  // Blob URL'i temizle (yeni pencere kapandığında)
+  newWindow.addEventListener('beforeunload', () => {
+    window.URL.revokeObjectURL(blobUrl);
+  });
+};
+
+// 🔹 Ödeme belgesi indir
+export const downloadPaymentDocument = async (paymentId: string, fileName?: string): Promise<void> => {
+  const token = localStorage.getItem('accessToken');
+  const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+  const url = `${API_BASE_URL}/payments/${paymentId}/document/download`;
+  
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Dosya indirilemedi');
+  }
+
+  // Dosya adını belirle: önce parametre olarak gelen, sonra header'dan, son olarak default
+  let finalFileName = fileName || 'payment-document.pdf';
+  
+  if (!fileName) {
+    // Response'dan dosya adını al
+    const contentDisposition = response.headers.get('Content-Disposition');
+    
+    if (contentDisposition) {
+      // Content-Disposition formatı: attachment; filename="dosya_adi.pdf" veya attachment; filename*=UTF-8''dosya_adi.pdf
+      const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+      if (utf8Match && utf8Match[1]) {
+        try {
+          finalFileName = decodeURIComponent(utf8Match[1].trim());
+        } catch (e) {
+          console.warn('UTF-8 filename decode hatası:', e);
+        }
+      } else {
+        const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
+        if (quotedMatch && quotedMatch[1]) {
+          finalFileName = quotedMatch[1];
+        } else {
+          const unquotedMatch = contentDisposition.match(/filename=([^;]+)/i);
+          if (unquotedMatch && unquotedMatch[1]) {
+            finalFileName = unquotedMatch[1].trim().replace(/^["']|["']$/g, '');
+          }
+        }
+      }
+    }
+  }
+
+  // Blob oluştur ve indir
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = finalFileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(downloadUrl);
+};

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class AssignUserScopeDto {
   @ApiProperty({
@@ -6,6 +7,8 @@ export class AssignUserScopeDto {
     example: 'user-uuid-123',
     type: String,
   })
+  @IsString()
+  @IsNotEmpty()
   userId: string;
 
   @ApiProperty({
@@ -14,6 +17,8 @@ export class AssignUserScopeDto {
     type: String,
     required: false,
   })
+  @IsString()
+  @IsOptional()
   provinceId?: string;
 
   @ApiProperty({
@@ -22,5 +27,7 @@ export class AssignUserScopeDto {
     type: String,
     required: false,
   })
+  @IsString()
+  @IsOptional()
   districtId?: string;
 }

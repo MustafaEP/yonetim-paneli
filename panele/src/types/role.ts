@@ -44,7 +44,44 @@ export type Permission =
   | 'SYSTEM_SETTINGS_VIEW'
   | 'SYSTEM_SETTINGS_MANAGE'
   | 'LOG_VIEW_ALL'
-  | 'LOG_VIEW_OWN_SCOPE';
+  | 'LOG_VIEW_OWN_SCOPE'
+  | 'INSTITUTION_LIST'
+  | 'INSTITUTION_VIEW'
+  | 'INSTITUTION_CREATE'
+  | 'INSTITUTION_UPDATE'
+  | 'INSTITUTION_APPROVE'
+  | 'ACCOUNTING_VIEW'
+  | 'ACCOUNTING_EXPORT'
+  | 'TEVKIFAT_FILE_UPLOAD'
+  | 'TEVKIFAT_FILE_APPROVE'
+  | 'MEMBER_PAYMENT_ADD'
+  | 'MEMBER_PAYMENT_APPROVE'
+  | 'MEMBER_PAYMENT_LIST'
+  | 'MEMBER_PAYMENT_VIEW'
+  | 'APPROVAL_VIEW'
+  | 'APPROVAL_APPROVE'
+  | 'APPROVAL_REJECT'
+  | 'PANEL_USER_APPLICATION_CREATE'
+  | 'PANEL_USER_APPLICATION_LIST'
+  | 'PANEL_USER_APPLICATION_VIEW'
+  | 'PANEL_USER_APPLICATION_APPROVE'
+  | 'PANEL_USER_APPLICATION_REJECT';
+
+export interface RoleScope {
+  id?: string;
+  provinceId?: string;
+  province?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+  districtId?: string;
+  district?: {
+    id: string;
+    name: string;
+    provinceId: string;
+  };
+}
 
 export interface CustomRole {
   id: string;
@@ -52,6 +89,9 @@ export interface CustomRole {
   description?: string;
   isActive: boolean;
   permissions: Permission[];
+  hasScopeRestriction: boolean;
+  scopes?: RoleScope[];
+  // Geriye uyumluluk için (eski API'den gelen veriler için)
   provinceId?: string;
   province?: {
     id: string;
@@ -82,20 +122,25 @@ export interface SystemRole {
 
 export type RoleListItem = CustomRole | SystemRole;
 
+export interface RoleScopeDto {
+  provinceId?: string;
+  districtId?: string;
+}
+
 export interface CreateRoleDto {
   name: string;
   description?: string;
   permissions: Permission[];
-  provinceId?: string;
-  districtId?: string;
+  hasScopeRestriction?: boolean;
+  scopes?: RoleScopeDto[];
 }
 
 export interface UpdateRoleDto {
   name?: string;
   description?: string;
   isActive?: boolean;
-  provinceId?: string;
-  districtId?: string;
+  hasScopeRestriction?: boolean;
+  scopes?: RoleScopeDto[];
 }
 
 export interface UpdateRolePermissionsDto {
@@ -128,7 +173,8 @@ export const PERMISSION_GROUPS = {
     'MEMBER_REJECT',
     'MEMBER_UPDATE',
     'MEMBER_STATUS_CHANGE',
-    'MEMBER_LIST_BY_PROVINCE',
+    // MEMBER_LIST_BY_PROVINCE artık checkbox'ta gösterilmeyecek, yerine yetki alanı seçimi kullanılacak
+    // 'MEMBER_LIST_BY_PROVINCE',
   ] as Permission[],
   DUES_MANAGEMENT: [
     'DUES_PLAN_MANAGE',
@@ -167,6 +213,37 @@ export const PERMISSION_GROUPS = {
     'SYSTEM_SETTINGS_MANAGE',
     'LOG_VIEW_ALL',
     'LOG_VIEW_OWN_SCOPE',
+  ] as Permission[],
+  INSTITUTION_MANAGEMENT: [
+    'INSTITUTION_LIST',
+    'INSTITUTION_VIEW',
+    'INSTITUTION_CREATE',
+    'INSTITUTION_UPDATE',
+    'INSTITUTION_APPROVE',
+  ] as Permission[],
+  ACCOUNTING: [
+    'ACCOUNTING_VIEW',
+    'ACCOUNTING_EXPORT',
+    'TEVKIFAT_FILE_UPLOAD',
+    'TEVKIFAT_FILE_APPROVE',
+  ] as Permission[],
+  MEMBER_PAYMENTS: [
+    'MEMBER_PAYMENT_ADD',
+    'MEMBER_PAYMENT_APPROVE',
+    'MEMBER_PAYMENT_LIST',
+    'MEMBER_PAYMENT_VIEW',
+  ] as Permission[],
+  APPROVALS: [
+    'APPROVAL_VIEW',
+    'APPROVAL_APPROVE',
+    'APPROVAL_REJECT',
+  ] as Permission[],
+  PANEL_USER_APPLICATIONS: [
+    'PANEL_USER_APPLICATION_CREATE',
+    'PANEL_USER_APPLICATION_LIST',
+    'PANEL_USER_APPLICATION_VIEW',
+    'PANEL_USER_APPLICATION_APPROVE',
+    'PANEL_USER_APPLICATION_REJECT',
   ] as Permission[],
 };
 
@@ -215,5 +292,26 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   SYSTEM_SETTINGS_MANAGE: 'Sistem Ayarlarını Yönet',
   LOG_VIEW_ALL: 'Tüm Logları Görüntüle',
   LOG_VIEW_OWN_SCOPE: 'Kendi Kapsamı Loglarını Görüntüle',
+  INSTITUTION_LIST: 'Kurumları Listele',
+  INSTITUTION_VIEW: 'Kurum Detayı Görüntüle',
+  INSTITUTION_CREATE: 'Kurum Oluştur',
+  INSTITUTION_UPDATE: 'Kurum Güncelle',
+  INSTITUTION_APPROVE: 'Kurum Onayla',
+  ACCOUNTING_VIEW: 'Muhasebe Görüntüle',
+  ACCOUNTING_EXPORT: 'Muhasebe Dışa Aktar',
+  TEVKIFAT_FILE_UPLOAD: 'Tevkifat Dosyası Yükle',
+  TEVKIFAT_FILE_APPROVE: 'Tevkifat Dosyası Onayla',
+  MEMBER_PAYMENT_ADD: 'Üye Ödemesi Ekle',
+  MEMBER_PAYMENT_APPROVE: 'Üye Ödemesi Onayla',
+  MEMBER_PAYMENT_LIST: 'Üye Ödemelerini Listele',
+  MEMBER_PAYMENT_VIEW: 'Üye Ödeme Detayı Görüntüle',
+  APPROVAL_VIEW: 'Onay Görüntüle',
+  APPROVAL_APPROVE: 'Onay Onayla',
+  APPROVAL_REJECT: 'Onay Reddet',
+  PANEL_USER_APPLICATION_CREATE: 'Panel Kullanıcı Başvurusu Oluştur',
+  PANEL_USER_APPLICATION_LIST: 'Panel Kullanıcı Başvurularını Listele',
+  PANEL_USER_APPLICATION_VIEW: 'Panel Kullanıcı Başvurusu Detayı Görüntüle',
+  PANEL_USER_APPLICATION_APPROVE: 'Panel Kullanıcı Başvurusu Onayla',
+  PANEL_USER_APPLICATION_REJECT: 'Panel Kullanıcı Başvurusu Reddet',
 };
 

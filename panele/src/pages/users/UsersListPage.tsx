@@ -17,6 +17,8 @@ import {
   alpha,
   Paper,
   Stack,
+  Grid,
+  Fade,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -24,18 +26,22 @@ import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PeopleIcon from '@mui/icons-material/People';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 import type { UserListItem } from '../../types/user';
-import { getUsers } from '../../api/usersApi';
+import { getUsers, getUserById } from '../../api/usersApi';
+import { useToast } from '../../hooks/useToast';
 
 const UsersListPage: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
+  const toast = useToast();
   const [rows, setRows] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
-
-  const navigate = useNavigate();
 
   // Filtrelenmiş veriler
   const filteredRows = useMemo(() => {
@@ -65,38 +71,45 @@ const UsersListPage: React.FC = () => {
 
   const columns: GridColDef<UserListItem>[] = [
     {
-      field: 'firstName',
-      headerName: 'Ad',
-      flex: 1,
-      minWidth: 120,
-    },
-    {
-      field: 'lastName',
-      headerName: 'Soyad',
-      flex: 1,
-      minWidth: 120,
-    },
-    {
-      field: 'email',
-      headerName: 'E-posta',
+      field: 'fullName',
+      headerName: 'Kullanıcı',
       flex: 1.5,
       minWidth: 200,
+      align: 'left',
+      headerAlign: 'center',
+      renderCell: (params: GridRenderCellParams<UserListItem>) => (
+        <Box sx={{ py: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+            {params.row.firstName} {params.row.lastName}
+          </Typography>
+          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block', mt: 0.25 }}>
+            {params.row.email}
+          </Typography>
+        </Box>
+      ),
     },
     {
       field: 'roles',
       headerName: 'Roller',
       flex: 2,
       minWidth: 250,
+      align: 'left',
+      headerAlign: 'center',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 0.5 }}>
-          {params.row.roles.map((r) => (
+          {params.row.roles.map((r, idx) => (
             <Chip 
-              key={r} 
+              key={`${r}-${idx}`}
               label={r} 
               size="small"
-              color="primary"
-              variant="outlined"
-              sx={{ fontWeight: 500 }}
+              sx={{
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                color: theme.palette.primary.main,
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                height: 24,
+                '& .MuiChip-label': { px: 1.5 }
+              }}
             />
           ))}
         </Box>
@@ -105,12 +118,32 @@ const UsersListPage: React.FC = () => {
     {
       field: 'isActive',
       headerName: 'Durum',
-      width: 120,
+      width: 130,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params: GridRenderCellParams<UserListItem>) =>
         params.row.isActive ? (
-          <Chip label="Aktif" color="success" size="small" sx={{ fontWeight: 500 }} />
+          <Chip 
+            icon={<CheckCircleIcon />}
+            label="Aktif" 
+            color="success" 
+            size="small" 
+            sx={{ 
+              fontWeight: 600,
+              '& .MuiChip-icon': { fontSize: '1rem' }
+            }} 
+          />
         ) : (
-          <Chip label="Pasif" size="small" />
+          <Chip 
+            icon={<CancelIcon />}
+            label="Pasif" 
+            color="default"
+            size="small"
+            sx={{ 
+              fontWeight: 600,
+              '& .MuiChip-icon': { fontSize: '1rem' }
+            }}
+          />
         ),
     },
     {
@@ -119,19 +152,36 @@ const UsersListPage: React.FC = () => {
       width: 100,
       sortable: false,
       filterable: false,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params: GridRenderCellParams<UserListItem>) => (
-        <Tooltip title="Detay">
+        <Tooltip title="Detay Görüntüle" arrow placement="top">
           <IconButton
             size="small"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
-              navigate(`/users/${params.row.id}`);
+              try {
+                // Kullanıcı detayını çek ve member bilgisini kontrol et
+                const userDetail = await getUserById(params.row.id);
+                if (userDetail.member?.id) {
+                  // Üye varsa üye detay sayfasına yönlendir
+                  navigate(`/members/${userDetail.member.id}`);
+                } else {
+                  // Admin kullanıcı veya üye bilgisi yok
+                  toast.showWarning('Bu kullanıcının üye bilgisi bulunmuyor. Admin kullanıcılar üye detay sayfasına sahip değildir.');
+                }
+              } catch (error) {
+                console.error('Kullanıcı detayı alınırken hata:', error);
+                toast.showError('Kullanıcı bilgileri alınırken bir hata oluştu.');
+              }
             }}
             sx={{
               color: theme.palette.primary.main,
               '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                transform: 'scale(1.1)',
               },
+              transition: 'all 0.2s',
             }}
           >
             <VisibilityIcon fontSize="small" />
@@ -156,189 +206,296 @@ const UsersListPage: React.FC = () => {
     fetchUsers();
   }, []);
 
+  const activeUsersCount = filteredRows.filter(u => u.isActive).length;
+  const inactiveUsersCount = filteredRows.filter(u => !u.isActive).length;
+
   return (
-    <Box>
-      {/* Başlık Bölümü */}
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <PeopleIcon sx={{ color: '#fff', fontSize: '1.5rem' }} />
-          </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              Panel Kullanıcıları
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Sistemde tanımlı tüm kullanıcıları ve rollerini görüntüleyin
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
-
-      {/* Ana Kart */}
-      <Card
-        elevation={0}
-        sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Filtre Bölümü */}
-        <Box
-          sx={{
-            p: { xs: 2, sm: 3 },
-            backgroundColor: alpha(theme.palette.primary.main, 0.02),
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-          }}
-        >
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
-          >
-            <TextField
-              placeholder="Ad, Soyad, E-posta, Rol..."
-              size="small"
-              fullWidth
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#fff',
-                  borderRadius: 2,
-                  '&:hover': {
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                },
-              }}
-            />
-            <FormControl 
-              size="small" 
-              sx={{ 
-                minWidth: { xs: '100%', sm: 220 },
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#fff',
-                  borderRadius: 2,
-                },
-              }}
-            >
-              <InputLabel>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <FilterListIcon fontSize="small" />
-                  Durum
-                </Box>
-              </InputLabel>
-              <Select
-                value={statusFilter}
-                label="Durum"
-                onChange={(e) =>
-                  setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
-                }
-              >
-                <MenuItem value="ALL">Tümü</MenuItem>
-                <MenuItem value="ACTIVE">Aktif</MenuItem>
-                <MenuItem value="INACTIVE">Pasif</MenuItem>
-              </Select>
-            </FormControl>
-          </Stack>
-        </Box>
-
-        {/* İçerik Bölümü */}
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
-          {/* Sonuç Sayısı */}
-          {!loading && (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                mb: 2,
-                backgroundColor: alpha(theme.palette.info.main, 0.05),
-                borderRadius: 2,
-                border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
-              }}
-            >
-              <Typography
-                variant="body2"
+    <Fade in timeout={300}>
+      <Box sx={{ pb: 4 }}>
+        {/* Başlık Bölümü */}
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box
                 sx={{
-                  fontWeight: 600,
-                  color: theme.palette.info.main,
+                  width: 48,
+                  height: 48,
+                  borderRadius: 2.5,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 1,
+                  justifyContent: 'center',
+                  mr: 2,
+                  boxShadow: `0 8px 16px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
                 }}
               >
-                <PeopleIcon fontSize="small" />
-                Toplam {filteredRows.length} kullanıcı bulundu
-              </Typography>
-            </Paper>
-          )}
+                <PeopleIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                    color: theme.palette.text.primary,
+                    mb: 0.5,
+                    textAlign: 'left',
+                  }}
+                >
+                  Panel Kullanıcıları
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    fontSize: { xs: '0.875rem', sm: '0.9rem' },
+                    textAlign: 'left',
+                  }}
+                >
+                  Sistemde tanımlı tüm kullanıcıları ve rollerini görüntüleyin
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
 
-          {/* Tablo - Her zaman render edilir, loading state'i DataGrid'e geçirilir */}
+          {/* İstatistik Kartları */}
+          {!loading && (
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={4}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 2.5,
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`,
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
+                        Toplam Kullanıcı
+                      </Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main, textAlign: 'left' }}>
+                        {filteredRows.length}
+                      </Typography>
+                    </Box>
+                    <PeopleIcon sx={{ fontSize: 40, color: alpha(theme.palette.primary.main, 0.3) }} />
+                  </Box>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 2.5,
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.1)} 0%, ${alpha(theme.palette.success.light, 0.05)} 100%)`,
+                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.15)}`,
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
+                        Aktif Kullanıcı
+                      </Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.success.main, textAlign: 'left' }}>
+                        {activeUsersCount}
+                      </Typography>
+                    </Box>
+                    <CheckCircleIcon sx={{ fontSize: 40, color: alpha(theme.palette.success.main, 0.3) }} />
+                  </Box>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 2.5,
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.grey[500], 0.1)} 0%, ${alpha(theme.palette.grey[300], 0.05)} 100%)`,
+                    border: `1px solid ${alpha(theme.palette.grey[500], 0.2)}`,
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: `0 8px 24px ${alpha(theme.palette.grey[500], 0.15)}`,
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
+                        Pasif Kullanıcı
+                      </Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.grey[600], textAlign: 'left' }}>
+                        {inactiveUsersCount}
+                      </Typography>
+                    </Box>
+                    <CancelIcon sx={{ fontSize: 40, color: alpha(theme.palette.grey[500], 0.3) }} />
+                  </Box>
+                </Paper>
+              </Grid>
+            </Grid>
+          )}
+        </Box>
+
+        {/* Ana Kart */}
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.08)}`,
+            overflow: 'hidden',
+            background: '#fff',
+          }}
+        >
+          {/* Filtre Bölümü */}
           <Box
             sx={{
-              height: { xs: 400, sm: 500, md: 600 },
-              minHeight: { xs: 400, sm: 500, md: 600 },
+              p: 3,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            }}
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                placeholder="Ad, Soyad, E-posta, Rol..."
+                size="medium"
+                fullWidth
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: theme.palette.primary.main }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2,
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: theme.palette.primary.main,
+                      },
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
+                  },
+                }}
+              />
+              <FormControl
+                size="medium"
+                sx={{
+                  minWidth: { xs: '100%', sm: 240 },
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2,
+                    transition: 'all 0.3s',
+                    '&.Mui-focused': {
+                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
+                  },
+                }}
+              >
+                <InputLabel>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <FilterListIcon fontSize="small" />
+                    Durum Filtrele
+                  </Box>
+                </InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Durum Filtrele"
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
+                  }
+                >
+                  <MenuItem value="ALL">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PeopleIcon fontSize="small" />
+                      Tüm Kullanıcılar
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="ACTIVE">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CheckCircleIcon fontSize="small" sx={{ color: theme.palette.success.main }} />
+                      Aktif
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="INACTIVE">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CancelIcon fontSize="small" sx={{ color: theme.palette.grey[500] }} />
+                      Pasif
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+          </Box>
+
+          {/* DataGrid */}
+          <Box
+            sx={{
+              height: { xs: 500, sm: 600, md: 700 },
+              width: '100%',
               '& .MuiDataGrid-root': {
                 border: 'none',
-                borderRadius: 2,
               },
               '& .MuiDataGrid-cell': {
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                display: 'flex',
+                alignItems: 'center',
+                '&:focus': {
+                  outline: 'none',
+                },
+                '&:focus-within': {
+                  outline: 'none',
+                },
               },
               '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.2)}`,
                 borderRadius: 0,
+                minHeight: '56px !important',
+                maxHeight: '56px !important',
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,
                 fontSize: '0.875rem',
+                color: theme.palette.text.primary,
+              },
+              '& .MuiDataGrid-columnHeaderTitleContainer': {
+                justifyContent: 'center',
               },
               '& .MuiDataGrid-row': {
+                transition: 'all 0.2s',
+                cursor: 'pointer',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                  transform: 'scale(1.001)',
                 },
               },
               '& .MuiDataGrid-footerContainer': {
-                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                backgroundColor: alpha(theme.palette.background.default, 0.5),
+                borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+                backgroundColor: alpha(theme.palette.grey[50], 0.5),
+              },
+              '& .MuiDataGrid-virtualScroller': {
+                minHeight: '300px',
               },
             }}
           >
@@ -352,16 +509,27 @@ const UsersListPage: React.FC = () => {
               }}
               pageSizeOptions={[10, 25, 50, 100]}
               disableRowSelectionOnClick
-              sx={{
-                '& .MuiDataGrid-virtualScroller': {
-                  minHeight: '200px',
-                },
+              onRowClick={async (params) => {
+                try {
+                  // Kullanıcı detayını çek ve member bilgisini kontrol et
+                  const userDetail = await getUserById(params.row.id);
+                  if (userDetail.member?.id) {
+                    // Üye varsa üye detay sayfasına yönlendir
+                    navigate(`/members/${userDetail.member.id}`);
+                  } else {
+                    // Admin kullanıcı veya üye bilgisi yok
+                    toast.showWarning('Bu kullanıcının üye bilgisi bulunmuyor. Admin kullanıcılar üye detay sayfasına sahip değildir.');
+                  }
+                } catch (error) {
+                  console.error('Kullanıcı detayı alınırken hata:', error);
+                  toast.showError('Kullanıcı bilgileri alınırken bir hata oluştu.');
+                }
               }}
             />
           </Box>
-        </Box>
-      </Card>
-    </Box>
+        </Card>
+      </Box>
+    </Fade>
   );
 };
 

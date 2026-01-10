@@ -146,6 +146,9 @@ export class UsersController {
       });
     }
 
+    // Type assertion - findById member'ı include ediyor
+    const userWithMember = user as typeof user & { member?: { id: string; firstName: string; lastName: string; nationalId: string; phone: string | null; email: string | null; status: string; registrationNumber: string | null } | null };
+
     return {
       id: user.id,
       email: user.email,
@@ -154,6 +157,19 @@ export class UsersController {
       roles: userWithRoles.customRoles?.map(r => r.name) || [],
       permissions,
       isActive: user.isActive,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+      deletedAt: user.deletedAt?.toISOString() || null,
+      member: userWithMember.member ? {
+        id: userWithMember.member.id,
+        firstName: userWithMember.member.firstName,
+        lastName: userWithMember.member.lastName,
+        nationalId: userWithMember.member.nationalId,
+        phone: userWithMember.member.phone,
+        email: userWithMember.member.email,
+        status: userWithMember.member.status,
+        registrationNumber: userWithMember.member.registrationNumber,
+      } : null,
     };
   }
 

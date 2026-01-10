@@ -72,7 +72,7 @@ const MemberUpdatePage: React.FC = () => {
     lastName: string;
     phone: string;
     email: string;
-    membershipInfoOptionId: string;
+    memberGroupId: string;
     registrationNumber: string;
     boardDecisionDate: string;
     boardDecisionBookNo: string;
@@ -101,7 +101,7 @@ const MemberUpdatePage: React.FC = () => {
     lastName: '',
     phone: '',
     email: '',
-    membershipInfoOptionId: '',
+    memberGroupId: '',
     registrationNumber: '',
     boardDecisionDate: '',
     boardDecisionBookNo: '',
@@ -135,7 +135,7 @@ const MemberUpdatePage: React.FC = () => {
   const [professions, setProfessions] = useState<Profession[]>([]);
   const [tevkifatCenters, setTevkifatCenters] = useState<TevkifatCenter[]>([]);
   const [tevkifatTitles, setTevkifatTitles] = useState<TevkifatTitle[]>([]);
-  const [membershipInfoOptions, setMembershipInfoOptions] = useState<Array<{ id: string; label: string; value: string }>>([]);
+  const [memberGroups, setMemberGroups] = useState<Array<{ id: string; name: string }>>([]);
 
   // Member verisini yükle
   useEffect(() => {
@@ -153,7 +153,7 @@ const MemberUpdatePage: React.FC = () => {
           lastName: data.lastName || '',
           phone: data.phone || '',
           email: data.email || '',
-          membershipInfoOptionId: data.membershipInfoOption?.id || '',
+          memberGroupId: data.memberGroup?.id || '',
           registrationNumber: data.registrationNumber || '',
           boardDecisionDate: data.boardDecisionDate 
             ? new Date(data.boardDecisionDate).toISOString().split('T')[0]
@@ -303,17 +303,18 @@ const MemberUpdatePage: React.FC = () => {
     loadTevkifatTitles();
   }, []);
 
-  // Üyelik bilgisi seçeneklerini yükle
+  // Üye gruplarını yükle
   useEffect(() => {
-    const loadMembershipInfoOptions = async () => {
+    const loadMemberGroups = async () => {
       try {
-        const res = await httpClient.get('/members/membership-info-options');
-        setMembershipInfoOptions(res.data || []);
+        const { getMemberGroups } = await import('../../api/memberGroupsApi');
+        const data = await getMemberGroups();
+        setMemberGroups(data || []);
       } catch (e) {
-        console.error('Üyelik bilgisi seçenekleri yüklenirken hata:', e);
+        console.error('Üye grupları yüklenirken hata:', e);
       }
     };
-    loadMembershipInfoOptions();
+    loadMemberGroups();
   }, []);
 
   // Kurum İli için illeri yükle
@@ -395,7 +396,7 @@ const MemberUpdatePage: React.FC = () => {
       if (form.lastName !== member?.lastName) updateData.lastName = form.lastName;
       if (form.phone !== (member?.phone || '')) updateData.phone = form.phone || undefined;
       if (form.email !== (member?.email || '')) updateData.email = form.email || undefined;
-      if (form.membershipInfoOptionId !== (member?.membershipInfoOption?.id || '')) updateData.membershipInfoOptionId = form.membershipInfoOptionId || undefined;
+      if (form.memberGroupId !== (member?.memberGroup?.id || '')) updateData.memberGroupId = form.memberGroupId || undefined;
       if (form.registrationNumber !== (member?.registrationNumber || '')) updateData.registrationNumber = form.registrationNumber || undefined;
       if (form.boardDecisionDate !== (member?.boardDecisionDate ? new Date(member.boardDecisionDate).toISOString().split('T')[0] : '')) {
         updateData.boardDecisionDate = form.boardDecisionDate || undefined;
@@ -1029,8 +1030,8 @@ const MemberUpdatePage: React.FC = () => {
               <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
                 <InputLabel>Üye Grubu</InputLabel>
                 <Select
-                  value={form.membershipInfoOptionId}
-                  onChange={(e) => handleChange('membershipInfoOptionId', e.target.value)}
+                  value={form.memberGroupId}
+                  onChange={(e) => handleChange('memberGroupId', e.target.value)}
                   label="Üye Grubu"
                   sx={{
                     borderRadius: 2.5,
@@ -1044,9 +1045,9 @@ const MemberUpdatePage: React.FC = () => {
                   }}
                 >
                   <MenuItem value="">Seçiniz</MenuItem>
-                  {membershipInfoOptions.map((option) => (
-                    <MenuItem key={option.id} value={option.id}>
-                      {option.label}
+                  {memberGroups.map((group) => (
+                    <MenuItem key={group.id} value={group.id}>
+                      {group.name}
                     </MenuItem>
                   ))}
                 </Select>

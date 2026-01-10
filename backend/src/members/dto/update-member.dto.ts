@@ -54,6 +54,15 @@ export class UpdateMemberDto {
   membershipInfoOptionId?: string;
 
   @ApiProperty({
+    description: 'Üye grubu ID',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  memberGroupId?: string;
+
+  @ApiProperty({
     description: 'Üye kayıt numarası',
     type: String,
     required: false,

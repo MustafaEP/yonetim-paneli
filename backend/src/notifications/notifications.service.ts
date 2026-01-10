@@ -7,6 +7,8 @@ import { NotificationJobData } from './processors/notification.processor';
 import { EmailService } from './services/email.service';
 import { SmsService } from './services/sms.service';
 import { ConfigService } from '../config/config.service';
+import { MemberScopeService } from '../members/member-scope.service';
+import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
 
 @Injectable()
 export class NotificationsService {
@@ -18,6 +20,7 @@ export class NotificationsService {
     private emailService: EmailService,
     private smsService: SmsService,
     private configService: ConfigService,
+    private memberScopeService: MemberScopeService,
   ) {}
 
   async findAll(params?: {
@@ -82,23 +85,52 @@ export class NotificationsService {
     return notification;
   }
 
-  async create(dto: CreateNotificationDto, userId: string) {
+  async create(dto: CreateNotificationDto, userId: string, user?: CurrentUserData) {
+    let finalDto = { ...dto };
+
+    // NOTIFY_OWN_SCOPE izni varsa ve targetType belirtilmemişse veya SCOPE ise, kullanıcının scope'unu kullan
+    const hasNotifyOwnScope = user?.permissions?.includes('NOTIFY_OWN_SCOPE' as any);
+    const hasNotifyAll = user?.permissions?.includes('NOTIFY_ALL_MEMBERS' as any);
+    const hasNotifyRegion = user?.permissions?.includes('NOTIFY_REGION' as any);
+
+    if (hasNotifyOwnScope && !hasNotifyAll && !hasNotifyRegion) {
+      // Sadece NOTIFY_OWN_SCOPE izni varsa, otomatik olarak SCOPE target type'ına çevir
+      if (finalDto.targetType !== NotificationTargetType.SCOPE) {
+        finalDto.targetType = NotificationTargetType.SCOPE;
+      }
+
+      // Kullanıcının scope'unu al ve metadata'ya ekle
+      if (user) {
+        const scopeIds = await this.memberScopeService.getUserScopeIds(user);
+        if (scopeIds.provinceId || scopeIds.districtId) {
+          // Scope bilgisini metadata'ya ekle (getRecipients'da kullanılacak)
+          finalDto.metadata = {
+            ...(finalDto.metadata || {}),
+            scopeProvinceId: scopeIds.provinceId,
+            scopeDistrictId: scopeIds.districtId,
+          };
+        }
+      }
+    }
+
     // Hedef tip kontrolü
     if (
-      (dto.targetType === NotificationTargetType.REGION || dto.targetType === NotificationTargetType.SCOPE) &&
-      !dto.targetId
+      (finalDto.targetType === NotificationTargetType.REGION || finalDto.targetType === NotificationTargetType.SCOPE) &&
+      !finalDto.targetId &&
+      !finalDto.metadata?.scopeProvinceId &&
+      !finalDto.metadata?.scopeDistrictId
     ) {
-      throw new Error(`${dto.targetType} için targetId zorunludur`);
+      throw new Error(`${finalDto.targetType} için targetId veya scope bilgisi zorunludur`);
     }
 
     // ALL_MEMBERS için targetId olmamalı
-    if (dto.targetType === NotificationTargetType.ALL_MEMBERS && dto.targetId) {
+    if (finalDto.targetType === NotificationTargetType.ALL_MEMBERS && finalDto.targetId) {
       throw new Error('ALL_MEMBERS için targetId belirtilmemelidir');
     }
 
     return this.prisma.notification.create({
       data: {
-        ...dto,
+        ...finalDto,
         sentBy: userId,
         status: NotificationStatus.PENDING,
       },
@@ -420,18 +452,34 @@ export class NotificationsService {
 
       case NotificationTargetType.SCOPE:
         // Scope bazlı bildirim (UserScope'a göre)
-        // Bu durumda targetId bir UserScope ID olabilir veya provinceId/districtId olabilir
-        if (!notification.targetId) {
-          throw new Error('targetId is required for SCOPE target type');
+        // Metadata'dan scope bilgisi al (NOTIFY_OWN_SCOPE için)
+        const metadata = notification.metadata as any;
+        const scopeProvinceId = metadata?.scopeProvinceId;
+        const scopeDistrictId = metadata?.scopeDistrictId;
+
+        // Scope koşullarını oluştur
+        const scopeConditions: any[] = [];
+
+        if (scopeDistrictId) {
+          // İlçe bazlı scope - sadece o ilçedeki üyeler
+          scopeConditions.push({ districtId: scopeDistrictId });
+        } else if (scopeProvinceId) {
+          // İl bazlı scope - o ildeki tüm üyeler
+          scopeConditions.push({ provinceId: scopeProvinceId });
+        } else if (notification.targetId) {
+          // Eski yöntem: targetId ile (geriye dönük uyumluluk)
+          scopeConditions.push(
+            { provinceId: notification.targetId },
+            { districtId: notification.targetId },
+          );
+        } else {
+          throw new Error('SCOPE target type için targetId veya scope bilgisi (metadata) gerekli');
         }
 
-        // Scope'a göre üyeleri filtrele
+        // Scope'a göre üyeleri filtrele (çoklu scope desteği)
         const scopeMembers = await this.prisma.member.findMany({
           where: {
-            OR: [
-              { provinceId: notification.targetId },
-              { districtId: notification.targetId },
-            ],
+            OR: scopeConditions,
             status: MemberStatus.ACTIVE,
             isActive: true,
             deletedAt: null,

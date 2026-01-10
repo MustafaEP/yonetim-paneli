@@ -445,11 +445,17 @@ const RolesListPage: React.FC = () => {
                 },
                 '& .MuiDataGrid-cell': {
                   borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                  display: 'flex',
+                  alignItems: 'center',
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: alpha(theme.palette.primary.main, 0.04),
                   borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
                   borderRadius: 0,
+                },
+                '& .MuiDataGrid-columnHeader': {
+                  display: 'flex',
+                  alignItems: 'center',
                 },
                 '& .MuiDataGrid-columnHeaderTitle': {
                   fontWeight: 700,

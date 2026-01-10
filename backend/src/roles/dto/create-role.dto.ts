@@ -1,6 +1,27 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsEnum, IsBoolean, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Permission } from '../../auth/permission.enum';
+
+export class RoleScopeDto {
+  @ApiPropertyOptional({
+    description: 'İl ID',
+    example: 'province-uuid-123',
+    type: String,
+  })
+  @IsString()
+  @IsOptional()
+  provinceId?: string;
+
+  @ApiPropertyOptional({
+    description: 'İlçe ID',
+    example: 'district-uuid-456',
+    type: String,
+  })
+  @IsString()
+  @IsOptional()
+  districtId?: string;
+}
 
 export class CreateRoleDto {
   @ApiProperty({
@@ -32,24 +53,28 @@ export class CreateRoleDto {
   @IsEnum(Permission, { each: true })
   permissions: Permission[];
 
-  @ApiProperty({
-    description: 'İl ID (MEMBER_LIST_BY_PROVINCE izni için)',
-    example: 'province-uuid-123',
-    type: String,
-    required: false,
+  @ApiPropertyOptional({
+    description: 'Bu role il/ilçe bazlı yetki alanı eklenecek mi?',
+    example: false,
+    type: Boolean,
+    default: false,
   })
-  @IsString()
+  @IsBoolean()
   @IsOptional()
-  provinceId?: string;
+  hasScopeRestriction?: boolean;
 
-  @ApiProperty({
-    description: 'İlçe ID (MEMBER_LIST_BY_PROVINCE izni için ilçe bazlı)',
-    example: 'district-uuid-123',
-    type: String,
-    required: false,
+  @ApiPropertyOptional({
+    description: 'Yetki alanları (hasScopeRestriction true ise en az bir tane olmalı)',
+    type: [RoleScopeDto],
+    example: [
+      { provinceId: 'province-uuid-1' },
+      { provinceId: 'province-uuid-2', districtId: 'district-uuid-1' },
+    ],
   })
-  @IsString()
+  @IsArray()
   @IsOptional()
-  districtId?: string;
+  @ValidateNested({ each: true })
+  @Type(() => RoleScopeDto)
+  scopes?: RoleScopeDto[];
 }
 

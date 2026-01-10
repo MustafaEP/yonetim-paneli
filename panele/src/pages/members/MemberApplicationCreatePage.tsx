@@ -6,11 +6,7 @@ import {
   Typography,
   Grid,
   TextField,
-  MenuItem,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
   useTheme,
   useMediaQuery,
   alpha,
@@ -27,6 +23,7 @@ import {
   IconButton,
   Tooltip,
   FormHelperText,
+  Autocomplete,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -47,6 +44,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 
 import { useAuth } from '../../context/AuthContext';
 import { createMemberApplication, checkCancelledMemberByNationalId } from '../../api/membersApi';
+import { uploadMemberDocument } from '../../api/documentsApi';
 import httpClient from '../../api/httpClient';
 import type { MemberDetail } from '../../types/member';
 import type {
@@ -79,6 +77,7 @@ const MemberApplicationCreatePage: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [checkingNationalId, setCheckingNationalId] = useState(false);
   const [cancelledMemberDialogOpen, setCancelledMemberDialogOpen] = useState(false);
   const [cancelledMember, setCancelledMember] = useState<MemberDetail | null>(null);
@@ -106,7 +105,7 @@ const MemberApplicationCreatePage: React.FC = () => {
     tevkifatCenterId: string;
     tevkifatTitle: string;
     // Üye Grubu
-    membershipInfoOptionId: string;
+    memberGroupId: string;
     // Kurum Detay Bilgileri
     dutyUnit: string;
     institutionAddress: string;
@@ -133,7 +132,7 @@ const MemberApplicationCreatePage: React.FC = () => {
     branchId: '',
     tevkifatCenterId: '',
     tevkifatTitle: '',
-    membershipInfoOptionId: '',
+    memberGroupId: '',
     dutyUnit: '',
     institutionAddress: '',
     institutionProvinceId: '',
@@ -151,7 +150,7 @@ const MemberApplicationCreatePage: React.FC = () => {
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [tevkifatCenters, setTevkifatCenters] = useState<Array<{ id: string; name: string; title: string | null }>>([]);
   const [tevkifatTitles, setTevkifatTitles] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
-  const [membershipInfoOptions, setMembershipInfoOptions] = useState<Array<{ id: string; label: string; value: string }>>([]);
+  const [memberGroups, setMemberGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [professions, setProfessions] = useState<Profession[]>([]);
   const [institutionProvinces, setInstitutionProvinces] = useState<Province[]>([]);
   const [institutionDistricts, setInstitutionDistricts] = useState<District[]>([]);
@@ -300,17 +299,18 @@ const MemberApplicationCreatePage: React.FC = () => {
     loadTevkifatTitles();
   }, []);
 
-  // Üyelik bilgisi seçeneklerini yükle
+  // Üye gruplarını yükle
   useEffect(() => {
-    const loadMembershipInfoOptions = async () => {
+    const loadMemberGroups = async () => {
       try {
-        const res = await httpClient.get('/members/membership-info-options');
-        setMembershipInfoOptions(res.data || []);
+        const { getMemberGroups } = await import('../../api/memberGroupsApi');
+        const data = await getMemberGroups();
+        setMemberGroups(data || []);
       } catch (e) {
-        console.error('Üyelik bilgisi seçenekleri yüklenirken hata:', e);
+        console.error('Üye grupları yüklenirken hata:', e);
       }
     };
-    loadMembershipInfoOptions();
+    loadMemberGroups();
   }, []);
 
   // Meslek/Unvanları yükle
@@ -607,10 +607,20 @@ const MemberApplicationCreatePage: React.FC = () => {
     }
   }, []);
 
-  // Dosya adını oluştur (format: UyeKayidi_TCKimlik_AdSoyad)
-  // Kayıt numarası henüz yok, başlangıçta sadece TCKimlik_AdSoyad gösterilir
-  // Member oluşturulduktan sonra kayıt numarası otomatik eklenir
-  const generateFileName = (originalFileName: string, registrationNumber?: string): string => {
+  // Belge tipi etiketlerini al
+  const getDocumentTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      'MEMBERSHIP_FORM': 'UyelikFormu',
+      'RESIGNATION_FORM': 'IstifaFormu',
+      'REPRESENTATION_LETTER': 'TemsilcilikYazisi',
+      'OTHER': 'Diger',
+    };
+    return labels[type] || 'Diger';
+  };
+
+  // Dosya adını oluştur (format: BelgeTipi_TC_AdSoyad)
+  // Kayıt numarası onay sırasında backend'de eklenecek
+  const generateFileName = (originalFileName: string, documentType?: string): string => {
     const firstName = form.firstName.trim().replace(/[^a-zA-ZçğıöşüÇĞIİÖŞÜ\s]/g, '');
     const lastName = form.lastName.trim().replace(/[^a-zA-ZçğıöşüÇĞIİÖŞÜ\s]/g, '');
     const adSoyad = `${firstName}_${lastName}`.replace(/\s+/g, '_');
@@ -620,14 +630,11 @@ const MemberApplicationCreatePage: React.FC = () => {
     // Dosya uzantısını al
     const extension = originalFileName.substring(originalFileName.lastIndexOf('.'));
     
-    // Format: UyeKayidi_TCKimlik_AdSoyad
-    // Kayıt numarası varsa başa ekle, yoksa sadece TCKimlik_AdSoyad göster (kayıt numarası eklendikten sonra güncellenecek)
-    if (registrationNumber) {
-      return `${registrationNumber}_${tcKimlik}_${adSoyad}${extension}`;
-    } else {
-      // Başlangıçta sadece TCKimlik_AdSoyad göster (kayıt numarası eklendikten sonra güncellenecek)
-      return `${tcKimlik}_${adSoyad}${extension}`;
-    }
+    // Belge tipi etiketi
+    const belgeTipi = documentType ? getDocumentTypeLabel(documentType) : 'Diger';
+    
+    // Format: BelgeTipi_TC_AdSoyad (kayıt numarası onay sırasında eklenecek)
+    return `${belgeTipi}_${tcKimlik}_${adSoyad}${extension}`;
   };
 
   // Dosya seçildiğinde otomatik ad oluştur
@@ -635,10 +642,11 @@ const MemberApplicationCreatePage: React.FC = () => {
     const newFiles = [...uploadedFiles, ...files];
     setUploadedFiles(newFiles);
     
-    // Yeni dosyalar için otomatik ad oluştur
+    // Yeni dosyalar için otomatik ad oluştur (belge tipi seçilene kadar bekler)
     const newFileNames = { ...fileNames };
     files.forEach((file, fileIndex) => {
       const globalIndex = uploadedFiles.length + fileIndex;
+      // Belge tipi seçilene kadar geçici bir ad kullan
       const autoName = generateFileName(file.name);
       newFileNames[globalIndex] = autoName;
     });
@@ -683,89 +691,109 @@ const MemberApplicationCreatePage: React.FC = () => {
   const validate = () => {
     if (!form.firstName.trim()) {
       setError('Ad alanı zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.lastName.trim()) {
       setError('Soyad alanı zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     const nationalIdError = getNationalIdError(form.nationalId);
     if (nationalIdError) {
       setError(nationalIdError);
       setNationalIdError(nationalIdError);
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.motherName.trim()) {
       setError('Anne adı zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.fatherName.trim()) {
       setError('Baba adı zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.birthDate) {
       setError('Doğum tarihi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.birthplace.trim()) {
       setError('Doğum yeri zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.gender) {
       setError('Cinsiyet seçimi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.educationStatus) {
       setError('Öğrenim durumu zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.provinceId) {
       setError('İl seçimi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.districtId) {
       setError('İlçe seçimi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     const normalizedPhone = normalizePhoneNumber(form.phone);
     if (!normalizedPhone || normalizedPhone.trim() === '') {
       setError('Telefon numarası zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     const phoneError = getPhoneError(normalizedPhone);
     if (phoneError) {
       setError(phoneError);
       setPhoneError(phoneError);
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.email.trim()) {
       setError('E-posta adresi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     const emailError = getEmailError(form.email);
     if (emailError) {
       setError(emailError);
       setEmailError(emailError);
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.institutionId) {
       setError('Kurum seçimi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.tevkifatCenterId) {
       setError('Tevkifat kurumu seçimi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.tevkifatTitle) {
       setError('Tevkifat ünvanı seçimi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     if (!form.branchId) {
       setError('Şube seçimi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
-    if (!form.membershipInfoOptionId) {
+    if (!form.memberGroupId) {
       setError('Üye grubu seçimi zorunludur.');
+      setErrorDialogOpen(true);
       return false;
     }
     return true;
@@ -811,7 +839,7 @@ const MemberApplicationCreatePage: React.FC = () => {
         gender: form.gender || undefined,
         educationStatus: form.educationStatus || undefined,
         // Üye Grubu
-        membershipInfoOptionId: form.membershipInfoOptionId || undefined,
+        memberGroupId: form.memberGroupId || undefined,
         // Kurum Bilgileri
         institutionId: form.institutionId || undefined,
         // Tevkifat
@@ -826,45 +854,44 @@ const MemberApplicationCreatePage: React.FC = () => {
         institutionRegNo: form.institutionRegNo.trim() || undefined,
         staffTitleCode: form.staffTitleCode.trim() || undefined,
         previousCancelledMemberId: previousCancelledMemberId,
-        // registrationNumber backend'de otomatik oluşturulacak (zaman damgası veya sıralı numara)
+        // registrationNumber onay sırasında admin tarafından atanacak
       };
 
       const created = await createMemberApplication(payload);
       
       // Dosyaları yükle (eğer varsa)
-      // Dosya adları kayıt numarası ile güncellenecek
       if (uploadedFiles.length > 0) {
         try {
-          // TODO: Backend'de dosya yükleme endpoint'i eklendikten sonra bu kısım implement edilecek
-          // Dosyalar kullanıcının belirlediği adlarla yüklenecek
-          const filesToUpload = uploadedFiles.map((file, index) => {
-            let userFileName = fileNames[index] || generateFileName(file.name);
-            const extension = userFileName.substring(userFileName.lastIndexOf('.'));
-            const nameWithoutExt = userFileName.replace(extension, '');
+          // Her dosya için belge tipi kontrolü yap
+          for (let index = 0; index < uploadedFiles.length; index++) {
+            const file = uploadedFiles[index];
+            const documentType = fileTypes[index];
             
-            // Format: UyeKayidi_TCKimlik_AdSoyad
-            let finalFileName = userFileName;
-            
-            // Eğer kayıt numarası varsa ve dosya adı başında yoksa ekle
-            if (created.registrationNumber) {
-              // Kayıt numarası zaten başta varsa değiştirme
-              if (!nameWithoutExt.startsWith(created.registrationNumber + '_')) {
-                // Kayıt numarasını başa ekle: UyeKayidi_TCKimlik_AdSoyad
-                finalFileName = `${created.registrationNumber}_${nameWithoutExt}${extension}`;
-              }
-              // Eğer zaten kayıt numarası varsa, finalFileName zaten doğru
+            if (!documentType) {
+              setError(`Dosya ${index + 1} için belge tipi seçilmelidir.`);
+              setErrorDialogOpen(true);
+              setSaving(false);
+              return;
             }
-            // Kayıt numarası yoksa, userFileName kullan (TCKimlik_AdSoyad formatında)
             
-            return {
+            // Dosya adını oluştur: BelgeTipi_TC_AdSoyad formatında
+            // Kayıt numarası onay sırasında eklenecek
+            const finalFileName = fileNames[index] || generateFileName(file.name, documentType);
+            
+            // Dosyayı yükle (dosya adını uzantıyla birlikte gönder)
+            await uploadMemberDocument(
+              created.id,
               file,
-              newFileName: finalFileName,
-            };
-          });
-          console.log('Yüklenecek dosyalar (yeni adlarla):', filesToUpload);
-          // navigate(`/members/${created.id}?uploadFiles=true`);
-        } catch (fileError) {
+              documentType,
+              undefined, // description
+              finalFileName, // fileName (uzantıyla birlikte)
+            );
+          }
+        } catch (fileError: any) {
           console.error('Dosya yüklenirken hata:', fileError);
+          const errorMessage = fileError?.response?.data?.message || fileError?.message || 'Dosya yüklenirken bir hata oluştu.';
+          setError(`Üye oluşturuldu ancak dosya yüklenirken hata: ${errorMessage}`);
+          setErrorDialogOpen(true);
           // Dosya yükleme hatası olsa bile üye oluşturuldu, devam et
         }
       }
@@ -978,20 +1005,6 @@ const MemberApplicationCreatePage: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Hata Mesajı */}
-      {error && (
-        <Alert 
-          severity="error" 
-          sx={{ 
-            mb: 3,
-            borderRadius: 2,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          }} 
-          onClose={() => setError(null)}
-        >
-          {error}
-        </Alert>
-      )}
 
       {/* Ana Kart */}
       <Card
@@ -1252,64 +1265,96 @@ const MemberApplicationCreatePage: React.FC = () => {
 
             {/* Cinsiyet - Öğrenim Durumu (2 sütun) */}
             <Grid item xs={12} sm={6}>
-              <FormControl 
+              <Autocomplete
+                options={[
+                  { value: 'MALE', label: 'Erkek' },
+                  { value: 'FEMALE', label: 'Kadın' },
+                ]}
+                value={
+                  form.gender
+                    ? { value: form.gender, label: form.gender === 'MALE' ? 'Erkek' : 'Kadın' }
+                    : null
+                }
+                onChange={(_, newValue) => handleChange('gender', newValue?.value || '')}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualTo={(option, value) => option.value === value.value}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Cinsiyet *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                required
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Cinsiyet *</InputLabel>
-                <Select
-                  label="Cinsiyet *"
-                  value={form.gender}
-                  onChange={(e) => handleChange('gender', e.target.value)}
-                  required
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  <MenuItem value="MALE">Erkek</MenuItem>
-                  <MenuItem value="FEMALE">Kadın</MenuItem>
-                </Select>
-              </FormControl>
+              />
             </Grid>
 
             <Grid item xs={12} sm={6}>
-              <FormControl 
+              <Autocomplete
+                options={[
+                  { value: 'PRIMARY', label: 'İlköğretim' },
+                  { value: 'HIGH_SCHOOL', label: 'Lise' },
+                  { value: 'COLLEGE', label: 'Yüksekokul' },
+                ]}
+                value={
+                  form.educationStatus
+                    ? {
+                        value: form.educationStatus,
+                        label:
+                          form.educationStatus === 'PRIMARY'
+                            ? 'İlköğretim'
+                            : form.educationStatus === 'HIGH_SCHOOL'
+                            ? 'Lise'
+                            : 'Yüksekokul',
+                      }
+                    : null
+                }
+                onChange={(_, newValue) => handleChange('educationStatus', newValue?.value || '')}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualTo={(option, value) => option.value === value.value}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Öğrenim Durumu *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <SchoolIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                required
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Öğrenim Durumu *</InputLabel>
-                <Select
-                  label="Öğrenim Durumu *"
-                  value={form.educationStatus}
-                  onChange={(e) => handleChange('educationStatus', e.target.value)}
-                  required
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <SchoolIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  <MenuItem value="PRIMARY">İlköğretim</MenuItem>
-                  <MenuItem value="HIGH_SCHOOL">Lise</MenuItem>
-                  <MenuItem value="COLLEGE">Yüksekokul</MenuItem>
-                </Select>
-              </FormControl>
+              />
             </Grid>
 
             {/* Telefon - E-posta (2 sütun) */}
@@ -1437,73 +1482,75 @@ const MemberApplicationCreatePage: React.FC = () => {
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {/* İl - İlçe (2 sütun) */}
             <Grid item xs={12} md={6}>
-              <FormControl 
-                fullWidth
-                required
+              <Autocomplete
+                options={provinces}
+                value={provinces.find((p) => p.id === form.provinceId) || null}
+                onChange={(_, newValue) => handleChange('provinceId', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
                 disabled={provinceDisabled}
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>İl *</InputLabel>
-                <Select
-                  label="İl *"
-                  value={form.provinceId}
-                  onChange={(e) => handleChange('provinceId', e.target.value)}
-                  required
-                  disabled={provinceDisabled}
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">İl Seçin</MenuItem>
-                  {provinces.map((province) => (
-                    <MenuItem key={province.id} value={province.id}>
-                      {province.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="İl *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
+                fullWidth
+              />
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <FormControl 
-                fullWidth
-                required
+              <Autocomplete
+                options={districts}
+                value={districts.find((d) => d.id === form.districtId) || null}
+                onChange={(_, newValue) => handleChange('districtId', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
                 disabled={districtDisabled || !form.provinceId}
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>İlçe *</InputLabel>
-                <Select
-                  label="İlçe *"
-                  value={form.districtId}
-                  onChange={(e) => handleChange('districtId', e.target.value)}
-                  required
-                  disabled={districtDisabled || !form.provinceId}
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">İlçe Seçin</MenuItem>
-                  {districts.map((district) => (
-                    <MenuItem key={district.id} value={district.id}>
-                      {district.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="İlçe *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
+                fullWidth
+              />
             </Grid>
           </Grid>
 
@@ -1541,35 +1588,38 @@ const MemberApplicationCreatePage: React.FC = () => {
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {/* Kurum Adı - Tek alan, tam genişlik */}
             <Grid item xs={12}>
-              <FormControl 
+              <Autocomplete
+                options={institutions}
+                value={institutions.find((i) => i.id === form.institutionId) || null}
+                onChange={(_, newValue) => handleChange('institutionId', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kurum Adı *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <AccountBalanceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Kurum Adı *</InputLabel>
-                <Select
-                  label="Kurum Adı *"
-                  value={form.institutionId}
-                  onChange={(e) => handleChange('institutionId', e.target.value)}
-                  required
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <AccountBalanceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">Kurum Seçin</MenuItem>
-                  {institutions.map((inst) => (
-                    <MenuItem key={inst.id} value={inst.id}>
-                      {inst.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              />
             </Grid>
 
             {/* Görev Birimi */}
@@ -1598,35 +1648,38 @@ const MemberApplicationCreatePage: React.FC = () => {
 
             {/* Meslek(Unvan) */}
             <Grid item xs={12} md={6}>
-              <FormControl 
+              <Autocomplete
+                options={professions}
+                value={professions.find((p) => p.id === form.professionId) || null}
+                onChange={(_, newValue) => handleChange('professionId', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Meslek(Unvan)"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Meslek(Unvan)</InputLabel>
-                <Select
-                  label="Meslek(Unvan)"
-                  value={form.professionId}
-                  onChange={(e) => handleChange('professionId', e.target.value)}
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">Meslek/Unvan Seçin</MenuItem>
-                  {professions.map((profession) => (
-                    <MenuItem key={profession.id} value={profession.id}>
-                      {profession.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>Zorunlu değildir</FormHelperText>
-              </FormControl>
+              />
+              <FormHelperText>Zorunlu değildir</FormHelperText>
             </Grid>
 
             {/* Kurum Adresi */}
@@ -1657,76 +1710,78 @@ const MemberApplicationCreatePage: React.FC = () => {
 
             {/* Kurum İli - Kurum İlçesi */}
             <Grid item xs={12} md={6}>
-              <FormControl 
+              <Autocomplete
+                options={institutionProvinces.length > 0 ? institutionProvinces : provinces}
+                value={
+                  (institutionProvinces.length > 0 ? institutionProvinces : provinces).find(
+                    (p) => p.id === form.institutionProvinceId
+                  ) || null
+                }
+                onChange={(_, newValue) => handleChange('institutionProvinceId', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kurum İli"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Kurum İli</InputLabel>
-                <Select
-                  label="Kurum İli"
-                  value={form.institutionProvinceId}
-                  onChange={(e) => handleChange('institutionProvinceId', e.target.value)}
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">İl Seçin</MenuItem>
-                  {institutionProvinces.length > 0 ? (
-                    institutionProvinces.map((province) => (
-                      <MenuItem key={province.id} value={province.id}>
-                        {province.name}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    provinces.map((province) => (
-                      <MenuItem key={province.id} value={province.id}>
-                        {province.name}
-                      </MenuItem>
-                    ))
-                  )}
-                </Select>
-                <FormHelperText>Zorunlu değildir</FormHelperText>
-              </FormControl>
+              />
+              <FormHelperText>Zorunlu değildir</FormHelperText>
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <FormControl 
+              <Autocomplete
+                options={institutionDistricts}
+                value={institutionDistricts.find((d) => d.id === form.institutionDistrictId) || null}
+                onChange={(_, newValue) => handleChange('institutionDistrictId', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
+                disabled={!form.institutionProvinceId}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kurum İlçesi"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Kurum İlçesi</InputLabel>
-                <Select
-                  label="Kurum İlçesi"
-                  value={form.institutionDistrictId}
-                  onChange={(e) => handleChange('institutionDistrictId', e.target.value)}
-                  disabled={!form.institutionProvinceId}
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">İlçe Seçin</MenuItem>
-                  {institutionDistricts.map((district) => (
-                    <MenuItem key={district.id} value={district.id}>
-                      {district.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>Zorunlu değildir</FormHelperText>
-              </FormControl>
+              />
+              <FormHelperText>Zorunlu değildir</FormHelperText>
             </Grid>
 
             {/* Kurum Sicil No - Kadro Unvan Kodu */}
@@ -1811,69 +1866,73 @@ const MemberApplicationCreatePage: React.FC = () => {
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {/* Tevkifat Kurumu - Tevkifat Ünvanı (2 sütun responsive) */}
             <Grid item xs={12} md={6}>
-              <FormControl 
+              <Autocomplete
+                options={tevkifatCenters}
+                value={tevkifatCenters.find((c) => c.id === form.tevkifatCenterId) || null}
+                onChange={(_, newValue) => handleChange('tevkifatCenterId', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Tevkifat Kurumu *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <CorporateFareIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                required
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Tevkifat Kurumu *</InputLabel>
-                <Select
-                  label="Tevkifat Kurumu *"
-                  value={form.tevkifatCenterId}
-                  onChange={(e) => handleChange('tevkifatCenterId', e.target.value)}
-                  required
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <CorporateFareIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">Tevkifat Kurumu Seçin</MenuItem>
-                  {tevkifatCenters.map((center) => (
-                    <MenuItem key={center.id} value={center.id}>
-                      {center.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              />
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <FormControl 
+              <Autocomplete
+                options={tevkifatTitles}
+                value={tevkifatTitles.find((t) => t.id === form.tevkifatTitle) || null}
+                onChange={(_, newValue) => handleChange('tevkifatTitle', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Tevkifat Ünvanı *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                required
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Tevkifat Ünvanı *</InputLabel>
-                <Select
-                  label="Tevkifat Ünvanı *"
-                  value={form.tevkifatTitle}
-                  onChange={(e) => handleChange('tevkifatTitle', e.target.value)}
-                  required
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">Tevkifat Ünvanı Seçin</MenuItem>
-                  {tevkifatTitles.map((title) => (
-                    <MenuItem key={title.id} value={title.id}>
-                      {title.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              />
             </Grid>
           </Grid>
 
@@ -1911,36 +1970,38 @@ const MemberApplicationCreatePage: React.FC = () => {
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {/* Şube - Tek alan, tam genişlik */}
             <Grid item xs={12}>
-              <FormControl 
+              <Autocomplete
+                options={branches}
+                value={branches.find((b) => b.id === form.branchId) || null}
+                onChange={(_, newValue) => handleChange('branchId', newValue?.id || '')}
+                getOptionLabel={(option) => `${option.name}${option.code ? ` (${option.code})` : ''}`}
+                isOptionEqualTo={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Şube *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <AccountBalanceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                required
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Şube *</InputLabel>
-                <Select
-                  label="Şube *"
-                  value={form.branchId}
-                  onChange={(e) => handleChange('branchId', e.target.value)}
-                  required
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <AccountBalanceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">Şube Seçin</MenuItem>
-                  {branches.map((branch) => (
-                    <MenuItem key={branch.id} value={branch.id}>
-                      {branch.name} {branch.code ? `(${branch.code})` : ''}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              />
             </Grid>
           </Grid>
 
@@ -1976,148 +2037,39 @@ const MemberApplicationCreatePage: React.FC = () => {
           </Box>
 
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-            {/* Üyelik Durumu - Disabled, bilgilendirici */}
-            <Grid item xs={12}>
-              <FormControl 
-                fullWidth
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    bgcolor: alpha(theme.palette.grey[100], 0.5),
-                  },
-                }}
-              >
-                <InputLabel>Üyelik Durumu</InputLabel>
-                <Select
-                  label="Üyelik Durumu"
-                  value="PENDING"
-                  disabled
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="PENDING">Beklemede (Otomatik)</MenuItem>
-                </Select>
-              </FormControl>
-              <Alert severity="info" sx={{ mt: 1.5, borderRadius: 2 }}>
-                <Typography variant="caption">
-                  Üye kaydı esnasında otomatik olarak <strong>BEKLEME</strong> durumu atanır. Diğer durumlar Admin tarafından düzenlenebilir.
-                </Typography>
-              </Alert>
-            </Grid>
-
             {/* Üye Grubu */}
             <Grid item xs={12}>
-              <FormControl 
+              <Autocomplete
+                options={memberGroups}
+                value={memberGroups.find((g) => g.id === form.memberGroupId) || null}
+                onChange={(_, newValue) => handleChange('memberGroupId', newValue?.id || '')}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualTo={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Üye Grubu *"
+                    required
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      minWidth: 300,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                )}
                 fullWidth
-                required
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  },
-                }}
-              >
-                <InputLabel>Üye Grubu *</InputLabel>
-                <Select
-                  label="Üye Grubu *"
-                  value={form.membershipInfoOptionId}
-                  onChange={(e) => handleChange('membershipInfoOptionId', e.target.value)}
-                  required
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.2rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                >
-                  <MenuItem value="">Üye Grubu Seçin</MenuItem>
-                  {membershipInfoOptions.map((option) => (
-                    <MenuItem key={option.id} value={option.id}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Yönetim Bilgileri - 2 sütun */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Yönetim Karar Defteri No"
-                value=""
-                disabled
-                fullWidth
-                placeholder="Admin tarafından verilebilecek"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    bgcolor: alpha(theme.palette.grey[100], 0.5),
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Yönetim Kurulu Karar Tarihi"
-                type="date"
-                value=""
-                disabled
-                fullWidth
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                placeholder="Admin tarafından verilebilecek"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    bgcolor: alpha(theme.palette.grey[100], 0.5),
-                  },
-                }}
-              />
-            </Grid>
-
-            {/* Üye Numarası */}
-            <Grid item xs={12}>
-              <TextField
-                label="Üye Numarası"
-                value=""
-                disabled
-                fullWidth
-                placeholder="Admin tarafından verilebilecek"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  minWidth: 300,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    bgcolor: alpha(theme.palette.grey[100], 0.5),
-                  },
-                }}
               />
             </Grid>
           </Grid>
@@ -2170,14 +2122,21 @@ const MemberApplicationCreatePage: React.FC = () => {
                 }}
               >
                 <input
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  accept=".pdf"
                   style={{ display: 'none' }}
                   id="file-upload-input"
                   multiple
                   type="file"
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
-                    handleFileSelect(files);
+                    // Sadece PDF dosyalarını kabul et
+                    const pdfFiles = files.filter(file => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
+                    if (pdfFiles.length !== files.length) {
+                      setError('Sadece PDF dosyaları yüklenebilir.');
+                    }
+                    if (pdfFiles.length > 0) {
+                      handleFileSelect(pdfFiles);
+                    }
                     // Input'u sıfırla (aynı dosyayı tekrar seçebilmek için)
                     e.target.value = '';
                   }}
@@ -2197,7 +2156,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                   </Button>
                 </label>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  PDF, Word, JPG, PNG formatları desteklenir
+                  Sadece PDF formatı desteklenir
                 </Typography>
                 {uploadedFiles.length > 0 && (
                   <Box sx={{ mt: 2 }}>
@@ -2206,7 +2165,8 @@ const MemberApplicationCreatePage: React.FC = () => {
                     </Typography>
                     <Stack spacing={2}>
                       {uploadedFiles.map((file, index) => {
-                        const defaultFileName = generateFileName(file.name);
+                        const documentType = fileTypes[index] || '';
+                        const defaultFileName = generateFileName(file.name, documentType);
                         const fileName = fileNames[index] || defaultFileName;
                         const extension = file.name.substring(file.name.lastIndexOf('.'));
                         
@@ -2244,25 +2204,59 @@ const MemberApplicationCreatePage: React.FC = () => {
                               </IconButton>
                             </Box>
                             <Box sx={{ mt: 1.5 }}>
-                              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-                                <InputLabel>Belge Tipi</InputLabel>
-                                <Select
-                                  label="Belge Tipi"
-                                  value={fileTypes[index] || ''}
-                                  onChange={(e) => {
-                                    setFileTypes((prev) => ({
-                                      ...prev,
-                                      [index]: e.target.value,
-                                    }));
-                                  }}
-                                >
-                                  <MenuItem value="">Seçmeli</MenuItem>
-                                  <MenuItem value="MEMBERSHIP_FORM">Üyelik Formu</MenuItem>
-                                  <MenuItem value="RESIGNATION_FORM">İstifa Formu</MenuItem>
-                                  <MenuItem value="REPRESENTATION_LETTER">Temsilcilik Yazısı Formu</MenuItem>
-                                  <MenuItem value="OTHER">Diğer Dosyalar</MenuItem>
-                                </Select>
-                              </FormControl>
+                              <Autocomplete
+                                options={[
+                                  { value: 'MEMBERSHIP_FORM', label: 'Üyelik Formu' },
+                                  { value: 'RESIGNATION_FORM', label: 'İstifa Formu' },
+                                  { value: 'REPRESENTATION_LETTER', label: 'Temsilcilik Yazısı Formu' },
+                                  { value: 'OTHER', label: 'Diğer Dosyalar' },
+                                ]}
+                                value={
+                                  fileTypes[index]
+                                    ? {
+                                        value: fileTypes[index],
+                                        label:
+                                          fileTypes[index] === 'MEMBERSHIP_FORM'
+                                            ? 'Üyelik Formu'
+                                            : fileTypes[index] === 'RESIGNATION_FORM'
+                                            ? 'İstifa Formu'
+                                            : fileTypes[index] === 'REPRESENTATION_LETTER'
+                                            ? 'Temsilcilik Yazısı Formu'
+                                            : 'Diğer Dosyalar',
+                                      }
+                                    : null
+                                }
+                                onChange={(_, newValue) => {
+                                  const selectedType = newValue?.value || '';
+                                  setFileTypes((prev) => ({
+                                    ...prev,
+                                    [index]: selectedType,
+                                  }));
+                                  // Belge tipi seçildiğinde dosya adını güncelle
+                                  if (selectedType && uploadedFiles[index]) {
+                                    const file = uploadedFiles[index];
+                                    const newFileName = generateFileName(file.name, selectedType);
+                                    handleFileNameChange(index, newFileName);
+                                  }
+                                }}
+                                getOptionLabel={(option) => option.label}
+                                isOptionEqualTo={(option, value) => option.value === value.value}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    label="Belge Tipi *"
+                                    required
+                                    error={!fileTypes[index]}
+                                    helperText={!fileTypes[index] ? 'Belge tipi seçilmelidir' : ''}
+                                    size="small"
+                                    sx={{ 
+                                      minWidth: 300,
+                                      mb: 1.5,
+                                    }}
+                                  />
+                                )}
+                                fullWidth
+                              />
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
                                 Kaydedilecek Dosya Adı:
                               </Typography>
@@ -2303,9 +2297,9 @@ const MemberApplicationCreatePage: React.FC = () => {
                     </Stack>
                     <Alert severity="info" sx={{ mt: 2, borderRadius: 1 }}>
                       <Typography variant="caption">
-                        <strong>Not:</strong> Dosyalar kaydedilirken yukarıda belirtilen adlarla kaydedilecektir. 
-                        İsterseniz dosya adlarını düzenleyebilirsiniz. Üye kayıt numarası atandıktan sonra dosya adları otomatik olarak 
-                        <strong> UyeKayidi_TCKimlik_AdSoyad</strong> formatına güncellenecektir.
+                        <strong>Not:</strong> Her dosya için belge tipi seçilmelidir. Dosyalar kaydedilirken 
+                        <strong> BelgeTipi_TC_AdSoyad</strong> formatında kaydedilecektir. Üye başvurusu onaylandıktan sonra dosya adları otomatik olarak 
+                        <strong> UyeKayidi_BelgeTipi_TC_AdSoyad</strong> formatına güncellenecektir.
                       </Typography>
                     </Alert>
                   </Box>
@@ -2467,6 +2461,41 @@ const MemberApplicationCreatePage: React.FC = () => {
             disabled={saving}
           >
             Devam Et ve Kaydet
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Hata Dialog'u */}
+      <Dialog
+        open={errorDialogOpen}
+        onClose={() => setErrorDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" gap={1}>
+            <ErrorIcon sx={{ color: 'error.main', fontSize: '1.5rem' }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Hata
+            </Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error || 'Bir hata oluştu.'}
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            Lütfen formu kontrol edip eksik veya hatalı alanları düzeltin.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button 
+            onClick={() => setErrorDialogOpen(false)} 
+            variant="contained"
+            color="error"
+            fullWidth
+          >
+            Tamam
           </Button>
         </DialogActions>
       </Dialog>

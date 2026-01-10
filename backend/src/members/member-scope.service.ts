@@ -42,8 +42,15 @@ export class MemberScopeService {
           },
           include: {
             permissions: true,
-            province: true,
-            district: true,
+            roleScopes: {
+              where: {
+                deletedAt: null,
+              },
+              include: {
+                province: true,
+                district: true,
+              },
+            },
           },
         },
       },
@@ -59,9 +66,12 @@ export class MemberScopeService {
     // Type assertion for customRoles
     const userWithRoles = dbUser as User & { 
       customRoles?: Array<{ 
-        name: string; 
-        provinceId?: string | null;
-        districtId?: string | null;
+        name: string;
+        hasScopeRestriction: boolean;
+        roleScopes?: Array<{
+          provinceId?: string | null;
+          districtId?: string | null;
+        }>;
         permissions?: Array<{ permission: string }>;
       }> 
     };
@@ -70,38 +80,42 @@ export class MemberScopeService {
     const customRoleNames = userWithRoles.customRoles?.map((r) => r.name) || [];
     console.log('[MemberScopeService] User custom roles from DB:', customRoleNames);
 
-    // MEMBER_LIST_BY_PROVINCE izni olan custom role'lerin districtId veya provinceId'sini kontrol et
-    // Önce districtId kontrolü (daha spesifik)
-    const districtScopedRoles = userWithRoles.customRoles?.filter((role) => {
+    // MEMBER_LIST_BY_PROVINCE izni olan ve hasScopeRestriction true olan custom role'lerin scope'larını kontrol et
+    // Önce districtId kontrolü (daha spesifik) - çoklu scope desteği
+    const scopedRoles = userWithRoles.customRoles?.filter((role) => {
       const hasProvincePermission = role.permissions?.some(
         (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE'
       );
-      return hasProvincePermission && role.districtId;
+      return hasProvincePermission && role.hasScopeRestriction && role.roleScopes && role.roleScopes.length > 0;
     }) || [];
 
-    if (districtScopedRoles.length > 0) {
-      // İlk role'ün districtId'sini kullan (birden fazla olursa ilkini al)
-      const districtId = districtScopedRoles[0].districtId;
-      if (districtId) {
-        console.log('[MemberScopeService] Filtering by role districtId:', districtId);
-        return { districtId };
+    if (scopedRoles.length > 0) {
+      // Tüm districtId'leri topla (çoklu scope desteği)
+      const districtIds: string[] = [];
+      const provinceIds: string[] = [];
+
+      for (const role of scopedRoles) {
+        if (role.roleScopes) {
+          for (const scope of role.roleScopes) {
+            if (scope.districtId) {
+              districtIds.push(scope.districtId);
+            } else if (scope.provinceId) {
+              provinceIds.push(scope.provinceId);
+            }
+          }
+        }
       }
-    }
 
-    // Eğer districtId yoksa provinceId kontrolü
-    const provinceScopedRoles = userWithRoles.customRoles?.filter((role) => {
-      const hasProvincePermission = role.permissions?.some(
-        (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE'
-      );
-      return hasProvincePermission && role.provinceId && !role.districtId;
-    }) || [];
+      // DistrictId varsa önce onu kullan
+      if (districtIds.length > 0) {
+        console.log('[MemberScopeService] Filtering by role districtIds:', districtIds);
+        return { districtId: { in: districtIds } };
+      }
 
-    if (provinceScopedRoles.length > 0) {
-      // İlk role'ün provinceId'sini kullan (birden fazla olursa ilkini al)
-      const provinceId = provinceScopedRoles[0].provinceId;
-      if (provinceId) {
-        console.log('[MemberScopeService] Filtering by role provinceId:', provinceId);
-        return { provinceId };
+      // ProvinceId varsa onu kullan
+      if (provinceIds.length > 0) {
+        console.log('[MemberScopeService] Filtering by role provinceIds:', provinceIds);
+        return { provinceId: { in: provinceIds } };
       }
     }
 
@@ -117,20 +131,45 @@ export class MemberScopeService {
           },
           include: {
             permissions: true,
-            province: true,
-            district: true,
+            roleScopes: {
+              where: {
+                deletedAt: null,
+              },
+              include: {
+                province: true,
+                district: true,
+              },
+            },
           },
         });
 
         if (role) {
-          console.log('[MemberScopeService] Found role by name:', roleName, 'provinceId:', role.provinceId);
+          console.log('[MemberScopeService] Found role by name:', roleName);
           // MEMBER_LIST_BY_PROVINCE izni var mı kontrol et
           const hasProvincePermission = role.permissions?.some(
             (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE'
           );
-          if (hasProvincePermission && role.provinceId) {
-            console.log('[MemberScopeService] Filtering by role provinceId (from JWT role name):', role.provinceId);
-            return { provinceId: role.provinceId };
+          
+          if (hasProvincePermission && role.hasScopeRestriction && role.roleScopes && role.roleScopes.length > 0) {
+            const districtIds = role.roleScopes
+              .filter(s => s.districtId)
+              .map(s => s.districtId)
+              .filter((id): id is string => id !== null);
+            
+            const provinceIds = role.roleScopes
+              .filter(s => s.provinceId && !s.districtId)
+              .map(s => s.provinceId)
+              .filter((id): id is string => id !== null);
+
+            if (districtIds.length > 0) {
+              console.log('[MemberScopeService] Filtering by role districtIds (from JWT role name):', districtIds);
+              return { districtId: { in: districtIds } };
+            }
+            
+            if (provinceIds.length > 0) {
+              console.log('[MemberScopeService] Filtering by role provinceIds (from JWT role name):', provinceIds);
+              return { provinceId: { in: provinceIds } };
+            }
           }
         }
       }
@@ -153,32 +192,82 @@ export class MemberScopeService {
       return {}; // filtre yok → tüm üyeler
     }
 
-    // İlgili kullanıcı için scope kaydı bul
-    const scope = await this.prisma.userScope.findFirst({
-      where: { userId: user.userId },
+    // İlgili kullanıcı için tüm scope kayıtlarını bul (çoklu scope desteği)
+    const scopes = await this.prisma.userScope.findMany({
+      where: { 
+        userId: user.userId,
+        deletedAt: null, // Sadece soft delete edilmemiş scope'ları kullan
+      },
     });
 
-    if (!scope) {
+    if (!scopes || scopes.length === 0) {
       // Scope tanımlı değilse, şimdilik hiçbir üye göstermeyelim
       console.log('[MemberScopeService] No scope found for user:', user.userId);
       return { id: '' }; // impossible filter
     }
 
-    console.log('[MemberScopeService] User scope:', {
-      provinceId: scope.provinceId,
-      districtId: scope.districtId,
-    });
+    console.log('[MemberScopeService] User scopes:', scopes.map(s => ({
+      provinceId: s.provinceId,
+      districtId: s.districtId,
+    })));
 
     // IL_BASKANI → il bazlı (veritabanından gelen rol)
-    if (customRoleNames.includes('IL_BASKANI') && scope.provinceId) {
-      console.log('[MemberScopeService] Filtering by provinceId:', scope.provinceId);
-      return { provinceId: scope.provinceId };
+    if (customRoleNames.includes('IL_BASKANI')) {
+      const provinceIds = scopes
+        .filter(s => s.provinceId)
+        .map(s => s.provinceId)
+        .filter((id): id is string => id !== null);
+      
+      if (provinceIds.length > 0) {
+        console.log('[MemberScopeService] Filtering by provinceIds:', provinceIds);
+        return { provinceId: { in: provinceIds } };
+      }
     }
 
     // ILCE_TEMSILCISI → ilçe bazlı (veritabanından gelen rol)
-    if (customRoleNames.includes('ILCE_TEMSILCISI') && scope.districtId) {
-      console.log('[MemberScopeService] Filtering by districtId:', scope.districtId);
-      return { districtId: scope.districtId };
+    if (customRoleNames.includes('ILCE_TEMSILCISI')) {
+      const districtIds = scopes
+        .filter(s => s.districtId)
+        .map(s => s.districtId)
+        .filter((id): id is string => id !== null);
+      
+      if (districtIds.length > 0) {
+        console.log('[MemberScopeService] Filtering by districtIds:', districtIds);
+        return { districtId: { in: districtIds } };
+      }
+    }
+
+    // MEMBER_LIST_BY_PROVINCE izni varsa, tüm scope'ları OR mantığıyla birleştir
+    const hasMemberListByProvince = userWithRoles.customRoles?.some(role =>
+      role.permissions?.some(p => p.permission === 'MEMBER_LIST_BY_PROVINCE')
+    );
+
+    if (hasMemberListByProvince) {
+      // Tüm scope'ları OR mantığıyla birleştir
+      const orConditions: Prisma.MemberWhereInput[] = [];
+      
+      const districtIds = scopes
+        .filter(s => s.districtId)
+        .map(s => s.districtId)
+        .filter((id): id is string => id !== null);
+      
+      const provinceIds = scopes
+        .filter(s => s.provinceId && !s.districtId) // Sadece il bazlı olanlar (ilçe bazlı olanlar zaten districtIds'de)
+        .map(s => s.provinceId)
+        .filter((id): id is string => id !== null);
+
+      if (districtIds.length > 0) {
+        orConditions.push({ districtId: { in: districtIds } });
+      }
+
+      if (provinceIds.length > 0) {
+        orConditions.push({ provinceId: { in: provinceIds } });
+      }
+
+      if (orConditions.length > 0) {
+        console.log('[MemberScopeService] Filtering by multiple scopes with OR logic');
+        return { OR: orConditions };
+      }
     }
 
     // Diğer roller veya eksik scope: şimdilik hiç üye gösterme
@@ -213,8 +302,11 @@ export class MemberScopeService {
           },
           include: {
             permissions: true,
-            province: true,
-            district: true,
+            roleScopes: {
+              where: {
+                deletedAt: null,
+              },
+            },
           },
         },
       },
@@ -227,41 +319,34 @@ export class MemberScopeService {
     const userWithRoles = dbUser as User & {
       customRoles?: Array<{
         name: string;
-        provinceId?: string | null;
-        districtId?: string | null;
+        hasScopeRestriction: boolean;
+        roleScopes?: Array<{
+          provinceId?: string | null;
+          districtId?: string | null;
+        }>;
         permissions?: Array<{ permission: string }>;
       }>;
     };
 
-    // MEMBER_LIST_BY_PROVINCE izni olan custom role'lerin districtId veya provinceId'sini kontrol et
-    // Önce districtId kontrolü (daha spesifik)
-    const districtScopedRoles = userWithRoles.customRoles?.filter((role) => {
+    // MEMBER_LIST_BY_PROVINCE izni olan ve hasScopeRestriction true olan custom role'lerin scope'larını kontrol et
+    const scopedRoles = userWithRoles.customRoles?.filter((role) => {
       const hasProvincePermission = role.permissions?.some(
         (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE'
       );
-      return hasProvincePermission && role.districtId;
+      return hasProvincePermission && role.hasScopeRestriction && role.roleScopes && role.roleScopes.length > 0;
     }) || [];
 
-    if (districtScopedRoles.length > 0) {
-      const districtId = districtScopedRoles[0].districtId;
-      const provinceId = districtScopedRoles[0].provinceId;
-      if (districtId) {
-        return { provinceId: provinceId || undefined, districtId };
-      }
-    }
-
-    // Eğer districtId yoksa provinceId kontrolü
-    const provinceScopedRoles = userWithRoles.customRoles?.filter((role) => {
-      const hasProvincePermission = role.permissions?.some(
-        (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE'
-      );
-      return hasProvincePermission && role.provinceId && !role.districtId;
-    }) || [];
-
-    if (provinceScopedRoles.length > 0) {
-      const provinceId = provinceScopedRoles[0].provinceId;
-      if (provinceId) {
-        return { provinceId };
+    if (scopedRoles.length > 0) {
+      // İlk role'ün ilk scope'unu döndür (başvuru oluşturma için)
+      const firstRole = scopedRoles[0];
+      if (firstRole.roleScopes && firstRole.roleScopes.length > 0) {
+        const firstScope = firstRole.roleScopes[0];
+        if (firstScope.districtId) {
+          return { provinceId: firstScope.provinceId || undefined, districtId: firstScope.districtId };
+        }
+        if (firstScope.provinceId) {
+          return { provinceId: firstScope.provinceId };
+        }
       }
     }
 
@@ -276,8 +361,11 @@ export class MemberScopeService {
           },
           include: {
             permissions: true,
-            province: true,
-            district: true,
+            roleScopes: {
+              where: {
+                deletedAt: null,
+              },
+            },
           },
         });
 
@@ -285,27 +373,37 @@ export class MemberScopeService {
           const hasProvincePermission = role.permissions?.some(
             (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE'
           );
-          if (hasProvincePermission && role.districtId) {
-            return { provinceId: role.provinceId || undefined, districtId: role.districtId };
-          }
-          if (hasProvincePermission && role.provinceId) {
-            return { provinceId: role.provinceId };
+          
+          if (hasProvincePermission && role.hasScopeRestriction && role.roleScopes && role.roleScopes.length > 0) {
+            const firstScope = role.roleScopes[0];
+            if (firstScope.districtId) {
+              return { provinceId: firstScope.provinceId || undefined, districtId: firstScope.districtId };
+            }
+            if (firstScope.provinceId) {
+              return { provinceId: firstScope.provinceId };
+            }
           }
         }
       }
     }
 
-    // UserScope'dan kontrol et
-    const scope = await this.prisma.userScope.findFirst({
-      where: { userId: user.userId },
+    // UserScope'dan kontrol et (tüm scope'ları al)
+    const scopes = await this.prisma.userScope.findMany({
+      where: { 
+        userId: user.userId,
+        deletedAt: null, // Sadece soft delete edilmemiş scope'ları kullan
+      },
     });
 
-    if (scope) {
-      if (scope.districtId) {
-        return { provinceId: scope.provinceId || undefined, districtId: scope.districtId };
+    if (scopes && scopes.length > 0) {
+      // İlk scope'u döndür (geriye dönük uyumluluk için)
+      // Not: Bu metod başvuru oluşturma için kullanılıyor, bu yüzden ilk scope'u döndürmek mantıklı
+      const firstScope = scopes[0];
+      if (firstScope.districtId) {
+        return { provinceId: firstScope.provinceId || undefined, districtId: firstScope.districtId };
       }
-      if (scope.provinceId) {
-        return { provinceId: scope.provinceId };
+      if (firstScope.provinceId) {
+        return { provinceId: firstScope.provinceId };
       }
     }
 

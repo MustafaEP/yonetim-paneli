@@ -76,6 +76,11 @@ model User {
   // 🔹 Kullanıcı bildirimleri
   userNotifications    UserNotification[]        @relation("UserNotifications")
   notificationSettings UserNotificationSettings? @relation("UserNotificationSettings")
+
+  // 🔹 Panel kullanıcı başvuru ilişkileri
+  member                    Member?                        @relation("MemberUser")
+  reviewedPanelApplications PanelUserApplication[]         @relation("PanelUserApplicationReviewedBy")
+  createdPanelApplication   PanelUserApplication?          @relation("PanelUserApplicationCreatedUser")
 }
 
 enum MemberStatus {
@@ -126,7 +131,9 @@ model Member {
   // 🔹 Üyelik & Yönetim Kurulu Bilgileri
   membershipInfoOptionId String? // Admin tarafından yönetilen seçmeli bilgi
   membershipInfoOption   MembershipInfoOption? @relation(fields: [membershipInfoOptionId], references: [id])
-  registrationNumber     String                @unique // Üye kayıt numarası (zorunlu, benzersiz, admin belirler)
+  memberGroupId          String? // Üye grubu (Normal Üye, Fahri Üye vb.)
+  memberGroup            MemberGroup?         @relation(fields: [memberGroupId], references: [id])
+  registrationNumber     String?               @unique // Üye kayıt numarası (onay sırasında atanır, benzersiz, admin belirler)
   boardDecisionDate      DateTime? // Yönetim kurulu karar tarihi
   boardDecisionBookNo    String? // Yönetim kurulu karar defter no
 
@@ -201,6 +208,13 @@ model Member {
   // 🔹 Ödeme ilişkileri
   payments MemberPayment[]
 
+  // 🔹 Panel kullanıcı ilişkisi
+  userId String?              @unique // Panel kullanıcısına terfi ettiyse User ID
+  user   User?                 @relation("MemberUser", fields: [userId], references: [id])
+
+  // 🔹 Panel kullanıcı başvurusu
+  panelUserApplication PanelUserApplication?
+
   isActive  Boolean   @default(true)
   deletedAt DateTime?
 
@@ -215,6 +229,7 @@ model Member {
   @@index([professionId])
   @@index([institutionProvinceId])
   @@index([institutionDistrictId])
+  @@index([memberGroupId])
 }
 
 model Province {
@@ -229,8 +244,9 @@ model Province {
   institutions             Institution[]    @relation("ProvinceInstitutions")
   branches                 Branch[]         @relation("ProvinceBranches")
 
-  userScopes   UserScope[]
-  customRoles  CustomRole[]
+  userScopes                  UserScope[]
+  customRoleScopes            CustomRoleScope[]
+  panelUserApplicationScopes  PanelUserApplicationScope[]
 }
 
 model District {
@@ -245,8 +261,9 @@ model District {
   institutions             Institution[]    @relation("DistrictInstitutions")
   branches                 Branch[]         @relation("DistrictBranches")
 
-  userScopes   UserScope[]
-  customRoles  CustomRole[]
+  userScopes                  UserScope[]
+  customRoleScopes            CustomRoleScope[]
+  panelUserApplicationScopes  PanelUserApplicationScope[]
 }
 
 model UserScope {
@@ -257,10 +274,17 @@ model UserScope {
   provinceId String?
   districtId String?
 
-  province Province? @relation(fields: [provinceId], references: [id])
-  district District? @relation(fields: [districtId], references: [id])
+  province Province? @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  district District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
 
+  deletedAt DateTime?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provinceId, districtId])
+  @@index([userId])
+  @@index([provinceId])
+  @@index([districtId])
 }
 
 // Custom Role Management
@@ -271,19 +295,16 @@ model CustomRole {
   isActive    Boolean   @default(true)
   deletedAt   DateTime?
 
-  // 🔹 İl ilişkisi (MEMBER_LIST_BY_PROVINCE izni için)
-  provinceId String?
-  province   Province? @relation(fields: [provinceId], references: [id])
-
-  // 🔹 İlçe ilişkisi (MEMBER_LIST_BY_PROVINCE izni için ilçe bazlı)
-  districtId String?
-  district   District? @relation(fields: [districtId], references: [id])
+  // 🔹 Yetki alanı kısıtlaması: Bu role il/ilçe bazlı yetki alanı eklenebilir mi?
+  hasScopeRestriction Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  permissions CustomRolePermission[]
-  users       User[]                 @relation("UserCustomRoles")
+  permissions     CustomRolePermission[]
+  roleScopes      CustomRoleScope[]
+  users           User[]                 @relation("UserCustomRoles")
+  panelUserApplications PanelUserApplication[]
 }
 
 model CustomRolePermission {
@@ -296,6 +317,28 @@ model CustomRolePermission {
 
   @@unique([roleId, permission])
   @@index([roleId])
+}
+
+// 🔹 Rol Yetki Alanları (Bir role birden fazla il/ilçe atanabilir)
+model CustomRoleScope {
+  id         String      @id @default(cuid())
+  roleId     String
+  role       CustomRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  provinceId String?
+  districtId String?
+  
+  province   Province?   @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  district   District?   @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  
+  deletedAt  DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  
+  @@unique([roleId, provinceId, districtId])
+  @@index([roleId])
+  @@index([provinceId])
+  @@index([districtId])
 }
 
 // 🔹 İçerik Yönetimi
@@ -894,6 +937,23 @@ model MembershipInfoOption {
   @@index([order])
 }
 
+// 🔹 Üye Grubu (Admin tarafından yönetilir - Sistem ayarlarından CRUD işlemleri yapılır)
+model MemberGroup {
+  id          String  @id @default(cuid())
+  name        String  @unique // Üye grubu adı (örn: "Normal Üye", "Fahri Üye", "Onursal Üye")
+  description String? @db.Text
+  isActive    Boolean @default(true)
+  order       Int     @default(0) // Sıralama
+
+  members Member[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([order])
+}
+
 // 🔹 Meslek/Unvan (Profession)
 model Profession {
   id       String  @id @default(cuid())
@@ -906,4 +966,66 @@ model Profession {
   updatedAt DateTime @updatedAt
 
   @@index([isActive])
+}
+
+// 🔹 Panel Kullanıcı Başvuruları
+enum PanelUserApplicationStatus {
+  PENDING    // Onay bekliyor
+  APPROVED   // Onaylandı, User oluşturuldu
+  REJECTED   // Reddedildi
+}
+
+model PanelUserApplication {
+  id          String                        @id @default(cuid())
+  memberId    String                        @unique // Bir üye sadece bir başvuru yapabilir
+  member      Member                        @relation(fields: [memberId], references: [id])
+  
+  requestedRoleId String                    // Seçilen CustomRole ID
+  requestedRole   CustomRole                @relation(fields: [requestedRoleId], references: [id])
+  
+  status      PanelUserApplicationStatus    @default(PENDING)
+  requestNote String?                       @db.Text // Başvuru notu (isteğe bağlı)
+  
+  // Onay/Red bilgileri
+  reviewedBy  String?                       // Onaylayan/Reddeden kullanıcı
+  reviewedByUser User?                      @relation("PanelUserApplicationReviewedBy", fields: [reviewedBy], references: [id])
+  reviewedAt  DateTime?
+  reviewNote  String?                       @db.Text // Onay/Red notu
+  
+  // Oluşturulan User (onaylandığında)
+  createdUserId String?                     @unique // Onaylandığında oluşturulan User ID
+  createdUser   User?                       @relation("PanelUserApplicationCreatedUser", fields: [createdUserId], references: [id])
+  
+  // 🔹 Başvuruda seçilen yetki alanları
+  applicationScopes PanelUserApplicationScope[]
+  
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
+  
+  @@index([memberId])
+  @@index([status])
+  @@index([requestedRoleId])
+  @@index([reviewedBy])
+}
+
+// 🔹 Panel Kullanıcı Başvurusu Yetki Alanları (Başvuruda seçilen il/ilçeler)
+model PanelUserApplicationScope {
+  id                    String                @id @default(cuid())
+  applicationId         String
+  application           PanelUserApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  provinceId            String?
+  districtId            String?
+  
+  province              Province?             @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  district              District?             @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  
+  deletedAt             DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  @@unique([applicationId, provinceId, districtId])
+  @@index([applicationId])
+  @@index([provinceId])
+  @@index([districtId])
 }

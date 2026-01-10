@@ -22,30 +22,30 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Grid,
   CircularProgress,
   Autocomplete,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import EditIcon from '@mui/icons-material/Edit';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import PaymentIcon from '@mui/icons-material/Payment';
 import AddIcon from '@mui/icons-material/Add';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import {
   getPayments,
   createPayment,
+  uploadPaymentDocument,
   type MemberPayment,
   type PaymentListFilters,
   type PaymentType,
   type CreateMemberPaymentDto,
 } from '../../api/paymentsApi';
 import { getTevkifatCenters } from '../../api/accountingApi';
-import { getBranches } from '../../api/branchesApi';
 import { getMembers } from '../../api/membersApi';
 import type { MemberListItem } from '../../types/member';
 import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
@@ -65,7 +65,6 @@ const PaymentsListPage: React.FC = () => {
   });
   const [showAllYear, setShowAllYear] = useState(false);
   const [tevkifatCenters, setTevkifatCenters] = useState<Array<{ id: string; name: string }>>([]);
-  const [branches, setBranches] = useState<Array<{ id: string; name: string }>>([]);
   const [members, setMembers] = useState<MemberListItem[]>([]);
   
   // Ödeme ekleme dialog state
@@ -79,18 +78,21 @@ const PaymentsListPage: React.FC = () => {
     paymentType: PaymentType;
     tevkifatCenterId: string;
     description: string;
+    documentFile: File | null;
+    documentFileName: string;
   }>({
     memberId: '',
     paymentPeriodMonth: new Date().getMonth() + 1,
     paymentPeriodYear: new Date().getFullYear(),
     amount: '',
-    paymentType: 'ELDEN',
+    paymentType: 'TEVKIFAT',
     tevkifatCenterId: '',
     description: '',
+    documentFile: null,
+    documentFileName: '',
   });
 
   const canView = hasPermission('MEMBER_PAYMENT_LIST');
-  const canApprove = hasPermission('MEMBER_PAYMENT_APPROVE');
   const canExport = hasPermission('ACCOUNTING_EXPORT');
   const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
 
@@ -98,7 +100,6 @@ const PaymentsListPage: React.FC = () => {
     if (canView) {
       loadPayments();
       loadTevkifatCenters();
-      loadBranches();
     }
     if (canAddPayment) {
       loadMembers();
@@ -130,15 +131,6 @@ const PaymentsListPage: React.FC = () => {
     }
   };
 
-  const loadBranches = async () => {
-    try {
-      const data = await getBranches({ isActive: true });
-      setBranches(data.map((b) => ({ id: b.id, name: b.name })));
-    } catch (e) {
-      console.error('Şubeler yüklenirken hata:', e);
-    }
-  };
-
   const loadMembers = async () => {
     try {
       const data = await getMembers();
@@ -150,14 +142,12 @@ const PaymentsListPage: React.FC = () => {
 
   const handleExportExcel = () => {
     try {
-      const exportColumns: ExportColumn[] = columns
+      const exportColumns = columns
         .filter((col) => col.field !== 'actions')
         .map((col) => ({
           field: col.field,
-          headerName: col.headerName,
-          width: col.width,
-          valueGetter: col.valueGetter,
-        }));
+          headerName: col.headerName || '',
+        })) as ExportColumn[];
       exportToExcel(filteredRows, exportColumns, `odemeler_${filters.year}${filters.month ? `_${filters.month}` : ''}`);
       toast.showSuccess('Excel dosyası indirildi');
     } catch (error) {
@@ -168,14 +158,12 @@ const PaymentsListPage: React.FC = () => {
 
   const handleExportPDF = () => {
     try {
-      const exportColumns: ExportColumn[] = columns
+      const exportColumns = columns
         .filter((col) => col.field !== 'actions')
         .map((col) => ({
           field: col.field,
-          headerName: col.headerName,
-          width: col.width,
-          valueGetter: col.valueGetter,
-        }));
+          headerName: col.headerName || '',
+        })) as ExportColumn[];
       const title = `Ödemeler - ${filters.year}${filters.month ? ` ${monthNames[filters.month - 1]}` : ' (Tüm Yıl)'}`;
       exportToPDF(filteredRows, exportColumns, `odemeler_${filters.year}${filters.month ? `_${filters.month}` : ''}`, title);
       toast.showSuccess('PDF dosyası indirildi');
@@ -192,9 +180,9 @@ const PaymentsListPage: React.FC = () => {
       return;
     }
 
-    // Tevkifat seçilmişse tevkifat merkezi zorunlu
-    if (paymentForm.paymentType === 'TEVKIFAT' && !paymentForm.tevkifatCenterId) {
-      toast.showError('Tevkifat ödemesi için tevkifat merkezi seçilmelidir');
+    // Tevkifat merkezi zorunlu
+    if (!paymentForm.tevkifatCenterId) {
+      toast.showError('Tevkifat merkezi seçilmelidir');
       return;
     }
 
@@ -208,6 +196,26 @@ const PaymentsListPage: React.FC = () => {
 
     setSubmittingPayment(true);
     try {
+      // Önce dosya varsa yükle
+      let documentUrl: string | undefined;
+      if (paymentForm.documentFile) {
+        try {
+          const uploadResult = await uploadPaymentDocument(
+            paymentForm.documentFile,
+            paymentForm.memberId,
+            paymentForm.paymentPeriodMonth,
+            paymentForm.paymentPeriodYear,
+            paymentForm.documentFileName || undefined,
+          );
+          documentUrl = uploadResult.fileUrl;
+        } catch (uploadError: any) {
+          console.error('Dosya yüklenirken hata:', uploadError);
+          toast.showError(uploadError?.response?.data?.message || 'Dosya yüklenirken bir hata oluştu');
+          setSubmittingPayment(false);
+          return;
+        }
+      }
+
       const payload: CreateMemberPaymentDto = {
         memberId: paymentForm.memberId,
         paymentPeriodMonth: paymentForm.paymentPeriodMonth,
@@ -215,7 +223,8 @@ const PaymentsListPage: React.FC = () => {
         amount: normalizedAmount,
         paymentType: paymentForm.paymentType,
         description: paymentForm.description || undefined,
-        tevkifatCenterId: paymentForm.paymentType === 'TEVKIFAT' ? paymentForm.tevkifatCenterId : undefined,
+        tevkifatCenterId: paymentForm.tevkifatCenterId,
+        documentUrl,
       };
 
       await createPayment(payload);
@@ -227,9 +236,11 @@ const PaymentsListPage: React.FC = () => {
         paymentPeriodMonth: new Date().getMonth() + 1,
         paymentPeriodYear: new Date().getFullYear(),
         amount: '',
-        paymentType: 'ELDEN',
+        paymentType: 'TEVKIFAT',
         tevkifatCenterId: '',
         description: '',
+        documentFile: null,
+        documentFileName: '',
       });
       
       setPaymentDialogOpen(false);
@@ -279,14 +290,14 @@ const PaymentsListPage: React.FC = () => {
       field: 'registrationNumber',
       headerName: 'Üye Kayıt No',
       width: 130,
-      valueGetter: (value, row) => row.registrationNumber || row.member?.registrationNumber || '-',
+      valueGetter: (_value, row) => row.registrationNumber || row.member?.registrationNumber || '-',
     },
     {
       field: 'memberName',
       headerName: 'Ad Soyad',
       flex: 1,
       minWidth: 200,
-      valueGetter: (value, row) =>
+      valueGetter: (_value, row) =>
         row.member
           ? `${row.member.firstName} ${row.member.lastName}`
           : `${row.createdByUser.firstName} ${row.createdByUser.lastName}`,
@@ -296,26 +307,26 @@ const PaymentsListPage: React.FC = () => {
       headerName: 'Kurum',
       flex: 1,
       minWidth: 200,
-      valueGetter: (value, row) => row.member?.institution?.name || '-',
+      valueGetter: (_value, row) => row.member?.institution?.name || '-',
     },
     {
       field: 'tevkifatCenter',
       headerName: 'Tevkifat Merkezi',
       flex: 1,
       minWidth: 200,
-      valueGetter: (value, row) => row.tevkifatCenter?.name || '-',
+      valueGetter: (_value, row) => row.tevkifatCenter?.name || '-',
     },
     {
       field: 'month',
       headerName: 'Ay',
       width: 100,
-      valueGetter: (value, row) => monthNames[row.paymentPeriodMonth - 1],
+      valueGetter: (_value, row) => monthNames[row.paymentPeriodMonth - 1],
     },
     {
       field: 'year',
       headerName: 'Yıl',
       width: 100,
-      valueGetter: (value, row) => row.paymentPeriodYear,
+      valueGetter: (_value, row) => row.paymentPeriodYear,
     },
     {
       field: 'amount',
@@ -341,18 +352,6 @@ const PaymentsListPage: React.FC = () => {
       ),
     },
     {
-      field: 'isApproved',
-      headerName: 'Onay Durumu',
-      width: 130,
-      renderCell: (params) => (
-        <Chip
-          label={params.value ? 'Onaylandı' : 'Onay Bekliyor'}
-          color={params.value ? 'success' : 'warning'}
-          size="small"
-        />
-      ),
-    },
-    {
       field: 'actions',
       headerName: 'İşlemler',
       width: 150,
@@ -370,17 +369,6 @@ const PaymentsListPage: React.FC = () => {
                 <VisibilityIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            {canApprove && !payment.isApproved && (
-              <Tooltip title="Düzenleme sayfası henüz mevcut değil">
-                <IconButton
-                  size="small"
-                  disabled
-                  sx={{ color: theme.palette.text.disabled }}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            )}
           </Box>
         );
       },
@@ -396,64 +384,229 @@ const PaymentsListPage: React.FC = () => {
   }
 
   return (
-    <Box>
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: (theme) => 
+        theme.palette.mode === 'light' 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
+          : theme.palette.background.default,
+      pb: 4,
+    }}>
+      {/* Modern Başlık Bölümü */}
+      <Box
+        sx={{
+          mb: 4,
+          p: { xs: 3, sm: 4, md: 5 },
+          borderRadius: 4,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '300px',
+            height: '300px',
+            background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
+            borderRadius: '50%',
+            transform: 'translate(30%, -30%)',
+          },
+        }}
+      >
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
+                sx={{
+                  width: { xs: 56, sm: 64 },
+                  height: { xs: 56, sm: 64 },
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px) scale(1.05)',
+                    boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.45)}`,
+                  },
+                }}
+              >
+                <PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
+                    color: theme.palette.text.primary,
+                    mb: 0.5,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  Ödemeler
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                    fontWeight: 500,
+                  }}
+                >
+                  Üye bazlı gerçek ödeme kayıtlarının takibi
+                </Typography>
+              </Box>
+            </Box>
+            {canAddPayment && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setPaymentDialogOpen(true)}
+                size="large"
+                sx={{
+                  display: { xs: 'none', sm: 'flex' },
+                  borderRadius: 2.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1rem',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.45)}`,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  },
+                }}
+              >
+                Yeni Ödeme Ekle
+              </Button>
+            )}
+          </Box>
+
+          {/* Mobile Button */}
+          {canAddPayment && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              fullWidth
+              onClick={() => setPaymentDialogOpen(true)}
+              size="large"
+              sx={{
+                display: { xs: 'flex', sm: 'none' },
+                mt: 3,
+                borderRadius: 2.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                py: 1.5,
+                fontSize: '1rem',
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+              }}
+            >
+              Yeni Ödeme Ekle
+            </Button>
+          )}
+        </Box>
+      </Box>
+
+      {/* Ana Kart - Filtre ve Tablo */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          overflow: 'hidden',
+          background: '#fff',
+        }}
+      >
+        {/* Gelişmiş Filtre Bölümü */}
+        <Box
+          sx={{
+            p: { xs: 3, sm: 4 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+              }}
+            >
+              <SearchIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
+            </Box>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Filtrele ve Ara
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                Ödemeleri hızlıca bulun ve filtreleyin
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'center', flexWrap: 'wrap' }}>
+            <TextField
+              placeholder="Ara (ad, soyad, kayıt no, kurum)..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              size="medium"
+              sx={{ 
+                flexGrow: 1, 
+                minWidth: { xs: '100%', sm: 250 },
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: '#fff',
+                  borderRadius: 2.5,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.palette.primary.main,
+                      borderWidth: '2px',
+                    },
+                  },
+                  '&.Mui-focused': {
+                    boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  },
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary', fontSize: '1.4rem' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          <FormControl 
+            size="medium" 
+            sx={{ 
+              minWidth: { xs: '100%', sm: 120 },
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#fff',
+                borderRadius: 2.5,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                },
+              },
             }}
           >
-            <PaymentIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-          </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              Ödemeler
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Üye bazlı gerçek ödeme kayıtlarının takibi
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
-          <TextField
-            placeholder="Ara (ad, soyad, kayıt no, kurum)..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            size="small"
-            sx={{ flexGrow: 1, minWidth: 250 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Yıl</InputLabel>
             <Select
               value={filters.year || new Date().getFullYear()}
@@ -469,7 +622,20 @@ const PaymentsListPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <FormControl 
+            size="medium" 
+            sx={{ 
+              minWidth: { xs: '100%', sm: 150 },
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#fff',
+                borderRadius: 2.5,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                },
+              },
+            }}
+          >
             <InputLabel>Ay</InputLabel>
             <Select
               value={showAllYear ? 'ALL' : (filters.month || new Date().getMonth() + 1)}
@@ -492,25 +658,20 @@ const PaymentsListPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>Ödeme Türü</InputLabel>
-            <Select
-              value={filters.paymentType || 'ALL'}
-              label="Ödeme Türü"
-              onChange={(e) =>
-                setFilters({
-                  ...filters,
-                  paymentType: e.target.value === 'ALL' ? undefined : (e.target.value as PaymentType),
-                })
-              }
-            >
-              <MenuItem value="ALL">Tümü</MenuItem>
-              <MenuItem value="TEVKIFAT">Tevkifat</MenuItem>
-              <MenuItem value="ELDEN">Elden</MenuItem>
-              <MenuItem value="HAVALE">Havale</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl 
+            size="medium" 
+            sx={{ 
+              minWidth: { xs: '100%', sm: 180 },
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#fff',
+                borderRadius: 2.5,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                },
+              },
+            }}
+          >
             <InputLabel>Tevkifat Merkezi</InputLabel>
             <Select
               value={filters.tevkifatCenterId || 'ALL'}
@@ -530,87 +691,159 @@ const PaymentsListPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Onay Durumu</InputLabel>
-            <Select
-              value={filters.isApproved === undefined ? 'ALL' : filters.isApproved ? 'APPROVED' : 'PENDING'}
-              label="Onay Durumu"
-              onChange={(e) =>
-                setFilters({
-                  ...filters,
-                  isApproved: e.target.value === 'ALL' ? undefined : e.target.value === 'APPROVED',
-                })
-              }
+          </Box>
+
+          {/* Sonuç Sayısı */}
+          {!loading && (
+            <Box
+              sx={{
+                mt: 3,
+                p: 2,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.info.light, 0.05)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.info.main, 0.15)}`,
+              }}
             >
-              <MenuItem value="ALL">Tümü</MenuItem>
-              <MenuItem value="APPROVED">Onaylandı</MenuItem>
-              <MenuItem value="PENDING">Onay Bekliyor</MenuItem>
-            </Select>
-          </FormControl>
-          {canAddPayment && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setPaymentDialogOpen(true)}
-              sx={{ borderRadius: 2, textTransform: 'none' }}
-            >
-              Yeni Ödeme Ekle
-            </Button>
-          )}
-          {canExport && (
-            <>
-              <Button
-                variant="outlined"
-                startIcon={<FileDownloadIcon />}
-                onClick={handleExportExcel}
-                sx={{ borderRadius: 2, textTransform: 'none' }}
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: theme.palette.info.dark,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  fontSize: '0.9rem',
+                }}
               >
-                Excel
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<PictureAsPdfIcon />}
-                onClick={handleExportPDF}
-                sx={{ borderRadius: 2, textTransform: 'none' }}
-              >
-                PDF
-              </Button>
-            </>
+                <PaymentIcon fontSize="small" />
+                {filteredRows.length} ödeme listeleniyor
+                {filteredRows.length !== rows.length && ` (Toplam ${rows.length} ödemeden)`}
+              </Typography>
+            </Box>
           )}
         </Box>
-      </Box>
 
-      <Card
-        elevation={0}
-        sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-        }}
-      >
-        <DataGrid
-          rows={filteredRows}
-          columns={columns}
-          loading={loading}
-          autoHeight
-          disableRowSelectionOnClick
-          pageSizeOptions={[10, 25, 50, 100]}
-          initialState={{
-            pagination: {
-              paginationModel: { pageSize: 25 },
-            },
-          }}
-          sx={{
-            border: 'none',
-            '& .MuiDataGrid-cell': {
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            },
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.04),
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            },
-          }}
-        />
+        {/* Tablo Bölümü */}
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          {/* Export Butonları */}
+          {!loading && canExport && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1.5 }}>
+              {canExport && (
+            <>
+                <Button
+                  variant="outlined"
+                  size="medium"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={handleExportExcel}
+                  sx={{ 
+                    textTransform: 'none',
+                    borderRadius: 2.5,
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1.25,
+                    fontSize: '0.9rem',
+                    borderWidth: 2,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderWidth: 2,
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                    },
+                  }}
+                >
+                  Excel İndir
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="medium"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={handleExportPDF}
+                  sx={{ 
+                    textTransform: 'none',
+                    borderRadius: 2.5,
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1.25,
+                    fontSize: '0.9rem',
+                    borderWidth: 2,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderWidth: 2,
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                    },
+                  }}
+                >
+                  PDF İndir
+                </Button>
+              </>
+            )}
+            </Box>
+          )}
+
+          <Box
+            sx={{
+              borderRadius: 3,
+              overflow: 'hidden',
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              height: { xs: 450, sm: 550, md: 650 },
+              minHeight: { xs: 450, sm: 550, md: 650 },
+              '& .MuiDataGrid-root': {
+                border: 'none',
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                py: 2,
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+                borderRadius: 0,
+                minHeight: '56px !important',
+                maxHeight: '56px !important',
+              },
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                color: theme.palette.text.primary,
+              },
+              '& .MuiDataGrid-row': {
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                  boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
+                },
+                '&:nth-of-type(even)': {
+                  backgroundColor: alpha(theme.palette.grey[50], 0.3),
+                },
+              },
+              '& .MuiDataGrid-footerContainer': {
+                borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+                backgroundColor: alpha(theme.palette.grey[50], 0.5),
+                minHeight: '52px',
+              },
+              '& .MuiDataGrid-virtualScroller': {
+                minHeight: '200px',
+              },
+            }}
+          >
+            <DataGrid
+              rows={filteredRows}
+              columns={columns}
+              loading={loading}
+              disableRowSelectionOnClick
+              pageSizeOptions={[10, 25, 50, 100]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 25 },
+                },
+              }}
+              localeText={{
+                noRowsLabel: 'Ödeme bulunamadı',
+              }}
+            />
+          </Box>
+        </Box>
       </Card>
 
       {/* Ödeme Ekleme Dialog */}
@@ -619,12 +852,29 @@ const PaymentsListPage: React.FC = () => {
         onClose={() => !submittingPayment && setPaymentDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, 0.2)}`,
+          }
+        }}
       >
-        <DialogTitle>Yeni Ödeme Ekle</DialogTitle>
+        <DialogTitle sx={{ 
+          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+          color: 'white',
+          py: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+        }}>
+          <PaymentIcon />
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Yeni Ödeme Ekle
+          </Typography>
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
+            <Box>
                 <Autocomplete
                   options={members}
                   getOptionLabel={(option) => 
@@ -632,7 +882,27 @@ const PaymentsListPage: React.FC = () => {
                   }
                   value={members.find(m => m.id === paymentForm.memberId) || null}
                   onChange={(_, newValue) => {
-                    setPaymentForm({ ...paymentForm, memberId: newValue?.id || '' });
+                    const newMemberId = newValue?.id || '';
+                    // Dosya adını güncelle
+                    let newFileName = paymentForm.documentFileName;
+                    if (paymentForm.documentFile && newMemberId) {
+                      const selectedMember = members.find(m => m.id === newMemberId);
+                      if (selectedMember) {
+                        const monthNames = [
+                          'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran',
+                          'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'
+                        ];
+                        const monthName = monthNames[paymentForm.paymentPeriodMonth - 1] || `Ay${paymentForm.paymentPeriodMonth}`;
+                        const memberName = `${selectedMember.firstName}_${selectedMember.lastName}`
+                          .replace(/[^a-zA-Z0-9_ğüşıöçĞÜŞİÖÇ]/g, '')
+                          .replace(/\s+/g, '_')
+                          .substring(0, 50);
+                        const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                        const timestamp = Date.now();
+                        newFileName = `Odeme_${memberName}_${monthName}${paymentForm.paymentPeriodYear}_${dateStr}_${timestamp}`;
+                      }
+                    }
+                    setPaymentForm({ ...paymentForm, memberId: newMemberId, documentFileName: newFileName });
                   }}
                   disabled={submittingPayment}
                   renderInput={(params) => (
@@ -641,16 +911,40 @@ const PaymentsListPage: React.FC = () => {
                       label="Üye"
                       required
                       placeholder="Üye seçin..."
+                      sx={{ minWidth: 250 }}
                     />
                   )}
+                  sx={{ minWidth: 250 }}
                 />
-              </Grid>
-              <Grid item xs={6}>
-                <FormControl fullWidth required>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+                <FormControl fullWidth required sx={{ minWidth: 200 }}>
                   <InputLabel>Ödeme Dönemi Ay</InputLabel>
                   <Select
                     value={paymentForm.paymentPeriodMonth}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, paymentPeriodMonth: Number(e.target.value) })}
+                    onChange={(e) => {
+                      const newMonth = Number(e.target.value);
+                      // Dosya adını güncelle
+                      let newFileName = paymentForm.documentFileName;
+                      if (paymentForm.documentFile && paymentForm.memberId) {
+                        const selectedMember = members.find(m => m.id === paymentForm.memberId);
+                        if (selectedMember) {
+                          const monthNames = [
+                            'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran',
+                            'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'
+                          ];
+                          const monthName = monthNames[newMonth - 1] || `Ay${newMonth}`;
+                          const memberName = `${selectedMember.firstName}_${selectedMember.lastName}`
+                            .replace(/[^a-zA-Z0-9_ğüşıöçĞÜŞİÖÇ]/g, '')
+                            .replace(/\s+/g, '_')
+                            .substring(0, 50);
+                          const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                          const timestamp = Date.now();
+                          newFileName = `Odeme_${memberName}_${monthName}${paymentForm.paymentPeriodYear}_${dateStr}_${timestamp}`;
+                        }
+                      }
+                      setPaymentForm({ ...paymentForm, paymentPeriodMonth: newMonth, documentFileName: newFileName });
+                    }}
                     label="Ödeme Dönemi Ay"
                     disabled={submittingPayment}
                   >
@@ -661,20 +955,43 @@ const PaymentsListPage: React.FC = () => {
                     ))}
                   </Select>
                 </FormControl>
-              </Grid>
-              <Grid item xs={6}>
+              </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
                   fullWidth
                   label="Ödeme Dönemi Yıl"
                   type="number"
                   value={paymentForm.paymentPeriodYear}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, paymentPeriodYear: Number(e.target.value) })}
+                  onChange={(e) => {
+                    const newYear = Number(e.target.value);
+                    // Dosya adını güncelle
+                    let newFileName = paymentForm.documentFileName;
+                    if (paymentForm.documentFile && paymentForm.memberId) {
+                      const selectedMember = members.find(m => m.id === paymentForm.memberId);
+                      if (selectedMember) {
+                        const monthNames = [
+                          'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran',
+                          'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'
+                        ];
+                        const monthName = monthNames[paymentForm.paymentPeriodMonth - 1] || `Ay${paymentForm.paymentPeriodMonth}`;
+                        const memberName = `${selectedMember.firstName}_${selectedMember.lastName}`
+                          .replace(/[^a-zA-Z0-9_ğüşıöçĞÜŞİÖÇ]/g, '')
+                          .replace(/\s+/g, '_')
+                          .substring(0, 50);
+                        const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                        const timestamp = Date.now();
+                        newFileName = `Odeme_${memberName}_${monthName}${newYear}_${dateStr}_${timestamp}`;
+                      }
+                    }
+                    setPaymentForm({ ...paymentForm, paymentPeriodYear: newYear, documentFileName: newFileName });
+                  }}
                   disabled={submittingPayment}
                   required
                   inputProps={{ min: 2020, max: 2100 }}
+                  sx={{ minWidth: 200 }}
                 />
-              </Grid>
-              <Grid item xs={12}>
+            </Box>
+            <Box>
                 <TextField
                   fullWidth
                   label="Tutar"
@@ -688,50 +1005,134 @@ const PaymentsListPage: React.FC = () => {
                   required
                   placeholder="250.00"
                   helperText="Örnek: 250.00"
+                  sx={{ minWidth: 250 }}
                 />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth required>
-                  <InputLabel>Ödeme Türü</InputLabel>
+            </Box>
+            <Box>
+                <FormControl fullWidth required sx={{ minWidth: 250 }}>
+                  <InputLabel>Tevkifat Merkezi</InputLabel>
                   <Select
-                    value={paymentForm.paymentType}
-                    onChange={(e) => {
-                      const newType = e.target.value as PaymentType;
-                      setPaymentForm({ 
-                        ...paymentForm, 
-                        paymentType: newType,
-                        tevkifatCenterId: newType === 'TEVKIFAT' ? paymentForm.tevkifatCenterId : '',
-                      });
-                    }}
-                    label="Ödeme Türü"
+                    value={paymentForm.tevkifatCenterId}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, tevkifatCenterId: e.target.value })}
+                    label="Tevkifat Merkezi"
                     disabled={submittingPayment}
                   >
-                    <MenuItem value="ELDEN">Elden Ödeme</MenuItem>
-                    <MenuItem value="HAVALE">Havale/EFT</MenuItem>
-                    <MenuItem value="TEVKIFAT">Tevkifat</MenuItem>
+                    {tevkifatCenters.map((center) => (
+                      <MenuItem key={center.id} value={center.id}>
+                        {center.name}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
-              </Grid>
-              {paymentForm.paymentType === 'TEVKIFAT' && (
-                <Grid item xs={12}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Tevkifat Merkezi</InputLabel>
-                    <Select
-                      value={paymentForm.tevkifatCenterId}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, tevkifatCenterId: e.target.value })}
-                      label="Tevkifat Merkezi"
+            </Box>
+            <Box>
+              <Box sx={{ mb: 2 }}>
+                <input
+                  accept="application/pdf"
+                  style={{ display: 'none' }}
+                  id="payment-document-upload"
+                  type="file"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.type !== 'application/pdf') {
+                        toast.showError('Sadece PDF dosyaları yüklenebilir');
+                        return;
+                      }
+                      
+                      // Otomatik dosya adı oluştur
+                      let fileName = '';
+                      if (paymentForm.memberId) {
+                        const selectedMember = members.find(m => m.id === paymentForm.memberId);
+                        if (selectedMember) {
+                          const monthNames = [
+                            'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran',
+                            'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'
+                          ];
+                          const monthName = monthNames[paymentForm.paymentPeriodMonth - 1] || `Ay${paymentForm.paymentPeriodMonth}`;
+                          
+                          // Üye adını temizle
+                          const memberName = `${selectedMember.firstName}_${selectedMember.lastName}`
+                            .replace(/[^a-zA-Z0-9_ğüşıöçĞÜŞİÖÇ]/g, '')
+                            .replace(/\s+/g, '_')
+                            .substring(0, 50);
+                          
+                          const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                          const timestamp = Date.now();
+                          
+                          fileName = `Odeme_${memberName}_${monthName}${paymentForm.paymentPeriodYear}_${dateStr}_${timestamp}.pdf`;
+                        }
+                      }
+                      
+                      setPaymentForm({ 
+                        ...paymentForm, 
+                        documentFile: file,
+                        documentFileName: fileName || file.name.replace(/\.pdf$/i, ''),
+                      });
+                    }
+                  }}
+                  disabled={submittingPayment}
+                />
+                <label htmlFor="payment-document-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<UploadFileIcon />}
+                    disabled={submittingPayment}
+                    fullWidth
+                    sx={{
+                      minWidth: 250,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      py: 1.5,
+                      borderStyle: 'dashed',
+                      borderWidth: 2,
+                      '&:hover': {
+                        borderWidth: 2,
+                        borderStyle: 'dashed',
+                      },
+                    }}
+                  >
+                    {paymentForm.documentFile ? paymentForm.documentFile.name : 'Evrak Yükle (PDF)'}
+                  </Button>
+                </label>
+                {paymentForm.documentFile && (
+                  <Box sx={{ mt: 2 }}>
+                    <TextField
+                      fullWidth
+                      label="Dosya Adı"
+                      value={paymentForm.documentFileName}
+                      onChange={(e) => {
+                        let value = e.target.value;
+                        // .pdf uzantısını kaldır (otomatik eklenecek)
+                        value = value.replace(/\.pdf$/i, '');
+                        setPaymentForm({ ...paymentForm, documentFileName: value });
+                      }}
                       disabled={submittingPayment}
-                    >
-                      {tevkifatCenters.map((center) => (
-                        <MenuItem key={center.id} value={center.id}>
-                          {center.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              )}
-              <Grid item xs={12}>
+                      helperText="Dosya adı otomatik oluşturuldu. İsterseniz değiştirebilirsiniz. (.pdf uzantısı otomatik eklenecek)"
+                      sx={{ minWidth: 250, mb: 1 }}
+                      InputProps={{
+                        endAdornment: (
+                          <IconButton
+                            size="small"
+                            onClick={() => setPaymentForm({ ...paymentForm, documentFile: null, documentFileName: '' })}
+                            disabled={submittingPayment}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        ),
+                      }}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                      Orijinal dosya: {paymentForm.documentFile.name}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+            <Box>
                 <TextField
                   fullWidth
                   label="Açıklama"
@@ -741,15 +1142,20 @@ const PaymentsListPage: React.FC = () => {
                   onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
                   disabled={submittingPayment}
                   placeholder="Ödeme açıklaması (opsiyonel)"
+                  sx={{ minWidth: 250 }}
                 />
-              </Grid>
-            </Grid>
+            </Box>
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2.5, background: alpha(theme.palette.primary.main, 0.04) }}>
           <Button 
             onClick={() => setPaymentDialogOpen(false)} 
             disabled={submittingPayment}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
           >
             İptal
           </Button>
@@ -762,9 +1168,19 @@ const PaymentsListPage: React.FC = () => {
               !paymentForm.amount || 
               !paymentForm.paymentPeriodMonth || 
               !paymentForm.paymentPeriodYear ||
-              (paymentForm.paymentType === 'TEVKIFAT' && !paymentForm.tevkifatCenterId)
+              !paymentForm.tevkifatCenterId
             }
             startIcon={submittingPayment ? <CircularProgress size={16} /> : <PaymentIcon />}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 160,
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+              }
+            }}
           >
             {submittingPayment ? 'Ekleniyor...' : 'Ödeme Ekle'}
           </Button>

@@ -27,6 +27,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import DescriptionIcon from '@mui/icons-material/Description';
 import type { SystemSetting } from '../../../api/systemApi';
 import { useSystemSettings } from '../../../context/SystemSettingsContext';
+import MemberGroupsManagement from './MemberGroupsManagement';
 
 interface MembershipSettingsProps {
   settings: SystemSetting[];
@@ -744,6 +745,9 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
           </Grid>
         </Box>
       </Card>
+
+      {/* Üye Grupları Yönetimi */}
+      <MemberGroupsManagement canManage={canManage} />
     </Stack>
   );
 };

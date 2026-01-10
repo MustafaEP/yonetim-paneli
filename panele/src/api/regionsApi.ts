@@ -100,6 +100,17 @@ export const createUserScope = async (payload: {
   return res.data;
 };
 
+export const updateUserScope = async (
+  scopeId: string,
+  payload: {
+    provinceId?: string;
+    districtId?: string;
+  },
+): Promise<UserScope> => {
+  const res = await httpClient.patch<UserScope>(`/regions/user-scope/${scopeId}`, payload);
+  return res.data;
+};
+
 export const deleteUserScope = async (scopeId: string): Promise<void> => {
   await httpClient.delete(`/regions/user-scope/${scopeId}`);
 };

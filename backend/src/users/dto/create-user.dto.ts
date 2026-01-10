@@ -1,4 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { RoleScopeDto } from '../../roles/dto/create-role.dto';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -38,4 +41,40 @@ export class CreateUserDto {
     required: false,
   })
   customRoleIds?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Yetki alanları (çoklu il/ilçe seçimi - hasScopeRestriction olan roller için zorunlu)',
+    type: [RoleScopeDto],
+    example: [
+      { provinceId: 'province-uuid-1' },
+      { provinceId: 'province-uuid-2', districtId: 'district-uuid-1' },
+    ],
+  })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => RoleScopeDto)
+  scopes?: RoleScopeDto[];
+
+  @ApiPropertyOptional({
+    description: 'İl ID (geriye uyumluluk için - scopes kullanılması tercih edilir)',
+    example: 'province-uuid-123',
+    type: String,
+    required: false,
+    deprecated: true,
+  })
+  @IsString()
+  @IsOptional()
+  provinceId?: string;
+
+  @ApiPropertyOptional({
+    description: 'İlçe ID (geriye uyumluluk için - scopes kullanılması tercih edilir)',
+    example: 'district-uuid-123',
+    type: String,
+    required: false,
+    deprecated: true,
+  })
+  @IsString()
+  @IsOptional()
+  districtId?: string;
 }

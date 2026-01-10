@@ -50,6 +50,7 @@ export interface MemberDetail extends MemberListItem {
   nationalId: string;
   source?: 'DIRECT' | 'OTHER';
   membershipInfoOption?: { id: string; label: string; value: string } | null;
+  memberGroup?: { id: string; name: string } | null;
   boardDecisionDate?: string | null;
   boardDecisionBookNo?: string | null;
   motherName?: string | null;
@@ -102,6 +103,13 @@ export interface MemberDetail extends MemberListItem {
     firstName: string;
     lastName: string;
     email: string;
+  } | null;
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    isActive: boolean;
   } | null;
 }
 

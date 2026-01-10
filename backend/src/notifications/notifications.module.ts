@@ -4,6 +4,7 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ConfigModule } from '../config/config.module';
+import { MembersModule } from '../members/members.module';
 import { NotificationProcessor } from './processors/notification.processor';
 import { NotificationQueue, NOTIFICATION_QUEUE_NAME } from './queues/notification.queue';
 import { EmailService } from './services/email.service';
@@ -14,6 +15,7 @@ import { ConfigService } from '../config/config.service';
   imports: [
     PrismaModule,
     ConfigModule,
+    MembersModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

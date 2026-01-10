@@ -155,6 +155,18 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       'APPROVAL_REJECT',
     ],
   },
+  {
+    id: 'PANEL_USER_APPLICATIONS',
+    label: 'Panel Kullanıcı Başvuruları',
+    description: 'Üyelerin panel kullanıcılığına terfi başvurularını yönetme yetkileri',
+    permissions: [
+      'PANEL_USER_APPLICATION_CREATE',
+      'PANEL_USER_APPLICATION_LIST',
+      'PANEL_USER_APPLICATION_VIEW',
+      'PANEL_USER_APPLICATION_APPROVE',
+      'PANEL_USER_APPLICATION_REJECT',
+    ],
+  },
 ];
 
 export const getPermissionCategory = (permission: string): PermissionCategory | undefined => {

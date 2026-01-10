@@ -25,6 +25,16 @@ export interface UserDetail extends UserListItem {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
+  member?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    nationalId: string;
+    phone: string | null;
+    email: string | null;
+    status: string;
+    registrationNumber: string | null;
+  } | null;
 }
 
 // Uygulamada göstereceğimiz tüm roller

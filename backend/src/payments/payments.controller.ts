@@ -7,8 +7,13 @@ import {
   Body,
   Query,
   Req,
+  UseInterceptors,
+  UploadedFile,
+  Res,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import type { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreateMemberPaymentDto } from './dto/create-member-payment.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -126,5 +131,77 @@ export class PaymentsController {
       month: month ? Number(month) : undefined,
       isApproved: isApproved !== undefined ? isApproved === true : undefined,
     });
+  }
+
+  @Permissions(Permission.MEMBER_PAYMENT_ADD)
+  @Post('upload-document')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Ödeme evrakı yükle', description: 'Ödeme için PDF evrak yükleme' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        memberId: {
+          type: 'string',
+        },
+        paymentPeriodMonth: {
+          type: 'number',
+        },
+        paymentPeriodYear: {
+          type: 'number',
+        },
+        fileName: {
+          type: 'string',
+          description: 'Özel dosya adı (opsiyonel)',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Dosya yüklendi' })
+  async uploadPaymentDocument(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('memberId') memberId: string,
+    @Body('paymentPeriodMonth') paymentPeriodMonth: string,
+    @Body('paymentPeriodYear') paymentPeriodYear: string,
+    @Body('fileName') fileName?: string,
+  ) {
+    return this.paymentsService.uploadPaymentDocument(
+      file,
+      memberId,
+      Number(paymentPeriodMonth),
+      Number(paymentPeriodYear),
+      fileName,
+    );
+  }
+
+  @Permissions(Permission.MEMBER_PAYMENT_VIEW)
+  @Get(':id/document/view')
+  @ApiOperation({ summary: 'Ödeme belgesi görüntüle', description: 'Ödeme belgesini yeni sekmede aç' })
+  @ApiParam({ name: 'id', description: 'Ödeme ID' })
+  @ApiResponse({ status: 200, description: 'Dosya görüntüleniyor' })
+  @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
+  async viewPaymentDocument(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    await this.paymentsService.viewPaymentDocument(id, res);
+  }
+
+  @Permissions(Permission.MEMBER_PAYMENT_VIEW)
+  @Get(':id/document/download')
+  @ApiOperation({ summary: 'Ödeme belgesi indir', description: 'Ödeme belgesini indir' })
+  @ApiParam({ name: 'id', description: 'Ödeme ID' })
+  @ApiResponse({ status: 200, description: 'Dosya indiriliyor' })
+  @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
+  async downloadPaymentDocument(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    await this.paymentsService.downloadPaymentDocument(id, res);
   }
 }

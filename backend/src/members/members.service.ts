@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberApplicationDto } from './dto/create-member-application.dto';
@@ -13,14 +14,20 @@ import { CurrentUserData } from '../auth/decorators/current-user.decorator';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { DeleteMemberDto } from './dto/delete-member.dto';
 import { ConfigService } from '../config/config.service';
+import { DocumentsService } from '../documents/documents.service';
+import { forwardRef, Inject } from '@nestjs/common';
 
 @Injectable()
 export class MembersService {
+  private readonly logger = new Logger(MembersService.name);
+
   constructor(
     private prisma: PrismaService,
     private scopeService: MemberScopeService,
     private historyService: MemberHistoryService,
     private configService: ConfigService,
+    @Inject(forwardRef(() => DocumentsService))
+    private documentsService: DocumentsService,
   ) {}
 
   /**
@@ -311,8 +318,9 @@ export class MembersService {
       throw new BadRequestException('Yönetim kurulu karar tarihi ve defter no zorunludur');
     }
 
-    // Kayıt numarası oluştur
-    const registrationNumber = dto.registrationNumber || await this.generateRegistrationNumber();
+    // Kayıt numarası oluşturma - sadece onay sırasında atanacak
+    // Başvuru aşamasında null bırakılıyor, onay sırasında admin tarafından atanacak
+    const registrationNumber = dto.registrationNumber || null;
 
     // Varsayılan durum ve otomatik onay kontrolü
     const defaultStatus = this.configService.getSystemSetting('MEMBERSHIP_DEFAULT_STATUS', 'PENDING') as MemberStatus;
@@ -359,6 +367,7 @@ export class MembersService {
         
         // 🔹 Üyelik & Yönetim Kurulu Bilgileri
         membershipInfoOptionId: dto.membershipInfoOptionId,
+        memberGroupId: dto.memberGroupId,
         registrationNumber: registrationNumber,
         boardDecisionDate: dto.boardDecisionDate ? new Date(dto.boardDecisionDate) : null,
         boardDecisionBookNo: dto.boardDecisionBookNo,
@@ -591,6 +600,12 @@ export class MembersService {
             value: true,
           },
         },
+        memberGroup: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         previousCancelledMember: {
           select: {
             id: true,
@@ -625,6 +640,15 @@ export class MembersService {
             email: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isActive: true,
+          },
+        },
       },
     });
     if (!member) {
@@ -649,6 +673,7 @@ export class MembersService {
       phone: oldMember.phone,
       email: oldMember.email,
       membershipInfoOptionId: oldMember.membershipInfoOptionId,
+      memberGroupId: oldMember.memberGroupId,
       registrationNumber: oldMember.registrationNumber,
       boardDecisionDate: oldMember.boardDecisionDate,
       boardDecisionBookNo: oldMember.boardDecisionBookNo,
@@ -766,10 +791,22 @@ export class MembersService {
       updateData.boardDecisionBookNo = dto.boardDecisionBookNo;
     }
 
-    return this.prisma.member.update({
+    const updatedMember = await this.prisma.member.update({
       where: { id },
       data: updateData,
     });
+
+    // Eğer kayıt numarası atandıysa, evrak dosya isimlerini güncelle
+    if (dto?.registrationNumber) {
+      try {
+        await this.documentsService.updateMemberDocumentFileNames(id, dto.registrationNumber);
+      } catch (error) {
+        // Evrak güncelleme hatası olsa bile üye onayı devam etsin
+        this.logger.warn(`Üye ${id} için evrak dosya isimleri güncellenirken hata: ${error.message}`);
+      }
+    }
+
+    return updatedMember;
   }
 
   async reject(id: string, approvedByUserId?: string) {

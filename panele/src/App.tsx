@@ -4,12 +4,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { SnackbarProvider } from 'notistack';
 import LoginPage from './pages/auth/LoginPage';
 import MembersListPage from './pages/members/MembersListPage';
+import MembersByStatusPage from './pages/members/MembersByStatusPage';
 import MemberDetailPage from './pages/members/MemberDetailPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ProtectedRoute from './routes/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import UsersListPage from './pages/users/UsersListPage';
-import UserDetailPage from './pages/users/UserDetailPage';
+import PanelUserApplicationsPage from './pages/users/PanelUserApplicationsPage';
 import MembersApplicationsPage from './pages/members/MembersApplicationsPage';
 import MemberApplicationCreatePage from './pages/members/MemberApplicationCreatePage';
 import MemberUpdatePage from './pages/members/MemberUpdatePage';
@@ -34,6 +35,7 @@ import TevkifatCenterCreatePage from './pages/accounting/TevkifatCenterCreatePag
 import TevkifatTitlesPage from './pages/accounting/TevkifatTitlesPage';
 import PaymentsListPage from './pages/payments/PaymentsListPage';
 import PaymentDetailPage from './pages/payments/PaymentDetailPage';
+import PaymentInquiryPage from './pages/payments/PaymentInquiryPage';
 import BranchDetailPage from './pages/regions/BranchDetailPage';
 import InstitutionsPage from './pages/regions/InstitutionsPage';
 import InstitutionDetailPage from './pages/regions/InstitutionDetailPage';
@@ -116,6 +118,7 @@ const App: React.FC = () => {
           {/* Üyeler: MEMBER_LIST veya MEMBER_LIST_BY_PROVINCE */}
           <Route element={<ProtectedRoute requiredPermission="MEMBER_LIST" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
             <Route path="/members" element={<MembersListPage />} />
+            <Route path="/members/status/:status" element={<MembersByStatusPage />} />
             <Route path="/members/:id" element={<MemberDetailPage />} />
           </Route>
 
@@ -137,7 +140,11 @@ const App: React.FC = () => {
           {/* Users: USER_LIST */}
           <Route element={<ProtectedRoute requiredPermission="USER_LIST" />}>
             <Route path="/users" element={<UsersListPage />} />
-            <Route path="/users/:id" element={<UserDetailPage />} />
+          </Route>
+
+          {/* Panel User Applications: PANEL_USER_APPLICATION_LIST */}
+          <Route element={<ProtectedRoute requiredPermission="PANEL_USER_APPLICATION_LIST" />}>
+            <Route path="/users/applications" element={<PanelUserApplicationsPage />} />
           </Route>
 
           {/* Roles: ROLE_LIST */}
@@ -223,6 +230,7 @@ const App: React.FC = () => {
           {/* Ödemeler: MEMBER_PAYMENT_LIST */}
           <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_LIST" />}>
             <Route path="/payments" element={<PaymentsListPage />} />
+            <Route path="/payments/inquiry" element={<PaymentInquiryPage />} />
           </Route>
           {/* Ödeme Detay: MEMBER_PAYMENT_VIEW */}
           <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_VIEW" />}>
