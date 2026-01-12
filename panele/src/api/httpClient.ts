@@ -14,13 +14,20 @@ export const httpClient = axios.create({
   },
 });
 
-// Request interceptor: Authorization header
+// Request interceptor: Authorization header ve FormData desteği
 httpClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // FormData gönderirken Content-Type header'ını kaldır
+  // Axios otomatik olarak multipart/form-data ve boundary'yi ayarlayacak
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+  
   return config;
 });
 

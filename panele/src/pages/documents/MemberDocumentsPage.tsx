@@ -203,6 +203,8 @@ const MemberDocumentsPage: React.FC = () => {
       headerName: 'Doküman Türü',
       flex: 1,
       minWidth: 200,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => {
         return getDocumentTypeLabel(params.value || 'UPLOADED');
       },
@@ -212,11 +214,15 @@ const MemberDocumentsPage: React.FC = () => {
       headerName: 'Dosya Adı',
       flex: 1,
       minWidth: 200,
+      align: 'center',
+      headerAlign: 'center',
     },
     {
       field: 'generatedAt',
       headerName: 'Oluşturulma Tarihi',
       width: 180,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => {
         if (!params.value) return '-';
         return new Date(params.value).toLocaleString('tr-TR');
@@ -226,6 +232,8 @@ const MemberDocumentsPage: React.FC = () => {
       field: 'generatedByUser',
       headerName: 'Oluşturan',
       width: 150,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => {
         const user = params.row.generatedByUser;
         if (!user) return '-';
@@ -237,10 +245,12 @@ const MemberDocumentsPage: React.FC = () => {
       headerName: 'İşlemler',
       width: 150,
       sortable: false,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => {
         const doc = params.row as MemberDocument;
         return (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
             <Tooltip title="Görüntüle">
               <IconButton
                 size="small"
@@ -436,6 +446,9 @@ const MemberDocumentsPage: React.FC = () => {
               border: 'none',
               '& .MuiDataGrid-cell': {
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
                 backgroundColor: alpha(theme.palette.primary.main, 0.04),

@@ -183,8 +183,20 @@ const InstitutionsPage: React.FC = () => {
         setSaving(false);
         return;
       }
-      await createInstitution(payload);
-      toast.showSuccess('Kurum başarıyla oluşturuldu.');
+      const newInstitution = await createInstitution(payload);
+      
+      // Eğer kullanıcının onaylama yetkisi varsa, kurumu otomatik olarak onayla
+      if (canApproveInstitution && newInstitution.id) {
+        try {
+          await approveInstitution(newInstitution.id);
+          toast.showSuccess('Kurum başarıyla oluşturuldu ve onaylandı.');
+        } catch (approveError) {
+          console.error('Kurum onaylanırken hata:', approveError);
+          toast.showSuccess('Kurum başarıyla oluşturuldu, ancak onaylanırken bir hata oluştu.');
+        }
+      } else {
+        toast.showSuccess('Kurum başarıyla oluşturuldu. Onay bekliyor.');
+      }
 
       await loadInstitutions();
       setDialogOpen(false);
@@ -265,8 +277,10 @@ const InstitutionsPage: React.FC = () => {
       headerName: 'Kurum Adı',
       flex: 1.4,
       minWidth: 180,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1 }}>
           <BusinessIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
           <Typography sx={{ fontWeight: 500 }}>{params.row.name}</Typography>
         </Box>
@@ -277,6 +291,8 @@ const InstitutionsPage: React.FC = () => {
       headerName: 'Üye Sayısı',
       flex: 0.7,
       minWidth: 100,
+      align: 'left',
+      headerAlign: 'left',
       valueGetter: (params: { row?: Institution }) => params?.row?.memberCount ?? 0,
     },
     {
@@ -285,8 +301,10 @@ const InstitutionsPage: React.FC = () => {
       flex: 1,
       minWidth: 150,
       sortable: false,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1 }}>
           {!params.row.isActive && canApproveInstitution && (
             <IconButton
               size="small"
@@ -510,6 +528,9 @@ const InstitutionsPage: React.FC = () => {
               },
               '& .MuiDataGrid-cell': {
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
               },
               '& .MuiDataGrid-columnHeaders': {
                 backgroundColor: alpha(theme.palette.primary.main, 0.04),

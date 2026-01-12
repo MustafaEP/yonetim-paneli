@@ -258,11 +258,15 @@ const BranchesPage: React.FC = () => {
       headerName: 'Şube Adı',
       flex: 1,
       minWidth: 200,
+      align: 'left',
+      headerAlign: 'left',
     },
     {
       field: 'president',
       headerName: 'Şube Başkanı',
       width: 200,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => {
         const president = params.row.president;
         return president ? `${president.firstName} ${president.lastName}` : '-';
@@ -272,12 +276,16 @@ const BranchesPage: React.FC = () => {
       field: 'memberCount',
       headerName: 'Üye Sayısı',
       width: 120,
+      align: 'left',
+      headerAlign: 'left',
       valueGetter: (value) => value ?? 0,
     },
     {
       field: 'isActive',
       headerName: 'Aktif / Pasif',
       width: 120,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => (
         <Chip
           label={params.value ? 'Aktif' : 'Pasif'}
@@ -291,10 +299,12 @@ const BranchesPage: React.FC = () => {
       headerName: 'İşlemler',
       width: 250,
       sortable: false,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => {
         const branch = params.row as Branch;
         return (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 0.5 }}>
             <Tooltip title="Detay">
               <IconButton
                 size="small"
@@ -490,6 +500,9 @@ const BranchesPage: React.FC = () => {
             border: 'none',
             '& .MuiDataGrid-cell': {
               borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
             },
             '& .MuiDataGrid-columnHeaders': {
               backgroundColor: alpha(theme.palette.primary.main, 0.04),
