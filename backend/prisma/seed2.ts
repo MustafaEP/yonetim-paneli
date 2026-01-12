@@ -1,4 +1,4 @@
-import { PrismaClient, ContentType, ContentStatus, DocumentTemplateType, NotificationType, NotificationTargetType, NotificationStatus, NotificationCategory, NotificationChannel, NotificationTypeCategory, SystemSettingCategory, ApprovalStatus, ApprovalEntityType, PaymentType, PositionTitle } from '@prisma/client';
+import { PrismaClient, ContentType, ContentStatus, DocumentTemplateType, NotificationType, NotificationTargetType, NotificationStatus, NotificationCategory, NotificationChannel, NotificationTypeCategory, SystemSettingCategory, ApprovalStatus, ApprovalEntityType, PaymentType, PositionTitle, MemberStatus, MemberSource, Gender, EducationStatus, PanelUserApplicationStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -79,15 +79,18 @@ async function main() {
   await prisma.approval.deleteMany();
   await prisma.systemLog.deleteMany();
   await prisma.systemSetting.deleteMany();
+  await prisma.panelUserApplicationScope.deleteMany(); // Must be deleted before PanelUserApplication
   await prisma.panelUserApplication.deleteMany(); // Must be deleted before Member (foreign key constraint)
   await prisma.member.deleteMany();
   await prisma.institution.deleteMany();
   await prisma.tevkifatCenter.deleteMany();
   await prisma.tevkifatTitle.deleteMany();
   await prisma.membershipInfoOption.deleteMany();
+  await prisma.memberGroup.deleteMany();
   await prisma.profession.deleteMany();
   await prisma.branch.deleteMany();
   await prisma.userScope.deleteMany();
+  await prisma.customRoleScope.deleteMany(); // Must be deleted before CustomRole
   await prisma.customRolePermission.deleteMany();
   await prisma.customRole.deleteMany();
   await prisma.userNotificationSettings.deleteMany();
@@ -239,6 +242,37 @@ async function main() {
       });
     }
     console.log('   ✅ 3 UserScope eklendi');
+  }
+
+  // 4.1. CustomRoleScope - 1 veri
+  console.log('🔐 CustomRoleScope ekleniyor...');
+  const allCustomRoles = await prisma.customRole.findMany({ take: 1 });
+  if (allCustomRoles.length > 0 && allProvinces.length > 0) {
+    const role = allCustomRoles[0];
+    const province = allProvinces[0];
+    const districts = allDistricts.filter(d => d.provinceId === province.id);
+    const district = districts.length > 0 ? districts[0] : null;
+    
+    const existingScope = await prisma.customRoleScope.findFirst({
+      where: {
+        roleId: role.id,
+        provinceId: province.id,
+        districtId: district?.id || null,
+      },
+    });
+    
+    if (!existingScope) {
+      await prisma.customRoleScope.create({
+        data: {
+          roleId: role.id,
+          provinceId: province.id,
+          districtId: district?.id || null,
+        },
+      });
+      console.log('   ✅ 1 CustomRoleScope eklendi');
+    } else {
+      console.log('   ✅ CustomRoleScope zaten mevcut');
+    }
   }
 
   // 5. Content - 3 veri
@@ -393,6 +427,156 @@ async function main() {
     }
   }
   console.log(`   ✅ ${professionCount} Profession eklendi`);
+
+  // 10.1. Branch - 1 veri
+  console.log('🏢 Branch ekleniyor...');
+  let branchCount = 0;
+  if (allProvinces.length > 0 && allUsers.length > 0) {
+    const branchName = 'Merkez Şube';
+    const existing = await prisma.branch.findFirst({
+      where: { name: branchName },
+    });
+    
+    if (!existing) {
+      const province = allProvinces[0];
+      const districts = allDistricts.filter(d => d.provinceId === province.id);
+      const district = districts.length > 0 ? districts[0] : null;
+      
+      await prisma.branch.create({
+        data: {
+          name: branchName,
+          isActive: true,
+          provinceId: province.id,
+          districtId: district?.id || null,
+          presidentId: allUsers[0].id,
+        },
+      });
+      branchCount++;
+    }
+    console.log(`   ✅ ${branchCount} Branch eklendi`);
+  }
+
+  // 10.2. Institution - 1 veri
+  console.log('🏥 Institution ekleniyor...');
+  let institutionCount = 0;
+  if (allProvinces.length > 0) {
+    const institutionName = 'Örnek Kurum';
+    const existing = await prisma.institution.findFirst({
+      where: { name: institutionName },
+    });
+    
+    if (!existing) {
+      const province = allProvinces[0];
+      const districts = allDistricts.filter(d => d.provinceId === province.id);
+      const district = districts.length > 0 ? districts[0] : null;
+      
+      await prisma.institution.create({
+        data: {
+          name: institutionName,
+          isActive: true,
+          approvedAt: new Date(),
+          approvedBy: adminUser.id,
+          createdBy: adminUser.id,
+          provinceId: province.id,
+          districtId: district?.id || null,
+        },
+      });
+      institutionCount++;
+    }
+    console.log(`   ✅ ${institutionCount} Institution eklendi`);
+  }
+
+  // 10.3. MemberGroup - 1 veri
+  console.log('👥 MemberGroup ekleniyor...');
+  let memberGroupCount = 0;
+  const memberGroupName = 'Normal Üye';
+  const existingMemberGroup = await prisma.memberGroup.findFirst({
+    where: { name: memberGroupName },
+  });
+  
+  if (!existingMemberGroup) {
+    await prisma.memberGroup.create({
+      data: {
+        name: memberGroupName,
+        description: 'Normal üye grubu',
+        isActive: true,
+        order: 1,
+      },
+    });
+    memberGroupCount++;
+  }
+  console.log(`   ✅ ${memberGroupCount} MemberGroup eklendi`);
+
+  // 10.4. Member - 1 veri (Branch, Institution, MemberGroup gerekli)
+  console.log('👤 Member ekleniyor...');
+  let memberCount = 0;
+  const allBranchesAfter = await prisma.branch.findMany({ take: 1 });
+  const allInstitutionsAfter = await prisma.institution.findMany({ take: 1 });
+  const allMemberGroups = await prisma.memberGroup.findMany({ take: 1 });
+  const allProfessions = await prisma.profession.findMany({ take: 1 });
+  const allTevkifatCenters = await prisma.tevkifatCenter.findMany({ take: 1 });
+  const allTevkifatTitles = await prisma.tevkifatTitle.findMany({ take: 1 });
+  const allMembershipInfoOptions = await prisma.membershipInfoOption.findMany({ take: 1 });
+  
+  if (allBranchesAfter.length > 0 && allInstitutionsAfter.length > 0 && allProvinces.length > 0) {
+    const existingMember = await prisma.member.findFirst({
+      where: { nationalId: '12345678901' },
+    });
+    
+    if (!existingMember) {
+      const province = allProvinces[0];
+      const districts = allDistricts.filter(d => d.provinceId === province.id);
+      const district = districts.length > 0 ? districts[0] : null;
+      
+      await prisma.member.create({
+        data: {
+          firstName: 'Örnek',
+          lastName: 'Üye',
+          nationalId: '12345678901',
+          phone: '05551234567',
+          email: 'ornek@example.com',
+          status: MemberStatus.ACTIVE,
+          source: MemberSource.DIRECT,
+          branchId: allBranchesAfter[0].id,
+          institutionId: allInstitutionsAfter[0].id,
+          provinceId: province.id,
+          districtId: district?.id || null,
+          professionId: allProfessions.length > 0 ? allProfessions[0].id : null,
+          tevkifatCenterId: allTevkifatCenters.length > 0 ? allTevkifatCenters[0].id : null,
+          tevkifatTitleId: allTevkifatTitles.length > 0 ? allTevkifatTitles[0].id : null,
+          memberGroupId: allMemberGroups.length > 0 ? allMemberGroups[0].id : null,
+          membershipInfoOptionId: allMembershipInfoOptions.length > 0 ? allMembershipInfoOptions[0].id : null,
+          createdByUserId: adminUser.id,
+          approvedByUserId: adminUser.id,
+          approvedAt: new Date(),
+        },
+      });
+      memberCount++;
+    }
+    console.log(`   ✅ ${memberCount} Member eklendi`);
+  }
+
+  // 10.5. MemberDocument - 1 veri (Member ve DocumentTemplate gerekli)
+  console.log('📄 MemberDocument ekleniyor...');
+  const allMembersAfter = await prisma.member.findMany({ take: 1 });
+  const allDocumentTemplates = await prisma.documentTemplate.findMany({ take: 1 });
+  
+  if (allMembersAfter.length > 0 && allDocumentTemplates.length > 0) {
+    const member = allMembersAfter[0];
+    const template = allDocumentTemplates[0];
+    
+    await prisma.memberDocument.create({
+      data: {
+        memberId: member.id,
+        templateId: template.id,
+        documentType: template.type,
+        fileName: `document_${member.id}.pdf`,
+        fileUrl: `/uploads/documents/document_${member.id}.pdf`,
+        generatedBy: adminUser.id,
+      },
+    });
+    console.log('   ✅ 1 MemberDocument eklendi');
+  }
 
   // 11. SystemSetting - 3 veri
   console.log('⚙️  SystemSetting ekleniyor...');
@@ -691,6 +875,50 @@ async function main() {
       } else {
         throw error;
       }
+    }
+  }
+
+  // 20.5. PanelUserApplication - 1 veri (Member ve CustomRole gerekli)
+  console.log('📋 PanelUserApplication ekleniyor...');
+  const allMembersForApplication = await prisma.member.findMany({ take: 1 });
+  const allCustomRolesForApplication = await prisma.customRole.findMany({ take: 1 });
+  
+  if (allMembersForApplication.length > 0 && allCustomRolesForApplication.length > 0) {
+    const member = allMembersForApplication[0];
+    const role = allCustomRolesForApplication[0];
+    
+    const existingApplication = await prisma.panelUserApplication.findFirst({
+      where: { memberId: member.id },
+    });
+    
+    if (!existingApplication) {
+      const application = await prisma.panelUserApplication.create({
+        data: {
+          memberId: member.id,
+          requestedRoleId: role.id,
+          status: PanelUserApplicationStatus.PENDING,
+          requestNote: 'Örnek panel kullanıcı başvurusu',
+        },
+      });
+      
+      // PanelUserApplicationScope - 1 veri
+      if (allProvinces.length > 0) {
+        const province = allProvinces[0];
+        const districts = allDistricts.filter(d => d.provinceId === province.id);
+        const district = districts.length > 0 ? districts[0] : null;
+        
+        await prisma.panelUserApplicationScope.create({
+          data: {
+            applicationId: application.id,
+            provinceId: province.id,
+            districtId: district?.id || null,
+          },
+        });
+      }
+      
+      console.log('   ✅ 1 PanelUserApplication ve 1 PanelUserApplicationScope eklendi');
+    } else {
+      console.log('   ✅ PanelUserApplication zaten mevcut');
     }
   }
 
