@@ -262,7 +262,8 @@ const MemberApplicationCreatePage: React.FC = () => {
   const loadInstitutions = useCallback(async () => {
     try {
       const data = await getInstitutions();
-      setInstitutions(data.filter(i => i.isActive));
+      // Tüm kurumları göster (aktif ve pasif)
+      setInstitutions(data);
     } catch (e) {
       console.error('Kurumlar alınırken hata:', e);
     }
