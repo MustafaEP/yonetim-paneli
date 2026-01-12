@@ -2,6 +2,10 @@
 -- Önce foreign key constraint'i kaldır (eğer varsa)
 DO $$ 
 BEGIN
+  IF to_regclass('"Institution"') IS NULL THEN
+    RETURN;
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM pg_constraint 
     WHERE conname = 'Institution_branchId_fkey'
@@ -16,6 +20,10 @@ DROP INDEX IF EXISTS "Institution_branchId_idx";
 -- branchId kolonunu kaldır (eğer varsa)
 DO $$ 
 BEGIN
+  IF to_regclass('"Institution"') IS NULL THEN
+    RETURN;
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'Institution' AND column_name = 'branchId'
@@ -27,6 +35,10 @@ END $$;
 -- Yeni kolonları ekle (eğer yoksa)
 DO $$ 
 BEGIN
+  IF to_regclass('"Institution"') IS NULL THEN
+    RETURN;
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'Institution' AND column_name = 'kurumSicilNo'
