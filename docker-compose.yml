@@ -39,6 +39,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        # Optional: if Prisma engine downloads are slow/blocked on your VPS,
+        # set PRISMA_ENGINES_MIRROR in your environment or .env
+        PRISMA_ENGINES_MIRROR: ${PRISMA_ENGINES_MIRROR:-}
     container_name: yonetim-backend
     depends_on:
       postgres:
