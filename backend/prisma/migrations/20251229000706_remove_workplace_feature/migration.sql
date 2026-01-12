@@ -31,36 +31,56 @@ ALTER TYPE "Role_new" RENAME TO "Role";
 DROP TYPE "Role_old";
 
 -- AlterEnum: Remove ANNOUNCEMENT_WORKPLACE from NotificationTypeCategory enum
-CREATE TYPE "NotificationTypeCategory_new" AS ENUM (
-  'MEMBER_APPLICATION_NEW',
-  'MEMBER_APPLICATION_APPROVED',
-  'MEMBER_APPLICATION_REJECTED',
-  'ROLE_CHANGED',
-  'SCOPE_ASSIGNED',
-  'PASSWORD_RESET',
-  'ACCOUNT_ACTIVATED',
-  'ACCOUNT_DEACTIVATED',
-  'DUES_PAYMENT_RECEIVED',
-  'DUES_OVERDUE',
-  'DUES_BULK_REPORT_READY',
-  'ACCOUNTING_APPROVAL_PENDING',
-  'ANNOUNCEMENT_GENERAL',
-  'ANNOUNCEMENT_REGIONAL',
-  'ANNOUNCEMENT_ELECTION',
-  'REMINDER_DUES_PAYMENT',
-  'REMINDER_DOCUMENT_MISSING',
-  'REMINDER_REPRESENTATIVE_TERM_EXPIRING',
-  'REMINDER_PENDING_APPROVAL'
-);
+-- NOTE:
+-- On fresh installs in this repo, the Notification table exists but the "typeCategory" column
+-- may be added later (see 20260102009000_fix_notification_schema_drift).
+-- Also, the NotificationTypeCategory enum might not exist yet at this point.
+-- Guard this enum transformation so it doesn't fail on new databases.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_type WHERE typname = 'NotificationTypeCategory'
+  )
+  AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Notification' AND column_name = 'typeCategory'
+  ) THEN
+    CREATE TYPE "NotificationTypeCategory_new" AS ENUM (
+      'MEMBER_APPLICATION_NEW',
+      'MEMBER_APPLICATION_APPROVED',
+      'MEMBER_APPLICATION_REJECTED',
+      'ROLE_CHANGED',
+      'SCOPE_ASSIGNED',
+      'PASSWORD_RESET',
+      'ACCOUNT_ACTIVATED',
+      'ACCOUNT_DEACTIVATED',
+      'DUES_PAYMENT_RECEIVED',
+      'DUES_OVERDUE',
+      'DUES_BULK_REPORT_READY',
+      'ACCOUNTING_APPROVAL_PENDING',
+      'ANNOUNCEMENT_GENERAL',
+      'ANNOUNCEMENT_REGIONAL',
+      'ANNOUNCEMENT_ELECTION',
+      'REMINDER_DUES_PAYMENT',
+      'REMINDER_DOCUMENT_MISSING',
+      'REMINDER_REPRESENTATIVE_TERM_EXPIRING',
+      'REMINDER_PENDING_APPROVAL'
+    );
 
--- Update any existing records that use ANNOUNCEMENT_WORKPLACE
-UPDATE "Notification" SET "typeCategory" = 'ANNOUNCEMENT_GENERAL' WHERE "typeCategory" = 'ANNOUNCEMENT_WORKPLACE';
+    -- Update any existing records that use ANNOUNCEMENT_WORKPLACE
+    UPDATE "Notification"
+    SET "typeCategory" = 'ANNOUNCEMENT_GENERAL'
+    WHERE "typeCategory" = 'ANNOUNCEMENT_WORKPLACE';
 
-ALTER TABLE "Notification" ALTER COLUMN "typeCategory" DROP DEFAULT;
-ALTER TABLE "Notification" ALTER COLUMN "typeCategory" TYPE "NotificationTypeCategory_new" USING ("typeCategory"::text::"NotificationTypeCategory_new");
-ALTER TYPE "NotificationTypeCategory" RENAME TO "NotificationTypeCategory_old";
-ALTER TYPE "NotificationTypeCategory_new" RENAME TO "NotificationTypeCategory";
-DROP TYPE "NotificationTypeCategory_old";
+    ALTER TABLE "Notification" ALTER COLUMN "typeCategory" DROP DEFAULT;
+    ALTER TABLE "Notification" ALTER COLUMN "typeCategory" TYPE "NotificationTypeCategory_new"
+      USING ("typeCategory"::text::"NotificationTypeCategory_new");
+
+    ALTER TYPE "NotificationTypeCategory" RENAME TO "NotificationTypeCategory_old";
+    ALTER TYPE "NotificationTypeCategory_new" RENAME TO "NotificationTypeCategory";
+    DROP TYPE "NotificationTypeCategory_old";
+  END IF;
+END $$;
 
 -- DropForeignKey: Remove workplace foreign key from UserScope
 ALTER TABLE "UserScope" DROP CONSTRAINT IF EXISTS "UserScope_workplaceId_fkey";
