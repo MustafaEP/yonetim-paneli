@@ -3,6 +3,8 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
@@ -12,6 +14,8 @@ import { RejectPanelUserApplicationDto } from './dto/reject-panel-user-applicati
 
 @Injectable()
 export class PanelUserApplicationsService {
+  private readonly logger = new Logger(PanelUserApplicationsService.name);
+
   constructor(
     private prisma: PrismaService,
     private usersService: UsersService,
@@ -22,113 +26,171 @@ export class PanelUserApplicationsService {
     dto: CreatePanelUserApplicationDto,
     requestedByUserId: string,
   ) {
-    // Üyenin zaten bir başvurusu var mı kontrol et
-    const existing = await this.prisma.panelUserApplication.findUnique({
-      where: { memberId },
-    });
+    try {
+      // Üyenin zaten bir başvurusu var mı kontrol et
+      const existing = await this.prisma.panelUserApplication.findUnique({
+        where: { memberId },
+      });
 
-    if (existing) {
-      throw new ConflictException('Bu üye için zaten bir başvuru mevcut');
-    }
-
-    // Üye zaten panel kullanıcısı mı kontrol et
-    const member = await this.prisma.member.findUnique({
-      where: { id: memberId },
-      include: { user: true },
-    });
-
-    if (!member) {
-      throw new NotFoundException('Üye bulunamadı');
-    }
-
-    if (member.userId) {
-      throw new ConflictException('Bu üye zaten panel kullanıcısı');
-    }
-
-    // Rol var mı kontrol et
-    const role = await this.prisma.customRole.findUnique({
-      where: { id: dto.requestedRoleId },
-    });
-
-    if (!role) {
-      throw new NotFoundException('Seçilen rol bulunamadı');
-    }
-
-    // Yetki alanı kontrolü: Eğer role hasScopeRestriction true ise scope zorunlu
-    if (role.hasScopeRestriction) {
-      if (!dto.scopes || dto.scopes.length === 0) {
-        throw new BadRequestException('Bu rol için yetki alanı seçimi zorunludur.');
+      if (existing) {
+        throw new ConflictException('Bu üye için zaten bir başvuru mevcut');
       }
 
-      // Her scope için validasyon
-      for (const scope of dto.scopes) {
-        if (!scope.provinceId && !scope.districtId) {
-          throw new BadRequestException('Her yetki alanı için en az bir il veya ilçe seçmelisiniz.');
+      // Üye zaten panel kullanıcısı mı kontrol et
+      const member = await this.prisma.member.findUnique({
+        where: { id: memberId },
+        include: { user: true },
+      });
+
+      if (!member) {
+        throw new NotFoundException('Üye bulunamadı');
+      }
+
+      if (member.userId) {
+        throw new ConflictException('Bu üye zaten panel kullanıcısı');
+      }
+
+      // Rol var mı kontrol et
+      const role = await this.prisma.customRole.findUnique({
+        where: { id: dto.requestedRoleId },
+      });
+
+      if (!role) {
+        throw new NotFoundException('Seçilen rol bulunamadı');
+      }
+
+      // Yetki alanı kontrolü: Eğer role hasScopeRestriction true ise scope zorunlu
+      if (role.hasScopeRestriction) {
+        if (!dto.scopes || dto.scopes.length === 0) {
+          throw new BadRequestException('Bu rol için yetki alanı seçimi zorunludur.');
         }
 
-        if (scope.districtId && !scope.provinceId) {
-          throw new BadRequestException('İlçe seçmek için önce il seçmelisiniz.');
-        }
+        // Her scope için validasyon
+        for (const scope of dto.scopes) {
+          if (!scope.provinceId && !scope.districtId) {
+            throw new BadRequestException('Her yetki alanı için en az bir il veya ilçe seçmelisiniz.');
+          }
 
-        // İlçenin seçili ile ait olduğunu kontrol et
-        if (scope.districtId && scope.provinceId) {
-          const district = await this.prisma.district.findUnique({
-            where: { id: scope.districtId },
-          });
-          if (district && district.provinceId !== scope.provinceId) {
-            throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil.');
+          if (scope.districtId && !scope.provinceId) {
+            throw new BadRequestException('İlçe seçmek için önce il seçmelisiniz.');
+          }
+
+          // İlçenin seçili ile ait olduğunu kontrol et
+          if (scope.districtId && scope.provinceId) {
+            const district = await this.prisma.district.findUnique({
+              where: { id: scope.districtId },
+            });
+            if (district && district.provinceId !== scope.provinceId) {
+              throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil.');
+            }
           }
         }
       }
-    }
 
-    return this.prisma.panelUserApplication.create({
-      data: {
-        memberId,
-        requestedRoleId: dto.requestedRoleId,
-        requestNote: dto.requestNote,
-        status: 'PENDING',
-        applicationScopes: dto.scopes && dto.scopes.length > 0
-          ? {
-              create: dto.scopes.map((scope) => ({
-                provinceId: scope.provinceId || null,
-                districtId: scope.districtId || null,
-              })),
-            }
-          : undefined,
-      },
-      include: {
-        member: {
-          include: {
-            branch: true,
-            institution: true,
-          },
+      // Scopes'ları filtrele ve duplicate'leri kaldır
+      // Sadece geçerli olanları al (hem provinceId hem districtId null olanları hariç tut)
+      const validScopes = dto.scopes?.filter(
+        (scope) => scope.provinceId || scope.districtId
+      ) || [];
+
+      // Duplicate scope'ları kaldır (aynı provinceId ve districtId kombinasyonu)
+      const uniqueScopes = Array.from(
+        new Map(
+          validScopes.map((scope) => [
+            `${scope.provinceId || 'null'}-${scope.districtId || 'null'}`,
+            scope,
+          ])
+        ).values()
+      );
+
+      return await this.prisma.panelUserApplication.create({
+        data: {
+          memberId,
+          requestedRoleId: dto.requestedRoleId,
+          requestNote: dto.requestNote,
+          status: 'PENDING',
+          applicationScopes: uniqueScopes.length > 0
+            ? {
+                create: uniqueScopes.map((scope) => ({
+                  provinceId: scope.provinceId || null,
+                  districtId: scope.districtId || null,
+                })),
+              }
+            : undefined,
         },
-        requestedRole: {
-          include: {
-            permissions: true,
-            roleScopes: {
-              where: {
-                deletedAt: null,
-              },
-              include: {
-                province: true,
-                district: true,
+        include: {
+          member: {
+            include: {
+              branch: true,
+              institution: true,
+            },
+          },
+          requestedRole: {
+            include: {
+              permissions: true,
+              roleScopes: {
+                where: {
+                  deletedAt: null,
+                },
+                include: {
+                  province: true,
+                  district: true,
+                },
               },
             },
           },
-        },
-        applicationScopes: {
-          where: {
-            deletedAt: null,
+          applicationScopes: {
+            where: {
+              deletedAt: null,
+            },
+            include: {
+              province: true,
+              district: true,
+            },
           },
-          include: {
-            province: true,
-            district: true,
-          },
         },
-      },
-    });
+      });
+    } catch (error: any) {
+      // NestJS exception'ları olduğu gibi fırlat
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      // Diğer hataları logla ve daha anlamlı bir hata mesajı döndür
+      this.logger.error(
+        `Panel user application oluşturulurken hata: ${error?.message || 'Bilinmeyen hata'}`,
+        error?.stack,
+      );
+
+      // Prisma hatalarını daha anlamlı hale getir
+      if (error?.code === 'P2002') {
+        // Unique constraint violation
+        throw new ConflictException(
+          'Bu işlem için gerekli veritabanı kısıtlaması ihlal edildi. Lütfen verileri kontrol edin.',
+        );
+      }
+
+      if (error?.code === 'P2003') {
+        // Foreign key constraint violation
+        throw new BadRequestException(
+          'Seçilen rol, il veya ilçe bulunamadı. Lütfen verileri kontrol edin.',
+        );
+      }
+
+      if (error?.code === 'P2011') {
+        // Null constraint violation
+        throw new BadRequestException('Zorunlu alanlar eksik. Lütfen tüm gerekli alanları doldurun.');
+      }
+
+      // Genel hata
+      throw new InternalServerErrorException(
+        `Panel kullanıcı başvurusu oluşturulurken bir hata oluştu: ${error?.message || 'Bilinmeyen hata'}`,
+      );
+    }
   }
 
   async findAll(status?: 'PENDING' | 'APPROVED' | 'REJECTED') {
