@@ -50,6 +50,11 @@ COPY prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
+# Ensure Prisma CLI version matches @prisma/client (6.1) at runtime as well.
+# This avoids runtime errors such as "ensureBinariesExist is not a function"
+# that come from version mismatches between the Prisma CLI and client.
+RUN npm install prisma@6.1 --no-save
+
 # Copy built application
 COPY --from=builder /app/dist ./dist
 
