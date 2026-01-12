@@ -2595,7 +2595,7 @@ Sendika Yönetimi
   // 🔹 Üye Grubu
   console.log('👥 Üye grupları ekleniyor...');
   const memberGroups = [
-    { name: 'Normal Üye', description: 'Normal üye grubu', order: 1 },
+    { name: 'Üye', description: 'Üye grubu', order: 1 },
   ];
   for (const group of memberGroups) {
     await prisma.memberGroup.create({

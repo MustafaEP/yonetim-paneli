@@ -65,7 +65,7 @@ const MembersListPage: React.FC = () => {
   const [rows, setRows] = useState<MemberListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<MemberStatus | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<MemberStatus>('ACTIVE'); // Varsayılan olarak ACTIVE
   const [branchFilter, setBranchFilter] = useState<string>('ALL');
   const [provinceFilter, setProvinceFilter] = useState<string[]>([]);
   const [districtFilter, setDistrictFilter] = useState<string[]>([]);
@@ -160,13 +160,9 @@ const MembersListPage: React.FC = () => {
   }, []);
 
   // Filtrelenmiş veriler
+  // Not: Backend status filtresine göre veri döndürür, bu yüzden frontend'de sadece diğer filtreler uygulanır
   const filteredRows = useMemo(() => {
     let filtered = rows;
-
-    // Durum filtresi
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter((row) => row.status === statusFilter);
-    }
 
     // Şube filtresi
     if (branchFilter !== 'ALL') {
@@ -205,7 +201,7 @@ const MembersListPage: React.FC = () => {
     }
 
     return filtered;
-  }, [rows, statusFilter, branchFilter, provinceFilter, districtFilter, institutionFilter, searchText]);
+  }, [rows, branchFilter, provinceFilter, districtFilter, institutionFilter, searchText]);
 
   const getStatusLabel = (status: MemberStatus): string => {
     switch (status) {
@@ -213,6 +209,8 @@ const MembersListPage: React.FC = () => {
         return 'Aktif';
       case 'PENDING':
         return 'Onay Bekliyor';
+      case 'APPROVED':
+        return 'Onaylanmış';
       case 'RESIGNED':
         return 'İstifa';
       case 'EXPELLED':
@@ -232,6 +230,8 @@ const MembersListPage: React.FC = () => {
         return 'success';
       case 'PENDING':
         return 'warning';
+      case 'APPROVED':
+        return 'info';
       case 'REJECTED':
       case 'EXPELLED':
         return 'error';
@@ -460,7 +460,7 @@ const MembersListPage: React.FC = () => {
       setStatusDialogOpen(false);
       setSelectedMember(null);
       // Listeyi yeniden yükle
-      const data = await getMembers();
+      const data = await getMembers(statusFilter);
       setRows(data);
     } catch (error: any) {
       console.error('Durum güncellenirken hata:', error);
@@ -486,7 +486,7 @@ const MembersListPage: React.FC = () => {
       setDeletePayments(false);
       setDeleteDocuments(false);
       // Listeyi yeniden yükle
-      const data = await getMembers();
+      const data = await getMembers(statusFilter);
       setRows(data);
     } catch (error: any) {
       console.error('Üye silinirken hata:', error);
@@ -498,10 +498,11 @@ const MembersListPage: React.FC = () => {
 
   useEffect(() => {
     const fetchMembers = async () => {
+      setLoading(true);
       try {
         setError(null);
-        console.log('[MembersListPage] Fetching members...');
-        const data = await getMembers();
+        console.log('[MembersListPage] Fetching members with status:', statusFilter);
+        const data = await getMembers(statusFilter);
         console.log('[MembersListPage] Received members:', data);
         setRows(data);
       } catch (error: any) {
@@ -514,7 +515,7 @@ const MembersListPage: React.FC = () => {
     };
 
     fetchMembers();
-  }, []);
+  }, [statusFilter]);
 
   return (
     <Box
@@ -739,7 +740,7 @@ const MembersListPage: React.FC = () => {
                 }}
               />
             </Grid>
-            {/* Durum */}
+            {/* Durum Filtresi */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <FormControl 
                 size="medium" 
@@ -759,7 +760,7 @@ const MembersListPage: React.FC = () => {
                 <Select
                   value={statusFilter}
                   label="Durum Filtresi"
-                  onChange={(e) => setStatusFilter(e.target.value as MemberStatus | 'ALL')}
+                  onChange={(e) => setStatusFilter(e.target.value as MemberStatus)}
                   startAdornment={
                     <InputAdornment position="start" sx={{ ml: 1 }}>
                       <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
@@ -767,12 +768,12 @@ const MembersListPage: React.FC = () => {
                   }
                   sx={{
                     '& .MuiSelect-select': {
-                      fontWeight: statusFilter !== 'ALL' ? 600 : 400,
-                      color: statusFilter !== 'ALL' ? theme.palette.primary.main : 'inherit',
+                      fontWeight: 600,
+                      color: theme.palette.primary.main,
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: statusFilter !== 'ALL' ? theme.palette.primary.main : undefined,
-                      borderWidth: statusFilter !== 'ALL' ? 2 : 1,
+                      borderColor: theme.palette.primary.main,
+                      borderWidth: 2,
                     },
                   }}
                   MenuProps={{
@@ -786,9 +787,6 @@ const MembersListPage: React.FC = () => {
                     },
                   }}
                 >
-                  <MenuItem value="ALL">
-                    <Typography>Tümü</Typography>
-                  </MenuItem>
                   <MenuItem value="ACTIVE">
                     <Typography sx={{ 
                       fontWeight: statusFilter === 'ACTIVE' ? 700 : 400,
@@ -803,6 +801,14 @@ const MembersListPage: React.FC = () => {
                       color: statusFilter === 'PENDING' ? theme.palette.primary.main : 'inherit',
                     }}>
                       Onay Bekliyor
+                    </Typography>
+                  </MenuItem>
+                  <MenuItem value="APPROVED">
+                    <Typography sx={{ 
+                      fontWeight: statusFilter === 'APPROVED' ? 700 : 400,
+                      color: statusFilter === 'APPROVED' ? theme.palette.primary.main : 'inherit',
+                    }}>
+                      Onaylanmış
                     </Typography>
                   </MenuItem>
                   <MenuItem value="INACTIVE">
@@ -1223,7 +1229,7 @@ const MembersListPage: React.FC = () => {
           </Grid>
 
           {/* Seçili Filtreler */}
-          {(statusFilter !== 'ALL' || branchFilter !== 'ALL' || provinceFilter.length > 0 || districtFilter.length > 0 || institutionFilter.length > 0 || searchText.trim()) && (
+          {(statusFilter !== 'ACTIVE' || branchFilter !== 'ALL' || provinceFilter.length > 0 || districtFilter.length > 0 || institutionFilter.length > 0 || searchText.trim()) && (
             <Box
               sx={{
                 mt: 3,
@@ -1252,7 +1258,7 @@ const MembersListPage: React.FC = () => {
                   size="small"
                   startIcon={<ClearIcon />}
                   onClick={() => {
-                    setStatusFilter('ALL');
+                    setStatusFilter('ACTIVE');
                     setBranchFilter('ALL');
                     setProvinceFilter([]);
                     setDistrictFilter([]);
@@ -1273,10 +1279,10 @@ const MembersListPage: React.FC = () => {
                 </Button>
               </Box>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                {statusFilter !== 'ALL' && (
+                {statusFilter !== 'ACTIVE' && (
                   <Chip
                     label={`Durum: ${getStatusLabel(statusFilter)}`}
-                    onDelete={() => setStatusFilter('ALL')}
+                    onDelete={() => setStatusFilter('ACTIVE')}
                     deleteIcon={<CloseIcon />}
                     color="primary"
                     sx={{

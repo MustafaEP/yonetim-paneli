@@ -44,6 +44,7 @@ model User {
 
   // 🔹 Doküman ilişkileri
   generatedDocuments MemberDocument[] @relation("DocumentGeneratedBy")
+  reviewedDocuments  MemberDocument[] @relation("DocumentReviewedBy")
 
   // 🔹 Bildirim ilişkileri
   sentNotifications Notification[] @relation("NotificationSentBy")
@@ -84,7 +85,8 @@ model User {
 }
 
 enum MemberStatus {
-  PENDING // başvuru yapıldı, onay bekliyor
+  PENDING // başvuru alındı (admin henüz bakmadı)
+  APPROVED // admin onayladı (beklemede)
   ACTIVE // aktif üye
   INACTIVE // pasif
   RESIGNED // istifa etmiş
@@ -131,7 +133,7 @@ model Member {
   // 🔹 Üyelik & Yönetim Kurulu Bilgileri
   membershipInfoOptionId String? // Admin tarafından yönetilen seçmeli bilgi
   membershipInfoOption   MembershipInfoOption? @relation(fields: [membershipInfoOptionId], references: [id])
-  memberGroupId          String? // Üye grubu (Normal Üye, Fahri Üye vb.)
+  memberGroupId          String? // Üye grubu (Üye, Fahri Üye vb.)
   memberGroup            MemberGroup?         @relation(fields: [memberGroupId], references: [id])
   registrationNumber     String?               @unique // Üye kayıt numarası (onay sırasında atanır, benzersiz, admin belirler)
   boardDecisionDate      DateTime? // Yönetim kurulu karar tarihi
@@ -390,6 +392,13 @@ enum DocumentTemplateType {
   OTHER
 }
 
+enum DocumentUploadStatus {
+  PENDING_UPLOAD  // Required but not uploaded yet
+  STAGING         // Uploaded to temporary storage, awaiting review
+  APPROVED        // Admin approved, moved to permanent storage
+  REJECTED        // Admin rejected, file deleted from staging
+}
+
 model DocumentTemplate {
   id          String               @id @default(cuid())
   name        String
@@ -405,24 +414,43 @@ model DocumentTemplate {
 }
 
 model MemberDocument {
-  id              String            @id @default(cuid())
+  id              String                @id @default(cuid())
   memberId        String
-  member          Member            @relation(fields: [memberId], references: [id])
+  member          Member                 @relation(fields: [memberId], references: [id])
   templateId      String?
-  template        DocumentTemplate? @relation(fields: [templateId], references: [id])
+  template        DocumentTemplate?      @relation(fields: [templateId], references: [id])
   documentType    String
-  fileName        String
-  fileUrl         String
-  generatedAt     DateTime          @default(now())
+  fileName        String                 // Original filename (for display)
+  fileUrl         String?                // URL to file (null if not approved)
+  secureFileName  String?                // Secure hash-based filename
+  fileSize        Int?                   // File size in bytes
+  mimeType        String?                // Detected MIME type
+  
+  // Upload status and workflow
+  uploadStatus    DocumentUploadStatus   @default(PENDING_UPLOAD)
+  stagingPath     String?                // Temporary file path (staging)
+  permanentPath   String?                // Permanent file path (approved)
+  
+  // Admin review
+  reviewedBy      String?                // Admin user ID who reviewed
+  reviewedByUser  User?                  @relation("DocumentReviewedBy", fields: [reviewedBy], references: [id])
+  reviewedAt      DateTime?
+  adminNote       String?                @db.Text // Admin's note/comment
+  rejectionReason String?                @db.Text // Reason for rejection
+  
+  generatedAt     DateTime               @default(now())
   generatedBy     String
-  generatedByUser User?             @relation("DocumentGeneratedBy", fields: [generatedBy], references: [id])
+  generatedByUser User?                  @relation("DocumentGeneratedBy", fields: [generatedBy], references: [id])
 
-  deletedAt DateTime?
+  deletedAt       DateTime?
 
-  createdAt DateTime @default(now())
+  createdAt       DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
   @@index([memberId])
   @@index([generatedBy])
+  @@index([uploadStatus])
+  @@index([reviewedBy])
 }
 
 // 🔹 Bildirimler - Genişletilmiş Sistem
@@ -940,7 +968,7 @@ model MembershipInfoOption {
 // 🔹 Üye Grubu (Admin tarafından yönetilir - Sistem ayarlarından CRUD işlemleri yapılır)
 model MemberGroup {
   id          String  @id @default(cuid())
-  name        String  @unique // Üye grubu adı (örn: "Normal Üye", "Fahri Üye", "Onursal Üye")
+  name        String  @unique // Üye grubu adı (örn: "Üye", "Fahri Üye", "Onursal Üye")
   description String? @db.Text
   isActive    Boolean @default(true)
   order       Int     @default(0) // Sıralama

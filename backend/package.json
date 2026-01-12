@@ -20,7 +20,9 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "prisma:seed2": "ts-node -r tsconfig-paths/register prisma/seed2.ts",
-    "prisma:seed:prod": "node dist/prisma/seed.js"
+    "prisma:seed:prod": "node dist/prisma/seed.js",
+    "prisma:migrate:document-upload": "ts-node -r tsconfig-paths/register scripts/apply-document-upload-migration-simple.ts",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.700.0",

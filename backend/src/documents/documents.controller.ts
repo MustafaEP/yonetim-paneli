@@ -14,7 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
-import { CreateDocumentTemplateDto, UpdateDocumentTemplateDto, GenerateDocumentDto, UploadMemberDocumentDto } from './dto';
+import { CreateDocumentTemplateDto, UpdateDocumentTemplateDto, GenerateDocumentDto, UploadMemberDocumentDto, ApproveDocumentDto, RejectDocumentDto } from './dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permission.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -154,5 +154,56 @@ export class DocumentsController {
   ) {
     // @Res() kullanıldığında return yapılmamalı, direkt response'a yazılır
     await this.documentsService.downloadDocument(documentId, res);
+  }
+
+  // Admin: İnceleme bekleyen dokümanları getir
+  @Permissions(Permission.DOCUMENT_TEMPLATE_MANAGE, Permission.DOCUMENT_GENERATE_PDF)
+  @Get('pending-review')
+  @ApiOperation({ summary: 'İnceleme bekleyen dokümanları listele (Admin)' })
+  @ApiResponse({ status: 200, description: 'İnceleme bekleyen doküman listesi' })
+  async getPendingReviewDocuments() {
+    return this.documentsService.getPendingReviewDocuments();
+  }
+
+  // Admin: Dokümanı onayla
+  @Permissions(Permission.DOCUMENT_TEMPLATE_MANAGE, Permission.DOCUMENT_GENERATE_PDF)
+  @Post(':documentId/approve')
+  @ApiOperation({ summary: 'Dokümanı onayla (Admin)' })
+  @ApiParam({ name: 'documentId', description: 'Doküman ID' })
+  @ApiBody({ type: ApproveDocumentDto })
+  @ApiResponse({ status: 200, description: 'Doküman onaylandı' })
+  @ApiResponse({ status: 404, description: 'Doküman bulunamadı' })
+  @ApiResponse({ status: 400, description: 'Doküman onaylanamaz durumda' })
+  async approveDocument(
+    @Param('documentId') documentId: string,
+    @Body() dto: ApproveDocumentDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.approveDocument(
+      documentId,
+      user.userId,
+      dto.adminNote,
+    );
+  }
+
+  // Admin: Dokümanı reddet
+  @Permissions(Permission.DOCUMENT_TEMPLATE_MANAGE, Permission.DOCUMENT_GENERATE_PDF)
+  @Post(':documentId/reject')
+  @ApiOperation({ summary: 'Dokümanı reddet (Admin)' })
+  @ApiParam({ name: 'documentId', description: 'Doküman ID' })
+  @ApiBody({ type: RejectDocumentDto })
+  @ApiResponse({ status: 200, description: 'Doküman reddedildi' })
+  @ApiResponse({ status: 404, description: 'Doküman bulunamadı' })
+  @ApiResponse({ status: 400, description: 'Doküman reddedilemez durumda veya red nedeni eksik' })
+  async rejectDocument(
+    @Param('documentId') documentId: string,
+    @Body() dto: RejectDocumentDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.rejectDocument(
+      documentId,
+      user.userId,
+      dto.rejectionReason,
+    );
   }
 }

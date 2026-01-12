@@ -794,6 +794,8 @@ const PaymentsListPage: React.FC = () => {
               '& .MuiDataGrid-cell': {
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
                 py: 2,
+                display: 'flex',
+                alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
                 background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
@@ -801,6 +803,10 @@ const PaymentsListPage: React.FC = () => {
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
+                '& .MuiDataGrid-columnHeader': {
+                  display: 'flex',
+                  alignItems: 'center',
+                },
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,

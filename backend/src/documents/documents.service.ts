@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentTemplateDto, UpdateDocumentTemplateDto, GenerateDocumentDto } from './dto';
-import { DocumentTemplateType } from '@prisma/client';
+import { DocumentTemplateType, DocumentUploadStatus } from '@prisma/client';
 import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PdfService } from './services/pdf.service';
+import { FileStorageService } from './services/file-storage.service';
 
 @Injectable()
 export class DocumentsService {
@@ -14,6 +15,7 @@ export class DocumentsService {
   constructor(
     private prisma: PrismaService,
     private pdfService: PdfService,
+    private fileStorageService: FileStorageService,
   ) {}
 
   // Şablonlar
@@ -91,6 +93,7 @@ export class DocumentsService {
     return this.prisma.memberDocument.findMany({
       where: {
         memberId,
+        deletedAt: null,
       },
       include: {
         template: true,
@@ -103,6 +106,13 @@ export class DocumentsService {
           },
         },
         generatedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        reviewedByUser: {
           select: {
             id: true,
             firstName: true,
@@ -240,7 +250,7 @@ export class DocumentsService {
     };
   }
 
-  // Doküman yükle
+  // Doküman yükle (yeni güvenli staging sistemi)
   async uploadMemberDocument(
     memberId: string,
     file: Express.Multer.File,
@@ -258,70 +268,36 @@ export class DocumentsService {
       throw new NotFoundException(`Üye bulunamadı: ${memberId}`);
     }
 
-    // Dosya kontrolü
-    if (!file) {
-      throw new BadRequestException('Dosya yüklenmedi');
-    }
+    // Dosya validasyonu (FileStorageService ile)
+    this.fileStorageService.validateFile(file);
 
-    // Sadece PDF kabul et
-    if (file.mimetype !== 'application/pdf') {
-      throw new BadRequestException('Sadece PDF dosyaları kabul edilir');
-    }
+    // Güvenli dosya adı oluştur
+    const originalFileName = customFileName?.trim() || file.originalname || 'document.pdf';
+    const secureFileName = this.fileStorageService.generateSecureFileName(
+      originalFileName,
+      file.buffer,
+    );
 
-    // Uploads klasörünü oluştur (yoksa)
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    // Staging'e kaydet
+    const stagingPath = this.fileStorageService.saveToStaging(
+      file.buffer,
+      secureFileName,
+    );
 
-    // Dosya adını oluştur: Özel dosya adı varsa onu kullan, yoksa orijinal dosya adını kullan
-    let uniqueFileName: string;
-    
-    if (customFileName && customFileName.trim()) {
-      // Özel dosya adı temizle (güvenlik için) - uzantıyla birlikte geliyor
-      const cleanedName = customFileName.trim().replace(/[^a-zA-Z0-9_\-ğüşıöçĞÜŞİÖÇ\s\.]/g, '').replace(/\s+/g, '_');
-      // Uzantıyı kontrol et, yoksa dosyadan al
-      const hasExtension = path.extname(cleanedName);
-      if (hasExtension) {
-        uniqueFileName = cleanedName;
-      } else {
-        const fileExtension = path.extname(file.originalname) || '.pdf';
-        uniqueFileName = `${cleanedName}${fileExtension}`;
-      }
-    } else {
-      // Orijinal dosya adını kullan
-      const originalName = file.originalname || 'document.pdf';
-      const fileExtension = path.extname(originalName) || '.pdf';
-      const baseName = path.basename(originalName, fileExtension);
-      uniqueFileName = `${baseName}${fileExtension}`;
-    }
-    
-    // Dosya adını oluştur (format: BelgeTipi_TC_AdSoyad veya UyeKayidi_BelgeTipi_TC_AdSoyad)
-    // Aynı isimde dosya varsa timestamp ekle
-    const filePath = path.join(uploadsDir, uniqueFileName);
-    
-    // Aynı isimde dosya varsa timestamp ekle
-    if (fs.existsSync(filePath)) {
-      const timestamp = Date.now();
-      const fileExtension = path.extname(uniqueFileName) || '.pdf';
-      const nameWithoutExt = path.basename(uniqueFileName, fileExtension);
-      uniqueFileName = `${nameWithoutExt}_${timestamp}${fileExtension}`;
-    }
-    
-    const finalFilePath = path.join(uploadsDir, uniqueFileName);
-    const fileUrl = `/uploads/documents/${uniqueFileName}`;
-
-    // Dosyayı kaydet
-    fs.writeFileSync(finalFilePath, file.buffer);
-
-    // Veritabanına kaydet
+    // Veritabanına kaydet (STAGING durumunda)
     const document = await this.prisma.memberDocument.create({
       data: {
         memberId,
         templateId: null, // Yüklenen dosya için şablon yok
         documentType: documentType || 'UPLOADED',
-        fileName: uniqueFileName,
-        fileUrl,
+        fileName: originalFileName, // Orijinal dosya adı (gösterim için)
+        secureFileName, // Güvenli dosya adı
+        fileUrl: null, // Henüz onaylanmadı, URL yok
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        uploadStatus: DocumentUploadStatus.STAGING,
+        stagingPath,
+        permanentPath: null,
         generatedBy: uploadedBy,
       },
       include: {
@@ -344,7 +320,244 @@ export class DocumentsService {
       },
     });
 
+    this.logger.log(
+      `Document uploaded to staging: ${document.id}, member: ${memberId}`,
+    );
+
     return document;
+  }
+
+  // Admin: Dokümanı onayla (staging'den permanent'e taşı)
+  async approveDocument(
+    documentId: string,
+    adminId: string,
+    adminNote?: string,
+  ) {
+    const document = await this.prisma.memberDocument.findUnique({
+      where: { id: documentId },
+      include: {
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Doküman bulunamadı: ${documentId}`);
+    }
+
+    if (document.uploadStatus !== DocumentUploadStatus.STAGING) {
+      throw new BadRequestException(
+        `Bu doküman onaylanamaz. Mevcut durum: ${document.uploadStatus}`,
+      );
+    }
+
+    if (!document.stagingPath || !document.secureFileName) {
+      throw new BadRequestException('Doküman staging bilgileri eksik');
+    }
+
+    // Dosyayı staging'den permanent'e taşı
+    const permanentPath = this.fileStorageService.moveToPermanent(
+      document.stagingPath,
+      document.secureFileName,
+    );
+
+    // File URL oluştur
+    const fileUrl = this.fileStorageService.getFileUrl(permanentPath, true);
+
+    // Veritabanını güncelle
+    const updatedDocument = await this.prisma.memberDocument.update({
+      where: { id: documentId },
+      data: {
+        uploadStatus: DocumentUploadStatus.APPROVED,
+        permanentPath,
+        stagingPath: null, // Staging'den taşındı
+        fileUrl,
+        reviewedBy: adminId,
+        reviewedAt: new Date(),
+        adminNote: adminNote || null,
+        rejectionReason: null, // Onaylandı, red nedeni yok
+      },
+      include: {
+        template: true,
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+          },
+        },
+        generatedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        reviewedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(
+      `Document approved: ${documentId}, admin: ${adminId}`,
+    );
+
+    return updatedDocument;
+  }
+
+  // Admin: Dokümanı reddet (staging'den sil)
+  async rejectDocument(
+    documentId: string,
+    adminId: string,
+    rejectionReason: string,
+  ) {
+    if (!rejectionReason || !rejectionReason.trim()) {
+      throw new BadRequestException('Red nedeni belirtilmelidir');
+    }
+
+    const document = await this.prisma.memberDocument.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Doküman bulunamadı: ${documentId}`);
+    }
+
+    if (document.uploadStatus !== DocumentUploadStatus.STAGING) {
+      throw new BadRequestException(
+        `Bu doküman reddedilemez. Mevcut durum: ${document.uploadStatus}`,
+      );
+    }
+
+    // Staging dosyasını sil
+    if (document.stagingPath) {
+      this.fileStorageService.deleteFromStaging(document.stagingPath);
+    }
+
+    // Veritabanını güncelle
+    const updatedDocument = await this.prisma.memberDocument.update({
+      where: { id: documentId },
+      data: {
+        uploadStatus: DocumentUploadStatus.REJECTED,
+        stagingPath: null, // Silindi
+        rejectionReason: rejectionReason.trim(),
+        reviewedBy: adminId,
+        reviewedAt: new Date(),
+        adminNote: null,
+      },
+      include: {
+        template: true,
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+          },
+        },
+        generatedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        reviewedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(
+      `Document rejected: ${documentId}, admin: ${adminId}, reason: ${rejectionReason}`,
+    );
+
+    return updatedDocument;
+  }
+
+  // Admin: İnceleme bekleyen dokümanları getir
+  async getPendingReviewDocuments() {
+    return this.prisma.memberDocument.findMany({
+      where: {
+        uploadStatus: DocumentUploadStatus.STAGING,
+        deletedAt: null,
+      },
+      include: {
+        template: true,
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+            nationalId: true,
+          },
+        },
+        generatedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc', // En eski önce
+      },
+    });
+  }
+
+  // Duruma göre dokümanları getir
+  async getDocumentsByStatus(status: DocumentUploadStatus) {
+    return this.prisma.memberDocument.findMany({
+      where: {
+        uploadStatus: status,
+        deletedAt: null,
+      },
+      include: {
+        template: true,
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+          },
+        },
+        generatedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        reviewedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
   }
 
   // Üye onaylandığında evrak dosya isimlerini güncelle (kayıt numarası ekle)
@@ -448,12 +661,23 @@ export class DocumentsService {
       throw new NotFoundException(`Doküman bulunamadı: ${documentId}`);
     }
 
-    // Dosya yolunu oluştur
-    const filePath = path.join(process.cwd(), 'uploads', 'documents', document.fileName);
+    // Dosya yolunu belirle (staging veya permanent)
+    let filePath: string;
+    
+    if (document.uploadStatus === DocumentUploadStatus.APPROVED && document.permanentPath) {
+      // Onaylanmış dosya - permanent storage'dan
+      filePath = document.permanentPath;
+    } else if (document.uploadStatus === DocumentUploadStatus.STAGING && document.stagingPath) {
+      // Staging'deki dosya - sadece admin görebilir (controller'da kontrol edilecek)
+      filePath = document.stagingPath;
+    } else {
+      // Eski sistem uyumluluğu - fileName kullan
+      filePath = path.join(process.cwd(), 'uploads', 'documents', document.fileName);
+    }
 
     // Dosyanın var olup olmadığını kontrol et
     if (!fs.existsSync(filePath)) {
-      throw new NotFoundException(`Dosya bulunamadı: ${document.fileName}`);
+      throw new NotFoundException(`Dosya bulunamadı: ${document.fileName || document.secureFileName}`);
     }
 
     // Content-Type header'ını ayarla (inline olarak göster)
@@ -511,12 +735,26 @@ export class DocumentsService {
       throw new NotFoundException(`Doküman bulunamadı: ${documentId}`);
     }
 
-    // Dosya yolunu oluştur
-    const filePath = path.join(process.cwd(), 'uploads', 'documents', document.fileName);
+    // Sadece onaylanmış dosyalar indirilebilir
+    if (document.uploadStatus !== DocumentUploadStatus.APPROVED) {
+      throw new BadRequestException(
+        `Bu doküman henüz onaylanmadı. Durum: ${document.uploadStatus}`,
+      );
+    }
+
+    // Dosya yolunu belirle
+    let filePath: string;
+    
+    if (document.permanentPath) {
+      filePath = document.permanentPath;
+    } else {
+      // Eski sistem uyumluluğu
+      filePath = path.join(process.cwd(), 'uploads', 'documents', document.fileName);
+    }
 
     // Dosyanın var olup olmadığını kontrol et
     if (!fs.existsSync(filePath)) {
-      throw new NotFoundException(`Dosya bulunamadı: ${document.fileName}`);
+      throw new NotFoundException(`Dosya bulunamadı: ${document.fileName || document.secureFileName}`);
     }
 
     // Content-Type ve Content-Disposition header'larını ayarla

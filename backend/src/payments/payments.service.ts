@@ -3,18 +3,28 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberPaymentDto } from './dto/create-member-payment.dto';
-import { PaymentType, MemberStatus } from '@prisma/client';
+import { PaymentType, MemberStatus, NotificationType, NotificationTargetType } from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
+import { NotificationsService } from '../notifications/notifications.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { Response } from 'express';
 
 @Injectable()
 export class PaymentsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(PaymentsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => NotificationsService))
+    private notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Üye ödemesi oluştur
@@ -42,8 +52,13 @@ export class PaymentsService {
       throw new NotFoundException('Üye bulunamadı');
     }
 
-    if (member.status !== MemberStatus.ACTIVE || !member.isActive || member.deletedAt) {
-      throw new BadRequestException('Aktif olmayan üye için ödeme kaydedilemez');
+    // ACTIVE veya APPROVED durumundaki üyelere ödeme kabul edilir
+    if (
+      (member.status !== MemberStatus.ACTIVE && member.status !== MemberStatus.APPROVED) ||
+      !member.isActive ||
+      member.deletedAt
+    ) {
+      throw new BadRequestException('Aktif veya onaylanmış olmayan üye için ödeme kaydedilemez');
     }
 
     // TEVKIFAT tipinde tevkifatCenterId zorunlu
@@ -91,7 +106,7 @@ export class PaymentsService {
 
     const paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : new Date();
 
-    return this.prisma.memberPayment.create({
+    const payment = await this.prisma.memberPayment.create({
       data: {
         memberId: dto.memberId,
         registrationNumber: member.registrationNumber,
@@ -118,6 +133,7 @@ export class PaymentsService {
             firstName: true,
             lastName: true,
             registrationNumber: true,
+            status: true,
           },
         },
         tevkifatCenter: {
@@ -136,6 +152,92 @@ export class PaymentsService {
         },
       },
     });
+
+    // APPROVED durumundaki üyeye ödeme geldiğinde adminlere bildirim gönder
+    if (payment.member.status === MemberStatus.APPROVED) {
+      try {
+        await this.notifyAdminsAboutApprovedMemberPayment(payment);
+      } catch (error) {
+        // Bildirim gönderme hatası ödeme kaydını engellemez, sadece log'lanır
+        this.logger.error(
+          `Beklemedeki üye (${payment.member.registrationNumber}) için ödeme bildirimi gönderilirken hata: ${error.message}`,
+          error.stack,
+        );
+      }
+    }
+
+    return payment;
+  }
+
+  /**
+   * APPROVED durumundaki üyeye ödeme geldiğinde adminlere bildirim gönder
+   */
+  private async notifyAdminsAboutApprovedMemberPayment(payment: any) {
+    try {
+      // ADMIN rolüne sahip aktif kullanıcıları bul
+      const adminUsers = await this.prisma.user.findMany({
+        where: {
+          customRoles: {
+            some: {
+              name: 'ADMIN',
+              isActive: true,
+              deletedAt: null,
+            },
+          },
+          isActive: true,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      });
+
+      if (adminUsers.length === 0) {
+        this.logger.warn('ADMIN rolüne sahip aktif kullanıcı bulunamadı');
+        return;
+      }
+
+      const member = payment.member;
+      const amount = payment.amount.toLocaleString('tr-TR', {
+        style: 'currency',
+        currency: 'TRY',
+      });
+
+      // Admin kullanıcılarına bildirim gönder
+      // Sistem bildirimi için ilk admin kullanıcıyı sender olarak kullan
+      const senderUserId = adminUsers[0].id;
+      const notification = await this.notificationsService.create(
+        {
+          title: 'Beklemedeki Üyeye Ödeme Geldi',
+          message: `${member.firstName} ${member.lastName} (${member.registrationNumber}) isimli beklemedeki üyeye ${amount} tutarında ödeme kaydedildi. Üyeyi aktifleştirmek için Üyelik Kabul Ekranı'nı kontrol edebilirsiniz.`,
+          type: NotificationType.IN_APP,
+          targetType: NotificationTargetType.USER,
+          metadata: {
+            userIds: adminUsers.map((u) => u.id),
+            userNames: adminUsers.map((u) => `${u.firstName} ${u.lastName}`),
+            memberId: member.id,
+            paymentId: payment.id,
+          },
+        },
+        senderUserId, // Sistem bildirimi için ilk admin kullanıcıyı sender olarak kullan
+      );
+
+      // Bildirimi gönder
+      await this.notificationsService.send(notification.id);
+
+      this.logger.log(
+        `Beklemedeki üye (${member.registrationNumber}) için ödeme bildirimi ${adminUsers.length} admin kullanıcıya gönderildi`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Admin bildirimi gönderilirken hata: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
   /**
