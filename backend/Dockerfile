@@ -16,7 +16,11 @@ COPY prisma ./prisma
 #   "prisma" version in package.json / package-lock can drift.
 # - To avoid "Prisma Client and CLI version mismatch" errors during Docker builds,
 #   we explicitly install a matching Prisma CLI version here (without modifying package.json).
-RUN npm install prisma@6.1 --no-save && npx prisma generate
+# - Install corepack and use npm cache to speed up binary downloads
+RUN npm install prisma@6.1 --no-save
+ENV PRISMA_BINARY_CACHE_DIR=/root/.cache/prisma
+RUN mkdir -p $PRISMA_BINARY_CACHE_DIR
+RUN npx prisma generate
 
 # Copy source code
 COPY . .
