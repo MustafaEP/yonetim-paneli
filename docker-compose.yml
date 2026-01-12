@@ -43,6 +43,9 @@ services:
         # Optional: if Prisma engine downloads are slow/blocked on your VPS,
         # set PRISMA_ENGINES_MIRROR in your environment or .env
         PRISMA_ENGINES_MIRROR: ${PRISMA_ENGINES_MIRROR:-}
+        # Optional: if your VPS build hangs on heavy apt postinst steps (e.g. shared-mime-info),
+        # you can temporarily skip Puppeteer/Chromium system deps. PDF generation will not work.
+        INSTALL_PUPPETEER_DEPS: ${INSTALL_PUPPETEER_DEPS:-1}
     container_name: yonetim-backend
     depends_on:
       postgres:
