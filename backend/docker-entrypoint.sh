@@ -11,13 +11,19 @@ echo "Checking for failed migrations..."
 # Bu repo'da bazı eski (2025-01) migration'lar, daha sonra oluşturulan tablolara ALTER/UPDATE atıyor.
 # Fresh DB kurulumunda bu durum relation does not exist hatasına sebep olabiliyor.
 #
-# Çözüm: 202501* migration'larını otomatik applied işaretle (skip) + ayrıca bilinen bazı migration'ları liste halinde tut.
+# Çözüm: Problemli 202501* migration'larını applied işaretle (skip) + ayrıca bilinen bazı migration'ları liste halinde tut.
+# ÖNEMLİ: 20250120000000_add_role_scope_system migration'ı skip edilmemeli çünkü CustomRoleScope ve PanelUserApplicationScope tablolarını oluşturuyor.
 #
 # Not: Bu yaklaşım, migration geçmişi karışmış projelerde production deploy'u unblock etmek içindir.
 
-# 1) Otomatik: tüm 202501* migration'ları applied olarak işaretle
+# 1) Otomatik: tüm 202501* migration'ları applied olarak işaretle (20250120000000 hariç)
 if [ -d "prisma/migrations" ]; then
   for MIGRATION in $(ls -1 prisma/migrations 2>/dev/null | grep -E '^202501' || true); do
+    # 20250120000000_add_role_scope_system migration'ını skip etme (CustomRoleScope tablosunu oluşturuyor)
+    if [ "$MIGRATION" = "20250120000000_add_role_scope_system" ]; then
+      echo "Skipping auto-skip for critical migration: $MIGRATION"
+      continue
+    fi
     echo "Auto-skipping migration (mark as applied): $MIGRATION"
     npx prisma migrate resolve --applied "$MIGRATION" 2>/dev/null || true
   done
