@@ -1,7 +1,18 @@
 # ---- Build stage ----
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
+
+# Optional: allow overriding Prisma engines download base (useful in restricted networks)
+ARG PRISMA_ENGINES_MIRROR
+ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
+
+# Prisma (and some native deps) rely on OpenSSL + CA certificates.
+# Alpine images are more likely to hit Prisma engine / OpenSSL friction.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    openssl \
+  && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY package*.json ./
@@ -41,13 +52,44 @@ RUN echo "=== Build output directory ===" && \
     (echo "WARNING: main.js not found in expected locations" && find /app/dist -name "*.js" | head -5)
 
 # ---- Production stage ----
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
+# Optional: allow overriding Prisma engines download base (useful in restricted networks)
+ARG PRISMA_ENGINES_MIRROR
+ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
+
+# System dependencies for:
+# - Prisma engines (OpenSSL)
+# - Puppeteer bundled Chromium runtime libs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    openssl \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libxshmfence1 \
+    xdg-utils \
+    libgtk-3-0 \
+  && rm -rf /var/lib/apt/lists/*
+
 # Install production dependencies
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy Prisma files
 COPY prisma ./prisma
