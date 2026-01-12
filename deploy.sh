@@ -105,3 +105,4 @@ echo -e "${YELLOW}📊 Durum kontrolü: docker-compose ps${NC}"
 echo -e "${YELLOW}📋 Loglar: docker-compose logs -f${NC}"
 
 
+
