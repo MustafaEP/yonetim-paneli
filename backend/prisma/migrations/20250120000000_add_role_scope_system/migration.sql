@@ -57,14 +57,37 @@ CREATE INDEX IF NOT EXISTS "PanelUserApplicationScope_provinceId_idx" ON "PanelU
 CREATE INDEX IF NOT EXISTS "PanelUserApplicationScope_districtId_idx" ON "PanelUserApplicationScope"("districtId");
 CREATE UNIQUE INDEX IF NOT EXISTS "PanelUserApplicationScope_applicationId_provinceId_districtId_key" ON "PanelUserApplicationScope"("applicationId", "provinceId", "districtId");
 
--- Add foreign keys
-ALTER TABLE "CustomRoleScope" ADD CONSTRAINT "CustomRoleScope_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "CustomRole"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "CustomRoleScope" ADD CONSTRAINT "CustomRoleScope_provinceId_fkey" FOREIGN KEY ("provinceId") REFERENCES "Province"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "CustomRoleScope" ADD CONSTRAINT "CustomRoleScope_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "District"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- Add foreign keys (IF NOT EXISTS kontrolleri ile)
+DO $$
+BEGIN
+  -- CustomRoleScope foreign keys
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'CustomRoleScope_roleId_fkey') THEN
+    ALTER TABLE "CustomRoleScope" ADD CONSTRAINT "CustomRoleScope_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "CustomRole"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'CustomRoleScope_provinceId_fkey') THEN
+    ALTER TABLE "CustomRoleScope" ADD CONSTRAINT "CustomRoleScope_provinceId_fkey" FOREIGN KEY ("provinceId") REFERENCES "Province"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'CustomRoleScope_districtId_fkey') THEN
+    ALTER TABLE "CustomRoleScope" ADD CONSTRAINT "CustomRoleScope_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "District"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
 
-ALTER TABLE "PanelUserApplicationScope" ADD CONSTRAINT "PanelUserApplicationScope_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "PanelUserApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "PanelUserApplicationScope" ADD CONSTRAINT "PanelUserApplicationScope_provinceId_fkey" FOREIGN KEY ("provinceId") REFERENCES "Province"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "PanelUserApplicationScope" ADD CONSTRAINT "PanelUserApplicationScope_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "District"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  -- PanelUserApplicationScope foreign keys (PanelUserApplication tablosu yoksa hata vermemesi için kontrol)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'PanelUserApplication') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'PanelUserApplicationScope_applicationId_fkey') THEN
+      ALTER TABLE "PanelUserApplicationScope" ADD CONSTRAINT "PanelUserApplicationScope_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "PanelUserApplication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'PanelUserApplicationScope_provinceId_fkey') THEN
+    ALTER TABLE "PanelUserApplicationScope" ADD CONSTRAINT "PanelUserApplicationScope_provinceId_fkey" FOREIGN KEY ("provinceId") REFERENCES "Province"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'PanelUserApplicationScope_districtId_fkey') THEN
+    ALTER TABLE "PanelUserApplicationScope" ADD CONSTRAINT "PanelUserApplicationScope_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "District"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- Drop old columns from CustomRole (after migration)
 ALTER TABLE "CustomRole" DROP CONSTRAINT IF EXISTS "CustomRole_provinceId_fkey";
