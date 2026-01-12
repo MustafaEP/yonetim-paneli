@@ -36,6 +36,33 @@ for MIGRATION in $PROBLEM_MIGRATIONS; do
   npx prisma migrate resolve --applied "$MIGRATION" 2>/dev/null || echo "Migration $MIGRATION already resolved or not found, continuing..."
 done
 
+echo "Adding APPROVED to MemberStatus enum if needed..."
+# APPROVED enum değerini ekle (eğer yoksa)
+node -e "
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+(async () => {
+  try {
+    const check = await prisma.\$queryRaw\`
+      SELECT enumlabel 
+      FROM pg_enum 
+      WHERE enumlabel = 'APPROVED' 
+      AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'MemberStatus')
+    \`;
+    if (check.length === 0) {
+      await prisma.\$executeRaw\`ALTER TYPE \"MemberStatus\" ADD VALUE 'APPROVED'\`;
+      console.log('✅ Added APPROVED to MemberStatus enum');
+    } else {
+      console.log('✓ APPROVED already exists in MemberStatus enum');
+    }
+  } catch (e) {
+    console.error('⚠️  Error checking/adding APPROVED enum:', e.message);
+  } finally {
+    await prisma.\$disconnect();
+  }
+})();
+" || echo "⚠️  Could not add APPROVED enum (may already exist)"
+
 echo "Running migrations..."
 # Migration'ları deploy et
 npx prisma migrate deploy || {
