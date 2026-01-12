@@ -51,8 +51,26 @@ async function main() {
   // Foreign key sırasına dikkat ederek, önce child sonra parent tablolar silinir
   await prisma.memberPayment.deleteMany();
   await prisma.userNotification.deleteMany();
-  await prisma.notificationRecipient.deleteMany();
-  await prisma.notificationLog.deleteMany();
+  // NotificationRecipient tablosu yoksa hata vermeden devam et
+  try {
+    await prisma.notificationRecipient.deleteMany();
+  } catch (error: any) {
+    if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+      console.log('   ⚠️  NotificationRecipient tablosu bulunamadı, atlanıyor...');
+    } else {
+      throw error;
+    }
+  }
+  // NotificationLog tablosu yoksa hata vermeden devam et
+  try {
+    await prisma.notificationLog.deleteMany();
+  } catch (error: any) {
+    if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+      console.log('   ⚠️  NotificationLog tablosu bulunamadı, atlanıyor...');
+    } else {
+      throw error;
+    }
+  }
   await prisma.notification.deleteMany();
   await prisma.memberHistory.deleteMany();
   await prisma.memberDocument.deleteMany();
@@ -598,22 +616,30 @@ async function main() {
   const notifications = await prisma.notification.findMany({ take: 3 });
   
   if (notifications.length > 0 && allMembers.length > 0) {
-    for (let i = 0; i < 3; i++) {
-      const notification = notifications[i % notifications.length];
-      const member = allMembers[i % allMembers.length];
-      
-      await prisma.notificationRecipient.create({
-        data: {
-          notificationId: notification.id,
-          memberId: member.id,
-          email: member.email || `member${i}@example.com`,
-          channel: NotificationChannel.EMAIL,
-          status: NotificationStatus.SENT,
-          sentAt: new Date(),
-        },
-      });
+    try {
+      for (let i = 0; i < 3; i++) {
+        const notification = notifications[i % notifications.length];
+        const member = allMembers[i % allMembers.length];
+        
+        await prisma.notificationRecipient.create({
+          data: {
+            notificationId: notification.id,
+            memberId: member.id,
+            email: member.email || `member${i}@example.com`,
+            channel: NotificationChannel.EMAIL,
+            status: NotificationStatus.SENT,
+            sentAt: new Date(),
+          },
+        });
+      }
+      console.log('   ✅ 3 NotificationRecipient eklendi');
+    } catch (error: any) {
+      if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+        console.log('   ⚠️  NotificationRecipient tablosu bulunamadı, atlanıyor...');
+      } else {
+        throw error;
+      }
     }
-    console.log('   ✅ 3 NotificationRecipient eklendi');
   }
 
   // 19. UserNotification - 3 veri
@@ -638,26 +664,34 @@ async function main() {
   // 20. NotificationLog - 3 veri
   console.log('📝 NotificationLog ekleniyor...');
   if (notifications.length > 0) {
-    const recipients = await prisma.notificationRecipient.findMany({ take: 3 });
-    const actions = ['SENT', 'DELIVERED', 'READ'];
-    
-    for (let i = 0; i < 3; i++) {
-      const notification = notifications[i % notifications.length];
-      const recipient = recipients.length > 0 ? recipients[i % recipients.length] : null;
+    try {
+      const recipients = await prisma.notificationRecipient.findMany({ take: 3 }).catch(() => []);
+      const actions = ['SENT', 'DELIVERED', 'READ'];
       
-      await prisma.notificationLog.create({
-        data: {
-          notificationId: notification.id,
-          recipientId: recipient?.id || null,
-          channel: NotificationChannel.EMAIL,
-          action: actions[i],
-          status: NotificationStatus.SENT,
-          message: `${actions[i]} işlemi gerçekleştirildi`,
-          metadata: { example: 'data' },
-        },
-      });
+      for (let i = 0; i < 3; i++) {
+        const notification = notifications[i % notifications.length];
+        const recipient = recipients.length > 0 ? recipients[i % recipients.length] : null;
+        
+        await prisma.notificationLog.create({
+          data: {
+            notificationId: notification.id,
+            recipientId: recipient?.id || null,
+            channel: NotificationChannel.EMAIL,
+            action: actions[i],
+            status: NotificationStatus.SENT,
+            message: `${actions[i]} işlemi gerçekleştirildi`,
+            metadata: { example: 'data' },
+          },
+        });
+      }
+      console.log('   ✅ 3 NotificationLog eklendi');
+    } catch (error: any) {
+      if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+        console.log('   ⚠️  NotificationLog tablosu bulunamadı, atlanıyor...');
+      } else {
+        throw error;
+      }
     }
-    console.log('   ✅ 3 NotificationLog eklendi');
   }
 
   // 21. UserNotificationSettings - 3 veri
