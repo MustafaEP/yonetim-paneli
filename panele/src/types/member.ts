@@ -2,6 +2,7 @@
 
 export type MemberStatus =
   | 'PENDING'
+  | 'APPROVED'
   | 'ACTIVE'
   | 'INACTIVE'
   | 'RESIGNED'
@@ -150,5 +151,21 @@ export interface MemberApplicationRow {
     firstName: string;
     lastName: string;
     email: string;
+  } | null;
+  approvedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  approvedAt?: string | null;
+  branch?: {
+    id: string;
+    name: string;
+    code?: string | null;
+  } | null;
+  memberGroup?: {
+    id: string;
+    name: string;
   } | null;
 }

@@ -12,6 +12,8 @@ import MainLayout from './components/layout/MainLayout';
 import UsersListPage from './pages/users/UsersListPage';
 import PanelUserApplicationsPage from './pages/users/PanelUserApplicationsPage';
 import MembersApplicationsPage from './pages/members/MembersApplicationsPage';
+import ApprovedMembersPage from './pages/members/ApprovedMembersPage';
+import WaitingMembersPage from './pages/members/WaitingMembersPage';
 import MemberApplicationCreatePage from './pages/members/MemberApplicationCreatePage';
 import MemberUpdatePage from './pages/members/MemberUpdatePage';
 import RegionsPage from './pages/regions/RegionsPage';
@@ -130,6 +132,8 @@ const App: React.FC = () => {
           {/* Üye Başvuruları */}
           <Route element={<ProtectedRoute requiredPermission="MEMBER_APPROVE" />}>
             <Route path="/members/applications" element={<MembersApplicationsPage />} />
+            <Route path="/members/approved" element={<ApprovedMembersPage />} />
+            <Route path="/members/waiting" element={<WaitingMembersPage />} />
           </Route>
           
           {/* Üye Başvurusu Oluşturma: MEMBER_CREATE_APPLICATION */}

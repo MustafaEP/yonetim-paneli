@@ -4,11 +4,13 @@ import type {
   MemberListItem,
   MemberDetail,
   MemberApplicationRow,
+  MemberStatus,
 } from '../types/member';
 
-// 🔹 Aktif/Pasif üyeleri listele: GET /members
-export const getMembers = async (): Promise<MemberListItem[]> => {
-  const res = await httpClient.get<MemberListItem[]>('/members');
+// 🔹 Üyeleri listele: GET /members?status=ACTIVE
+export const getMembers = async (status?: MemberStatus): Promise<MemberListItem[]> => {
+  const params = status ? { status } : {};
+  const res = await httpClient.get<MemberListItem[]>('/members', { params });
   return Array.isArray(res.data) ? res.data : [];
 };
 
@@ -37,6 +39,10 @@ export const approveMember = async (
     registrationNumber?: string;
     boardDecisionDate?: string;
     boardDecisionBookNo?: string;
+    tevkifatCenterId?: string;
+    tevkifatTitleId?: string;
+    branchId?: string;
+    memberGroupId?: string;
   },
 ): Promise<void> => {
   await httpClient.post(`/members/${id}/approve`, data || {});
@@ -45,6 +51,17 @@ export const approveMember = async (
 // 🔹 Başvuruyu reddet: POST /members/:id/reject
 export const rejectMember = async (id: string): Promise<void> => {
   await httpClient.post(`/members/${id}/reject`, {});
+};
+
+// 🔹 Onaylanmış üyeleri listele: GET /members/approved
+export const getApprovedMembers = async (): Promise<MemberApplicationRow[]> => {
+  const res = await httpClient.get<MemberApplicationRow[]>('/members/approved');
+  return Array.isArray(res.data) ? res.data : [];
+};
+
+// 🔹 Onaylanmış üyeyi aktifleştir: POST /members/:id/activate
+export const activateMember = async (id: string): Promise<void> => {
+  await httpClient.post(`/members/${id}/activate`, {});
 };
 
 // 🔹 Yeni üye başvurusu oluştur: POST /members/applications

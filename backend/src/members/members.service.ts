@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberApplicationDto } from './dto/create-member-application.dto';
 import { CancelMemberDto } from './dto/cancel-member.dto';
+import { ApproveMemberDto } from './dto/approve-member.dto';
 import { MemberStatus, MemberSource } from '@prisma/client';
 import { MemberScopeService } from './member-scope.service';
 import { MemberHistoryService } from './member-history.service';
@@ -428,36 +429,24 @@ export class MembersService {
     });
   }
 
-  // Aktif/pasif/istifa/ihrac: scope'a göre
-  async listMembersForUser(user: CurrentUserData) {
+  // Ana üye listesi: Status parametresine göre filtreleme yapar
+  // Varsayılan olarak ACTIVE üyeler gösterilir
+  async listMembersForUser(user: CurrentUserData, status?: MemberStatus) {
     const whereScope = await this.scopeService.buildMemberWhereForUser(user);
 
     console.log('[MembersService] listMembersForUser - userId:', user.userId);
     console.log('[MembersService] whereScope:', JSON.stringify(whereScope, null, 2));
+    console.log('[MembersService] status filter:', status || 'ACTIVE (default)');
 
-    // Toplam üye sayısını kontrol et (test için)
-    const totalMembersCount = await this.prisma.member.count({
-      where: {
-        status: {
-          in: [
-            MemberStatus.ACTIVE,
-            MemberStatus.INACTIVE,
-            MemberStatus.RESIGNED,
-            MemberStatus.EXPELLED,
-          ],
-        },
-        deletedAt: null,
-        isActive: true,
-      },
-    });
-    console.log('[MembersService] Total members in DB (ACTIVE/INACTIVE/RESIGNED/EXPELLED):', totalMembersCount);
+    // Status belirtilmemişse varsayılan olarak ACTIVE
+    const filterStatus = status || MemberStatus.ACTIVE;
 
     const members = await this.prisma.member.findMany({
       where: {
         ...whereScope,
-        // Tüm durumlardaki üyeleri göster (durumu farketmeksizin, aktif/pasif farketmeksizin)
+        status: filterStatus,
         deletedAt: null, // Soft delete kontrolü
-        // isActive filtresi kaldırıldı - hem aktif hem de pasif üyeler gösterilecek
+        isActive: true,
       },
       include: {
         province: {
@@ -489,9 +478,6 @@ export class MembersService {
     });
 
     console.log('[MembersService] Found members after scope filter:', members.length);
-    if (members.length === 0 && totalMembersCount > 0) {
-      console.log('[MembersService] ⚠️  WARNING: No members found but DB has members. Scope filter might be too restrictive!');
-    }
     return members;
   }
 
@@ -761,20 +747,20 @@ export class MembersService {
   async approve(
     id: string,
     approvedByUserId?: string,
-    dto?: {
-      registrationNumber?: string;
-      boardDecisionDate?: string;
-      boardDecisionBookNo?: string;
-    },
+    dto?: ApproveMemberDto,
   ) {
     const member = await this.getById(id);
 
     if (member.status !== MemberStatus.PENDING) {
-      // istersen burada hata fırlatabilirsin
+      throw new BadRequestException(`Sadece bekleyen (PENDING) durumundaki başvurular onaylanabilir. Mevcut durum: ${member.status}`);
     }
 
+    // Two-step approval process:
+    // 1. PENDING → (approve) → APPROVED (waiting list)
+    // 2. APPROVED → (activate) → ACTIVE (main member list)
+    // Therefore, approve sets status to APPROVED (not ACTIVE)
     const updateData: any = {
-      status: MemberStatus.ACTIVE,
+      status: MemberStatus.APPROVED,
       approvedByUserId,
       approvedAt: new Date(),
     };
@@ -790,6 +776,30 @@ export class MembersService {
     if (dto?.boardDecisionBookNo) {
       updateData.boardDecisionBookNo = dto.boardDecisionBookNo;
     }
+
+    if (dto?.tevkifatCenterId) {
+      updateData.tevkifatCenterId = dto.tevkifatCenterId;
+    }
+
+    if (dto?.tevkifatTitleId) {
+      updateData.tevkifatTitleId = dto.tevkifatTitleId;
+    }
+
+    if (dto?.branchId) {
+      updateData.branchId = dto.branchId;
+    }
+
+    if (dto?.memberGroupId) {
+      updateData.memberGroupId = dto.memberGroupId;
+    }
+
+    // branchId zorunlu - eğer dto'da yoksa mevcut üyenin branchId'sini kullan
+    if (dto?.branchId) {
+      updateData.branchId = dto.branchId;
+    } else if (!member.branchId) {
+      throw new BadRequestException('Şube seçimi zorunludur. Lütfen bir şube seçin.');
+    }
+    // Eğer dto'da branchId yoksa ve member'da varsa, mevcut branchId korunur (updateData'ya eklenmez)
 
     const updatedMember = await this.prisma.member.update({
       where: { id },
@@ -810,7 +820,12 @@ export class MembersService {
   }
 
   async reject(id: string, approvedByUserId?: string) {
-    await this.getById(id);
+    const member = await this.getById(id);
+
+    // PENDING veya APPROVED durumundaki üyeler reddedilebilir
+    if (member.status !== MemberStatus.PENDING && member.status !== MemberStatus.APPROVED) {
+      throw new BadRequestException('Sadece bekleyen (PENDING) veya onaylanmış (APPROVED) durumundaki başvurular reddedilebilir');
+    }
 
     return this.prisma.member.update({
       where: { id },
@@ -819,6 +834,78 @@ export class MembersService {
         approvedByUserId,
         approvedAt: new Date(),
       },
+    });
+  }
+
+  async activate(id: string, activatedByUserId?: string) {
+    const member = await this.getById(id);
+
+    if (member.status !== MemberStatus.APPROVED) {
+      throw new BadRequestException('Sadece onaylanmış (APPROVED) durumundaki üyeler aktifleştirilebilir');
+    }
+
+    return this.prisma.member.update({
+      where: { id },
+      data: {
+        status: MemberStatus.ACTIVE,
+      },
+    });
+  }
+
+  // APPROVED başvurular: scope'a göre
+  async listApprovedMembersForUser(user: CurrentUserData) {
+    const whereScope = await this.scopeService.buildMemberWhereForUser(user);
+
+    return this.prisma.member.findMany({
+      where: {
+        ...whereScope,
+        status: MemberStatus.APPROVED,
+        deletedAt: null, // Soft delete kontrolü
+        isActive: true,
+      },
+      include: {
+        province: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        district: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        approvedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        memberGroup: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { approvedAt: 'desc' },
     });
   }
 

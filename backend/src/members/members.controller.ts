@@ -94,14 +94,18 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get()
-  @ApiOperation({ summary: 'Üyeleri listele', description: 'Kullanıcının yetkisi dahilindeki tüm üyeleri listeler (durumu farketmeksizin). MEMBER_LIST_BY_PROVINCE izni varsa sadece role\'deki il/ilçe bazlı üyeleri gösterir' })
+  @ApiOperation({ summary: 'Üye listesi', description: 'Kullanıcının yetkisi dahilindeki üyeleri listeler. Status parametresi ile filtreleme yapılabilir. Varsayılan olarak ACTIVE üyeler gösterilir. MEMBER_LIST_BY_PROVINCE izni varsa sadece role\'deki il/ilçe bazlı üyeleri gösterir' })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'APPROVED', 'ACTIVE', 'INACTIVE', 'RESIGNED', 'EXPELLED', 'REJECTED'], description: 'Üye durumu filtresi. Belirtilmezse ACTIVE üyeler gösterilir.' })
   @ApiResponse({
     status: 200,
     description: 'Üye listesi',
     type: 'array',
   })
-  async listMembers(@CurrentUser() user: CurrentUserData) {
-    return this.membersService.listMembersForUser(user);
+  async listMembers(
+    @CurrentUser() user: CurrentUserData,
+    @Query('status') status?: string,
+  ) {
+    return this.membersService.listMembersForUser(user, status as any);
   }
 
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
@@ -124,6 +128,17 @@ export class MembersController {
     return this.membersService.listCancelledMembersForUser(user);
   }
 
+  @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_APPROVE, Permission.MEMBER_LIST_BY_PROVINCE)
+  @Get('approved')
+  @ApiOperation({ summary: 'Onaylanmış (beklemede) üyeleri listele', description: 'Kullanıcının yetkisi dahilindeki APPROVED durumundaki üyeleri listeler' })
+  @ApiResponse({
+    status: 200,
+    description: 'Onaylanmış üye listesi',
+    type: 'array',
+  })
+  async listApprovedMembers(@CurrentUser() user: CurrentUserData) {
+    return this.membersService.listApprovedMembersForUser(user);
+  }
 
   @Permissions(Permission.MEMBER_VIEW)
   @Get(':id')
@@ -140,12 +155,12 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_APPROVE)
   @Post(':id/approve')
-  @ApiOperation({ summary: 'Üyelik başvurusunu onayla', description: 'PENDING durumundaki başvuruyu ACTIVE yapar' })
+  @ApiOperation({ summary: 'Üyelik başvurusunu onayla', description: 'PENDING durumundaki başvuruyu onaylar ve APPROVED durumuna geçirir. Üye bekleyen üyeler listesine eklenir.' })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
   @ApiBody({ type: ApproveMemberDto, required: false })
   @ApiResponse({
     status: 200,
-    description: 'Başvuru onaylandı',
+    description: 'Başvuru onaylandı ve üye APPROVED durumuna geçirildi (bekleyen üyeler listesine eklendi)',
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
   async approve(
@@ -170,6 +185,23 @@ export class MembersController {
     @CurrentUser() user: CurrentUserData,
   ) {
     return this.membersService.reject(id, user.userId);
+  }
+
+  @Permissions(Permission.MEMBER_APPROVE)
+  @Post(':id/activate')
+  @ApiOperation({ summary: 'Onaylanmış üyeyi aktifleştir', description: 'APPROVED durumundaki üyeyi ACTIVE yapar' })
+  @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
+  @ApiResponse({
+    status: 200,
+    description: 'Üye aktifleştirildi',
+  })
+  @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
+  @ApiResponse({ status: 400, description: 'Üye onaylanmış (APPROVED) durumunda değil' })
+  async activate(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.membersService.activate(id, user.userId);
   }
 
   @Permissions(Permission.MEMBER_STATUS_CHANGE)

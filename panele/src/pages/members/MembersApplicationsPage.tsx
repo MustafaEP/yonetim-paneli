@@ -24,6 +24,7 @@ import {
   DialogActions,
   Grid,
   CircularProgress,
+  Autocomplete,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 import CheckIcon from '@mui/icons-material/Check';
@@ -36,6 +37,9 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import BadgeIcon from '@mui/icons-material/Badge';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import BookIcon from '@mui/icons-material/Book';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import CorporateFareIcon from '@mui/icons-material/CorporateFare';
+import PersonIcon from '@mui/icons-material/Person';
 import { useNavigate } from 'react-router-dom';
 
 import type { MemberApplicationRow, MemberStatus } from '../../types/member';
@@ -47,6 +51,9 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { getBranches } from '../../api/branchesApi';
+import type { Branch } from '../../api/branchesApi';
+import { getTevkifatCenters, getTevkifatTitles } from '../../api/accountingApi';
 
 const MembersApplicationsPage: React.FC = () => {
   const theme = useTheme();
@@ -72,11 +79,25 @@ const MembersApplicationsPage: React.FC = () => {
     registrationNumber: string;
     boardDecisionDate: string;
     boardDecisionBookNo: string;
+    tevkifatCenterId: string;
+    tevkifatTitleId: string;
+    branchId: string;
+    memberGroupId: string;
   }>({
     registrationNumber: '',
     boardDecisionDate: '',
     boardDecisionBookNo: '',
+    tevkifatCenterId: '',
+    tevkifatTitleId: '',
+    branchId: '',
+    memberGroupId: '',
   });
+
+  // Data için state'ler
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [tevkifatCenters, setTevkifatCenters] = useState<Array<{ id: string; name: string; title: string | null }>>([]);
+  const [tevkifatTitles, setTevkifatTitles] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
+  const [memberGroups, setMemberGroups] = useState<Array<{ id: string; name: string }>>([]);
 
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -140,7 +161,9 @@ const MembersApplicationsPage: React.FC = () => {
   const getStatusLabel = (status: MemberStatus): string => {
     switch (status) {
       case 'PENDING':
-        return 'Onay Bekliyor';
+        return 'Başvuru Alındı';
+      case 'APPROVED':
+        return 'Admin Onayladı (Beklemede)';
       case 'ACTIVE':
         return 'Aktif';
       case 'REJECTED':
@@ -162,6 +185,8 @@ const MembersApplicationsPage: React.FC = () => {
     switch (status) {
       case 'PENDING':
         return 'warning';
+      case 'APPROVED':
+        return 'info';
       case 'ACTIVE':
         return 'success';
       case 'REJECTED':
@@ -192,13 +217,76 @@ const MembersApplicationsPage: React.FC = () => {
     loadApplications();
   }, []);
 
+  // Şubeleri yükle
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        const data = await getBranches({ isActive: true });
+        setBranches(data);
+      } catch (e) {
+        console.error('Şubeler alınırken hata:', e);
+      }
+    };
+    loadBranches();
+  }, []);
+
+  // Tevkifat merkezlerini yükle
+  useEffect(() => {
+    const loadTevkifatCenters = async () => {
+      try {
+        const data = await getTevkifatCenters();
+        const activeCenters = data.filter(c => c.isActive).map(c => ({ id: c.id, name: c.name, title: c.title }));
+        setTevkifatCenters(activeCenters);
+      } catch (e) {
+        console.error('Tevkifat merkezleri yüklenirken hata:', e);
+      }
+    };
+    loadTevkifatCenters();
+  }, []);
+
+  // Tevkifat ünvanlarını yükle
+  useEffect(() => {
+    const loadTevkifatTitles = async () => {
+      try {
+        const data = await getTevkifatTitles();
+        const activeTitles = data.filter(t => t.isActive);
+        setTevkifatTitles(activeTitles);
+      } catch (e) {
+        console.error('Tevkifat ünvanları yüklenirken hata:', e);
+      }
+    };
+    loadTevkifatTitles();
+  }, []);
+
+  // Üye gruplarını yükle
+  useEffect(() => {
+    const loadMemberGroups = async () => {
+      try {
+        const { getMemberGroups } = await import('../../api/memberGroupsApi');
+        const data = await getMemberGroups();
+        setMemberGroups(data || []);
+      } catch (e) {
+        console.error('Üye grupları yüklenirken hata:', e);
+      }
+    };
+    loadMemberGroups();
+  }, []);
+
   const handleApproveClick = (id: string) => {
     if (!canApprove) return;
+    // "Üye" grubunu varsayılan olarak bul
+    const defaultMemberGroup = memberGroups.find(g => g.name === 'Üye');
+    const defaultMemberGroupId = defaultMemberGroup?.id || '';
+    
     // Form'u sıfırla
     setApproveForm({
       registrationNumber: '',
       boardDecisionDate: '',
       boardDecisionBookNo: '',
+      tevkifatCenterId: '',
+      tevkifatTitleId: '',
+      branchId: '',
+      memberGroupId: defaultMemberGroupId,
     });
     setConfirmDialog({
       open: true,
@@ -235,6 +323,22 @@ const MembersApplicationsPage: React.FC = () => {
         toast.showError('Yönetim karar defteri no zorunludur.');
         return;
       }
+      if (!approveForm.tevkifatCenterId) {
+        toast.showError('Tevkifat kurumu seçimi zorunludur.');
+        return;
+      }
+      if (!approveForm.tevkifatTitleId) {
+        toast.showError('Tevkifat ünvanı seçimi zorunludur.');
+        return;
+      }
+      if (!approveForm.branchId) {
+        toast.showError('Şube seçimi zorunludur.');
+        return;
+      }
+      if (!approveForm.memberGroupId) {
+        toast.showError('Üye grubu seçimi zorunludur.');
+        return;
+      }
     }
 
     setProcessingId(id);
@@ -247,20 +351,32 @@ const MembersApplicationsPage: React.FC = () => {
           registrationNumber: string;
           boardDecisionDate: string;
           boardDecisionBookNo: string;
+          tevkifatCenterId: string;
+          tevkifatTitleId: string;
+          branchId: string;
+          memberGroupId: string;
         } = {
           registrationNumber: approveForm.registrationNumber.trim(),
           boardDecisionDate: approveForm.boardDecisionDate,
           boardDecisionBookNo: approveForm.boardDecisionBookNo.trim(),
+          tevkifatCenterId: approveForm.tevkifatCenterId,
+          tevkifatTitleId: approveForm.tevkifatTitleId,
+          branchId: approveForm.branchId,
+          memberGroupId: approveForm.memberGroupId,
         };
 
         await approveMember(id, approveData);
         await loadApplications();
-        toast.showSuccess('Başvuru başarıyla onaylandı.');
+        toast.showSuccess('Başvuru başarıyla onaylandı. Üye bekleyen üyeler listesine eklendi.');
         // Form'u sıfırla
         setApproveForm({
           registrationNumber: '',
           boardDecisionDate: '',
           boardDecisionBookNo: '',
+          tevkifatCenterId: '',
+          tevkifatTitleId: '',
+          branchId: '',
+          memberGroupId: '',
         });
       } else {
         await rejectMember(id);
@@ -1018,6 +1134,7 @@ const MembersApplicationsPage: React.FC = () => {
                       ),
                     }}
                     sx={{
+                      minWidth: 300,
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2.5,
                         backgroundColor: '#fff',
@@ -1048,6 +1165,7 @@ const MembersApplicationsPage: React.FC = () => {
                       ),
                     }}
                     sx={{
+                      minWidth: 250,
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2.5,
                         backgroundColor: '#fff',
@@ -1081,6 +1199,7 @@ const MembersApplicationsPage: React.FC = () => {
                       ),
                     }}
                     sx={{
+                      minWidth: 250,
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2.5,
                         backgroundColor: '#fff',
@@ -1090,6 +1209,257 @@ const MembersApplicationsPage: React.FC = () => {
                         },
                       },
                     }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Tevkifat Bilgileri Bölümü */}
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.06)} 0%, ${alpha(theme.palette.secondary.light, 0.03)} 100%)`,
+                border: `2px dashed ${alpha(theme.palette.secondary.main, 0.2)}`,
+                mb: 3,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 1.5,
+                    background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.3)}`,
+                  }}
+                >
+                  <AccountBalanceIcon sx={{ color: '#fff', fontSize: '1.2rem' }} />
+                </Box>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: theme.palette.secondary.dark }}>
+                  Tevkifat Bilgileri
+                </Typography>
+              </Box>
+
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} md={6}>
+                  <Autocomplete
+                    options={tevkifatCenters}
+                    value={tevkifatCenters.find((c) => c.id === approveForm.tevkifatCenterId) || null}
+                    onChange={(_, newValue) =>
+                      setApproveForm((prev) => ({ ...prev, tevkifatCenterId: newValue?.id || '' }))
+                    }
+                    getOptionLabel={(option) => option.name}
+                    isOptionEqualTo={(option, value) => option.id === value.id}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tevkifat Kurumu *"
+                        required
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <>
+                              <InputAdornment position="start">
+                                <CorporateFareIcon sx={{ color: 'text.secondary', fontSize: '1.3rem' }} />
+                              </InputAdornment>
+                              {params.InputProps.startAdornment}
+                            </>
+                          ),
+                        }}
+                        sx={{
+                          minWidth: 250,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2.5,
+                            backgroundColor: '#fff',
+                          },
+                        }}
+                      />
+                    )}
+                    fullWidth
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Autocomplete
+                    options={tevkifatTitles}
+                    value={tevkifatTitles.find((t) => t.id === approveForm.tevkifatTitleId) || null}
+                    onChange={(_, newValue) =>
+                      setApproveForm((prev) => ({ ...prev, tevkifatTitleId: newValue?.id || '' }))
+                    }
+                    getOptionLabel={(option) => option.name}
+                    isOptionEqualTo={(option, value) => option.id === value.id}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tevkifat Ünvanı *"
+                        required
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <>
+                              <InputAdornment position="start">
+                                <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.3rem' }} />
+                              </InputAdornment>
+                              {params.InputProps.startAdornment}
+                            </>
+                          ),
+                        }}
+                        sx={{
+                          minWidth: 250,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2.5,
+                            backgroundColor: '#fff',
+                          },
+                        }}
+                      />
+                    )}
+                    fullWidth
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Şube Seçimi Bölümü */}
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.06)} 0%, ${alpha(theme.palette.info.light, 0.03)} 100%)`,
+                border: `2px dashed ${alpha(theme.palette.info.main, 0.2)}`,
+                mb: 3,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 1.5,
+                    background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
+                  }}
+                >
+                  <CorporateFareIcon sx={{ color: '#fff', fontSize: '1.2rem' }} />
+                </Box>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: theme.palette.info.dark }}>
+                  Şube Seçimi
+                </Typography>
+              </Box>
+
+              <Grid container spacing={2.5}>
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={branches}
+                    value={branches.find((b) => b.id === approveForm.branchId) || null}
+                    onChange={(_, newValue) =>
+                      setApproveForm((prev) => ({ ...prev, branchId: newValue?.id || '' }))
+                    }
+                    getOptionLabel={(option) => `${option.name}${option.code ? ` (${option.code})` : ''}`}
+                    isOptionEqualTo={(option, value) => option.id === value.id}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Şube *"
+                        required
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <>
+                              <InputAdornment position="start">
+                                <AccountBalanceIcon sx={{ color: 'text.secondary', fontSize: '1.3rem' }} />
+                              </InputAdornment>
+                              {params.InputProps.startAdornment}
+                            </>
+                          ),
+                        }}
+                        sx={{
+                          minWidth: 300,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2.5,
+                            backgroundColor: '#fff',
+                          },
+                        }}
+                      />
+                    )}
+                    fullWidth
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Üyelik Bilgileri Bölümü */}
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.06)} 0%, ${alpha(theme.palette.success.light, 0.03)} 100%)`,
+                border: `2px dashed ${alpha(theme.palette.success.main, 0.2)}`,
+                mb: 3,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 1.5,
+                    background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                  }}
+                >
+                  <PersonIcon sx={{ color: '#fff', fontSize: '1.2rem' }} />
+                </Box>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: theme.palette.success.dark }}>
+                  Üyelik Bilgileri
+                </Typography>
+              </Box>
+
+              <Grid container spacing={2.5}>
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={memberGroups}
+                    value={memberGroups.find((g) => g.id === approveForm.memberGroupId) || null}
+                    onChange={(_, newValue) =>
+                      setApproveForm((prev) => ({ ...prev, memberGroupId: newValue?.id || '' }))
+                    }
+                    getOptionLabel={(option) => option.name}
+                    isOptionEqualTo={(option, value) => option.id === value.id}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Üye Grubu *"
+                        required
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <>
+                              <InputAdornment position="start">
+                                <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.3rem' }} />
+                              </InputAdornment>
+                              {params.InputProps.startAdornment}
+                            </>
+                          ),
+                        }}
+                        sx={{
+                          minWidth: 300,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2.5,
+                            backgroundColor: '#fff',
+                          },
+                        }}
+                      />
+                    )}
+                    fullWidth
                   />
                 </Grid>
               </Grid>
@@ -1130,7 +1500,7 @@ const MembersApplicationsPage: React.FC = () => {
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={!!processingId || !approveForm.registrationNumber.trim() || !approveForm.boardDecisionDate || !approveForm.boardDecisionBookNo.trim()}
+              disabled={!!processingId || !approveForm.registrationNumber.trim() || !approveForm.boardDecisionDate || !approveForm.boardDecisionBookNo.trim() || !approveForm.tevkifatCenterId || !approveForm.tevkifatTitleId || !approveForm.branchId || !approveForm.memberGroupId}
               variant="contained"
               size="large"
               color="success"

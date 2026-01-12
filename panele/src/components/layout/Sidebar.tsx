@@ -281,116 +281,46 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
       <List sx={{ px: 1 }}>
         {showMembers && (
           <>
-            <ListItemButton
-              component={Link}
-              to="/members/status/active"
-              selected={location.pathname === '/members/status/active'}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <CheckCircleIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Aktif Üyeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
             {showMemberApplications && (
-              <ListItemButton
-                component={Link}
-                to="/members/applications"
-                selected={location.pathname.startsWith('/members/applications')}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <AssignmentIcon />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Üye Başvuruları" 
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
+              <>
+                <ListItemButton
+                  component={Link}
+                  to="/members/applications"
+                  selected={location.pathname.startsWith('/members/applications') && !location.pathname.startsWith('/members/waiting')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <AssignmentIcon />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Üye Başvuruları" 
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+                <ListItemButton
+                  component={Link}
+                  to="/members/waiting"
+                  selected={location.pathname === '/members/waiting'}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <HourglassEmptyIcon />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Bekleyen Üyeler" 
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              </>
             )}
-            <ListItemButton
-              component={Link}
-              to="/members/status/rejected"
-              selected={location.pathname === '/members/status/rejected'}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <CancelIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Reddedilen Üyeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            <ListItemButton
-              component={Link}
-              to="/members/status/resigned"
-              selected={location.pathname === '/members/status/resigned'}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <ExitToAppIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="İstifa Eden Üyeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            <ListItemButton
-              component={Link}
-              to="/members/status/inactive"
-              selected={location.pathname === '/members/status/inactive'}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <PauseCircleIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Pasif Üyeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            <ListItemButton
-              component={Link}
-              to="/members/status/expelled"
-              selected={location.pathname === '/members/status/expelled'}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <RemoveCircleIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="İhraç Edilen Üyeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
             <ListItemButton
               component={Link}
               to="/members"
@@ -398,6 +328,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
                 location.pathname === '/members' ||
                 (location.pathname.startsWith('/members/') &&
                  !location.pathname.startsWith('/members/applications') &&
+                 !location.pathname.startsWith('/members/waiting') &&
                  !location.pathname.startsWith('/members/status') &&
                  /^\/members\/[^/]+$/.test(location.pathname))
               }

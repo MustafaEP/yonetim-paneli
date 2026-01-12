@@ -32,7 +32,48 @@ export class ApproveMemberDto {
   @IsString()
   @IsOptional()
   boardDecisionBookNo?: string;
+
+  @ApiProperty({
+    description: 'Tevkifat merkezi ID',
+    example: 'tevkifat-center-id-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  tevkifatCenterId?: string;
+
+  @ApiProperty({
+    description: 'Tevkifat ünvanı ID',
+    example: 'tevkifat-title-id-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  tevkifatTitleId?: string;
+
+  @ApiProperty({
+    description: 'Şube ID',
+    example: 'branch-id-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+
+  @ApiProperty({
+    description: 'Üye grubu ID',
+    example: 'member-group-id-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  memberGroupId?: string;
 }
+
 
 
 

@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 
 export class CreateMemberGroupDto {
-  @ApiProperty({ description: 'Üye grubu adı', example: 'Normal Üye' })
+  @ApiProperty({ description: 'Üye grubu adı', example: 'Üye' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)

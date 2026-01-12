@@ -489,7 +489,7 @@ async function main() {
   // 10.3. MemberGroup - 1 veri
   console.log('👥 MemberGroup ekleniyor...');
   let memberGroupCount = 0;
-  const memberGroupName = 'Normal Üye';
+  const memberGroupName = 'Üye';
   const existingMemberGroup = await prisma.memberGroup.findFirst({
     where: { name: memberGroupName },
   });
@@ -498,7 +498,7 @@ async function main() {
     await prisma.memberGroup.create({
       data: {
         name: memberGroupName,
-        description: 'Normal üye grubu',
+        description: 'Üye grubu',
         isActive: true,
         order: 1,
       },
