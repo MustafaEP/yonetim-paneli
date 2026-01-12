@@ -414,16 +414,20 @@ const TevkifatCentersPage: React.FC = () => {
       headerName: 'Tevkifat Merkezi Adı',
       flex: 1,
       minWidth: 250,
+      align: 'left',
+      headerAlign: 'left',
     },
     {
       field: 'actions',
       headerName: 'İşlemler',
       width: 200,
       sortable: false,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => {
         const center = params.row as TevkifatCenter;
         return (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 0.5 }}>
             <Tooltip title="Detay" arrow>
               <IconButton
                 size="small"
@@ -860,6 +864,9 @@ const TevkifatCentersPage: React.FC = () => {
                   '& .MuiDataGrid-cell': {
                     borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
                     py: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
                   },
                   '& .MuiDataGrid-columnHeaders': {
                     background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
@@ -935,10 +942,10 @@ const TevkifatCentersPage: React.FC = () => {
                           borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
                         }}
                       >
-                        <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Unvan Adı</TableCell>
-                        <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Unvan Adı</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
                         {canManage && (
-                          <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
                         )}
                       </TableRow>
                     </TableHead>
@@ -965,10 +972,10 @@ const TevkifatCentersPage: React.FC = () => {
                               },
                             }}
                           >
-                        <TableCell>
+                        <TableCell align="center">
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>{title.name}</Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell align="center">
                           <Chip
                             label={title.isActive ? 'Aktif' : 'Pasif'}
                             color={title.isActive ? 'success' : 'default'}
@@ -977,8 +984,8 @@ const TevkifatCentersPage: React.FC = () => {
                           />
                         </TableCell>
                         {canManage && (
-                          <TableCell align="right">
-                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                               <Tooltip title="Düzenle" arrow>
                                 <IconButton
                                   size="small"
@@ -1113,10 +1120,10 @@ const TevkifatCentersPage: React.FC = () => {
                           borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
                         }}
                       >
-                        <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Meslek/Unvan Adı</TableCell>
-                        <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Meslek/Unvan Adı</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
                         {canManage && (
-                          <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
                         )}
                       </TableRow>
                     </TableHead>
@@ -1143,13 +1150,13 @@ const TevkifatCentersPage: React.FC = () => {
                               },
                             }}
                           >
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <TableCell align="center">
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                                 <WorkIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
                                 <Typography variant="body1" sx={{ fontWeight: 500 }}>{profession.name}</Typography>
                               </Box>
                             </TableCell>
-                            <TableCell>
+                            <TableCell align="center">
                               <Chip
                                 label={profession.isActive ? 'Aktif' : 'Pasif'}
                                 color={profession.isActive ? 'success' : 'default'}
@@ -1159,8 +1166,8 @@ const TevkifatCentersPage: React.FC = () => {
                               />
                             </TableCell>
                             {canManage && (
-                              <TableCell align="right">
-                                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <TableCell align="center">
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                                   <Tooltip title="Düzenle" arrow>
                                     <IconButton
                                       size="small"

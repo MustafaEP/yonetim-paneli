@@ -63,14 +63,11 @@ export const uploadLogo = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append('logo', file);
 
+  // FormData gönderirken headers'ı belirtmeye gerek yok
+  // httpClient interceptor'ı otomatik olarak Content-Type'ı kaldıracak
   const res = await httpClient.post<{ url: string }>(
     '/system/upload-logo',
     formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    },
   );
   return res.data.url;
 };

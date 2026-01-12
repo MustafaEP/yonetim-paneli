@@ -173,11 +173,15 @@ const DocumentTemplatesPage: React.FC = () => {
       headerName: 'Ad',
       flex: 1,
       minWidth: 200,
+      align: 'left',
+      headerAlign: 'left',
     },
     {
       field: 'type',
       headerName: 'Tür',
       width: 180,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => {
         const typeLabels: Record<string, string> = {
           MEMBER_CERTIFICATE: 'Üye Sertifikası',
@@ -201,6 +205,8 @@ const DocumentTemplatesPage: React.FC = () => {
       field: 'isActive',
       headerName: 'Durum',
       width: 100,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => (
         <Chip
           label={params.value ? 'Aktif' : 'Pasif'}
@@ -214,10 +220,12 @@ const DocumentTemplatesPage: React.FC = () => {
       headerName: 'İşlemler',
       width: 200,
       sortable: false,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => {
         const template = params.row as DocumentTemplate;
         return (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 0.5 }}>
             <Tooltip title="Görüntüle">
               <IconButton
                 size="small"
@@ -345,6 +353,9 @@ const DocumentTemplatesPage: React.FC = () => {
             border: 'none',
             '& .MuiDataGrid-cell': {
               borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
             },
             '& .MuiDataGrid-columnHeaders': {
               backgroundColor: alpha(theme.palette.primary.main, 0.04),

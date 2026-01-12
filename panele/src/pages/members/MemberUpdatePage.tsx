@@ -1,5 +1,5 @@
 // src/pages/members/MemberUpdatePage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -239,17 +239,18 @@ const MemberUpdatePage: React.FC = () => {
   }, [form.provinceId]);
 
   // Kurumları yükle
-  useEffect(() => {
-    const loadInstitutions = async () => {
-      try {
-        const data = await getInstitutions();
-        setInstitutions(data);
-      } catch (e) {
-        console.error('Kurumlar alınırken hata:', e);
-      }
-    };
-    loadInstitutions();
+  const loadInstitutions = useCallback(async () => {
+    try {
+      const data = await getInstitutions();
+      setInstitutions(data);
+    } catch (e) {
+      console.error('Kurumlar alınırken hata:', e);
+    }
   }, []);
+
+  useEffect(() => {
+    loadInstitutions();
+  }, [loadInstitutions]);
 
   // Şubeleri yükle
   useEffect(() => {
@@ -1146,6 +1147,7 @@ const MemberUpdatePage: React.FC = () => {
                 <Select
                   value={form.institutionId}
                   onChange={(e) => handleChange('institutionId', e.target.value)}
+                  onOpen={() => loadInstitutions()}
                   label="Kurum"
                   sx={{
                     borderRadius: 2.5,

@@ -321,11 +321,19 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 <Box>
                   {(() => {
                     const logoUrl = getValue('SITE_LOGO_URL');
-                    const logoSrc = logoUrl
-                      ? logoUrl.startsWith('http://') || logoUrl.startsWith('https://')
-                        ? logoUrl
-                        : `http://localhost:3000${logoUrl}`
-                      : null;
+                    let logoSrc: string | null = null;
+                    
+                    if (logoUrl) {
+                      if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+                        logoSrc = logoUrl;
+                      } else {
+                        // Relative path ise, API base URL'ini kullan
+                        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
+                          ? import.meta.env.VITE_API_BASE_URL 
+                          : (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
+                        logoSrc = `${API_BASE_URL}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
+                      }
+                    }
 
                     return logoSrc ? (
                       <Avatar

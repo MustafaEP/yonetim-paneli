@@ -259,17 +259,18 @@ const MemberApplicationCreatePage: React.FC = () => {
   }, []);
 
   // Kurumları yükle
-  useEffect(() => {
-    const loadInstitutions = async () => {
-      try {
-        const data = await getInstitutions();
-        setInstitutions(data.filter(i => i.isActive));
-      } catch (e) {
-        console.error('Kurumlar alınırken hata:', e);
-      }
-    };
-    loadInstitutions();
+  const loadInstitutions = useCallback(async () => {
+    try {
+      const data = await getInstitutions();
+      setInstitutions(data.filter(i => i.isActive));
+    } catch (e) {
+      console.error('Kurumlar alınırken hata:', e);
+    }
   }, []);
+
+  useEffect(() => {
+    loadInstitutions();
+  }, [loadInstitutions]);
 
   // Tevkifat merkezlerini yükle
   useEffect(() => {
@@ -1592,6 +1593,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                 options={institutions}
                 value={institutions.find((i) => i.id === form.institutionId) || null}
                 onChange={(_, newValue) => handleChange('institutionId', newValue?.id || '')}
+                onOpen={() => loadInstitutions()}
                 getOptionLabel={(option) => option.name}
                 isOptionEqualTo={(option, value) => option.id === value.id}
                 renderInput={(params) => (
