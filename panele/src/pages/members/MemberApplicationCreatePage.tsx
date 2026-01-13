@@ -811,7 +811,7 @@ const MemberApplicationCreatePage: React.FC = () => {
         email: form.email.trim() || undefined,
         provinceId: form.provinceId || undefined,
         districtId: form.districtId || undefined,
-        branchId: form.branchId, // Zorunlu
+        branchId: form.branchId || undefined,
         source: 'DIRECT', // Default değer olarak DIRECT kullanılıyor
         // Kişisel Bilgiler
         motherName: form.motherName.trim() || undefined,
