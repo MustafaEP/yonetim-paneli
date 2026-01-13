@@ -47,7 +47,9 @@ import {
 } from '../../api/paymentsApi';
 import { getTevkifatCenters } from '../../api/accountingApi';
 import { getMembers } from '../../api/membersApi';
+import { getInstitutions } from '../../api/institutionsApi';
 import type { MemberListItem } from '../../types/member';
+import type { Institution } from '../../api/institutionsApi';
 import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 
 const PaymentsListPage: React.FC = () => {
@@ -66,6 +68,8 @@ const PaymentsListPage: React.FC = () => {
   const [showAllYear, setShowAllYear] = useState(false);
   const [tevkifatCenters, setTevkifatCenters] = useState<Array<{ id: string; name: string }>>([]);
   const [members, setMembers] = useState<MemberListItem[]>([]);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [selectedInstitutionId, setSelectedInstitutionId] = useState<string>('');
   
   // Ödeme ekleme dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -100,25 +104,51 @@ const PaymentsListPage: React.FC = () => {
     if (canView) {
       loadPayments();
       loadTevkifatCenters();
+      loadInstitutions();
     }
     if (canAddPayment) {
       loadMembers();
     }
-  }, [canView, canAddPayment, filters, showAllYear]);
+  }, [canView, canAddPayment, filters, showAllYear, selectedInstitutionId]);
 
   const loadPayments = async () => {
     setLoading(true);
     try {
-      const requestFilters = showAllYear 
+      const requestFilters: PaymentListFilters = showAllYear 
         ? { ...filters, month: undefined } 
-        : filters;
+        : { ...filters };
+      
+      // Kurum filtresi ekle
+      if (selectedInstitutionId) {
+        // Backend'de institutionId filtresi yok, bu yüzden frontend'de filtreleyeceğiz
+        // Ama önce tüm ödemeleri yükleyelim
+      }
+      
       const data = await getPayments(requestFilters);
-      setRows(data);
+      
+      // Kurum filtresi varsa frontend'de filtrele
+      let filteredData = data;
+      if (selectedInstitutionId) {
+        filteredData = data.filter((payment) => 
+          payment.member?.institution?.id === selectedInstitutionId
+        );
+      }
+      
+      setRows(filteredData);
     } catch (e: any) {
       console.error('Ödemeler yüklenirken hata:', e);
       toast.showError('Ödemeler yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInstitutions = async () => {
+    try {
+      const data = await getInstitutions({ isActive: true });
+      setInstitutions(data);
+    } catch (e) {
+      console.error('Kurumlar yüklenirken hata:', e);
     }
   };
 
@@ -133,8 +163,20 @@ const PaymentsListPage: React.FC = () => {
 
   const loadMembers = async () => {
     try {
-      const data = await getMembers();
-      setMembers(data);
+      // Aktif, bekleyen ve onaylanmış üyeleri yükle
+      const [activeMembers, pendingMembers, approvedMembers] = await Promise.all([
+        getMembers('ACTIVE'),
+        getMembers('PENDING'),
+        getMembers('APPROVED'),
+      ]);
+      
+      // Tüm üyeleri birleştir ve tekrarları kaldır (id'ye göre)
+      const allMembers = [...activeMembers, ...pendingMembers, ...approvedMembers];
+      const uniqueMembers = allMembers.filter((member, index, self) =>
+        index === self.findIndex((m) => m.id === member.id)
+      );
+      
+      setMembers(uniqueMembers);
     } catch (e) {
       console.error('Üyeler yüklenirken hata:', e);
     }
@@ -142,12 +184,14 @@ const PaymentsListPage: React.FC = () => {
 
   const handleExportExcel = () => {
     try {
-      const exportColumns = columns
+      const exportColumns: ExportColumn[] = columns
         .filter((col) => col.field !== 'actions')
         .map((col) => ({
           field: col.field,
           headerName: col.headerName || '',
-        })) as ExportColumn[];
+          width: col.width || (col.flex ? (col.flex as number) * 10 : 15),
+          valueGetter: col.valueGetter,
+        }));
       exportToExcel(filteredRows, exportColumns, `odemeler_${filters.year}${filters.month ? `_${filters.month}` : ''}`);
       toast.showSuccess('Excel dosyası indirildi');
     } catch (error) {
@@ -158,12 +202,14 @@ const PaymentsListPage: React.FC = () => {
 
   const handleExportPDF = () => {
     try {
-      const exportColumns = columns
+      const exportColumns: ExportColumn[] = columns
         .filter((col) => col.field !== 'actions')
         .map((col) => ({
           field: col.field,
           headerName: col.headerName || '',
-        })) as ExportColumn[];
+          width: col.width || (col.flex ? (col.flex as number) * 10 : 15),
+          valueGetter: col.valueGetter,
+        }));
       const title = `Ödemeler - ${filters.year}${filters.month ? ` ${monthNames[filters.month - 1]}` : ' (Tüm Yıl)'}`;
       exportToPDF(filteredRows, exportColumns, `odemeler_${filters.year}${filters.month ? `_${filters.month}` : ''}`, title);
       toast.showSuccess('PDF dosyası indirildi');
@@ -448,7 +494,7 @@ const PaymentsListPage: React.FC = () => {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  Ödemeler
+                  Ödeme Sorgulama Sayfası
                 </Typography>
                 <Typography
                   variant="body1"
@@ -654,6 +700,34 @@ const PaymentsListPage: React.FC = () => {
               {monthNames.map((month, index) => (
                 <MenuItem key={index} value={index + 1}>
                   {month}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl 
+            size="medium" 
+            sx={{ 
+              minWidth: { xs: '100%', sm: 200 },
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#fff',
+                borderRadius: 2.5,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                },
+              },
+            }}
+          >
+            <InputLabel>Kurum</InputLabel>
+            <Select
+              value={selectedInstitutionId || ''}
+              label="Kurum"
+              onChange={(e) => setSelectedInstitutionId(e.target.value)}
+            >
+              <MenuItem value="">Tümü</MenuItem>
+              {institutions.map((institution) => (
+                <MenuItem key={institution.id} value={institution.id}>
+                  {institution.name}
                 </MenuItem>
               ))}
             </Select>

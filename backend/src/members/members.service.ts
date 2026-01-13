@@ -343,7 +343,7 @@ export class MembersService {
       approvedAt = new Date();
     }
 
-    return this.prisma.member.create({
+    const member = await this.prisma.member.create({
       data: {
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -391,6 +391,24 @@ export class MembersService {
         branchId: dto.branchId, // Zorunlu
       },
     });
+
+    // History kaydet
+    const memberData: Record<string, any> = {
+      firstName: member.firstName,
+      lastName: member.lastName,
+      nationalId: member.nationalId,
+      status: member.status,
+      createdByUserId: member.createdByUserId,
+      approvedByUserId: member.approvedByUserId,
+      approvedAt: member.approvedAt,
+    };
+    await this.historyService.logMemberCreate(
+      member.id,
+      createdByUserId || '',
+      memberData,
+    );
+
+    return member;
   }
 
   // PENDING başvurular: scope'a göre
@@ -463,6 +481,12 @@ export class MembersService {
           },
         },
         institution: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        tevkifatCenter: {
           select: {
             id: true,
             name: true,
@@ -659,6 +683,9 @@ export class MembersService {
       lastName: oldMember.lastName,
       phone: oldMember.phone,
       email: oldMember.email,
+      status: oldMember.status,
+      approvedByUserId: oldMember.approvedByUserId,
+      approvedAt: oldMember.approvedAt,
       membershipInfoOptionId: oldMember.membershipInfoOptionId,
       memberGroupId: oldMember.memberGroupId,
       registrationNumber: oldMember.registrationNumber,
@@ -802,10 +829,33 @@ export class MembersService {
     }
     // Eğer dto'da branchId yoksa ve member'da varsa, mevcut branchId korunur (updateData'ya eklenmez)
 
+    const oldMember = await this.getById(id);
+    const oldData: Record<string, any> = {
+      status: oldMember.status,
+      approvedByUserId: oldMember.approvedByUserId,
+      approvedAt: oldMember.approvedAt,
+      registrationNumber: oldMember.registrationNumber,
+      boardDecisionDate: oldMember.boardDecisionDate,
+      boardDecisionBookNo: oldMember.boardDecisionBookNo,
+      tevkifatCenterId: oldMember.tevkifatCenterId,
+      tevkifatTitleId: oldMember.tevkifatTitleId,
+      branchId: oldMember.branchId,
+      memberGroupId: oldMember.memberGroupId,
+    };
+
     const updatedMember = await this.prisma.member.update({
       where: { id },
       data: updateData,
     });
+
+    // History kaydet
+    const newData = { ...oldData, ...updateData };
+    await this.historyService.logMemberUpdate(
+      id,
+      approvedByUserId || '',
+      oldData,
+      newData,
+    );
 
     // Eğer kayıt numarası atandıysa, evrak dosya isimlerini güncelle
     if (dto?.registrationNumber) {
@@ -828,7 +878,13 @@ export class MembersService {
       throw new BadRequestException('Sadece bekleyen (PENDING) veya onaylanmış (APPROVED) durumundaki başvurular reddedilebilir');
     }
 
-    return this.prisma.member.update({
+    const oldData: Record<string, any> = {
+      status: member.status,
+      approvedByUserId: member.approvedByUserId,
+      approvedAt: member.approvedAt,
+    };
+
+    const updatedMember = await this.prisma.member.update({
       where: { id },
       data: {
         status: MemberStatus.REJECTED,
@@ -836,6 +892,22 @@ export class MembersService {
         approvedAt: new Date(),
       },
     });
+
+    // History kaydet
+    const newData = {
+      ...oldData,
+      status: MemberStatus.REJECTED,
+      approvedByUserId,
+      approvedAt: new Date(),
+    };
+    await this.historyService.logMemberUpdate(
+      id,
+      approvedByUserId || '',
+      oldData,
+      newData,
+    );
+
+    return updatedMember;
   }
 
   async activate(id: string, activatedByUserId?: string) {
@@ -845,12 +917,30 @@ export class MembersService {
       throw new BadRequestException('Sadece onaylanmış (APPROVED) durumundaki üyeler aktifleştirilebilir');
     }
 
-    return this.prisma.member.update({
+    const oldData: Record<string, any> = {
+      status: member.status,
+    };
+
+    const updatedMember = await this.prisma.member.update({
       where: { id },
       data: {
         status: MemberStatus.ACTIVE,
       },
     });
+
+    // History kaydet
+    const newData = {
+      ...oldData,
+      status: MemberStatus.ACTIVE,
+    };
+    await this.historyService.logMemberUpdate(
+      id,
+      activatedByUserId || '',
+      oldData,
+      newData,
+    );
+
+    return updatedMember;
   }
 
   // APPROVED başvurular: scope'a göre

@@ -243,6 +243,50 @@ const MembersListPage: React.FC = () => {
     }
   };
 
+  // Status'a göre tema rengi config'i (MemberDetailPage'den alındı)
+  const getStatusThemeConfig = (status: MemberStatus) => {
+    const configs: any = {
+      ACTIVE: {
+        mainColor: theme.palette.success.main,
+        darkColor: theme.palette.success.dark,
+        lightColor: theme.palette.success.light,
+      },
+      PENDING: {
+        mainColor: theme.palette.warning.main,
+        darkColor: theme.palette.warning.dark,
+        lightColor: theme.palette.warning.light,
+      },
+      APPROVED: {
+        mainColor: theme.palette.info.main,
+        darkColor: theme.palette.info.dark,
+        lightColor: theme.palette.info.light,
+      },
+      REJECTED: {
+        mainColor: theme.palette.error.main,
+        darkColor: theme.palette.error.dark,
+        lightColor: theme.palette.error.light,
+      },
+      EXPELLED: {
+        mainColor: '#d32f2f',
+        darkColor: '#b71c1c',
+        lightColor: '#ef5350',
+      },
+      RESIGNED: {
+        mainColor: theme.palette.grey[600],
+        darkColor: theme.palette.grey[800],
+        lightColor: theme.palette.grey[400],
+      },
+      INACTIVE: {
+        mainColor: '#757575',
+        darkColor: '#616161',
+        lightColor: '#9e9e9e',
+      },
+    };
+    return configs[status] || configs.ACTIVE;
+  };
+
+  const statusTheme = getStatusThemeConfig(statusFilter);
+
   const columns: GridColDef<MemberListItem>[] = [
     { 
       field: 'registrationNumber',
@@ -369,15 +413,15 @@ const MembersListPage: React.FC = () => {
               sx={{
                 width: 38,
                 height: 38,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                color: theme.palette.primary.main,
+                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.1)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+                border: `1px solid ${alpha(statusTheme.mainColor, 0.2)}`,
+                color: statusTheme.mainColor,
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
                   color: '#fff',
                   transform: 'translateY(-2px)',
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.35)}`,
                 },
               }}
             >
@@ -523,14 +567,14 @@ const MembersListPage: React.FC = () => {
         pb: 4,
       }}
     >
-      {/* Modern Başlık Bölümü */}
+      {/* Modern Başlık Bölümü - Status'a göre dinamik renk */}
       <Box
         sx={{
           mb: 4,
           p: { xs: 3, sm: 4, md: 5 },
           borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+          border: `1px solid ${alpha(statusTheme.mainColor, 0.1)}`,
           position: 'relative',
           overflow: 'hidden',
           '&::before': {
@@ -540,7 +584,7 @@ const MembersListPage: React.FC = () => {
             right: 0,
             width: '300px',
             height: '300px',
-            background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
+            background: `radial-gradient(circle, ${alpha(statusTheme.mainColor, 0.1)} 0%, transparent 70%)`,
             borderRadius: '50%',
             transform: 'translate(30%, -30%)',
           },
@@ -554,15 +598,15 @@ const MembersListPage: React.FC = () => {
                   width: { xs: 56, sm: 64 },
                   height: { xs: 56, sm: 64 },
                   borderRadius: 3,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-4px) scale(1.05)',
-                    boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.45)}`,
+                    boxShadow: `0 12px 32px ${alpha(statusTheme.mainColor, 0.45)}`,
                   },
                 }}
               >
@@ -608,13 +652,13 @@ const MembersListPage: React.FC = () => {
                 px: 4,
                 py: 1.5,
                 fontSize: '1rem',
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+                background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
+                boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
                 transition: 'all 0.3s ease',
                 '&:hover': {
                   transform: 'translateY(-2px)',
-                  boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.45)}`,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  boxShadow: `0 12px 32px ${alpha(statusTheme.mainColor, 0.45)}`,
+                  background: `linear-gradient(135deg, ${statusTheme.darkColor} 0%, ${statusTheme.mainColor} 100%)`,
                 },
               }}
             >
@@ -637,8 +681,8 @@ const MembersListPage: React.FC = () => {
               fontWeight: 600,
               py: 1.5,
               fontSize: '1rem',
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+              background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
+              boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
             }}
           >
             Yeni Üye Ekle
@@ -677,7 +721,7 @@ const MembersListPage: React.FC = () => {
         <Box
           sx={{
             p: { xs: 3, sm: 4 },
-            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.02)} 0%, ${alpha(statusTheme.lightColor, 0.01)} 100%)`,
             borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
@@ -687,11 +731,11 @@ const MembersListPage: React.FC = () => {
                 width: 44,
                 height: 44,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+                boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.3)}`,
               }}
             >
               <FilterListIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
@@ -727,14 +771,14 @@ const MembersListPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: theme.palette.primary.main,
+                        borderColor: statusTheme.mainColor,
                         borderWidth: '2px',
                       },
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      boxShadow: `0 4px 16px ${alpha(statusTheme.mainColor, 0.2)}`,
                     },
                   },
                 }}
@@ -751,7 +795,7 @@ const MembersListPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                     },
                   },
                 }}
@@ -769,10 +813,10 @@ const MembersListPage: React.FC = () => {
                   sx={{
                     '& .MuiSelect-select': {
                       fontWeight: 600,
-                      color: theme.palette.primary.main,
+                      color: statusTheme.mainColor,
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: statusTheme.mainColor,
                       borderWidth: 2,
                     },
                   }}
@@ -790,7 +834,7 @@ const MembersListPage: React.FC = () => {
                   <MenuItem value="ACTIVE">
                     <Typography sx={{ 
                       fontWeight: statusFilter === 'ACTIVE' ? 700 : 400,
-                      color: statusFilter === 'ACTIVE' ? theme.palette.primary.main : 'inherit',
+                      color: statusFilter === 'ACTIVE' ? getStatusThemeConfig('ACTIVE').mainColor : 'inherit',
                     }}>
                       Aktif
                     </Typography>
@@ -798,7 +842,7 @@ const MembersListPage: React.FC = () => {
                   <MenuItem value="PENDING">
                     <Typography sx={{ 
                       fontWeight: statusFilter === 'PENDING' ? 700 : 400,
-                      color: statusFilter === 'PENDING' ? theme.palette.primary.main : 'inherit',
+                      color: statusFilter === 'PENDING' ? getStatusThemeConfig('PENDING').mainColor : 'inherit',
                     }}>
                       Onay Bekliyor
                     </Typography>
@@ -806,7 +850,7 @@ const MembersListPage: React.FC = () => {
                   <MenuItem value="APPROVED">
                     <Typography sx={{ 
                       fontWeight: statusFilter === 'APPROVED' ? 700 : 400,
-                      color: statusFilter === 'APPROVED' ? theme.palette.primary.main : 'inherit',
+                      color: statusFilter === 'APPROVED' ? getStatusThemeConfig('APPROVED').mainColor : 'inherit',
                     }}>
                       Onaylanmış
                     </Typography>
@@ -814,7 +858,7 @@ const MembersListPage: React.FC = () => {
                   <MenuItem value="INACTIVE">
                     <Typography sx={{ 
                       fontWeight: statusFilter === 'INACTIVE' ? 700 : 400,
-                      color: statusFilter === 'INACTIVE' ? theme.palette.primary.main : 'inherit',
+                      color: statusFilter === 'INACTIVE' ? getStatusThemeConfig('INACTIVE').mainColor : 'inherit',
                     }}>
                       Pasif
                     </Typography>
@@ -822,7 +866,7 @@ const MembersListPage: React.FC = () => {
                   <MenuItem value="RESIGNED">
                     <Typography sx={{ 
                       fontWeight: statusFilter === 'RESIGNED' ? 700 : 400,
-                      color: statusFilter === 'RESIGNED' ? theme.palette.primary.main : 'inherit',
+                      color: statusFilter === 'RESIGNED' ? getStatusThemeConfig('RESIGNED').mainColor : 'inherit',
                     }}>
                       İstifa
                     </Typography>
@@ -830,7 +874,7 @@ const MembersListPage: React.FC = () => {
                   <MenuItem value="EXPELLED">
                     <Typography sx={{ 
                       fontWeight: statusFilter === 'EXPELLED' ? 700 : 400,
-                      color: statusFilter === 'EXPELLED' ? theme.palette.primary.main : 'inherit',
+                      color: statusFilter === 'EXPELLED' ? getStatusThemeConfig('EXPELLED').mainColor : 'inherit',
                     }}>
                       İhraç
                     </Typography>
@@ -838,7 +882,7 @@ const MembersListPage: React.FC = () => {
                   <MenuItem value="REJECTED">
                     <Typography sx={{ 
                       fontWeight: statusFilter === 'REJECTED' ? 700 : 400,
-                      color: statusFilter === 'REJECTED' ? theme.palette.primary.main : 'inherit',
+                      color: statusFilter === 'REJECTED' ? getStatusThemeConfig('REJECTED').mainColor : 'inherit',
                     }}>
                       Reddedildi
                     </Typography>
@@ -857,7 +901,7 @@ const MembersListPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                     },
                   },
                 }}
@@ -875,10 +919,10 @@ const MembersListPage: React.FC = () => {
                   sx={{
                     '& .MuiSelect-select': {
                       fontWeight: branchFilter !== 'ALL' ? 600 : 400,
-                      color: branchFilter !== 'ALL' ? theme.palette.primary.main : 'inherit',
+                      color: branchFilter !== 'ALL' ? statusTheme.mainColor : 'inherit',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: branchFilter !== 'ALL' ? theme.palette.primary.main : undefined,
+                      borderColor: branchFilter !== 'ALL' ? statusTheme.mainColor : undefined,
                       borderWidth: branchFilter !== 'ALL' ? 2 : 1,
                     },
                   }}
@@ -903,10 +947,10 @@ const MembersListPage: React.FC = () => {
                         key={branch.id} 
                         value={branch.id}
                         sx={{
-                          backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          backgroundColor: isSelected ? alpha(statusTheme.mainColor, 0.1) : 'transparent',
                           '&:hover': {
                             backgroundColor: isSelected 
-                              ? alpha(theme.palette.primary.main, 0.15) 
+                              ? alpha(statusTheme.mainColor, 0.15) 
                               : alpha(theme.palette.action.hover, 0.05),
                           },
                         }}
@@ -914,7 +958,7 @@ const MembersListPage: React.FC = () => {
                         <Typography 
                           sx={{ 
                             fontWeight: isSelected ? 700 : 400,
-                            color: isSelected ? theme.palette.primary.main : 'inherit',
+                            color: isSelected ? statusTheme.mainColor : 'inherit',
                           }}
                         >
                           {branch.name}
@@ -936,7 +980,7 @@ const MembersListPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                     },
                   },
                 }}
@@ -961,7 +1005,7 @@ const MembersListPage: React.FC = () => {
                       const province = provinces.find(p => p.id === selected[0]);
                       return (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                          <Typography sx={{ fontWeight: 700, color: statusTheme.mainColor }}>
                             {province?.name || selected[0]}
                           </Typography>
                         </Box>
@@ -969,7 +1013,7 @@ const MembersListPage: React.FC = () => {
                     }
                     return (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                        <Typography sx={{ fontWeight: 700, color: statusTheme.mainColor }}>
                           {selected.length} il seçildi
                         </Typography>
                       </Box>
@@ -978,10 +1022,10 @@ const MembersListPage: React.FC = () => {
                   sx={{
                     '& .MuiSelect-select': {
                       fontWeight: provinceFilter.length > 0 ? 600 : 400,
-                      color: provinceFilter.length > 0 ? theme.palette.primary.main : 'inherit',
+                      color: provinceFilter.length > 0 ? statusTheme.mainColor : 'inherit',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: provinceFilter.length > 0 ? theme.palette.primary.main : undefined,
+                      borderColor: provinceFilter.length > 0 ? statusTheme.mainColor : undefined,
                       borderWidth: provinceFilter.length > 0 ? 2 : 1,
                     },
                   }}
@@ -1003,10 +1047,10 @@ const MembersListPage: React.FC = () => {
                         key={province.id} 
                         value={province.id}
                         sx={{
-                          backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          backgroundColor: isSelected ? alpha(statusTheme.mainColor, 0.1) : 'transparent',
                           '&:hover': {
                             backgroundColor: isSelected 
-                              ? alpha(theme.palette.primary.main, 0.15) 
+                              ? alpha(statusTheme.mainColor, 0.15) 
                               : alpha(theme.palette.action.hover, 0.05),
                           },
                         }}
@@ -1014,7 +1058,7 @@ const MembersListPage: React.FC = () => {
                         <Typography 
                           sx={{ 
                             fontWeight: isSelected ? 700 : 400,
-                            color: isSelected ? theme.palette.primary.main : 'inherit',
+                            color: isSelected ? statusTheme.mainColor : 'inherit',
                           }}
                         >
                           {province.name}
@@ -1062,7 +1106,7 @@ const MembersListPage: React.FC = () => {
                       const district = districts.find(d => d.id === selected[0]);
                       return (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                          <Typography sx={{ fontWeight: 700, color: statusTheme.mainColor }}>
                             {district?.name || selected[0]}
                           </Typography>
                         </Box>
@@ -1070,7 +1114,7 @@ const MembersListPage: React.FC = () => {
                     }
                     return (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                        <Typography sx={{ fontWeight: 700, color: statusTheme.mainColor }}>
                           {selected.length} ilçe seçildi
                         </Typography>
                       </Box>
@@ -1079,10 +1123,10 @@ const MembersListPage: React.FC = () => {
                   sx={{
                     '& .MuiSelect-select': {
                       fontWeight: districtFilter.length > 0 ? 600 : 400,
-                      color: districtFilter.length > 0 ? theme.palette.primary.main : 'inherit',
+                      color: districtFilter.length > 0 ? statusTheme.mainColor : 'inherit',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: districtFilter.length > 0 ? theme.palette.primary.main : undefined,
+                      borderColor: districtFilter.length > 0 ? statusTheme.mainColor : undefined,
                       borderWidth: districtFilter.length > 0 ? 2 : 1,
                     },
                   }}
@@ -1104,10 +1148,10 @@ const MembersListPage: React.FC = () => {
                         key={district.id} 
                         value={district.id}
                         sx={{
-                          backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          backgroundColor: isSelected ? alpha(statusTheme.mainColor, 0.1) : 'transparent',
                           '&:hover': {
                             backgroundColor: isSelected 
-                              ? alpha(theme.palette.primary.main, 0.15) 
+                              ? alpha(statusTheme.mainColor, 0.15) 
                               : alpha(theme.palette.action.hover, 0.05),
                           },
                         }}
@@ -1115,7 +1159,7 @@ const MembersListPage: React.FC = () => {
                         <Typography 
                           sx={{ 
                             fontWeight: isSelected ? 700 : 400,
-                            color: isSelected ? theme.palette.primary.main : 'inherit',
+                            color: isSelected ? statusTheme.mainColor : 'inherit',
                           }}
                         >
                           {district.name}
@@ -1137,7 +1181,7 @@ const MembersListPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                     },
                   },
                 }}
@@ -1162,7 +1206,7 @@ const MembersListPage: React.FC = () => {
                       const institution = institutions.find(i => i.id === selected[0]);
                       return (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                          <Typography sx={{ fontWeight: 700, color: statusTheme.mainColor }}>
                             {institution?.name || selected[0]}
                           </Typography>
                         </Box>
@@ -1170,7 +1214,7 @@ const MembersListPage: React.FC = () => {
                     }
                     return (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                        <Typography sx={{ fontWeight: 700, color: statusTheme.mainColor }}>
                           {selected.length} kurum seçildi
                         </Typography>
                       </Box>
@@ -1179,10 +1223,10 @@ const MembersListPage: React.FC = () => {
                   sx={{
                     '& .MuiSelect-select': {
                       fontWeight: institutionFilter.length > 0 ? 600 : 400,
-                      color: institutionFilter.length > 0 ? theme.palette.primary.main : 'inherit',
+                      color: institutionFilter.length > 0 ? statusTheme.mainColor : 'inherit',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: institutionFilter.length > 0 ? theme.palette.primary.main : undefined,
+                      borderColor: institutionFilter.length > 0 ? statusTheme.mainColor : undefined,
                       borderWidth: institutionFilter.length > 0 ? 2 : 1,
                     },
                   }}
@@ -1204,10 +1248,10 @@ const MembersListPage: React.FC = () => {
                         key={institution.id} 
                         value={institution.id}
                         sx={{
-                          backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                          backgroundColor: isSelected ? alpha(statusTheme.mainColor, 0.1) : 'transparent',
                           '&:hover': {
                             backgroundColor: isSelected 
-                              ? alpha(theme.palette.primary.main, 0.15) 
+                              ? alpha(statusTheme.mainColor, 0.15) 
                               : alpha(theme.palette.action.hover, 0.05),
                           },
                         }}
@@ -1215,7 +1259,7 @@ const MembersListPage: React.FC = () => {
                         <Typography 
                           sx={{ 
                             fontWeight: isSelected ? 700 : 400,
-                            color: isSelected ? theme.palette.primary.main : 'inherit',
+                            color: isSelected ? statusTheme.mainColor : 'inherit',
                           }}
                         >
                           {institution.name}
@@ -1235,8 +1279,8 @@ const MembersListPage: React.FC = () => {
                 mt: 3,
                 p: 2.5,
                 borderRadius: 2.5,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+                border: `1px solid ${alpha(statusTheme.mainColor, 0.2)}`,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
@@ -1244,7 +1288,7 @@ const MembersListPage: React.FC = () => {
                   variant="body2"
                   sx={{
                     fontWeight: 700,
-                    color: theme.palette.primary.main,
+                    color: statusTheme.mainColor,
                     fontSize: '0.95rem',
                     display: 'flex',
                     alignItems: 'center',
@@ -1284,7 +1328,7 @@ const MembersListPage: React.FC = () => {
                     label={`Durum: ${getStatusLabel(statusFilter)}`}
                     onDelete={() => setStatusFilter('ACTIVE')}
                     deleteIcon={<CloseIcon />}
-                    color="primary"
+                    color={getStatusColor(statusFilter)}
                     sx={{
                       fontWeight: 600,
                       fontSize: '0.85rem',
@@ -1300,7 +1344,7 @@ const MembersListPage: React.FC = () => {
                     label={`Şube: ${branches.find(b => b.id === branchFilter)?.name || branchFilter}`}
                     onDelete={() => setBranchFilter('ALL')}
                     deleteIcon={<CloseIcon />}
-                    color="primary"
+                    color={getStatusColor(statusFilter)}
                     sx={{
                       fontWeight: 600,
                       fontSize: '0.85rem',
@@ -1321,7 +1365,7 @@ const MembersListPage: React.FC = () => {
                         setProvinceFilter(prev => prev.filter(id => id !== provinceId));
                       }}
                       deleteIcon={<CloseIcon />}
-                      color="primary"
+                      color={getStatusColor(statusFilter)}
                       sx={{
                         fontWeight: 600,
                         fontSize: '0.85rem',
@@ -1343,7 +1387,7 @@ const MembersListPage: React.FC = () => {
                         setDistrictFilter(prev => prev.filter(id => id !== districtId));
                       }}
                       deleteIcon={<CloseIcon />}
-                      color="primary"
+                      color={getStatusColor(statusFilter)}
                       sx={{
                         fontWeight: 600,
                         fontSize: '0.85rem',
@@ -1365,7 +1409,7 @@ const MembersListPage: React.FC = () => {
                         setInstitutionFilter(prev => prev.filter(id => id !== institutionId));
                       }}
                       deleteIcon={<CloseIcon />}
-                      color="primary"
+                      color={getStatusColor(statusFilter)}
                       sx={{
                         fontWeight: 600,
                         fontSize: '0.85rem',
@@ -1382,7 +1426,7 @@ const MembersListPage: React.FC = () => {
                     label={`Arama: "${searchText}"`}
                     onDelete={() => setSearchText('')}
                     deleteIcon={<CloseIcon />}
-                    color="primary"
+                    color={getStatusColor(statusFilter)}
                     sx={{
                       fontWeight: 600,
                       fontSize: '0.85rem',
@@ -1404,15 +1448,15 @@ const MembersListPage: React.FC = () => {
                 mt: 3,
                 p: 2,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.info.light, 0.05)} 100%)`,
-                border: `1px solid ${alpha(theme.palette.info.main, 0.15)}`,
+                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+                border: `1px solid ${alpha(statusTheme.mainColor, 0.15)}`,
               }}
             >
               <Typography
                 variant="body2"
                 sx={{
                   fontWeight: 600,
-                  color: theme.palette.info.dark,
+                  color: statusTheme.darkColor,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1,
@@ -1453,11 +1497,15 @@ const MembersListPage: React.FC = () => {
                   py: 1.25,
                   fontSize: '0.9rem',
                   borderWidth: 2,
+                  borderColor: statusTheme.mainColor,
+                  color: statusTheme.mainColor,
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     borderWidth: 2,
+                    borderColor: statusTheme.darkColor,
+                    backgroundColor: alpha(statusTheme.mainColor, 0.08),
                     transform: 'translateY(-2px)',
-                    boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                    boxShadow: `0 6px 16px ${alpha(statusTheme.mainColor, 0.25)}`,
                   },
                 }}
               >
@@ -1483,11 +1531,15 @@ const MembersListPage: React.FC = () => {
                   py: 1.25,
                   fontSize: '0.9rem',
                   borderWidth: 2,
+                  borderColor: statusTheme.mainColor,
+                  color: statusTheme.mainColor,
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     borderWidth: 2,
+                    borderColor: statusTheme.darkColor,
+                    backgroundColor: alpha(statusTheme.mainColor, 0.08),
                     transform: 'translateY(-2px)',
-                    boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                    boxShadow: `0 6px 16px ${alpha(statusTheme.mainColor, 0.25)}`,
                   },
                 }}
               >
@@ -1514,11 +1566,15 @@ const MembersListPage: React.FC = () => {
                   py: 1.25,
                   fontSize: '0.9rem',
                   borderWidth: 2,
+                  borderColor: statusTheme.mainColor,
+                  color: statusTheme.mainColor,
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     borderWidth: 2,
+                    borderColor: statusTheme.darkColor,
+                    backgroundColor: alpha(statusTheme.mainColor, 0.08),
                     transform: 'translateY(-2px)',
-                    boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                    boxShadow: `0 6px 16px ${alpha(statusTheme.mainColor, 0.25)}`,
                   },
                 }}
               >
@@ -1544,8 +1600,8 @@ const MembersListPage: React.FC = () => {
                 alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
-                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.06)} 0%, ${alpha(statusTheme.lightColor, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(statusTheme.mainColor, 0.12)}`,
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
@@ -1561,8 +1617,8 @@ const MembersListPage: React.FC = () => {
               '& .MuiDataGrid-row': {
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.03),
-                  boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
+                  backgroundColor: alpha(statusTheme.mainColor, 0.03),
+                  boxShadow: `inset 4px 0 0 ${statusTheme.mainColor}`,
                 },
                 '&:nth-of-type(even)': {
                   backgroundColor: alpha(theme.palette.grey[50], 0.3),

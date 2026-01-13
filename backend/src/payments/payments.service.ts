@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberPaymentDto } from './dto/create-member-payment.dto';
+import { UpdateMemberPaymentDto } from './dto/update-member-payment.dto';
 import { PaymentType, MemberStatus, NotificationType, NotificationTargetType } from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -86,22 +87,6 @@ export class PaymentsService {
       if (!tevkifatFile) {
         throw new NotFoundException('Tevkifat dosyası bulunamadı');
       }
-    }
-
-    // Aynı üye, ay, yıl için ödeme var mı kontrol et
-    const existingPayment = await this.prisma.memberPayment.findFirst({
-      where: {
-        memberId: dto.memberId,
-        paymentPeriodYear: dto.paymentPeriodYear,
-        paymentPeriodMonth: dto.paymentPeriodMonth,
-        isApproved: true, // Sadece onaylı ödemeleri kontrol et
-      },
-    });
-
-    if (existingPayment) {
-      throw new BadRequestException(
-        'Bu üye için bu ay/yıl döneminde zaten onaylı bir ödeme kaydı bulunmaktadır',
-      );
     }
 
     const paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : new Date();
@@ -540,6 +525,169 @@ export class PaymentsService {
   }
 
   /**
+   * Ödemeyi güncelle
+   */
+  async updatePayment(
+    id: string,
+    dto: UpdateMemberPaymentDto,
+    updatedBy: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    // Ödeme kaydını bul
+    const payment = await this.prisma.memberPayment.findUnique({
+      where: { id },
+      include: {
+        member: {
+          select: {
+            id: true,
+            status: true,
+            isActive: true,
+            deletedAt: true,
+            tevkifatCenterId: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Ödeme kaydı bulunamadı');
+    }
+
+    // Onaylı ödemeler güncellenebilir (hızlı ödeme sayfasından düzenleme için)
+    // Not: Onaylı ödemelerin güncellenmesi iş mantığı açısından uygun olabilir
+    // Eğer ileride sadece belirli alanların güncellenmesine izin verilmesi gerekiyorsa,
+    // bu kontrol tekrar eklenebilir veya daha detaylı hale getirilebilir
+
+    // Üye değişikliği varsa kontrol et
+    if (dto.memberId && dto.memberId !== payment.memberId) {
+      const member = await this.prisma.member.findUnique({
+        where: { id: dto.memberId },
+        select: {
+          id: true,
+          registrationNumber: true,
+          status: true,
+          isActive: true,
+          deletedAt: true,
+          tevkifatCenterId: true,
+        },
+      });
+
+      if (!member) {
+        throw new NotFoundException('Üye bulunamadı');
+      }
+
+      // ACTIVE veya APPROVED durumundaki üyelere ödeme kabul edilir
+      if (
+        (member.status !== MemberStatus.ACTIVE && member.status !== MemberStatus.APPROVED) ||
+        !member.isActive ||
+        member.deletedAt
+      ) {
+        throw new BadRequestException('Aktif veya onaylanmış olmayan üye için ödeme kaydedilemez');
+      }
+    }
+
+    // Ödeme türü ve tevkifat merkezi kontrolü
+    const paymentType = dto.paymentType ?? payment.paymentType;
+    const tevkifatCenterId = dto.tevkifatCenterId ?? payment.tevkifatCenterId;
+
+    if (paymentType === PaymentType.TEVKIFAT && !tevkifatCenterId) {
+      throw new BadRequestException('Tevkifat ödemesi için tevkifat merkezi seçilmelidir');
+    }
+
+    // Tevkifat merkezi kontrolü (varsa)
+    if (tevkifatCenterId) {
+      const tevkifatCenter = await this.prisma.tevkifatCenter.findUnique({
+        where: { id: tevkifatCenterId },
+      });
+
+      if (!tevkifatCenter) {
+        throw new NotFoundException('Tevkifat merkezi bulunamadı');
+      }
+    }
+
+    // Tevkifat dosyası kontrolü (varsa)
+    if (dto.tevkifatFileId) {
+      const tevkifatFile = await this.prisma.tevkifatFile.findUnique({
+        where: { id: dto.tevkifatFileId },
+      });
+
+      if (!tevkifatFile) {
+        throw new NotFoundException('Tevkifat dosyası bulunamadı');
+      }
+    }
+
+    // Güncelleme verilerini hazırla
+    const updateData: any = {};
+
+    if (dto.memberId) updateData.memberId = dto.memberId;
+    if (dto.paymentDate) updateData.paymentDate = new Date(dto.paymentDate);
+    if (dto.paymentPeriodMonth !== undefined) updateData.paymentPeriodMonth = dto.paymentPeriodMonth;
+    if (dto.paymentPeriodYear !== undefined) updateData.paymentPeriodYear = dto.paymentPeriodYear;
+    if (dto.amount) updateData.amount = dto.amount;
+    if (dto.paymentType) updateData.paymentType = dto.paymentType;
+    if (dto.tevkifatCenterId !== undefined) updateData.tevkifatCenterId = dto.tevkifatCenterId;
+    if (dto.tevkifatFileId !== undefined) updateData.tevkifatFileId = dto.tevkifatFileId;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.documentUrl !== undefined) updateData.documentUrl = dto.documentUrl;
+
+    // IP adresi ve user agent güncelle (varsa)
+    if (ipAddress) updateData.ipAddress = ipAddress;
+    if (userAgent) updateData.userAgent = userAgent;
+
+    // Ödemeyi güncelle
+    const updatedPayment = await this.prisma.memberPayment.update({
+      where: { id },
+      data: updateData,
+      include: {
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+            status: true,
+            branch: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            institution: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            tevkifatCenter: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        tevkifatCenter: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        createdByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return updatedPayment;
+  }
+
+  /**
    * Ödemeyi iptal et / sil (Admin)
    */
   async deletePayment(id: string) {
@@ -551,9 +699,10 @@ export class PaymentsService {
       throw new NotFoundException('Ödeme kaydı bulunamadı');
     }
 
-    if (payment.isApproved) {
-      throw new BadRequestException('Onaylı ödemeler silinemez');
-    }
+    // Onaylı ödemeler de silinebilir (hızlı ödeme sayfasından düzenleme/silme için)
+    // Not: Onaylı ödemelerin silinmesi iş mantığı açısından uygun olabilir
+    // Eğer ileride sadece belirli durumlarda silinmesine izin verilmesi gerekiyorsa,
+    // bu kontrol tekrar eklenebilir veya daha detaylı hale getirilebilir
 
     return this.prisma.memberPayment.delete({
       where: { id },
