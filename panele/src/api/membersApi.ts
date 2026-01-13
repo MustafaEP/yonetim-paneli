@@ -68,14 +68,35 @@ export const activateMember = async (id: string): Promise<void> => {
 export const createMemberApplication = async (payload: {
   firstName: string;
   lastName: string;
-  nationalId?: string;
+  nationalId: string;
   phone?: string;
   email?: string;
   source?: 'DIRECT' | 'OTHER';
+  membershipInfoOptionId?: string;
+  memberGroupId?: string;
+  registrationNumber?: string;
+  boardDecisionDate?: string;
+  boardDecisionBookNo?: string;
+  motherName?: string;
+  fatherName?: string;
+  birthDate?: string;
+  birthplace?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  educationStatus?: 'PRIMARY' | 'HIGH_SCHOOL' | 'COLLEGE';
+  institutionId?: string;
+  tevkifatCenterId?: string;
+  tevkifatTitleId?: string;
+  branchId: string;
   provinceId?: string;
   districtId?: string;
-  dealerId?: string;
-  duesPlanId: string;
+  // Kurum Detay Bilgileri
+  dutyUnit?: string;
+  institutionAddress?: string;
+  institutionProvinceId?: string;
+  institutionDistrictId?: string;
+  professionId?: string;
+  institutionRegNo?: string;
+  staffTitleCode?: string;
   previousCancelledMemberId?: string;
 }): Promise<MemberDetail> => {
   const res = await httpClient.post<MemberDetail>('/members/applications', payload);

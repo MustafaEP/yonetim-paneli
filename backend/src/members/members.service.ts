@@ -83,7 +83,9 @@ export class MembersService {
       { key: 'MEMBERSHIP_REQUIRE_PHONE', field: 'phone', label: 'Telefon' },
       { key: 'MEMBERSHIP_REQUIRE_EMAIL', field: 'email', label: 'E-posta' },
       { key: 'MEMBERSHIP_REQUIRE_INSTITUTION_REG_NO', field: 'institutionRegNo', label: 'Kurum sicil no' },
-      { key: 'MEMBERSHIP_REQUIRE_WORK_UNIT', field: 'workUnit', label: 'Görev yaptığı birim' },
+      // Not: DTO ve DB alanı "dutyUnit". Eskiden "workUnit" adıyla kontrol edildiği için
+      // MEMBERSHIP_REQUIRE_WORK_UNIT=true olduğunda tüm başvurular 400 veriyordu.
+      { key: 'MEMBERSHIP_REQUIRE_WORK_UNIT', field: 'dutyUnit', label: 'Görev yaptığı birim' },
     ];
 
     for (const { key, field, label } of requiredFields) {
