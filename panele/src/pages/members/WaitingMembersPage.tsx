@@ -424,7 +424,7 @@ const WaitingMembersPage: React.FC = () => {
               </Tooltip>
             )}
             {canApprove && isApproved && (
-              <Box onClick={(e) => e.stopPropagation()}>
+              <Box onClick={(e) => e.stopPropagation()} sx={{ display: 'contents' }}>
                 <ActivateMemberButton
                   memberId={params.row.id}
                   memberName={`${params.row.firstName} ${params.row.lastName}`}

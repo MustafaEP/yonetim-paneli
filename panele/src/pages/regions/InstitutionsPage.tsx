@@ -26,6 +26,8 @@ import {
   FormControlLabel,
   FormLabel,
   Divider,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -72,6 +74,7 @@ import {
 const InstitutionsPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(0);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
 
@@ -590,7 +593,7 @@ const InstitutionsPage: React.FC = () => {
                   Kurumları görüntüleyin ve yönetin
                 </Typography>
               </Box>
-              {hasPermission('INSTITUTION_CREATE') && (
+              {hasPermission('INSTITUTION_CREATE') && activeTab === 0 && (
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
@@ -613,359 +616,371 @@ const InstitutionsPage: React.FC = () => {
                   Yeni Kurum
                 </Button>
               )}
+              {canManageInstitution && activeTab === 1 && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenProfessionDialog()}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1.5,
+                    backgroundColor: 'white',
+                    color: theme.palette.success.main,
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                    '&:hover': {
+                      backgroundColor: alpha('#fff', 0.9),
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                    },
+                  }}
+                >
+                  Yeni Meslek/Unvan
+                </Button>
+              )}
             </Box>
           </Box>
         </Card>
       </Box>
 
+      {/* Tabs */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          mb: 3,
+          overflow: 'hidden',
+          background: '#fff',
+        }}
+      >
+        <Tabs
+          value={activeTab}
+          onChange={(_e, newValue) => setActiveTab(newValue)}
+          sx={{
+            background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.02)} 0%, ${alpha(theme.palette.success.light, 0.01)} 100%)`,
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.95rem',
+              minHeight: 64,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.success.main, 0.05),
+              },
+              '&.Mui-selected': {
+                color: theme.palette.success.main,
+              },
+            },
+            '& .MuiTabs-indicator': {
+              height: 3,
+              borderRadius: '3px 3px 0 0',
+            },
+          }}
+        >
+          <Tab 
+            icon={<BusinessIcon />} 
+            iconPosition="start"
+            label="Kurumlar" 
+          />
+          <Tab 
+            icon={<WorkIcon />} 
+            iconPosition="start"
+            label="Meslek/Unvanlar" 
+          />
+        </Tabs>
+      </Card>
+
       {/* Ana Kart */}
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: `0 12px 28px ${alpha(theme.palette.success.main, 0.12)}`,
-            transform: 'translateY(-2px)',
-          }
+          background: '#fff',
         }}
       >
+        {activeTab === 0 ? (
+          <>
+            {/* İçerik Bölümü */}
+            <Box sx={{ p: { xs: 2, sm: 3 } }}>
+              {/* Sonuç Sayısı */}
+              {!loading && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    mb: 2,
+                    backgroundColor: alpha(theme.palette.info.main, 0.05),
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      color: theme.palette.info.main,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <BusinessIcon fontSize="small" />
+                    Toplam {rows.length} kurum bulundu
+                  </Typography>
+                </Paper>
+              )}
 
-        {/* İçerik Bölümü */}
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
-          {/* Sonuç Sayısı */}
-          {!loading && (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                mb: 2,
-                backgroundColor: alpha(theme.palette.info.main, 0.05),
-                borderRadius: 2,
-                border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: 600,
-                  color: theme.palette.info.main,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                }}
-              >
-                <BusinessIcon fontSize="small" />
-                Toplam {rows.length} kurum bulundu
-              </Typography>
-            </Paper>
-          )}
-
-          {/* Tablo */}
-          <Box
-            sx={{
-              height: { xs: 400, sm: 500, md: 600 },
-              minHeight: { xs: 400, sm: 500, md: 600 },
-              '& .MuiDataGrid-root': {
-                border: 'none',
-                borderRadius: 2,
-              },
-              '& .MuiDataGrid-cell': {
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                borderRadius: 0,
-              },
-              '& .MuiDataGrid-columnHeaderTitle': {
-                fontWeight: 700,
-                fontSize: '0.875rem',
-              },
-              '& .MuiDataGrid-row': {
-                cursor: canManageInstitution ? 'pointer' : 'default',
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                },
-              },
-              '& .MuiDataGrid-footerContainer': {
-                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                backgroundColor: alpha(theme.palette.background.default, 0.5),
-              },
-            }}
-          >
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={loading}
-              onRowDoubleClick={(params) => {
-                if (canViewInstitution) {
-                  navigate(`/institutions/${params.id}`);
-                }
-              }}
-              initialState={{
-                pagination: {
-                  paginationModel: { pageSize: 25, page: 0 },
-                },
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
-              disableRowSelectionOnClick
-              sx={{
-                '& .MuiDataGrid-virtualScroller': {
-                  minHeight: '200px',
-                },
-              }}
-            />
-          </Box>
-        </Box>
-      </Card>
-
-      {/* Meslek/Unvanlar Bölümü */}
-      <Card
-        elevation={0}
-        sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-          overflow: 'hidden',
-          mt: 3,
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
-            transform: 'translateY(-2px)',
-          }
-        }}
-      >
-        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Tablo */}
               <Box
                 sx={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 2,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-                }}
-              >
-                <WorkIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
-              </Box>
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-                  Meslek/Unvanlar
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
-                  Meslek/Unvanları görüntüleyin ve yönetin
-                </Typography>
-              </Box>
-            </Box>
-            {canManageInstitution && (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenProfessionDialog()}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.5,
-                }}
-              >
-                Yeni Meslek/Unvan
-              </Button>
-            )}
-          </Box>
-
-          {/* Filtre: Pasif olanları göster */}
-          {canManageInstitution && (
-            <Box
-              sx={{
-                mb: 3,
-                p: 2.5,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.04)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
-                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-              }}
-            >
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={showInactiveProfessions}
-                    onChange={(e) => setShowInactiveProfessions(e.target.checked)}
-                    size="small"
-                  />
-                }
-                label="Pasif olanları göster"
-                sx={{
-                  '& .MuiFormControlLabel-label': {
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
+                  height: { xs: 400, sm: 500, md: 600 },
+                  minHeight: { xs: 400, sm: 500, md: 600 },
+                  '& .MuiDataGrid-root': {
+                    border: 'none',
+                    borderRadius: 2,
+                  },
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                    borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                    borderRadius: 0,
+                  },
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                  },
+                  '& .MuiDataGrid-row': {
+                    cursor: canManageInstitution ? 'pointer' : 'default',
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                    },
+                  },
+                  '& .MuiDataGrid-footerContainer': {
+                    borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                    backgroundColor: alpha(theme.palette.background.default, 0.5),
                   },
                 }}
-              />
+              >
+                <DataGrid
+                  rows={rows}
+                  columns={columns}
+                  getRowId={(row) => row.id}
+                  loading={loading}
+                  onRowDoubleClick={(params) => {
+                    if (canViewInstitution) {
+                      navigate(`/institutions/${params.id}`);
+                    }
+                  }}
+                  initialState={{
+                    pagination: {
+                      paginationModel: { pageSize: 25, page: 0 },
+                    },
+                  }}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  disableRowSelectionOnClick
+                  sx={{
+                    '& .MuiDataGrid-virtualScroller': {
+                      minHeight: '200px',
+                    },
+                  }}
+                />
+              </Box>
             </Box>
-          )}
+          </>
+        ) : activeTab === 1 ? (
+          /* Meslek/Unvanlar Tab */
+          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+            {/* Filtre: Pasif olanları göster */}
+            {canManageInstitution && (
+              <Box
+                sx={{
+                  mb: 3,
+                  p: 2.5,
+                  borderRadius: 2,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.04)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showInactiveProfessions}
+                      onChange={(e) => setShowInactiveProfessions(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label="Pasif olanları göster"
+                  sx={{
+                    '& .MuiFormControlLabel-label': {
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                    },
+                  }}
+                />
+              </Box>
+            )}
 
-          {loadingProfessions ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                borderRadius: 3,
-                overflow: 'hidden',
-                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-              }}
-            >
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow 
-                      sx={{ 
-                        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
-                        borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-                      }}
-                    >
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Meslek/Unvan Adı</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
-                      {canManageInstitution && (
-                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
-                      )}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {professions.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={canManageInstitution ? 3 : 2} align="center" sx={{ py: 6 }}>
-                          <WorkIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
-                          <Typography variant="body2" color="text.secondary">
-                            Henüz meslek/unvan eklenmemiş
-                          </Typography>
-                        </TableCell>
+            {loadingProfessions ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  overflow: 'hidden',
+                  border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                }}
+              >
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow 
+                        sx={{ 
+                          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                          borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+                        }}
+                      >
+                        <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Meslek/Unvan Adı</TableCell>
+                        <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
+                        {canManageInstitution && (
+                          <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
+                        )}
                       </TableRow>
-                    ) : (
-                      professions.map((profession, index) => (
-                        <TableRow 
-                          key={profession.id}
-                          sx={{
-                            transition: 'all 0.2s ease',
-                            backgroundColor: index % 2 === 0 ? 'transparent' : alpha(theme.palette.grey[50], 0.3),
-                            '&:hover': {
-                              backgroundColor: alpha(theme.palette.primary.main, 0.03),
-                              boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
-                            },
-                          }}
-                        >
-                          <TableCell align="center">
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                              <WorkIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
-                              <Typography variant="body1" sx={{ fontWeight: 500 }}>{profession.name}</Typography>
-                            </Box>
+                    </TableHead>
+                    <TableBody>
+                      {professions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={canManageInstitution ? 3 : 2} align="center" sx={{ py: 6 }}>
+                            <WorkIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
+                            <Typography variant="body2" color="text.secondary">
+                              Henüz meslek/unvan eklenmemiş
+                            </Typography>
                           </TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={profession.isActive ? 'Aktif' : 'Pasif'}
-                              color={profession.isActive ? 'success' : 'default'}
-                              size="small"
-                              icon={profession.isActive ? <CheckCircleIcon /> : <CancelIcon />}
-                              sx={{ fontWeight: 600 }}
-                            />
-                          </TableCell>
-                          {canManageInstitution && (
-                            <TableCell align="center">
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                                <Tooltip title="Düzenle" arrow>
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleOpenProfessionDialog(profession)}
-                                    sx={{ 
-                                      color: theme.palette.primary.main,
-                                      '&:hover': {
-                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                      },
-                                    }}
-                                  >
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                {profession.isActive ? (
-                                  <>
-                                    <Tooltip title="Pasif Yap" arrow>
-                                      <IconButton
-                                        size="small"
-                                        onClick={() => {
-                                          setDeactivatingProfession(profession);
-                                          setDeactivateProfessionDialogOpen(true);
-                                        }}
-                                        sx={{ 
-                                          color: theme.palette.warning.main,
-                                          '&:hover': {
-                                            backgroundColor: alpha(theme.palette.warning.main, 0.1),
-                                          },
-                                        }}
-                                      >
-                                        <BlockIcon fontSize="small" />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Sil" arrow>
-                                      <IconButton
-                                        size="small"
-                                        onClick={() => {
-                                          setDeletingProfession(profession);
-                                          setDeleteProfessionDialogOpen(true);
-                                        }}
-                                        sx={{ 
-                                          color: theme.palette.error.main,
-                                          '&:hover': {
-                                            backgroundColor: alpha(theme.palette.error.main, 0.1),
-                                          },
-                                        }}
-                                      >
-                                        <DeleteIcon fontSize="small" />
-                                      </IconButton>
-                                    </Tooltip>
-                                  </>
-                                ) : (
-                                  <Tooltip title="Aktifleştir" arrow>
+                        </TableRow>
+                      ) : (
+                        professions.map((profession, index) => (
+                          <TableRow 
+                            key={profession.id}
+                            sx={{
+                              transition: 'all 0.2s ease',
+                              backgroundColor: index % 2 === 0 ? 'transparent' : alpha(theme.palette.grey[50], 0.3),
+                              '&:hover': {
+                                backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                                boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
+                              },
+                            }}
+                          >
+                            <TableCell align="left">
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1 }}>
+                                <WorkIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
+                                <Typography variant="body1" sx={{ fontWeight: 500 }}>{profession.name}</Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell align="left">
+                              <Chip
+                                label={profession.isActive ? 'Aktif' : 'Pasif'}
+                                color={profession.isActive ? 'success' : 'default'}
+                                size="small"
+                                icon={profession.isActive ? <CheckCircleIcon /> : <CancelIcon />}
+                                sx={{ fontWeight: 600 }}
+                              />
+                            </TableCell>
+                            {canManageInstitution && (
+                              <TableCell align="left">
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1 }}>
+                                  <Tooltip title="Düzenle" arrow>
                                     <IconButton
                                       size="small"
-                                      onClick={() => handleActivateProfession(profession)}
-                                      disabled={deleting}
+                                      onClick={() => handleOpenProfessionDialog(profession)}
                                       sx={{ 
-                                        color: theme.palette.success.main,
+                                        color: theme.palette.primary.main,
                                         '&:hover': {
-                                          backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
                                         },
                                       }}
                                     >
-                                      <RestoreIcon fontSize="small" />
+                                      <EditIcon fontSize="small" />
                                     </IconButton>
                                   </Tooltip>
-                                )}
-                              </Box>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-        </Box>
+                                  {profession.isActive ? (
+                                    <>
+                                      <Tooltip title="Pasif Yap" arrow>
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => {
+                                            setDeactivatingProfession(profession);
+                                            setDeactivateProfessionDialogOpen(true);
+                                          }}
+                                          sx={{ 
+                                            color: theme.palette.warning.main,
+                                            '&:hover': {
+                                              backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                                            },
+                                          }}
+                                        >
+                                          <BlockIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="Sil" arrow>
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => {
+                                            setDeletingProfession(profession);
+                                            setDeleteProfessionDialogOpen(true);
+                                          }}
+                                          sx={{ 
+                                            color: theme.palette.error.main,
+                                            '&:hover': {
+                                              backgroundColor: alpha(theme.palette.error.main, 0.1),
+                                            },
+                                          }}
+                                        >
+                                          <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </>
+                                  ) : (
+                                    <Tooltip title="Aktifleştir" arrow>
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleActivateProfession(profession)}
+                                        disabled={deleting}
+                                        sx={{ 
+                                          color: theme.palette.success.main,
+                                          '&:hover': {
+                                            backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                          },
+                                        }}
+                                      >
+                                        <RestoreIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </Box>
+        ) : null}
       </Card>
 
       {/* Kurum Kaldır Dialog */}
