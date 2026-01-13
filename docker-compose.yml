@@ -40,6 +40,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       args:
+        # Optional: npm registry mirror (useful if npmjs.org is slow/blocked on VPS)
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
         # Optional: if Prisma engine downloads are slow/blocked on your VPS,
         # set PRISMA_ENGINES_MIRROR in your environment or .env
         PRISMA_ENGINES_MIRROR: ${PRISMA_ENGINES_MIRROR:-}
