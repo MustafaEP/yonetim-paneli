@@ -81,6 +81,19 @@ export interface CreateMemberPaymentDto {
   documentUrl?: string;
 }
 
+export interface UpdateMemberPaymentDto {
+  memberId?: string;
+  paymentDate?: string;
+  paymentPeriodMonth?: number;
+  paymentPeriodYear?: number;
+  amount?: string;
+  paymentType?: PaymentType;
+  tevkifatCenterId?: string;
+  tevkifatFileId?: string;
+  description?: string;
+  documentUrl?: string;
+}
+
 export interface PaymentListFilters {
   memberId?: string;
   year?: number;
@@ -90,6 +103,7 @@ export interface PaymentListFilters {
   branchId?: string;
   provinceId?: string;
   districtId?: string;
+  institutionId?: string;
   isApproved?: boolean;
   registrationNumber?: string;
 }
@@ -97,6 +111,12 @@ export interface PaymentListFilters {
 // 🔹 Ödeme oluştur: POST /payments
 export const createPayment = async (data: CreateMemberPaymentDto): Promise<MemberPayment> => {
   const res = await httpClient.post<MemberPayment>('/payments', data);
+  return res.data;
+};
+
+// 🔹 Ödeme güncelle: PATCH /payments/:id
+export const updatePayment = async (id: string, data: UpdateMemberPaymentDto): Promise<MemberPayment> => {
+  const res = await httpClient.patch<MemberPayment>(`/payments/${id}`, data);
   return res.data;
 };
 

@@ -22,6 +22,7 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Grid,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 import CheckIcon from '@mui/icons-material/Check';
@@ -29,20 +30,21 @@ import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import EditIcon from '@mui/icons-material/Edit';
+import ClearIcon from '@mui/icons-material/Clear';
+import PeopleIcon from '@mui/icons-material/People';
 import { useNavigate } from 'react-router-dom';
 
 import type { MemberApplicationRow, MemberStatus } from '../../types/member';
 import {
   getApprovedMembers,
-  activateMember,
   rejectMember,
 } from '../../api/membersApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { ActivateMemberButton } from '../../components/members/ActivateMemberButton';
 
 const WaitingMembersPage: React.FC = () => {
   const theme = useTheme();
@@ -62,6 +64,7 @@ const WaitingMembersPage: React.FC = () => {
     type: null,
     memberId: null,
   });
+  const [selectedMemberName, setSelectedMemberName] = useState('');
 
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -187,13 +190,8 @@ const WaitingMembersPage: React.FC = () => {
     loadWaitingMembers();
   }, []);
 
-  const handleActivateClick = (id: string) => {
-    if (!canApprove) return;
-    setConfirmDialog({
-      open: true,
-      type: 'activate',
-      memberId: id,
-    });
+  const handleActivated = () => {
+    loadWaitingMembers();
   };
 
   const handleEditClick = (id: string) => {
@@ -201,8 +199,9 @@ const WaitingMembersPage: React.FC = () => {
     navigate(`/members/${id}/edit`);
   };
 
-  const handleRejectClick = (id: string) => {
+  const handleRejectClick = (id: string, memberName: string) => {
     if (!canReject) return;
+    setSelectedMemberName(memberName);
     setConfirmDialog({
       open: true,
       type: 'reject',
@@ -219,22 +218,14 @@ const WaitingMembersPage: React.FC = () => {
     setConfirmDialog({ open: false, type: null, memberId: null });
 
     try {
-      if (confirmDialog.type === 'activate') {
-        await activateMember(id);
-        await loadWaitingMembers();
-        toast.showSuccess('Üye başarıyla aktifleştirildi ve aktif üyeler listesine eklendi.');
-      } else {
+      if (confirmDialog.type === 'reject') {
         await rejectMember(id);
         await loadWaitingMembers();
         toast.showSuccess('Üye başarıyla reddedildi.');
       }
     } catch (e) {
       console.error('Üye işlenirken hata:', e);
-      toast.showError(
-        confirmDialog.type === 'activate'
-          ? 'Üye aktifleştirilirken bir hata oluştu.'
-          : 'Üye reddedilirken bir hata oluştu.'
-      );
+      toast.showError('Üye reddedilirken bir hata oluştu.');
     } finally {
       setProcessingId(null);
     }
@@ -327,23 +318,39 @@ const WaitingMembersPage: React.FC = () => {
       width: 160,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params: GridRenderCellParams<MemberApplicationRow>) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Chip
-            label={getStatusLabel(params.row.status)}
-            size="medium"
-            color={getStatusColor(params.row.status)}
-            sx={{ 
-              fontWeight: 700,
-              fontSize: '0.8rem',
-              height: '32px',
-              borderRadius: 2,
-              px: 1,
-              boxShadow: `0 2px 8px ${alpha(theme.palette[getStatusColor(params.row.status)].main, 0.25)}`,
-            }}
-          />
-        </Box>
-      ),
+      renderCell: (params: GridRenderCellParams<MemberApplicationRow>) => {
+        const statusColor = getStatusColor(params.row.status);
+        
+        // Safely get the color from palette with fallback
+        const getShadowColor = (color: string): string => {
+          const palette = theme.palette as any;
+          const colorObj = palette[color];
+          if (colorObj && colorObj.main) {
+            return colorObj.main;
+          }
+          return theme.palette.grey[500];
+        };
+        
+        const shadowColor = getShadowColor(statusColor);
+        
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Chip
+              label={getStatusLabel(params.row.status)}
+              size="medium"
+              color={statusColor}
+              sx={{ 
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                height: '32px',
+                borderRadius: 2,
+                px: 1,
+                boxShadow: `0 2px 8px ${alpha(shadowColor, 0.25)}`,
+              }}
+            />
+          </Box>
+        );
+      },
     },
     {
       field: 'actions',
@@ -363,7 +370,7 @@ const WaitingMembersPage: React.FC = () => {
                 size="medium"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/members/${params.row.id}`);
+                  navigate(`/members/${params.row.id}?source=waiting`);
                 }}
                 sx={{
                   width: 38,
@@ -417,37 +424,17 @@ const WaitingMembersPage: React.FC = () => {
               </Tooltip>
             )}
             {canApprove && isApproved && (
-              <Tooltip title="Üyeyi Aktifleştir" arrow placement="top">
-                <span>
-                  <IconButton
-                    size="medium"
-                    disabled={disabled}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleActivateClick(params.row.id);
-                    }}
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.1)} 0%, ${alpha(theme.palette.success.light, 0.05)} 100%)`,
-                      border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-                      color: theme.palette.success.main,
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
-                        color: '#fff',
-                        transform: 'translateY(-2px)',
-                        boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.35)}`,
-                      },
-                      '&:disabled': {
-                        opacity: 0.5,
-                      },
-                    }}
-                  >
-                    <PlayArrowIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              <Box onClick={(e) => e.stopPropagation()}>
+                <ActivateMemberButton
+                  memberId={params.row.id}
+                  memberName={`${params.row.firstName} ${params.row.lastName}`}
+                  onActivated={handleActivated}
+                  disabled={disabled}
+                  variant="text"
+                  size="small"
+                  iconOnly={true}
+                />
+              </Box>
             )}
             {canReject && isApproved && (
               <Tooltip title="Üyeyi Reddet" arrow placement="top">
@@ -457,7 +444,7 @@ const WaitingMembersPage: React.FC = () => {
                     disabled={disabled}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleRejectClick(params.row.id);
+                      handleRejectClick(params.row.id, `${params.row.firstName} ${params.row.lastName}`);
                     }}
                     sx={{
                       width: 38,
@@ -500,8 +487,8 @@ const WaitingMembersPage: React.FC = () => {
           mb: 4,
           p: { xs: 3, sm: 4, md: 5 },
           borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${alpha(theme.palette.warning.light, 0.05)} 100%)`,
-          border: `1px solid ${alpha(theme.palette.warning.main, 0.1)}`,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.info.light, 0.05)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
           position: 'relative',
           overflow: 'hidden',
           '&::before': {
@@ -511,7 +498,7 @@ const WaitingMembersPage: React.FC = () => {
             right: 0,
             width: '300px',
             height: '300px',
-            background: `radial-gradient(circle, ${alpha(theme.palette.warning.main, 0.1)} 0%, transparent 70%)`,
+            background: `radial-gradient(circle, ${alpha(theme.palette.info.main, 0.1)} 0%, transparent 70%)`,
             borderRadius: '50%',
             transform: 'translate(30%, -30%)',
           },
@@ -525,15 +512,15 @@ const WaitingMembersPage: React.FC = () => {
                   width: { xs: 56, sm: 64 },
                   height: { xs: 56, sm: 64 },
                   borderRadius: 3,
-                  background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
+                  background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: `0 8px 24px ${alpha(theme.palette.warning.main, 0.35)}`,
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.info.main, 0.35)}`,
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-4px) scale(1.05)',
-                    boxShadow: `0 12px 32px ${alpha(theme.palette.warning.main, 0.45)}`,
+                    boxShadow: `0 12px 32px ${alpha(theme.palette.info.main, 0.45)}`,
                   },
                 }}
               >
@@ -574,9 +561,9 @@ const WaitingMembersPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 4,
-          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
           overflow: 'hidden',
           background: '#fff',
         }}
@@ -585,7 +572,7 @@ const WaitingMembersPage: React.FC = () => {
         <Box
           sx={{
             p: { xs: 3, sm: 4 },
-            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.02)} 0%, ${alpha(theme.palette.info.light, 0.01)} 100%)`,
             borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
@@ -595,11 +582,11 @@ const WaitingMembersPage: React.FC = () => {
                 width: 44,
                 height: 44,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+                boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
               }}
             >
               <FilterListIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
@@ -613,149 +600,332 @@ const WaitingMembersPage: React.FC = () => {
               </Typography>
             </Box>
           </Box>
-
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2.5}
-            alignItems={{ xs: 'stretch', sm: 'flex-end' }}
-          >
-            <TextField
-              placeholder="Ad, Soyad, İl veya Email ile arayın..."
-              size="medium"
-              fullWidth
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary', fontSize: '1.4rem' }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#fff',
-                  borderRadius: 2.5,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.primary.main,
-                      borderWidth: '2px',
+          <Grid container spacing={2.5}>
+            {/* Arama */}
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+              <TextField
+                placeholder="Ad, Soyad, İl veya Email ile arayın..."
+                size="medium"
+                fullWidth
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'text.secondary', fontSize: '1.4rem' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.12)}`,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: theme.palette.info.main,
+                        borderWidth: '2px',
+                      },
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.info.main, 0.2)}`,
                     },
                   },
-                  '&.Mui-focused': {
-                    boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
+                }}
+              />
+            </Grid>
+            {/* İl Filtresi */}
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+              <FormControl 
+                size="medium" 
+                fullWidth
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.12)}`,
+                    },
                   },
-                },
-              }}
-            />
-            
-            <FormControl 
-              size="medium" 
-              sx={{ 
-                minWidth: { xs: '100%', sm: 200 },
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#fff',
-                  borderRadius: 2.5,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                }}
+              >
+                <InputLabel>İl Filtresi</InputLabel>
+                <Select
+                  value={provinceFilter}
+                  label="İl Filtresi"
+                  onChange={(e) => setProvinceFilter(e.target.value)}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: provinceFilter !== 'ALL' ? 600 : 400,
+                      color: provinceFilter !== 'ALL' ? theme.palette.info.main : 'inherit',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.palette.info.main,
+                      borderWidth: 2,
+                    },
+                  }}
+                  MenuProps={{
+                    disablePortal: false,
+                    disableScrollLock: true,
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300,
+                        borderRadius: 12,
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="ALL">
+                    <Typography>Tüm İller</Typography>
+                  </MenuItem>
+                  {uniqueProvinces.map((province) => {
+                    const isSelected = provinceFilter === province.id;
+                    return (
+                      <MenuItem 
+                        key={province.id} 
+                        value={province.id}
+                        sx={{
+                          backgroundColor: isSelected ? alpha(theme.palette.info.main, 0.1) : 'transparent',
+                          '&:hover': {
+                            backgroundColor: isSelected 
+                              ? alpha(theme.palette.info.main, 0.15) 
+                              : alpha(theme.palette.action.hover, 0.05),
+                          },
+                        }}
+                      >
+                        <Typography 
+                          sx={{ 
+                            fontWeight: isSelected ? 700 : 400,
+                            color: isSelected ? theme.palette.info.main : 'inherit',
+                          }}
+                        >
+                          {province.name}
+                        </Typography>
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+            </Grid>
+            {/* Başvuruyu Yapan */}
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+              <FormControl 
+                size="medium" 
+                fullWidth
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.12)}`,
+                    },
                   },
-                },
+                }}
+              >
+                <InputLabel>Başvuruyu Yapan</InputLabel>
+                <Select
+                  value={createdByFilter}
+                  label="Başvuruyu Yapan"
+                  onChange={(e) => setCreatedByFilter(e.target.value)}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: createdByFilter !== 'ALL' ? 600 : 400,
+                      color: createdByFilter !== 'ALL' ? theme.palette.info.main : 'inherit',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.palette.info.main,
+                      borderWidth: 2,
+                    },
+                  }}
+                  MenuProps={{
+                    disablePortal: false,
+                    disableScrollLock: true,
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300,
+                        borderRadius: 12,
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="ALL">
+                    <Typography>Tüm Kullanıcılar</Typography>
+                  </MenuItem>
+                  {uniqueCreatedBy.map((user) => {
+                    const isSelected = createdByFilter === user.id;
+                    return (
+                      <MenuItem 
+                        key={user.id} 
+                        value={user.id}
+                        sx={{
+                          backgroundColor: isSelected ? alpha(theme.palette.info.main, 0.1) : 'transparent',
+                          '&:hover': {
+                            backgroundColor: isSelected 
+                              ? alpha(theme.palette.info.main, 0.15) 
+                              : alpha(theme.palette.action.hover, 0.05),
+                          },
+                        }}
+                      >
+                        <Box>
+                          <Typography 
+                            variant="body2" 
+                            sx={{
+                              fontWeight: isSelected ? 700 : 600,
+                              color: isSelected ? theme.palette.info.main : 'inherit',
+                            }}
+                          >
+                            {user.firstName} {user.lastName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {user.email}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+
+          {/* Seçili Filtreler */}
+          {(provinceFilter !== 'ALL' || createdByFilter !== 'ALL' || searchText.trim()) && (
+            <Box
+              sx={{
+                mt: 3,
+                p: 2.5,
+                borderRadius: 2.5,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.info.light, 0.05)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
               }}
             >
-              <InputLabel>İl Filtresi</InputLabel>
-              <Select
-                value={provinceFilter}
-                label="İl Filtresi"
-                onChange={(e) => setProvinceFilter(e.target.value)}
-                startAdornment={
-                  <InputAdornment position="start" sx={{ ml: 1 }}>
-                    <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
-                  </InputAdornment>
-                }
-              >
-                <MenuItem value="ALL">
-                  <Typography>Tüm İller</Typography>
-                </MenuItem>
-                {uniqueProvinces.map((province) => (
-                  <MenuItem key={province.id} value={province.id}>
-                    <Typography>{province.name}</Typography>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 700,
+                    color: theme.palette.info.main,
+                    fontSize: '0.95rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <FilterListIcon fontSize="small" />
+                  Aktif Filtreler
+                </Typography>
+                <Button
+                  size="small"
+                  startIcon={<ClearIcon />}
+                  onClick={() => {
+                    setProvinceFilter('ALL');
+                    setCreatedByFilter('ALL');
+                    setSearchText('');
+                  }}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    color: theme.palette.error.main,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.error.main, 0.1),
+                    },
+                  }}
+                >
+                  Tümünü Temizle
+                </Button>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                {provinceFilter !== 'ALL' && (
+                  <Chip
+                    label={`İl: ${uniqueProvinces.find(p => p.id === provinceFilter)?.name || provinceFilter}`}
+                    onDelete={() => setProvinceFilter('ALL')}
+                    deleteIcon={<CloseIcon />}
+                    color="info"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      height: 32,
+                      '& .MuiChip-deleteIcon': {
+                        fontSize: '1.1rem',
+                      },
+                    }}
+                  />
+                )}
+                {createdByFilter !== 'ALL' && (
+                  <Chip
+                    label={`Başvuruyu Yapan: ${uniqueCreatedBy.find(u => u.id === createdByFilter)?.firstName} ${uniqueCreatedBy.find(u => u.id === createdByFilter)?.lastName}`}
+                    onDelete={() => setCreatedByFilter('ALL')}
+                    deleteIcon={<CloseIcon />}
+                    color="info"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      height: 32,
+                      '& .MuiChip-deleteIcon': {
+                        fontSize: '1.1rem',
+                      },
+                    }}
+                  />
+                )}
+                {searchText.trim() && (
+                  <Chip
+                    label={`Arama: "${searchText}"`}
+                    onDelete={() => setSearchText('')}
+                    deleteIcon={<CloseIcon />}
+                    color="info"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      height: 32,
+                      '& .MuiChip-deleteIcon': {
+                        fontSize: '1.1rem',
+                      },
+                    }}
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
 
-            <FormControl 
-              size="medium" 
-              sx={{ 
-                minWidth: { xs: '100%', sm: 220 },
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#fff',
-                  borderRadius: 2.5,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
-                  },
-                },
-              }}
-            >
-              <InputLabel>Başvuruyu Yapan</InputLabel>
-              <Select
-                value={createdByFilter}
-                label="Başvuruyu Yapan"
-                onChange={(e) => setCreatedByFilter(e.target.value)}
-                startAdornment={
-                  <InputAdornment position="start" sx={{ ml: 1 }}>
-                    <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
-                  </InputAdornment>
-                }
-              >
-                <MenuItem value="ALL">
-                  <Typography>Tüm Kullanıcılar</Typography>
-                </MenuItem>
-                {uniqueCreatedBy.map((user) => (
-                  <MenuItem key={user.id} value={user.id}>
-                    <Box>
-                      <Typography variant="body2" fontWeight={600}>
-                        {user.firstName} {user.lastName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {user.email}
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-
-          {/* Sonuç Sayısı */}
+          {/* Sonuç Sayısı - Filtre içine taşındı */}
           {!loading && (
             <Box
               sx={{
                 mt: 3,
                 p: 2,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${alpha(theme.palette.warning.light, 0.05)} 100%)`,
-                border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}`,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.info.light, 0.05)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.info.main, 0.15)}`,
               }}
             >
               <Typography
                 variant="body2"
                 sx={{
                   fontWeight: 600,
-                  color: theme.palette.warning.dark,
+                  color: theme.palette.info.dark,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1,
                   fontSize: '0.9rem',
                 }}
               >
-                <HourglassEmptyIcon fontSize="small" />
-                {filteredRows.length} bekleyen üye listeleniyor
-                {filteredRows.length !== rows.length && ` (Toplam ${rows.length} bekleyen üyeden)`}
+                <PeopleIcon fontSize="small" />
+                {filteredRows.length} üye listeleniyor
+                {filteredRows.length !== rows.length && ` (Toplam ${rows.length} üyeden)`}
               </Typography>
             </Box>
           )}
@@ -780,8 +950,8 @@ const WaitingMembersPage: React.FC = () => {
                 alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
-                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.06)} 0%, ${alpha(theme.palette.info.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.info.main, 0.12)}`,
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
@@ -797,8 +967,8 @@ const WaitingMembersPage: React.FC = () => {
               '& .MuiDataGrid-row': {
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.03),
-                  boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
+                  backgroundColor: alpha(theme.palette.info.main, 0.03),
+                  boxShadow: `inset 4px 0 0 ${theme.palette.info.main}`,
                 },
                 '&:nth-of-type(even)': {
                   backgroundColor: alpha(theme.palette.grey[50], 0.3),
@@ -814,33 +984,35 @@ const WaitingMembersPage: React.FC = () => {
               },
             }}
           >
-            <DataGrid
-              rows={filteredRows}
-              columns={columns}
-              loading={loading}
-              getRowId={(row) => row.id}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 25, page: 0 } },
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
-              disableRowSelectionOnClick
-              localeText={{
-                noRowsLabel: 'Bekleyen üye bulunamadı',
-                MuiTablePagination: {
-                  labelRowsPerPage: 'Sayfa başına satır:',
-                },
-              }}
-            />
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            loading={loading}
+            getRowId={(row) => row.id}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 25, page: 0 } },
+            }}
+            pageSizeOptions={[10, 25, 50, 100]}
+            disableRowSelectionOnClick
+            localeText={{
+              noRowsLabel: 'Bekleyen üye bulunamadı',
+            }}
+            slotProps={{
+              pagination: {
+                labelRowsPerPage: 'Sayfa başına satır:',
+              },
+            }}
+          />
           </Box>
         </Box>
       </Card>
 
       {/* Aktifleştirme ve Reddetme Dialog'ları */}
-      {confirmDialog.type === 'activate' ? (
+      {confirmDialog.type === 'reject' && (
         <Dialog
           open={confirmDialog.open}
           onClose={handleCloseConfirmDialog}
-          maxWidth="md"
+          maxWidth="sm"
           fullWidth
           PaperProps={{
             sx: {
@@ -858,7 +1030,7 @@ const WaitingMembersPage: React.FC = () => {
               pt: 3,
               px: 3,
               borderBottom: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
-              background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.02)} 0%, ${alpha(theme.palette.success.light, 0.01)} 100%)`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.02)} 0%, ${alpha(theme.palette.error.light, 0.01)} 100%)`,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
@@ -867,21 +1039,21 @@ const WaitingMembersPage: React.FC = () => {
                   width: 64,
                   height: 64,
                   borderRadius: 3,
-                  background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                  background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.35)}`,
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.error.main, 0.35)}`,
                 }}
               >
-                <PlayArrowIcon sx={{ fontSize: '2rem', color: '#fff' }} />
+                <CloseIcon sx={{ fontSize: '2rem', color: '#fff' }} />
               </Box>
               <Box>
                 <Typography variant="h5" fontWeight={800} sx={{ mb: 0.5 }}>
-                  Üyeyi Aktifleştir
+                  Üyeyi Reddet
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Üyeyi aktif hale getirin ve ana üye listesine ekleyin
+                  Bu işlem geri alınamaz
                 </Typography>
               </Box>
             </Box>
@@ -907,12 +1079,24 @@ const WaitingMembersPage: React.FC = () => {
               variant="body1" 
               color="text.secondary" 
               sx={{ 
-                mb: 3.5, 
+                mb: 2, 
                 lineHeight: 1.7,
                 fontSize: '0.95rem',
               }}
             >
-              Bu üyeyi aktifleştirmek istediğinize emin misiniz? Aktifleştirildikten sonra üye <strong>aktif</strong> hale gelecek ve <strong>ana üye listesinde</strong> görünecektir. Bu üye <strong>bekleyen üyeler listesinden</strong> kaldırılacaktır.
+              <strong>{selectedMemberName}</strong> isimli üyeyi reddetmek istediğinize emin misiniz?
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: theme.palette.error.main,
+                fontWeight: 600,
+                p: 2,
+                borderRadius: 2,
+                background: alpha(theme.palette.error.main, 0.1),
+              }}
+            >
+              ⚠️ Bu işlem geri alınamaz ve üye bilgileri kalıcı olarak reddedilmiş duruma geçecektir.
             </Typography>
           </DialogContent>
 
@@ -953,8 +1137,8 @@ const WaitingMembersPage: React.FC = () => {
               disabled={!!processingId}
               variant="contained"
               size="large"
-              color="success"
-              startIcon={processingId ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
+              color="error"
+              startIcon={processingId ? <CircularProgress size={20} color="inherit" /> : <CloseIcon />}
               sx={{
                 borderRadius: 2.5,
                 px: 4,
@@ -962,30 +1146,18 @@ const WaitingMembersPage: React.FC = () => {
                 fontWeight: 700,
                 textTransform: 'none',
                 fontSize: '0.95rem',
-                background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
-                boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.35)}`,
+                background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                boxShadow: `0 8px 24px ${alpha(theme.palette.error.main, 0.35)}`,
                 '&:hover': {
-                  boxShadow: `0 12px 32px ${alpha(theme.palette.success.main, 0.45)}`,
-                  background: `linear-gradient(135deg, ${theme.palette.success.dark} 0%, ${theme.palette.success.main} 100%)`,
+                  boxShadow: `0 12px 32px ${alpha(theme.palette.error.main, 0.45)}`,
+                  background: `linear-gradient(135deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.main} 100%)`,
                 },
               }}
             >
-              {processingId ? 'Aktifleştiriliyor...' : 'Aktifleştir'}
+              {processingId ? 'Reddediliyor...' : 'Evet, Reddet'}
             </Button>
           </DialogActions>
         </Dialog>
-      ) : (
-        <ConfirmDialog
-          open={confirmDialog.open}
-          onClose={handleCloseConfirmDialog}
-          onConfirm={handleConfirm}
-          title="Üyeyi Reddet"
-          message="Bu üyeyi reddetmek istediğinize emin misiniz? Bu işlem geri alınamaz."
-          confirmText="Reddet"
-          cancelText="İptal"
-          variant="error"
-          loading={!!processingId && processingId === confirmDialog.memberId}
-        />
       )}
     </Box>
   );

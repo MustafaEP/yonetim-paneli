@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Param,
   Body,
@@ -16,6 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreateMemberPaymentDto } from './dto/create-member-payment.dto';
+import { UpdateMemberPaymentDto } from './dto/update-member-payment.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permission.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -92,6 +94,28 @@ export class PaymentsController {
   @ApiResponse({ status: 200, description: 'Ödeme detayı' })
   async getPaymentById(@Param('id') id: string) {
     return this.paymentsService.getPaymentById(id);
+  }
+
+  @Permissions(Permission.MEMBER_PAYMENT_ADD)
+  @Patch(':id')
+  @ApiOperation({ summary: 'Ödemeyi güncelle', description: 'Mevcut ödeme kaydını güncelle' })
+  @ApiResponse({ status: 200, description: 'Ödeme güncellendi' })
+  async updatePayment(
+    @Param('id') id: string,
+    @Body() dto: UpdateMemberPaymentDto,
+    @CurrentUser() user: CurrentUserData,
+    @Req() req: any,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    
+    return this.paymentsService.updatePayment(
+      id,
+      dto,
+      user.userId,
+      ipAddress,
+      userAgent,
+    );
   }
 
   @Permissions(Permission.MEMBER_PAYMENT_APPROVE)

@@ -28,7 +28,12 @@ export const exportToCSV = (
       visibleColumns.map((col) => {
         let value = row[col.field];
         if (col.valueGetter) {
-          value = col.valueGetter(value, row);
+          try {
+            value = col.valueGetter(value, row);
+          } catch (e) {
+            console.error(`ValueGetter error for field ${col.field}:`, e);
+            value = row[col.field] || '';
+          }
         }
         // CSV formatına uygun hale getir (virgül ve tırnak işareti kontrolü)
         if (value === null || value === undefined) {
@@ -83,7 +88,12 @@ export const exportToExcel = (
         visibleColumns.forEach((col) => {
           let value = row[col.field];
           if (col.valueGetter) {
-            value = col.valueGetter(value, row);
+            try {
+              value = col.valueGetter(value, row);
+            } catch (e) {
+              console.error(`ValueGetter error for field ${col.field}:`, e);
+              value = row[col.field] || '';
+            }
           }
           rowData[col.headerName] = value !== null && value !== undefined ? value : '';
         });
@@ -162,9 +172,22 @@ export const exportToPDF = (
                 ${visibleColumns.map((col) => {
                   let value = row[col.field];
                   if (col.valueGetter) {
-                    value = col.valueGetter(value, row);
+                    try {
+                      value = col.valueGetter(value, row);
+                    } catch (e) {
+                      console.error(`ValueGetter error for field ${col.field}:`, e);
+                      value = row[col.field] || '';
+                    }
                   }
-                  return `<td>${value !== null && value !== undefined ? String(value) : ''}</td>`;
+                  // HTML escape
+                  const stringValue = value !== null && value !== undefined ? String(value) : '';
+                  const escapedValue = stringValue
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+                  return `<td>${escapedValue}</td>`;
                 }).join('')}
               </tr>
             `).join('')}

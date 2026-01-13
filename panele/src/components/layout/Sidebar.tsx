@@ -110,6 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
   const showBranches = hasPermission('BRANCH_MANAGE');
   const showAccounting = hasPermission('ACCOUNTING_VIEW');
   const showPayments = hasPermission('MEMBER_PAYMENT_LIST');
+  const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
   const showInstitutions = hasPermission('INSTITUTION_LIST');
   const showProfessions = hasPermission('MEMBER_CREATE_APPLICATION') || hasPermission('MEMBER_UPDATE');
 
@@ -561,7 +562,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             <ListItemButton
               component={Link}
               to="/payments"
-              selected={location.pathname === '/payments' || (location.pathname.startsWith('/payments/') && !location.pathname.startsWith('/payments/inquiry') && !/^\/payments\/[^/]+$/.test(location.pathname))}
+              selected={location.pathname === '/payments' || (location.pathname.startsWith('/payments/') && !location.pathname.startsWith('/payments/inquiry') && !location.pathname.startsWith('/payments/quick-entry') && !/^\/payments\/[^/]+$/.test(location.pathname))}
               onClick={handleLinkClick}
               sx={getNavItemSx(theme)}
             >
@@ -569,7 +570,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
                 <PaymentIcon />
               </ListItemIcon>
               <ListItemText
-                primary="Ödemeler"
+                primary="Ödeme Sorgulama"
                 primaryTypographyProps={{
                   fontSize: '0.9rem',
                   fontWeight: 500,
@@ -587,13 +588,33 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
                 <SearchIcon />
               </ListItemIcon>
               <ListItemText
-                primary="Ödeme Sorgulama"
+                primary="Özel Ödeme Sorgulama"
                 primaryTypographyProps={{
                   fontSize: '0.9rem',
                   fontWeight: 500,
                 }}
               />
             </ListItemButton>
+            {canAddPayment && (
+              <ListItemButton
+                component={Link}
+                to="/payments/quick-entry"
+                selected={location.pathname === '/payments/quick-entry'}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <PaymentIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Hızlı Ödeme Girişi"
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
           </>
         )}
 

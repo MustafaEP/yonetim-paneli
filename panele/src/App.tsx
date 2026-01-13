@@ -38,6 +38,7 @@ import TevkifatTitlesPage from './pages/accounting/TevkifatTitlesPage';
 import PaymentsListPage from './pages/payments/PaymentsListPage';
 import PaymentDetailPage from './pages/payments/PaymentDetailPage';
 import PaymentInquiryPage from './pages/payments/PaymentInquiryPage';
+import QuickPaymentEntryPage from './pages/payments/QuickPaymentEntryPage';
 import BranchDetailPage from './pages/regions/BranchDetailPage';
 import InstitutionsPage from './pages/regions/InstitutionsPage';
 import InstitutionDetailPage from './pages/regions/InstitutionDetailPage';
@@ -235,6 +236,7 @@ const App: React.FC = () => {
           <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_LIST" />}>
             <Route path="/payments" element={<PaymentsListPage />} />
             <Route path="/payments/inquiry" element={<PaymentInquiryPage />} />
+            <Route path="/payments/quick-entry" element={<QuickPaymentEntryPage />} />
           </Route>
           {/* Ödeme Detay: MEMBER_PAYMENT_VIEW */}
           <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_VIEW" />}>

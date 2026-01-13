@@ -25,6 +25,7 @@ export interface MemberListItem {
   workingDistrict: { id: string; name: string };
   institution: { id: string; name: string };
   branch: { id: string; name: string; code?: string | null };
+  tevkifatCenter?: { id: string; name: string } | null;
   duesPlan?: {
     id: string;
     name: string;

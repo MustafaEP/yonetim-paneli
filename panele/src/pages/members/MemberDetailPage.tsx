@@ -32,8 +32,11 @@ import {
   Divider,
   Tooltip,
   IconButton,
+  Grid,
+  Autocomplete,
+  InputAdornment,
 } from '@mui/material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
 import PersonIcon from '@mui/icons-material/Person';
 import WorkIcon from '@mui/icons-material/Work';
@@ -55,9 +58,11 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SecurityIcon from '@mui/icons-material/Security';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { getMemberById, exportMemberDetailToPdf, updateMember } from '../../api/membersApi';
+import { getMemberById, exportMemberDetailToPdf, updateMember, approveMember, rejectMember, getMemberHistory } from '../../api/membersApi';
 import MemberStatusChangeDialog from '../../components/members/MemberStatusChangeDialog';
 import PromoteToPanelUserDialog from '../../components/members/PromoteToPanelUserDialog';
+import MemberApprovalDialog, { type ApproveFormData } from '../../components/members/MemberApprovalDialog';
+import { ActivateMemberButton } from '../../components/members/ActivateMemberButton';
 import { getMemberPayments, viewPaymentDocument, downloadPaymentDocument } from '../../api/paymentsApi';
 import { getPanelUserApplications } from '../../api/panelUserApplicationsApi';
 import { 
@@ -72,7 +77,7 @@ import {
   type GenerateDocumentDto,
 } from '../../api/documentsApi';
 import { getDocumentTypeLabel, DOCUMENT_TYPES } from '../../utils/documentTypes';
-import type { MemberDetail, MemberStatus } from '../../types/member';
+import type { MemberDetail, MemberStatus, MemberHistory } from '../../types/member';
 import type { MemberPayment } from '../../api/paymentsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
@@ -88,11 +93,18 @@ import { canManageBranches } from '../../utils/permissions';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import BookIcon from '@mui/icons-material/Book';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 
 const MemberDetailPage = () => {
   const theme = useTheme();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const source = searchParams.get('source'); // 'application' veya 'waiting'
   const { hasPermission } = useAuth();
   const toast = useToast();
 
@@ -102,6 +114,8 @@ const MemberDetailPage = () => {
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [documents, setDocuments] = useState<MemberDocument[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [memberHistory, setMemberHistory] = useState<MemberHistory[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Panel kullanıcı detay state'leri
   const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
@@ -148,6 +162,13 @@ const MemberDetailPage = () => {
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // Üye başvurusu onaylama dialog state
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [initialApproveFormData, setInitialApproveFormData] = useState<Partial<ApproveFormData> | undefined>(undefined);
+
+  // Reddetme dialog state'i
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
 
   // Member verisini yükle
   useEffect(() => {
@@ -251,6 +272,26 @@ const MemberDetailPage = () => {
     };
 
     loadDocuments();
+  }, [id]);
+
+  // Üye geçmişini yükle
+  useEffect(() => {
+    if (!id) return;
+
+    const loadHistory = async () => {
+      setLoadingHistory(true);
+      try {
+        const data = await getMemberHistory(id);
+        setMemberHistory(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Üye geçmişi alınırken hata:', error);
+        setMemberHistory([]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    loadHistory();
   }, [id]);
 
   // Panel kullanıcı başvurusu kontrolü
@@ -572,6 +613,88 @@ const MemberDetailPage = () => {
     }
   };
 
+  // Onaylama dialog'unu aç ve verileri yükle
+  const handleOpenApproveDialog = async () => {
+    if (!id || !member) return;
+    
+    // Form'u mevcut üye bilgileriyle doldur
+    setInitialApproveFormData({
+      registrationNumber: member.registrationNumber || '',
+      boardDecisionDate: member.boardDecisionDate || '',
+      boardDecisionBookNo: member.boardDecisionBookNo || '',
+      tevkifatCenterId: member.tevkifatCenter?.id || '',
+      tevkifatTitleId: member.tevkifatTitle?.id || '',
+      branchId: member.branch?.id || '',
+      memberGroupId: member.memberGroup?.id || '',
+    });
+    
+    setApproveDialogOpen(true);
+  };
+
+  // Üye başvurusu onaylama handler (source=application için)
+  const handleApproveApplication = async (data: ApproveFormData) => {
+    if (!id || !member) return;
+
+    setUpdatingStatus(true);
+    try {
+      const approveData = {
+        registrationNumber: data.registrationNumber.trim(),
+        boardDecisionDate: data.boardDecisionDate,
+        boardDecisionBookNo: data.boardDecisionBookNo.trim(),
+        tevkifatCenterId: data.tevkifatCenterId,
+        tevkifatTitleId: data.tevkifatTitleId,
+        branchId: data.branchId,
+        memberGroupId: data.memberGroupId,
+      };
+
+      await approveMember(id, approveData);
+      toast.showSuccess('Üye başvurusu başarıyla onaylandı. Üye bekleyen üyeler listesine eklendi.');
+      setApproveDialogOpen(false);
+      setInitialApproveFormData(undefined);
+
+      // Üye bilgilerini yeniden yükle
+      const updatedMember = await getMemberById(id);
+      setMember(updatedMember);
+    } catch (error: any) {
+      console.error('Başvuru onaylanırken hata:', error);
+      toast.showError(error.response?.data?.message || 'Başvuru onaylanırken bir hata oluştu');
+      throw error; // Re-throw so the dialog can handle it
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // Üye aktifleştirildikten sonra callback
+  const handleMemberActivated = async () => {
+    if (!id) return;
+    const updatedMember = await getMemberById(id);
+    setMember(updatedMember);
+  };
+
+  // Reddetme dialog'unu açma
+  const handleOpenRejectDialog = () => {
+    setRejectDialogOpen(true);
+  };
+
+  // Üye başvurusu reddetme handler (source=application için)
+  const handleRejectApplication = async () => {
+    if (!id || !member) return;
+    setUpdatingStatus(true);
+    setRejectDialogOpen(false);
+    try {
+      await rejectMember(id);
+      toast.showSuccess('Üye başvurusu başarıyla reddedildi');
+      const updatedMember = await getMemberById(id);
+      setMember(updatedMember);
+    } catch (error: any) {
+      console.error('Başvuru reddedilirken hata:', error);
+      toast.showError(error.response?.data?.message || 'Başvuru reddedilirken bir hata oluştu');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+
 
   if (loadingMember) {
     return (
@@ -607,6 +730,14 @@ const MemberDetailPage = () => {
         headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.95)} 0%, ${theme.palette.warning.dark} 100%)`,
         headerShadow: theme.palette.warning.main,
       },
+      APPROVED: {
+        color: 'info',
+        icon: <CheckCircleIcon fontSize="small" />,
+        label: 'Onaylanmış',
+        bgColor: alpha(theme.palette.info.main, 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.95)} 0%, ${theme.palette.info.dark} 100%)`,
+        headerShadow: theme.palette.info.main,
+      },
       REJECTED: {
         color: 'error',
         icon: <CancelIcon fontSize="small" />,
@@ -619,9 +750,9 @@ const MemberDetailPage = () => {
         color: 'error',
         icon: <CancelIcon fontSize="small" />,
         label: 'İhraç',
-        bgColor: alpha(theme.palette.error.main, 0.1),
-        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.95)} 0%, ${theme.palette.error.dark} 100%)`,
-        headerShadow: theme.palette.error.main,
+        bgColor: alpha('#d32f2f', 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha('#d32f2f', 0.95)} 0%, #b71c1c 100%)`,
+        headerShadow: '#d32f2f',
       },
       RESIGNED: {
         color: 'default',
@@ -635,15 +766,134 @@ const MemberDetailPage = () => {
         color: 'default',
         icon: <CancelIcon fontSize="small" />,
         label: 'Pasif',
-        bgColor: alpha(theme.palette.grey[500], 0.1),
-        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.grey[600], 0.95)} 0%, ${theme.palette.grey[800]} 100%)`,
-        headerShadow: theme.palette.grey[600],
+        bgColor: alpha('#9e9e9e', 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha('#757575', 0.95)} 0%, #616161 100%)`,
+        headerShadow: '#757575',
       },
     };
-    return configs[status] || configs.ACTIVE;
+    return configs[status] || configs.PENDING;
   };
 
-  const statusConfig = getStatusConfig(member?.status || 'ACTIVE');
+  const statusConfig = getStatusConfig(member?.status || 'PENDING');
+
+  // İstatistik hesaplama fonksiyonları
+  const calculateMembershipDuration = () => {
+    if (!member?.createdAt) return null;
+    const created = new Date(member.createdAt);
+    const now = new Date();
+    const diffMs = now.getTime() - created.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const years = Math.floor(diffDays / 365);
+    const months = Math.floor((diffDays % 365) / 30);
+    const days = diffDays % 30;
+    
+    if (years > 0) {
+      return `${years} yıl${months > 0 ? ` ${months} ay` : ''}${days > 0 ? ` ${days} gün` : ''}`;
+    } else if (months > 0) {
+      return `${months} ay${days > 0 ? ` ${days} gün` : ''}`;
+    } else {
+      return `${days} gün`;
+    }
+  };
+
+  const calculateApprovalDuration = () => {
+    if (!member?.createdAt || !member?.approvedAt) return null;
+    const created = new Date(member.createdAt);
+    const approved = new Date(member.approvedAt);
+    const diffMs = approved.getTime() - created.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (diffDays > 0) {
+      return `${diffDays} gün${diffHours > 0 ? ` ${diffHours} saat` : ''}`;
+    } else if (diffHours > 0) {
+      return `${diffHours} saat`;
+    } else {
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${diffMinutes} dakika`;
+    }
+  };
+
+  const calculateActiveMembershipDuration = () => {
+    if (!memberHistory || memberHistory.length === 0) return null;
+    
+    // Status değişikliklerini bul
+    const statusChanges = memberHistory.filter(h => 
+      h.updatedFields && 'status' in h.updatedFields
+    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    if (statusChanges.length === 0) {
+      // Eğer hiç status değişikliği yoksa ve mevcut durum ACTIVE ise, kayıt tarihinden itibaren
+      if (member?.status === 'ACTIVE' && member?.createdAt) {
+        return calculateMembershipDuration();
+      }
+      return null;
+    }
+    
+    // En son ACTIVE olma tarihini bul
+    const lastActiveChange = statusChanges.find(h => 
+      h.updatedFields && 'status' in h.updatedFields && 
+      (h.updatedFields.status as any)?.new === 'ACTIVE'
+    );
+    
+    if (lastActiveChange) {
+      const activeDate = new Date(lastActiveChange.createdAt);
+      const now = new Date();
+      const diffMs = now.getTime() - activeDate.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const years = Math.floor(diffDays / 365);
+      const months = Math.floor((diffDays % 365) / 30);
+      const days = diffDays % 30;
+      
+      if (years > 0) {
+        return `${years} yıl${months > 0 ? ` ${months} ay` : ''}${days > 0 ? ` ${days} gün` : ''}`;
+      } else if (months > 0) {
+        return `${months} ay${days > 0 ? ` ${days} gün` : ''}`;
+      } else {
+        return `${days} gün`;
+      }
+    }
+    
+    return null;
+  };
+
+  const getStatusChangeCount = () => {
+    if (!memberHistory) return 0;
+    return memberHistory.filter(h => 
+      h.updatedFields && 'status' in h.updatedFields
+    ).length;
+  };
+
+  const getLastStatusChangeDate = () => {
+    if (!memberHistory || memberHistory.length === 0) return null;
+    const statusChanges = memberHistory.filter(h => 
+      h.updatedFields && 'status' in h.updatedFields
+    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    if (statusChanges.length > 0) {
+      return new Date(statusChanges[0].createdAt);
+    }
+    return null;
+  };
+
+  const getLastActivityDate = () => {
+    if (!memberHistory || memberHistory.length === 0) return null;
+    const sorted = [...memberHistory].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return sorted.length > 0 ? new Date(sorted[0].createdAt) : null;
+  };
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return '-';
+    return date.toLocaleDateString('tr-TR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   const InfoRow = ({ label, value, icon }: { label: string; value: string | number | null | undefined; icon?: React.ReactNode }) => (
     <Box
@@ -799,6 +1049,47 @@ const MemberDetailPage = () => {
       mx: 'auto',
       p: { xs: 2, sm: 3 }
     }}>
+      {/* Source Banner - Üye Başvuruları veya Bekleyen Üyeler */}
+      {source === 'application' && (
+        <Alert 
+          severity="info" 
+          icon={<AssignmentIcon />}
+          sx={{ 
+            mb: 3,
+            borderRadius: 3,
+            '& .MuiAlert-icon': {
+              fontSize: '1.5rem',
+            },
+          }}
+        >
+          <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+            Üye Başvurusu Detayı
+          </Typography>
+          <Typography variant="body2">
+            Bu sayfa üye başvuruları listesinden açıldı. Başvuruyu onaylayabilir veya reddedebilirsiniz.
+          </Typography>
+        </Alert>
+      )}
+      {source === 'waiting' && (
+        <Alert 
+          severity="warning" 
+          icon={<HourglassEmptyIcon />}
+          sx={{ 
+            mb: 3,
+            borderRadius: 3,
+            '& .MuiAlert-icon': {
+              fontSize: '1.5rem',
+            },
+          }}
+        >
+          <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+            Bekleyen Üye Detayı
+          </Typography>
+          <Typography variant="body2">
+            Bu sayfa bekleyen üyeler listesinden açıldı. Üyeyi aktifleştirebilir veya reddedebilirsiniz.
+          </Typography>
+        </Alert>
+      )}
       {/* Header Card */}
       <Card
         elevation={0}
@@ -945,67 +1236,68 @@ const MemberDetailPage = () => {
               />
             </Box>
 
-            <Stack 
-              direction={{ xs: 'column', sm: 'row' }} 
-              spacing={1.5}
-              sx={{ width: { xs: '100%', sm: 'auto' } }}
-            >
-              <Button
-                variant="contained"
-                startIcon={<EditIcon />}
-                onClick={() => navigate(`/members/${id}/edit`)}
-                fullWidth={true}
-                sx={{
-                  bgcolor: alpha('#fff', 0.2),
-                  color: '#fff',
-                  fontWeight: 600,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${alpha('#fff', 0.3)}`,
-                  fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                  py: { xs: 1, sm: 1.5 },
-                  '&:hover': {
-                    bgcolor: alpha('#fff', 0.3),
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
-                  },
-                  transition: 'all 0.3s ease',
-                  display: { xs: 'flex', sm: 'inline-flex' },
-                }}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: { xs: '100%', sm: 'auto' } }}>
+              {/* İlk Satır: Düzenle ve PDF İndir Butonları */}
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }} 
+                spacing={1.5}
               >
-                Düzenle
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<PictureAsPdfIcon />}
-                onClick={async () => {
-                  try {
-                    await exportMemberDetailToPdf(id!);
-                    toast.showSuccess('PDF başarıyla indirildi');
-                  } catch (error) {
-                    toast.showError('PDF indirilemedi');
-                  }
-                }}
-                fullWidth={true}
-                sx={{
-                  bgcolor: alpha('#fff', 0.2),
-                  color: '#fff',
-                  fontWeight: 600,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${alpha('#fff', 0.3)}`,
-                  fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                  py: { xs: 1, sm: 1.5 },
-                  '&:hover': {
-                    bgcolor: alpha('#fff', 0.3),
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
-                  },
-                  transition: 'all 0.3s ease',
-                  display: { xs: 'flex', sm: 'inline-flex' },
-                }}
-              >
-                PDF İndir
-              </Button>
-              {canChangeStatus && member?.status !== 'PENDING' && (
+                <Button
+                  variant="contained"
+                  startIcon={<EditIcon />}
+                  onClick={() => navigate(`/members/${id}/edit`)}
+                  fullWidth={true}
+                  sx={{
+                    bgcolor: alpha('#fff', 0.2),
+                    color: '#fff',
+                    fontWeight: 600,
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${alpha('#fff', 0.3)}`,
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                    py: { xs: 1, sm: 1.5 },
+                    '&:hover': {
+                      bgcolor: alpha('#fff', 0.3),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
+                    },
+                    transition: 'all 0.3s ease',
+                    display: { xs: 'flex', sm: 'inline-flex' },
+                  }}
+                >
+                  Düzenle
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={async () => {
+                    try {
+                      await exportMemberDetailToPdf(id!);
+                      toast.showSuccess('PDF başarıyla indirildi');
+                    } catch (error) {
+                      toast.showError('PDF indirilemedi');
+                    }
+                  }}
+                  fullWidth={true}
+                  sx={{
+                    bgcolor: alpha('#fff', 0.2),
+                    color: '#fff',
+                    fontWeight: 600,
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${alpha('#fff', 0.3)}`,
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                    py: { xs: 1, sm: 1.5 },
+                    '&:hover': {
+                      bgcolor: alpha('#fff', 0.3),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
+                    },
+                    transition: 'all 0.3s ease',
+                    display: { xs: 'flex', sm: 'inline-flex' },
+                  }}
+                >
+                  PDF İndir
+                </Button>
+                {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
                 <Button
                   variant="contained"
                   startIcon={<SettingsIcon />}
@@ -1031,7 +1323,8 @@ const MemberDetailPage = () => {
                   Durum Değiştir
                 </Button>
               )}
-            </Stack>
+              </Stack>
+            </Box>
           </Box>
         </CardContent>
       </Card>
@@ -1771,6 +2064,245 @@ const MemberDetailPage = () => {
           </Card>
         )}
 
+        {/* Onaylama İşlemi Alanı - Sadece Bekleyen Üyeler için */}
+        {(
+          (source === 'application' && member?.status === 'PENDING') ||
+          (source === 'waiting' && member?.status === 'APPROVED') ||
+          (!source && member?.status === 'PENDING')
+        ) && canChangeStatus && (
+          <Card
+            elevation={0}
+            sx={{
+              mb: 3,
+              borderRadius: 3,
+              border: `2px dashed ${alpha(theme.palette.warning.main, 0.3)}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.05)} 0%, ${alpha(theme.palette.warning.light, 0.02)} 100%)`,
+              boxShadow: `0 4px 20px ${alpha(theme.palette.warning.main, 0.08)}`,
+              overflow: 'hidden',
+              position: 'relative',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                borderColor: alpha(theme.palette.warning.main, 0.5),
+                transform: 'translateY(-2px)',
+                boxShadow: `0 8px 28px ${alpha(theme.palette.warning.main, 0.15)}`,
+              },
+            }}
+          >
+            {/* Dekoratif arka plan */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: -50,
+                right: -50,
+                width: 200,
+                height: 200,
+                borderRadius: '50%',
+                background: alpha(theme.palette.warning.main, 0.06),
+              }}
+            />
+            
+            <CardContent sx={{ p: { xs: 2.5, sm: 4 }, position: 'relative', zIndex: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                  <Box
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 2.5,
+                      background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      boxShadow: `0 4px 14px ${alpha(theme.palette.warning.main, 0.35)}`,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <AssignmentIcon sx={{ fontSize: '1.8rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.text.primary, mb: 0.5, lineHeight: 1.3 }}>
+                      {source === 'application' && member?.status === 'PENDING' && 'Üye Başvurusu Onaylama'}
+                      {source === 'waiting' && member?.status === 'APPROVED' && 'Üyeyi Aktifleştirme'}
+                      {!source && member?.status === 'PENDING' && 'Üye Onaylama İşlemleri'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: theme.palette.text.secondary, lineHeight: 1.6, maxWidth: 500 }}>
+                      {source === 'application' && member?.status === 'PENDING' && 'Bu başvuruyu onaylayarak üyeyi bekleyen üyeler listesine ekleyebilir veya başvuruyu reddedebilirsiniz.'}
+                      {source === 'waiting' && member?.status === 'APPROVED' && 'Onaylanmış bu üyeyi aktif hale getirerek ana üye listesine ekleyebilirsiniz.'}
+                      {!source && member?.status === 'PENDING' && 'Bu üyeyi aktif hale getirerek ana üye listesine ekleyebilirsiniz.'}
+                    </Typography>
+                    <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      <Chip 
+                        icon={statusConfig.icon} 
+                        label={statusConfig.label}
+                        size="small" 
+                        color={statusConfig.color}
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                      />
+                      {source === 'application' && (
+                        <Chip 
+                          icon={<AssignmentIcon />} 
+                          label="Başvuru Aşamasında" 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      )}
+                      {source === 'waiting' && (
+                        <Chip 
+                          icon={<HourglassEmptyIcon />} 
+                          label="Aktifleşme Bekliyor" 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
+                
+                {/* Butonlar */}
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5, minWidth: { xs: '100%', sm: 'auto' } }}>
+                  {/* Üye Başvuruları için */}
+                  {source === 'application' && member?.status === 'PENDING' && (
+                    <>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={<CheckCircleIcon />}
+                        onClick={handleOpenApproveDialog}
+                        disabled={updatingStatus}
+                        sx={{
+                          borderRadius: 2.5,
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          bgcolor: theme.palette.success.main,
+                          color: '#fff',
+                          px: 3,
+                          py: 1.5,
+                          fontSize: '0.95rem',
+                          boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                          whiteSpace: 'nowrap',
+                          '&:hover': {
+                            bgcolor: theme.palette.success.dark,
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 8px 20px ${alpha(theme.palette.success.main, 0.4)}`,
+                          },
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        Başvuruyu Onayla
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="large"
+                        startIcon={<CancelIcon />}
+                        onClick={handleOpenRejectDialog}
+                        disabled={updatingStatus}
+                        sx={{
+                          borderRadius: 2.5,
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          px: 3,
+                          py: 1.5,
+                          fontSize: '0.95rem',
+                          borderWidth: 2,
+                          borderColor: theme.palette.error.main,
+                          color: theme.palette.error.main,
+                          whiteSpace: 'nowrap',
+                          '&:hover': {
+                            borderWidth: 2,
+                            borderColor: theme.palette.error.dark,
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            transform: 'translateY(-2px)',
+                          },
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        Başvuruyu Reddet
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Bekleyen Üyeler için */}
+                  {source === 'waiting' && member?.status === 'APPROVED' && (
+                    <>
+                      <ActivateMemberButton
+                        memberId={id!}
+                        memberName={`${member.firstName} ${member.lastName}`}
+                        onActivated={handleMemberActivated}
+                        disabled={updatingStatus}
+                        variant="contained"
+                        size="large"
+                      />
+                      <Button
+                        variant="outlined"
+                        size="large"
+                        startIcon={<CancelIcon />}
+                        onClick={handleOpenRejectDialog}
+                        disabled={updatingStatus}
+                        sx={{
+                          borderRadius: 2.5,
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          px: 3,
+                          py: 1.5,
+                          fontSize: '0.95rem',
+                          borderWidth: 2,
+                          borderColor: theme.palette.error.main,
+                          color: theme.palette.error.main,
+                          whiteSpace: 'nowrap',
+                          '&:hover': {
+                            borderWidth: 2,
+                            borderColor: theme.palette.error.dark,
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            transform: 'translateY(-2px)',
+                          },
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        Üyeyi Reddet
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Normal PENDING durumu için */}
+                  {!source && member?.status === 'PENDING' && (
+                    <Button
+                      variant="contained"
+                      size="large"
+                      startIcon={<CheckCircleIcon />}
+                      onClick={() => handleStatusChange('ACTIVE')}
+                      disabled={updatingStatus}
+                      sx={{
+                        borderRadius: 2.5,
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        bgcolor: theme.palette.success.main,
+                        color: '#fff',
+                        px: 3,
+                        py: 1.5,
+                        fontSize: '0.95rem',
+                        boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                        whiteSpace: 'nowrap',
+                        '&:hover': {
+                          bgcolor: theme.palette.success.dark,
+                          transform: 'translateY(-2px)',
+                          boxShadow: `0 8px 20px ${alpha(theme.palette.success.main, 0.4)}`,
+                        },
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      Üyeyi Aktifleştir
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Kişisel Bilgiler */}
         <SectionCard title="Kişisel Bilgiler" icon={<PersonIcon />}>
           <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }}>
@@ -2261,6 +2793,63 @@ const MemberDetailPage = () => {
             )}
           </SectionCard>
 
+        {/* Üyelik İstatistikleri */}
+        <SectionCard title="Üyelik ve Zaman İstatistikleri" icon={<CalendarTodayIcon />}>
+          {loadingHistory ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={32} />
+            </Box>
+          ) : (
+            <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }}>
+              <InfoRow 
+                label="Kayıt Tarihi" 
+                value={member?.createdAt ? formatDate(new Date(member.createdAt)) : '-'} 
+                icon={<CalendarTodayIcon />} 
+              />
+              <InfoRow 
+                label="Onay Tarihi" 
+                value={member?.approvedAt ? formatDate(new Date(member.approvedAt)) : '-'} 
+                icon={<CheckCircleIcon />} 
+              />
+              <InfoRow 
+                label="Onay Süresi" 
+                value={calculateApprovalDuration() || '-'} 
+                icon={<HourglassEmptyIcon />} 
+              />
+              <InfoRow 
+                label="Üyelik Süresi" 
+                value={calculateMembershipDuration() || '-'} 
+                icon={<CalendarTodayIcon />} 
+              />
+              <InfoRow 
+                label="Aktif Üyelik Süresi" 
+                value={calculateActiveMembershipDuration() || '-'} 
+                icon={<CheckCircleIcon />} 
+              />
+              <InfoRow 
+                label="Üyelik Yaşı" 
+                value={calculateMembershipDuration() || '-'} 
+                icon={<PersonIcon />} 
+              />
+              <InfoRow 
+                label="Durum Değişiklik Sayısı" 
+                value={getStatusChangeCount()} 
+                icon={<SettingsIcon />} 
+              />
+              <InfoRow 
+                label="Son Durum Değişikliği" 
+                value={formatDate(getLastStatusChangeDate())} 
+                icon={<SettingsIcon />} 
+              />
+              <InfoRow 
+                label="Son Aktivite Tarihi" 
+                value={formatDate(getLastActivityDate())} 
+                icon={<CalendarTodayIcon />} 
+              />
+            </Box>
+          )}
+        </SectionCard>
+
         {/* Evrak Yükleme Dialog */}
         <Dialog 
           open={uploadDialogOpen} 
@@ -2710,6 +3299,180 @@ const MemberDetailPage = () => {
           memberName={`${member.firstName} ${member.lastName}`}
           loading={updatingStatus}
         />
+      )}
+
+      {/* Üye Başvurusu Onaylama Dialog */}
+      {member && source === 'application' && (
+        <MemberApprovalDialog
+          open={approveDialogOpen}
+          onClose={() => {
+            if (!updatingStatus) {
+              setApproveDialogOpen(false);
+              setInitialApproveFormData(undefined);
+            }
+          }}
+          onConfirm={handleApproveApplication}
+          loading={updatingStatus}
+          initialFormData={initialApproveFormData}
+          successMessage="Bu başvuruyu onaylamak istediğinize emin misiniz? Onaylandıktan sonra üye bekleyen üyeler listesine eklenecektir."
+        />
+      )}
+
+      {/* Başvuru Reddetme Onay Dialog'u */}
+      {member && (
+        <Dialog
+          open={rejectDialogOpen}
+          onClose={() => {
+            if (!updatingStatus) {
+              setRejectDialogOpen(false);
+            }
+          }}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 4,
+              boxShadow: `0 20px 60px ${alpha(theme.palette.common.black, 0.2)}`,
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              pb: 2.5,
+              pt: 3,
+              px: 3,
+              borderBottom: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.02)} 0%, ${alpha(theme.palette.error.light, 0.01)} 100%)`,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+              <Box
+                sx={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.error.main, 0.35)}`,
+                }}
+              >
+                <CancelIcon sx={{ fontSize: '2rem', color: '#fff' }} />
+              </Box>
+              <Box>
+                <Typography variant="h5" fontWeight={800} sx={{ mb: 0.5 }}>
+                  Başvuruyu Reddet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Bu işlem geri alınamaz
+                </Typography>
+              </Box>
+            </Box>
+            {!updatingStatus && (
+              <IconButton
+                onClick={() => setRejectDialogOpen(false)}
+                size="medium"
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.error.main, 0.1),
+                    color: theme.palette.error.main,
+                  },
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            )}
+          </DialogTitle>
+
+          <DialogContent sx={{ pt: 3.5, pb: 3, px: 3 }}>
+            <Typography 
+              variant="body1" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 2, 
+                lineHeight: 1.7,
+                fontSize: '0.95rem',
+              }}
+            >
+              <strong>{member.firstName} {member.lastName}</strong> isimli üyenin başvurusunu reddetmek istediğinize emin misiniz?
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: theme.palette.error.main,
+                fontWeight: 600,
+                p: 2,
+                borderRadius: 2,
+                background: alpha(theme.palette.error.main, 0.1),
+              }}
+            >
+              ⚠️ Bu işlem geri alınamaz ve üye bilgileri kalıcı olarak reddedilmiş duruma geçecektir.
+            </Typography>
+          </DialogContent>
+
+          <DialogActions
+            sx={{
+              px: 3,
+              pb: 3,
+              pt: 2,
+              gap: 1.5,
+              borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.background.default, 0.8)} 0%, ${alpha(theme.palette.grey[50], 0.5)} 100%)`,
+              justifyContent: 'flex-end',
+            }}
+          >
+            <Button
+              onClick={() => setRejectDialogOpen(false)}
+              disabled={!!updatingStatus}
+              variant="outlined"
+              size="large"
+              sx={{
+                borderRadius: 2.5,
+                px: 4,
+                py: 1.25,
+                fontWeight: 700,
+                textTransform: 'none',
+                fontSize: '0.95rem',
+                borderWidth: '2px',
+                '&:hover': {
+                  borderWidth: '2px',
+                  backgroundColor: alpha(theme.palette.grey[500], 0.08),
+                },
+              }}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleRejectApplication}
+              disabled={!!updatingStatus}
+              variant="contained"
+              size="large"
+              color="error"
+              startIcon={updatingStatus ? <CircularProgress size={20} color="inherit" /> : <CancelIcon />}
+              sx={{
+                borderRadius: 2.5,
+                px: 4,
+                py: 1.25,
+                fontWeight: 700,
+                textTransform: 'none',
+                fontSize: '0.95rem',
+                background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                boxShadow: `0 8px 24px ${alpha(theme.palette.error.main, 0.35)}`,
+                '&:hover': {
+                  boxShadow: `0 12px 32px ${alpha(theme.palette.error.main, 0.45)}`,
+                  background: `linear-gradient(135deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.main} 100%)`,
+                },
+              }}
+            >
+              {updatingStatus ? 'Reddediliyor...' : 'Evet, Reddet'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
 
       {/* Panel Kullanıcılığına Terfi Dialog */}

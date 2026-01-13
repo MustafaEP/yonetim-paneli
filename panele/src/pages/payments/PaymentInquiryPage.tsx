@@ -8,7 +8,6 @@ import {
   Button,
   TextField,
   InputAdornment,
-  Chip,
   IconButton,
   Tooltip,
   Alert,
@@ -24,14 +23,16 @@ import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PaymentIcon from '@mui/icons-material/Payment';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import {
   getPayments,
   type MemberPayment,
-  type PaymentType,
 } from '../../api/paymentsApi';
 import { getMembers } from '../../api/membersApi';
+import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 import type { MemberListItem } from '../../types/member';
 
 const PaymentInquiryPage: React.FC = () => {
@@ -50,6 +51,7 @@ const PaymentInquiryPage: React.FC = () => {
   const [searched, setSearched] = useState(false);
 
   const canView = hasPermission('MEMBER_PAYMENT_LIST');
+  const canExport = hasPermission('ACCOUNTING_EXPORT');
 
   useEffect(() => {
     if (searchType === 'name' && members.length === 0) {
@@ -115,6 +117,53 @@ const PaymentInquiryPage: React.FC = () => {
     }
   };
 
+  const handleExportExcel = () => {
+    if (rows.length === 0) {
+      toast.showError('İndirilecek veri bulunamadı');
+      return;
+    }
+    try {
+      const exportColumns: ExportColumn[] = columns
+        .filter((col) => col.field !== 'actions')
+        .map((col) => ({
+          field: col.field,
+          headerName: col.headerName || '',
+          width: col.width || (col.flex ? (col.flex as number) * 10 : 15),
+          valueGetter: col.valueGetter,
+        }));
+      const filename = `odeme-sorgulama-${new Date().getTime()}`;
+      exportToExcel(rows, exportColumns, filename);
+      toast.showSuccess('Excel dosyası indirildi');
+    } catch (error: any) {
+      console.error('Excel export hatası:', error);
+      toast.showError('Excel export sırasında bir hata oluştu');
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (rows.length === 0) {
+      toast.showError('İndirilecek veri bulunamadı');
+      return;
+    }
+    try {
+      const exportColumns: ExportColumn[] = columns
+        .filter((col) => col.field !== 'actions')
+        .map((col) => ({
+          field: col.field,
+          headerName: col.headerName || '',
+          width: col.width || (col.flex ? (col.flex as number) * 10 : 15),
+          valueGetter: col.valueGetter,
+        }));
+      const title = 'Ödeme Sorgulama Sonuçları';
+      const filename = `odeme-sorgulama-${new Date().getTime()}`;
+      exportToPDF(rows, exportColumns, filename, title);
+      toast.showSuccess('PDF dosyası indirildi');
+    } catch (error: any) {
+      console.error('PDF export hatası:', error);
+      toast.showError('PDF export sırasında bir hata oluştu');
+    }
+  };
+
   const monthNames = [
     'Ocak',
     'Şubat',
@@ -129,12 +178,6 @@ const PaymentInquiryPage: React.FC = () => {
     'Kasım',
     'Aralık',
   ];
-
-  const paymentTypeLabels: Record<PaymentType, string> = {
-    TEVKIFAT: 'Tevkifat',
-    ELDEN: 'Elden',
-    HAVALE: 'Havale',
-  };
 
   const columns: GridColDef<MemberPayment>[] = [
     {
@@ -189,18 +232,6 @@ const PaymentInquiryPage: React.FC = () => {
           style: 'currency',
           currency: 'TRY',
         }).format(Number(value)),
-    },
-    {
-      field: 'paymentType',
-      headerName: 'Ödeme Türü',
-      width: 130,
-      renderCell: (params) => (
-        <Chip
-          label={paymentTypeLabels[params.value as PaymentType]}
-          size="small"
-          color={params.value === 'TEVKIFAT' ? 'primary' : 'default'}
-        />
-      ),
     },
     {
       field: 'paymentDate',
@@ -302,7 +333,7 @@ const PaymentInquiryPage: React.FC = () => {
                   letterSpacing: '-0.02em',
                 }}
               >
-                Ödeme Sorgulama
+                Özel Ödeme Sorgulama
               </Typography>
               <Typography
                 variant="body1"
@@ -404,7 +435,7 @@ const PaymentInquiryPage: React.FC = () => {
                 </Button>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={7}>
+            <Grid item xs={12} sm={4}>
               {searchType === 'registrationNumber' ? (
                 <TextField
                   fullWidth
@@ -585,6 +616,56 @@ const PaymentInquiryPage: React.FC = () => {
                   </Typography>
                 </Box>
               </Box>
+              {canExport && rows.length > 0 && (
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    size="medium"
+                    startIcon={<FileDownloadIcon />}
+                    onClick={handleExportExcel}
+                    sx={{ 
+                      textTransform: 'none',
+                      borderRadius: 2.5,
+                      fontWeight: 600,
+                      px: 3,
+                      py: 1.25,
+                      fontSize: '0.9rem',
+                      borderWidth: 2,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        borderWidth: 2,
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      },
+                    }}
+                  >
+                    Excel İndir
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="medium"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={handleExportPDF}
+                    sx={{ 
+                      textTransform: 'none',
+                      borderRadius: 2.5,
+                      fontWeight: 600,
+                      px: 3,
+                      py: 1.25,
+                      fontSize: '0.9rem',
+                      borderWidth: 2,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        borderWidth: 2,
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      },
+                    }}
+                  >
+                    PDF İndir
+                  </Button>
+                </Box>
+              )}
             </Box>
           </Box>
 
