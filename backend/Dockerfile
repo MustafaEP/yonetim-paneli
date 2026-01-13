@@ -6,6 +6,16 @@ WORKDIR /app
 # Avoid any interactive apt prompts during Docker build.
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Optional: use an NPM registry mirror to speed up installs on slow/blocked VPS networks
+ARG NPM_REGISTRY
+ENV npm_config_audit=false
+ENV npm_config_fund=false
+RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000
+
 # Optional: allow overriding Prisma engines download base (useful in restricted networks)
 ARG PRISMA_ENGINES_MIRROR
 ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
@@ -61,6 +71,16 @@ WORKDIR /app
 
 # Avoid any interactive apt prompts during Docker build.
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Optional: use an NPM registry mirror to speed up installs on slow/blocked VPS networks
+ARG NPM_REGISTRY
+ENV npm_config_audit=false
+ENV npm_config_fund=false
+RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000
 
 # Optional: allow overriding Prisma engines download base (useful in restricted networks)
 ARG PRISMA_ENGINES_MIRROR
