@@ -3,19 +3,6 @@ FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
-# Avoid any interactive apt prompts during Docker build.
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Optional: use an NPM registry mirror to speed up installs on slow/blocked VPS networks
-ARG NPM_REGISTRY
-ENV npm_config_audit=false
-ENV npm_config_fund=false
-RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi && \
-    npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm config set fetch-timeout 300000
-
 # Optional: allow overriding Prisma engines download base (useful in restricted networks)
 ARG PRISMA_ENGINES_MIRROR
 ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
@@ -69,58 +56,36 @@ FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Avoid any interactive apt prompts during Docker build.
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Optional: use an NPM registry mirror to speed up installs on slow/blocked VPS networks
-ARG NPM_REGISTRY
-ENV npm_config_audit=false
-ENV npm_config_fund=false
-RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi && \
-    npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm config set fetch-timeout 300000
-
 # Optional: allow overriding Prisma engines download base (useful in restricted networks)
 ARG PRISMA_ENGINES_MIRROR
 ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
 
-# System dependencies for Prisma engines (OpenSSL).
-# Puppeteer deps are optional and can be enabled via build-arg INSTALL_PUPPETEER_DEPS=1.
-ARG INSTALL_PUPPETEER_DEPS=1
+# System dependencies for:
+# - Prisma engines (OpenSSL)
+# - Puppeteer bundled Chromium runtime libs
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     openssl \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libxshmfence1 \
+    xdg-utils \
+    libgtk-3-0 \
   && rm -rf /var/lib/apt/lists/*
-
-# Optional: Puppeteer bundled Chromium runtime libs.
-# If your VPS build hangs on heavy apt postinst steps (e.g. shared-mime-info),
-# set INSTALL_PUPPETEER_DEPS=0 to skip these (PDF generation will not work).
-RUN if [ "$INSTALL_PUPPETEER_DEPS" = "1" ]; then \
-      apt-get update && apt-get install -y --no-install-recommends \
-        fonts-liberation \
-        libasound2 \
-        libatk-bridge2.0-0 \
-        libatk1.0-0 \
-        libcups2 \
-        libdbus-1-3 \
-        libdrm2 \
-        libgbm1 \
-        libnspr4 \
-        libnss3 \
-        libpango-1.0-0 \
-        libpangocairo-1.0-0 \
-        libx11-xcb1 \
-        libxcomposite1 \
-        libxdamage1 \
-        libxrandr2 \
-        libxshmfence1 \
-        libgtk-3-0 \
-      && rm -rf /var/lib/apt/lists/* ; \
-    else \
-      echo "Skipping Puppeteer/Chromium system deps (INSTALL_PUPPETEER_DEPS=0)"; \
-    fi
 
 # Install production dependencies
 COPY package*.json ./
