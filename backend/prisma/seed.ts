@@ -1,4 +1,4 @@
-import { PrismaClient, MemberStatus, MemberSource, ContentType, ContentStatus, DocumentTemplateType, NotificationType, NotificationTargetType, NotificationStatus, NotificationCategory, NotificationChannel, NotificationTypeCategory, SystemSettingCategory, Gender, EducationStatus, PositionTitle, ApprovalStatus, ApprovalEntityType, PaymentType } from '@prisma/client';
+import { PrismaClient, MemberStatus, MemberSource, ContentType, ContentStatus, DocumentTemplateType, NotificationType, NotificationTargetType, NotificationStatus, NotificationCategory, NotificationChannel, NotificationTypeCategory, SystemSettingCategory, Gender, EducationStatus, PositionTitle, ApprovalStatus, ApprovalEntityType, PaymentType, PanelUserApplicationStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -160,6 +160,9 @@ async function main() {
   console.log('🗑️  Mevcut veriler temizleniyor...');
   await prisma.memberPayment.deleteMany();
   await prisma.userNotification.deleteMany();
+  await prisma.notificationRecipient.deleteMany(); // Notification'a bağlı
+  await prisma.notificationLog.deleteMany(); // Notification'a bağlı
+  await prisma.userNotificationSettings.deleteMany(); // User'a bağlı
   await prisma.tevkifatFile.deleteMany();
   await prisma.approval.deleteMany();
   await prisma.memberHistory.deleteMany();
@@ -180,6 +183,7 @@ async function main() {
   await prisma.profession.deleteMany();
   await prisma.branch.deleteMany();
   await prisma.userScope.deleteMany();
+  await prisma.customRoleScope.deleteMany(); // CustomRole'a bağlı
   await prisma.customRolePermission.deleteMany();
   await prisma.customRole.deleteMany();
   await prisma.user.deleteMany();
@@ -438,8 +442,80 @@ async function main() {
   // 6. UserScope ekle (kullanıcılara yetki alanları)
   console.log('🔐 Kullanıcı yetkileri ekleniyor...');
   
-  // Not: İl Başkanı ve İlçe Temsilcisi kullanıcıları artık IL_BASKANI ve ILCE_TEMSILCISI rollerine sahip değil
-  // Bu kullanıcılar GENEL_SEKRETER rolüne atandı, bu yüzden UserScope eklenmedi
+  // İl Başkanı ve İlçe Temsilcisi kullanıcılarına yetki alanları ekle
+  const ilBaskaniUser = await prisma.user.findFirst({
+    where: { email: 'il.baskani@sendika.local' },
+  });
+  const ilceTemsilcisiUser = await prisma.user.findFirst({
+    where: { email: 'ilce.temsilcisi@sendika.local' },
+  });
+  
+  if (ilBaskaniUser) {
+    // İl Başkanı için bir ile yetki alanı ekle
+    const sampleProvince = await prisma.province.findFirst();
+    if (sampleProvince) {
+      await prisma.userScope.create({
+        data: {
+          userId: ilBaskaniUser.id,
+          provinceId: sampleProvince.id,
+        },
+      });
+      console.log(`   - İl Başkanı için yetki alanı eklendi: ${sampleProvince.name}`);
+    }
+  }
+  
+  if (ilceTemsilcisiUser) {
+    // İlçe Temsilcisi için bir ilçeye yetki alanı ekle
+    const sampleDistrict = await prisma.district.findFirst();
+    if (sampleDistrict) {
+      await prisma.userScope.create({
+        data: {
+          userId: ilceTemsilcisiUser.id,
+          provinceId: sampleDistrict.provinceId,
+          districtId: sampleDistrict.id,
+        },
+      });
+      console.log(`   - İlçe Temsilcisi için yetki alanı eklendi: ${sampleDistrict.name}`);
+    }
+  }
+
+  // 6.1. CustomRoleScope ekle (roller için yetki alanları)
+  console.log('🎭 Rol yetki alanları ekleniyor...');
+  const ilBaskaniRoleForScope = await prisma.customRole.findFirst({
+    where: { name: 'IL_BASKANI' },
+  });
+  const ilceTemsilcisiRoleForScope = await prisma.customRole.findFirst({
+    where: { name: 'ILCE_TEMSILCISI' },
+  });
+  
+  if (ilBaskaniRoleForScope) {
+    // İl Başkanı rolü için bir ile yetki alanı ekle
+    const sampleProvinceForRole = await prisma.province.findFirst();
+    if (sampleProvinceForRole) {
+      await prisma.customRoleScope.create({
+        data: {
+          roleId: ilBaskaniRoleForScope.id,
+          provinceId: sampleProvinceForRole.id,
+        },
+      });
+      console.log(`   - İl Başkanı rolü için yetki alanı eklendi: ${sampleProvinceForRole.name}`);
+    }
+  }
+  
+  if (ilceTemsilcisiRoleForScope) {
+    // İlçe Temsilcisi rolü için bir ilçeye yetki alanı ekle
+    const sampleDistrictForRole = await prisma.district.findFirst();
+    if (sampleDistrictForRole) {
+      await prisma.customRoleScope.create({
+        data: {
+          roleId: ilceTemsilcisiRoleForScope.id,
+          provinceId: sampleDistrictForRole.provinceId,
+          districtId: sampleDistrictForRole.id,
+        },
+      });
+      console.log(`   - İlçe Temsilcisi rolü için yetki alanı eklendi: ${sampleDistrictForRole.name}`);
+    }
+  }
 
   // 7. Şubeler ekle (üyelerden önce - branchId zorunlu)
   console.log('🏢 Şubeler ekleniyor...');
@@ -2449,7 +2525,115 @@ Sendika Yönetimi
     }
     
     console.log(`   - ${adminNotifications.length} bildirim admin kullanıcısına eklendi (${readCount} okunmuş, ${unreadCount} okunmamış)`);
+    
+    // NotificationRecipient kayıtları oluştur
+    console.log('📬 Bildirim alıcıları ekleniyor...');
+    const allNotifications = await prisma.notification.findMany();
+    let recipientCount = 0;
+    
+    for (const notification of allNotifications) {
+      if (notification.targetType === NotificationTargetType.USER && notification.targetId) {
+        // Kullanıcıya özel bildirim
+        const targetUser = await prisma.user.findUnique({
+          where: { id: notification.targetId },
+        });
+        if (targetUser) {
+          for (const channel of notification.channels) {
+            await prisma.notificationRecipient.create({
+              data: {
+                notificationId: notification.id,
+                userId: targetUser.id,
+                email: targetUser.email,
+                channel: channel,
+                status: notification.status,
+                sentAt: notification.sentAt,
+              },
+            });
+            recipientCount++;
+          }
+        }
+      } else if (notification.targetType === NotificationTargetType.ALL_MEMBERS) {
+        // Tüm üyelere bildirim
+        const allMembers = await prisma.member.findMany({ take: 5 }); // İlk 5 üyeye gönder
+        for (const member of allMembers) {
+          for (const channel of notification.channels) {
+            await prisma.notificationRecipient.create({
+              data: {
+                notificationId: notification.id,
+                memberId: member.id,
+                email: member.email,
+                phone: member.phone,
+                channel: channel,
+                status: notification.status,
+                sentAt: notification.sentAt,
+              },
+            });
+            recipientCount++;
+          }
+        }
+      }
+    }
+    console.log(`   - ${recipientCount} bildirim alıcısı eklendi`);
+    
+    // NotificationLog kayıtları oluştur
+    console.log('📋 Bildirim logları ekleniyor...');
+    const allRecipients = await prisma.notificationRecipient.findMany({ take: 10 });
+    let logCount = 0;
+    
+    for (const recipient of allRecipients) {
+      const actions = ['SENT', 'DELIVERED', 'READ'];
+      const action = actions[Math.floor(Math.random() * actions.length)];
+      const status = action === 'SENT' ? NotificationStatus.SENT : 
+                     action === 'DELIVERED' ? NotificationStatus.SENT : 
+                     NotificationStatus.SENT;
+      
+      await prisma.notificationLog.create({
+        data: {
+          notificationId: recipient.notificationId,
+          recipientId: recipient.id,
+          channel: recipient.channel,
+          action: action,
+          status: status,
+          message: `Bildirim ${action} durumunda`,
+          createdAt: recipient.sentAt || new Date(),
+        },
+      });
+      logCount++;
+    }
+    console.log(`   - ${logCount} bildirim logu eklendi`);
   }
+
+  // 🔹 Kullanıcı Bildirim Ayarları
+  console.log('🔔 Kullanıcı bildirim ayarları ekleniyor...');
+  const allUsersForSettings = await prisma.user.findMany({ take: 5 });
+  let settingsCount = 0;
+  
+  for (const user of allUsersForSettings) {
+    await prisma.userNotificationSettings.create({
+      data: {
+        userId: user.id,
+        emailEnabled: true,
+        smsEnabled: Math.random() > 0.5,
+        whatsappEnabled: false,
+        inAppEnabled: true,
+        timeZone: 'Europe/Istanbul',
+        quietHoursStart: '22:00',
+        quietHoursEnd: '08:00',
+        systemNotificationsEnabled: true,
+        financialNotificationsEnabled: true,
+        announcementNotificationsEnabled: true,
+        reminderNotificationsEnabled: true,
+        typeCategorySettings: {
+          MEMBER_APPLICATION_NEW: true,
+          MEMBER_APPLICATION_APPROVED: true,
+          DUES_PAYMENT_RECEIVED: true,
+          DUES_OVERDUE: true,
+        },
+      },
+    });
+    settingsCount++;
+  }
+  console.log(`   - ${settingsCount} kullanıcı bildirim ayarı eklendi`);
 
   // 🔹 Tevkifat Merkezleri - Sadece 3 merkez oluştur
   console.log('🏛️  Tevkifat merkezleri ekleniyor...');
@@ -2961,6 +3145,170 @@ Sendika Yönetimi
     }
   }
   console.log(`   - ${memberUpdateCount} üyeye ek alanlar eklendi (cinsiyet, doğum tarihi, eğitim, anne/baba adı, tevkifat ünvanı, üyelik bilgisi, yönetim kurulu kararı, meslek/unvan, kurum detayları)`);
+
+  // 🔹 Üye Geçmişi (MemberHistory)
+  console.log('📜 Üye geçmişi kayıtları ekleniyor...');
+  const membersForHistory = await prisma.member.findMany({ take: 20 });
+  let historyCount = 0;
+  
+  for (const member of membersForHistory) {
+    // Üye oluşturma geçmişi
+    if (member.createdByUserId) {
+      await prisma.memberHistory.create({
+        data: {
+          memberId: member.id,
+          action: 'CREATE',
+          changedBy: member.createdByUserId,
+          createdAt: member.createdAt,
+        },
+      });
+      historyCount++;
+    }
+    
+    // Üye onaylama geçmişi
+    if (member.approvedByUserId && member.approvedAt) {
+      await prisma.memberHistory.create({
+        data: {
+          memberId: member.id,
+          action: 'UPDATE',
+          fieldName: 'status',
+          oldValue: 'PENDING',
+          newValue: 'APPROVED',
+          changedBy: member.approvedByUserId,
+          createdAt: member.approvedAt,
+        },
+      });
+      historyCount++;
+    }
+    
+    // Rastgele güncelleme geçmişi
+    if (Math.random() > 0.5 && activeUsers.length > 0) {
+      await prisma.memberHistory.create({
+        data: {
+          memberId: member.id,
+          action: 'UPDATE',
+          fieldName: 'phone',
+          oldValue: member.phone || '',
+          newValue: generatePhone(),
+          changedBy: activeUsers[Math.floor(Math.random() * activeUsers.length)].id,
+          createdAt: new Date(member.createdAt.getTime() + Math.random() * 30 * 24 * 60 * 60 * 1000),
+        },
+      });
+      historyCount++;
+    }
+  }
+  console.log(`   - ${historyCount} üye geçmişi kaydı eklendi`);
+
+  // 🔹 Onay Kayıtları (Approval)
+  console.log('✅ Onay kayıtları ekleniyor...');
+  const institutionsForApproval = await prisma.institution.findMany({ 
+    where: { isActive: false },
+    take: 5,
+  });
+  let approvalCount = 0;
+  
+  for (const institution of institutionsForApproval) {
+    if (activeUsers.length > 0) {
+      const requester = activeUsers[Math.floor(Math.random() * activeUsers.length)];
+      const approver = activeUsers[Math.floor(Math.random() * activeUsers.length)];
+      
+      await prisma.approval.create({
+        data: {
+          entityType: ApprovalEntityType.INSTITUTION,
+          entityId: institution.id,
+          status: Math.random() > 0.3 ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING,
+          requestedBy: requester.id,
+          approvedBy: Math.random() > 0.3 ? approver.id : null,
+          requestData: {
+            name: institution.name,
+            provinceId: institution.provinceId,
+            districtId: institution.districtId,
+          },
+          approvalNote: Math.random() > 0.3 ? 'Kurum onaylandı' : null,
+          approvedAt: Math.random() > 0.3 ? new Date() : null,
+        },
+      });
+      approvalCount++;
+    }
+  }
+  
+  // Üye oluşturma onayları
+  const pendingMembers = await prisma.member.findMany({
+    where: { status: MemberStatus.PENDING },
+    take: 3,
+  });
+  
+  for (const member of pendingMembers) {
+    if (activeUsers.length > 0 && member.createdByUserId) {
+      await prisma.approval.create({
+        data: {
+          entityType: ApprovalEntityType.MEMBER_CREATE,
+          entityId: member.id,
+          status: ApprovalStatus.PENDING,
+          requestedBy: member.createdByUserId,
+          requestData: {
+            firstName: member.firstName,
+            lastName: member.lastName,
+            nationalId: member.nationalId,
+          },
+        },
+      });
+      approvalCount++;
+    }
+  }
+  console.log(`   - ${approvalCount} onay kaydı eklendi`);
+
+  // 🔹 Panel Kullanıcı Başvuruları (PanelUserApplication)
+  console.log('📝 Panel kullanıcı başvuruları ekleniyor...');
+  const membersForApplication = await prisma.member.findMany({
+    where: { 
+      status: MemberStatus.ACTIVE,
+      userId: null, // Henüz kullanıcıya terfi etmemiş
+    },
+    take: 5,
+  });
+  const rolesForApplication = await prisma.customRole.findMany({
+    where: { 
+      name: { in: ['IL_BASKANI', 'ILCE_TEMSILCISI', 'GENEL_SEKRETER'] },
+    },
+  });
+  let applicationCount = 0;
+  
+  for (const member of membersForApplication) {
+    if (rolesForApplication.length > 0 && activeUsers.length > 0) {
+      const requestedRole = rolesForApplication[Math.floor(Math.random() * rolesForApplication.length)];
+      const reviewer = activeUsers[Math.floor(Math.random() * activeUsers.length)];
+      const status = Math.random() > 0.4 ? PanelUserApplicationStatus.APPROVED : (Math.random() > 0.5 ? PanelUserApplicationStatus.REJECTED : PanelUserApplicationStatus.PENDING);
+      
+      const application = await prisma.panelUserApplication.create({
+        data: {
+          memberId: member.id,
+          requestedRoleId: requestedRole.id,
+          status: status,
+          requestNote: 'Panel kullanıcısı olmak istiyorum',
+          reviewedBy: status !== PanelUserApplicationStatus.PENDING ? reviewer.id : null,
+          reviewedAt: status !== PanelUserApplicationStatus.PENDING ? new Date() : null,
+          reviewNote: status === PanelUserApplicationStatus.APPROVED ? 'Başvuru onaylandı' : status === PanelUserApplicationStatus.REJECTED ? 'Başvuru reddedildi' : null,
+        },
+      });
+      
+      // PanelUserApplicationScope ekle
+      if (requestedRole.hasScopeRestriction) {
+        const sampleProvince = await prisma.province.findFirst();
+        if (sampleProvince) {
+          await prisma.panelUserApplicationScope.create({
+            data: {
+              applicationId: application.id,
+              provinceId: sampleProvince.id,
+            },
+          });
+        }
+      }
+      
+      applicationCount++;
+    }
+  }
+  console.log(`   - ${applicationCount} panel kullanıcı başvurusu eklendi`);
 
   // 🔹 Üye Ödemeleri
   console.log('💳 Üye ödemeleri ekleniyor...');
