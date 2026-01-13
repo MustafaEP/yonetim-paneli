@@ -386,18 +386,6 @@ const PaymentsListPage: React.FC = () => {
         }).format(Number(value)),
     },
     {
-      field: 'paymentType',
-      headerName: 'Ödeme Türü',
-      width: 130,
-      renderCell: (params) => (
-        <Chip
-          label={paymentTypeLabels[params.value as PaymentType]}
-          size="small"
-          color={params.value === 'TEVKIFAT' ? 'primary' : 'default'}
-        />
-      ),
-    },
-    {
       field: 'actions',
       headerName: 'İşlemler',
       width: 150,

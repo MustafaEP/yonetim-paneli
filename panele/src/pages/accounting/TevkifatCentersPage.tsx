@@ -49,7 +49,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
 import BadgeIcon from '@mui/icons-material/Badge';
-import WorkIcon from '@mui/icons-material/Work';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { useAuth } from '../../context/AuthContext';
@@ -66,14 +65,6 @@ import {
   type TevkifatTitle,
   type CreateTevkifatTitleDto,
 } from '../../api/accountingApi';
-import {
-  getProfessions,
-  getAllProfessions,
-  createProfession,
-  updateProfession,
-  deleteProfession,
-  type Profession,
-} from '../../api/professionsApi';
 
 const TevkifatCentersPage: React.FC = () => {
   const theme = useTheme();
@@ -106,19 +97,6 @@ const TevkifatCentersPage: React.FC = () => {
   const [deletingTitle, setDeletingTitle] = useState<TevkifatTitle | null>(null);
   const [deactivatingTitle, setDeactivatingTitle] = useState<TevkifatTitle | null>(null);
 
-  // Meslek/Unvanlar state
-  const [professions, setProfessions] = useState<Profession[]>([]);
-  const [loadingProfessions, setLoadingProfessions] = useState(false);
-  const [showInactiveProfessions, setShowInactiveProfessions] = useState(false);
-  const [professionDialogOpen, setProfessionDialogOpen] = useState(false);
-  const [editingProfession, setEditingProfession] = useState<Profession | null>(null);
-  const [professionForm, setProfessionForm] = useState<{ name: string; isActive: boolean }>({ name: '', isActive: true });
-  const [savingProfession, setSavingProfession] = useState(false);
-  const [deleteProfessionDialogOpen, setDeleteProfessionDialogOpen] = useState(false);
-  const [deactivateProfessionDialogOpen, setDeactivateProfessionDialogOpen] = useState(false);
-  const [deletingProfession, setDeletingProfession] = useState<Profession | null>(null);
-  const [deactivatingProfession, setDeactivatingProfession] = useState<Profession | null>(null);
-
   const canView = hasPermission('ACCOUNTING_VIEW');
   const canManage = hasPermission('ACCOUNTING_VIEW'); // Admin yetkisi
 
@@ -126,9 +104,8 @@ const TevkifatCentersPage: React.FC = () => {
     if (canView) {
       loadCenters();
       loadTitles();
-      loadProfessions();
     }
-  }, [canView, showInactiveProfessions]);
+  }, [canView]);
 
   const loadCenters = async () => {
     setLoading(true);
@@ -155,22 +132,6 @@ const TevkifatCentersPage: React.FC = () => {
       setLoadingTitles(false);
     }
   };
-
-  const loadProfessions = async () => {
-    setLoadingProfessions(true);
-    try {
-      const data = showInactiveProfessions ? await getAllProfessions() : await getProfessions();
-      setProfessions(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      console.error('Meslek/Unvanlar alınırken hata:', e);
-      setProfessions([]);
-      toast.showError('Meslek/Unvanlar yüklenirken bir hata oluştu.');
-    } finally {
-      setLoadingProfessions(false);
-    }
-  };
-
-
 
   const handleDelete = async () => {
     if (!deletingCenter) return;
@@ -305,104 +266,6 @@ const TevkifatCentersPage: React.FC = () => {
     } catch (e: any) {
       console.error('Tevkifat unvanı aktifleştirilirken hata:', e);
       toast.showError(e.response?.data?.message || 'Tevkifat unvanı aktifleştirilirken bir hata oluştu');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  // Meslek/Unvanlar handler'ları
-  const handleOpenProfessionDialog = (profession?: Profession) => {
-    if (profession) {
-      setEditingProfession(profession);
-      setProfessionForm({ name: profession.name, isActive: profession.isActive });
-    } else {
-      setEditingProfession(null);
-      setProfessionForm({ name: '', isActive: true });
-    }
-    setProfessionDialogOpen(true);
-  };
-
-  const handleCloseProfessionDialog = () => {
-    setProfessionDialogOpen(false);
-    setEditingProfession(null);
-    setProfessionForm({ name: '', isActive: true });
-  };
-
-  const handleSaveProfession = async () => {
-    if (!professionForm.name.trim()) {
-      toast.showError('Meslek/Unvan adı gereklidir');
-      return;
-    }
-
-    setSavingProfession(true);
-    try {
-      const payload = {
-        name: professionForm.name.trim(),
-        ...(editingProfession ? { isActive: professionForm.isActive } : {}),
-      };
-
-      if (editingProfession) {
-        await updateProfession(editingProfession.id, payload);
-        toast.showSuccess('Meslek/Unvan başarıyla güncellendi');
-      } else {
-        await createProfession({ name: payload.name });
-        toast.showSuccess('Meslek/Unvan başarıyla oluşturuldu');
-      }
-      handleCloseProfessionDialog();
-      loadProfessions();
-    } catch (e: any) {
-      console.error('Meslek/Unvan kaydedilirken hata:', e);
-      toast.showError(e.response?.data?.message || 'Meslek/Unvan kaydedilirken bir hata oluştu');
-    } finally {
-      setSavingProfession(false);
-    }
-  };
-
-  const handleDeactivateProfession = async () => {
-    if (!deactivatingProfession) return;
-
-    setDeleting(true);
-    try {
-      await updateProfession(deactivatingProfession.id, { isActive: false });
-      toast.showSuccess('Meslek/Unvan pasif yapıldı');
-      setDeactivateProfessionDialogOpen(false);
-      setDeactivatingProfession(null);
-      loadProfessions();
-    } catch (e: any) {
-      console.error('Meslek/Unvan pasifleştirilirken hata:', e);
-      toast.showError(e.response?.data?.message || 'Meslek/Unvan pasifleştirilirken bir hata oluştu');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handleDeleteProfession = async () => {
-    if (!deletingProfession) return;
-
-    setDeleting(true);
-    try {
-      await deleteProfession(deletingProfession.id);
-      toast.showSuccess('Meslek/Unvan silindi');
-      setDeleteProfessionDialogOpen(false);
-      setDeletingProfession(null);
-      loadProfessions();
-    } catch (e: any) {
-      console.error('Meslek/Unvan silinirken hata:', e);
-      toast.showError(e.response?.data?.message || 'Meslek/Unvan silinirken bir hata oluştu');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handleActivateProfession = async (profession: Profession) => {
-    setDeleting(true);
-    try {
-      await updateProfession(profession.id, { isActive: true });
-      toast.showSuccess('Meslek/Unvan aktifleştirildi');
-      loadProfessions();
-    } catch (e: any) {
-      console.error('Meslek/Unvan aktifleştirilirken hata:', e);
-      toast.showError(e.response?.data?.message || 'Meslek/Unvan aktifleştirilirken bir hata oluştu');
     } finally {
       setDeleting(false);
     }
@@ -589,10 +452,8 @@ const TevkifatCentersPage: React.FC = () => {
                 onClick={() => {
                   if (activeTab === 0) {
                     navigate('/accounting/tevkifat-centers/new');
-                  } else if (activeTab === 1) {
-                    handleOpenTitleDialog();
                   } else {
-                    handleOpenProfessionDialog();
+                    handleOpenTitleDialog();
                   }
                 }}
                 size="large"
@@ -614,7 +475,7 @@ const TevkifatCentersPage: React.FC = () => {
                   },
                 }}
               >
-                {activeTab === 0 ? 'Yeni Tevkifat Merkezi' : activeTab === 1 ? 'Yeni Unvan Ekle' : 'Yeni Meslek/Unvan'}
+                {activeTab === 0 ? 'Yeni Tevkifat Merkezi' : 'Yeni Unvan Ekle'}
               </Button>
             )}
           </Box>
@@ -628,10 +489,8 @@ const TevkifatCentersPage: React.FC = () => {
               onClick={() => {
                 if (activeTab === 0) {
                   navigate('/accounting/tevkifat-centers/new');
-                } else if (activeTab === 1) {
-                  handleOpenTitleDialog();
                 } else {
-                  handleOpenProfessionDialog();
+                  handleOpenTitleDialog();
                 }
               }}
               size="large"
@@ -647,7 +506,7 @@ const TevkifatCentersPage: React.FC = () => {
                 boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
               }}
             >
-              {activeTab === 0 ? 'Yeni Tevkifat Merkezi' : activeTab === 1 ? 'Yeni Unvan Ekle' : 'Yeni Meslek/Unvan'}
+              {activeTab === 0 ? 'Yeni Tevkifat Merkezi' : 'Yeni Unvan Ekle'}
             </Button>
           )}
         </Box>
@@ -698,11 +557,6 @@ const TevkifatCentersPage: React.FC = () => {
             icon={<BadgeIcon />} 
             iconPosition="start"
             label="Tevkifat Unvanları" 
-          />
-          <Tab 
-            icon={<WorkIcon />} 
-            iconPosition="start"
-            label="Meslek/Unvanlar" 
           />
         </Tabs>
       </Card>
@@ -942,10 +796,10 @@ const TevkifatCentersPage: React.FC = () => {
                           borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
                         }}
                       >
-                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Unvan Adı</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
+                        <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Unvan Adı</TableCell>
+                        <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
                         {canManage && (
-                          <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
+                          <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
                         )}
                       </TableRow>
                     </TableHead>
@@ -972,10 +826,10 @@ const TevkifatCentersPage: React.FC = () => {
                               },
                             }}
                           >
-                        <TableCell align="center">
+                        <TableCell align="left">
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>{title.name}</Typography>
                         </TableCell>
-                        <TableCell align="center">
+                        <TableCell align="left">
                           <Chip
                             label={title.isActive ? 'Aktif' : 'Pasif'}
                             color={title.isActive ? 'success' : 'default'}
@@ -984,8 +838,8 @@ const TevkifatCentersPage: React.FC = () => {
                           />
                         </TableCell>
                         {canManage && (
-                          <TableCell align="center">
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                          <TableCell align="left">
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1 }}>
                               <Tooltip title="Düzenle" arrow>
                                 <IconButton
                                   size="small"
@@ -1057,188 +911,6 @@ const TevkifatCentersPage: React.FC = () => {
                             </Box>
                           </TableCell>
                         )}
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
-          </Box>
-        ) : activeTab === 2 ? (
-          /* Meslek/Unvanlar Tab */
-          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-            {/* Filtre: Pasif olanları göster */}
-            {canManage && (
-              <Box
-                sx={{
-                  mb: 3,
-                  p: 2.5,
-                  borderRadius: 2,
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.04)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
-                  border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                }}
-              >
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={showInactiveProfessions}
-                      onChange={(e) => setShowInactiveProfessions(e.target.checked)}
-                      size="small"
-                    />
-                  }
-                  label="Pasif olanları göster"
-                  sx={{
-                    '& .MuiFormControlLabel-label': {
-                      fontSize: '0.9rem',
-                      fontWeight: 600,
-                    },
-                  }}
-                />
-              </Box>
-            )}
-
-            {loadingProfessions ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  borderRadius: 3,
-                  overflow: 'hidden',
-                  border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                }}
-              >
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow 
-                        sx={{ 
-                          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
-                          borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-                        }}
-                      >
-                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Meslek/Unvan Adı</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
-                        {canManage && (
-                          <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {professions.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={canManage ? 3 : 2} align="center" sx={{ py: 6 }}>
-                            <WorkIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
-                            <Typography variant="body2" color="text.secondary">
-                              Henüz meslek/unvan eklenmemiş
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        professions.map((profession, index) => (
-                          <TableRow 
-                            key={profession.id}
-                            sx={{
-                              transition: 'all 0.2s ease',
-                              backgroundColor: index % 2 === 0 ? 'transparent' : alpha(theme.palette.grey[50], 0.3),
-                              '&:hover': {
-                                backgroundColor: alpha(theme.palette.primary.main, 0.03),
-                                boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
-                              },
-                            }}
-                          >
-                            <TableCell align="center">
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                                <WorkIcon sx={{ color: theme.palette.primary.main, fontSize: '1.2rem' }} />
-                                <Typography variant="body1" sx={{ fontWeight: 500 }}>{profession.name}</Typography>
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Chip
-                                label={profession.isActive ? 'Aktif' : 'Pasif'}
-                                color={profession.isActive ? 'success' : 'default'}
-                                size="small"
-                                icon={profession.isActive ? <CheckCircleIcon /> : <CancelIcon />}
-                                sx={{ fontWeight: 600 }}
-                              />
-                            </TableCell>
-                            {canManage && (
-                              <TableCell align="center">
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                                  <Tooltip title="Düzenle" arrow>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => handleOpenProfessionDialog(profession)}
-                                      sx={{ 
-                                        color: theme.palette.primary.main,
-                                        '&:hover': {
-                                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                        },
-                                      }}
-                                    >
-                                      <EditIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                  {profession.isActive ? (
-                                    <>
-                                      <Tooltip title="Pasif Yap" arrow>
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => {
-                                            setDeactivatingProfession(profession);
-                                            setDeactivateProfessionDialogOpen(true);
-                                          }}
-                                          sx={{ 
-                                            color: theme.palette.warning.main,
-                                            '&:hover': {
-                                              backgroundColor: alpha(theme.palette.warning.main, 0.1),
-                                            },
-                                          }}
-                                        >
-                                          <BlockIcon fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
-                                      <Tooltip title="Sil" arrow>
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => {
-                                            setDeletingProfession(profession);
-                                            setDeleteProfessionDialogOpen(true);
-                                          }}
-                                          sx={{ 
-                                            color: theme.palette.error.main,
-                                            '&:hover': {
-                                              backgroundColor: alpha(theme.palette.error.main, 0.1),
-                                            },
-                                          }}
-                                        >
-                                          <DeleteIcon fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
-                                    </>
-                                  ) : (
-                                    <Tooltip title="Aktifleştir" arrow>
-                                      <IconButton
-                                        size="small"
-                                        onClick={() => handleActivateProfession(profession)}
-                                        disabled={deleting}
-                                        sx={{ 
-                                          color: theme.palette.success.main,
-                                          '&:hover': {
-                                            backgroundColor: alpha(theme.palette.success.main, 0.1),
-                                          },
-                                        }}
-                                      >
-                                        <RestoreIcon fontSize="small" />
-                                      </IconButton>
-                                    </Tooltip>
-                                  )}
-                                </Box>
-                              </TableCell>
-                            )}
                           </TableRow>
                         ))
                       )}
@@ -1721,232 +1393,6 @@ const TevkifatCentersPage: React.FC = () => {
             }}
           >
             {deleting ? 'Kaldırılıyor...' : 'Kaldır'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Meslek/Unvanlar Dialog'ları */}
-      {/* Meslek/Unvan Ekle/Düzenle Dialog */}
-      <Dialog 
-        open={professionDialogOpen} 
-        onClose={handleCloseProfessionDialog} 
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, 0.2)}`,
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-          color: 'white',
-          py: 2.5,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-        }}>
-          <WorkIcon />
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            {editingProfession ? 'Meslek/Unvan Düzenle' : 'Yeni Meslek/Unvan Ekle'}
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            label="Meslek/Unvan Adı"
-            value={professionForm.name}
-            onChange={(e) => setProfessionForm({ ...professionForm, name: e.target.value })}
-            fullWidth
-            required
-            autoFocus
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              },
-            }}
-          />
-          {editingProfession && (
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={professionForm.isActive}
-                  onChange={(e) => setProfessionForm({ ...professionForm, isActive: e.target.checked })}
-                />
-              }
-              label="Aktif"
-              sx={{
-                '& .MuiFormControlLabel-label': {
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                },
-              }}
-            />
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2.5, background: alpha(theme.palette.primary.main, 0.04) }}>
-          <Button 
-            onClick={handleCloseProfessionDialog} 
-            disabled={savingProfession}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleSaveProfession}
-            variant="contained"
-            disabled={savingProfession}
-            startIcon={savingProfession ? <CircularProgress size={16} /> : <AddIcon />}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 160,
-              boxShadow: 'none',
-              '&:hover': {
-                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-              }
-            }}
-          >
-            {savingProfession ? 'Kaydediliyor...' : editingProfession ? 'Güncelle' : 'Ekle'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Meslek/Unvan Pasifleştir Dialog */}
-      <Dialog 
-        open={deactivateProfessionDialogOpen} 
-        onClose={() => setDeactivateProfessionDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, 0.2)}`,
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          background: `linear-gradient(135deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
-          color: 'white',
-          py: 2.5,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-        }}>
-          <BlockIcon />
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>Meslek/Unvanı Pasif Yap</Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Typography sx={{ mb: 1 }}>
-            "{deactivatingProfession?.name}" adlı meslek/unvanı pasif yapmak istediğinize emin misiniz?
-          </Typography>
-          <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-            Pasif yapılan meslek/unvanlar listede görünmeye devam eder ancak yeni işlemler için kullanılamaz.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2.5, background: alpha(theme.palette.warning.main, 0.04) }}>
-          <Button 
-            onClick={() => setDeactivateProfessionDialogOpen(false)} 
-            disabled={deleting}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleDeactivateProfession}
-            color="warning"
-            variant="contained"
-            disabled={deleting}
-            startIcon={deleting ? <CircularProgress size={16} /> : <BlockIcon />}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 160,
-              boxShadow: 'none',
-              '&:hover': {
-                boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.3)}`,
-              }
-            }}
-          >
-            {deleting ? 'Pasif Yapılıyor...' : 'Pasif Yap'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Meslek/Unvan Sil Dialog */}
-      <Dialog 
-        open={deleteProfessionDialogOpen} 
-        onClose={() => setDeleteProfessionDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, 0.2)}`,
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          background: `linear-gradient(135deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
-          color: 'white',
-          py: 2.5,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-        }}>
-          <DeleteIcon />
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>Meslek/Unvanı Sil</Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Typography sx={{ mb: 1 }}>
-            "{deletingProfession?.name}" adlı meslek/unvanı kalıcı olarak silmek istediğinize emin misiniz?
-          </Typography>
-          <Alert severity="error" sx={{ borderRadius: 2, mt: 2 }}>
-            <Typography variant="body2" fontWeight={600}>
-              Bu işlem geri alınamaz. Meslek/Unvan veritabanından tamamen silinecektir.
-            </Typography>
-          </Alert>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2.5, background: alpha(theme.palette.error.main, 0.04) }}>
-          <Button 
-            onClick={() => setDeleteProfessionDialogOpen(false)} 
-            disabled={deleting}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleDeleteProfession}
-            color="error"
-            variant="contained"
-            disabled={deleting}
-            startIcon={deleting ? <CircularProgress size={16} /> : <DeleteIcon />}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 160,
-              boxShadow: 'none',
-              '&:hover': {
-                boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.3)}`,
-              }
-            }}
-          >
-            {deleting ? 'Siliniyor...' : 'Sil'}
           </Button>
         </DialogActions>
       </Dialog>
