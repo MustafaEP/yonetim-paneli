@@ -304,9 +304,8 @@ export class MembersService {
     }
 
     // Zorunlu alan kontrolleri (her zaman zorunlu olanlar)
-    if (!dto.branchId) {
-      throw new BadRequestException('Bağlı olduğu şube seçilmelidir');
-    }
+    // Not: branchId artık opsiyonel. Branch seçimi yapılmazsa NULL kaydedilir
+    // ve daha sonra admin tarafından güncellenebilir.
     this.validateNationalIdOrThrow(dto.nationalId);
     if (!dto.institutionId) {
       throw new BadRequestException('Kurum seçimi zorunludur');

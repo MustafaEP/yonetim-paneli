@@ -150,10 +150,10 @@ model Member {
   educationStatus EducationStatus? // Öğrenim durumu (seçmeli)
 
   // 🔹 Kurum Bilgileri
-  institutionId    String // Çalıştığı kurum (zorunlu)
+  institutionId    String  // Çalıştığı kurum (zorunlu)
   tevkifatCenterId String? // Tevkifat merkezi (seçmeli)
   tevkifatTitleId  String? // Tevkifat ünvanı (seçmeli)
-  branchId         String // Bağlı olduğu şube (zorunlu)
+  branchId         String? // Bağlı olduğu şube (opsiyonel)
 
   // Bölge ilişkileri (ikamet adresi - çalıştığı yer değil)
   provinceId String?
@@ -166,7 +166,7 @@ model Member {
   institution    Institution     @relation(fields: [institutionId], references: [id])
   tevkifatCenter TevkifatCenter? @relation(fields: [tevkifatCenterId], references: [id])
   tevkifatTitle  TevkifatTitle?  @relation(fields: [tevkifatTitleId], references: [id])
-  branch         Branch          @relation("MemberBranch", fields: [branchId], references: [id])
+  branch         Branch?         @relation("MemberBranch", fields: [branchId], references: [id])
 
   // 🔹 Kurum Detay Bilgileri (Üyeye özel)
   dutyUnit              String? // Görev Birimi
