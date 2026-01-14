@@ -27,13 +27,28 @@ export class PanelUserApplicationsService {
     requestedByUserId: string,
   ) {
     try {
-      // Üyenin zaten bir başvurusu var mı kontrol et
+      // Üyenin zaten bir başvurusu var mı kontrol et (sadece PENDING veya APPROVED ise hata ver)
       const existing = await this.prisma.panelUserApplication.findUnique({
         where: { memberId },
       });
 
       if (existing) {
-        throw new ConflictException('Bu üye için zaten bir başvuru mevcut');
+        if (existing.status === 'PENDING' || existing.status === 'APPROVED') {
+          throw new ConflictException('Bu üye için zaten bir başvuru mevcut');
+        }
+        
+        // Eğer reddedilmiş bir başvuru varsa, onu sil ve yeni başvuru oluştur
+        if (existing.status === 'REJECTED') {
+          // Önce başvurunun scope'larını sil
+          await this.prisma.panelUserApplicationScope.deleteMany({
+            where: { applicationId: existing.id },
+          });
+          
+          // Sonra başvuruyu sil
+          await this.prisma.panelUserApplication.delete({
+            where: { id: existing.id },
+          });
+        }
       }
 
       // Üye zaten panel kullanıcısı mı kontrol et

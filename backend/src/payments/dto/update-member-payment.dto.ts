@@ -124,3 +124,6 @@ export class UpdateMemberPaymentDto {
   documentUrl?: string;
 }
 
+
+
+
