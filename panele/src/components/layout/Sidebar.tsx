@@ -15,10 +15,11 @@ import {
   useMediaQuery,
   IconButton,
 } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import GroupIcon from '@mui/icons-material/Group';
+import GridViewIcon from '@mui/icons-material/GridView';
+import GroupsIcon from '@mui/icons-material/Groups';
 import PeopleIcon from '@mui/icons-material/People';
-import PaymentIcon from '@mui/icons-material/Payment';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -27,8 +28,8 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ArticleIcon from '@mui/icons-material/Article';
 import DescriptionIcon from '@mui/icons-material/Description';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import NotificationsIcon from '@mui/icons-material/Notifications';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SendIcon from '@mui/icons-material/Send';
@@ -36,12 +37,12 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import WorkIcon from '@mui/icons-material/Work';
 import BadgeIcon from '@mui/icons-material/Badge';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import PauseCircleIcon from '@mui/icons-material/PauseCircle';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
-import SearchIcon from '@mui/icons-material/Search';
+import ManageSearchIcon from '@mui/icons-material/ManageSearch';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import type { SxProps, Theme } from '@mui/material';
@@ -82,9 +83,10 @@ const getNavItemSx = (theme: Theme, variant: 'default' | 'success' = 'default'):
 interface SidebarProps {
   mobileOpen?: boolean;
   onDrawerToggle?: () => void;
+  desktopOpen?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, desktopOpen = true }) => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -167,7 +169,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
           sx={getNavItemSx(theme)}
         >
           <ListItemIcon sx={{ minWidth: 40 }}>
-            <DashboardIcon />
+            <GridViewIcon />
           </ListItemIcon>
           <ListItemText 
             primary="Dashboard" 
@@ -207,7 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               sx={getNavItemSx(theme)}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>
-                <PeopleIcon />
+                <SupervisorAccountIcon />
               </ListItemIcon>
               <ListItemText 
                 primary="Panel Kullanıcıları" 
@@ -310,10 +312,10 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
                   sx={getNavItemSx(theme)}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>
-                    <HourglassEmptyIcon />
+                    <BadgeIcon />
                   </ListItemIcon>
                   <ListItemText 
-                    primary="Bekleyen Üyeler" 
+                    primary="Üyeler" 
                     primaryTypographyProps={{
                       fontSize: '0.9rem',
                       fontWeight: 500,
@@ -337,7 +339,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               sx={getNavItemSx(theme)}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>
-                <GroupIcon />
+                <GroupsIcon />
               </ListItemIcon>
               <ListItemText 
                 primary="Tüm Üyeler" 
@@ -567,7 +569,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               sx={getNavItemSx(theme)}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>
-                <PaymentIcon />
+                <ReceiptLongIcon />
               </ListItemIcon>
               <ListItemText
                 primary="Ödeme Sorgulama"
@@ -585,7 +587,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               sx={getNavItemSx(theme)}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>
-                <SearchIcon />
+                <ManageSearchIcon />
               </ListItemIcon>
               <ListItemText
                 primary="Özel Ödeme Sorgulama"
@@ -604,7 +606,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
                 sx={getNavItemSx(theme)}
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>
-                  <PaymentIcon />
+                  <CreditCardIcon />
                 </ListItemIcon>
                 <ListItemText
                   primary="Hızlı Ödeme Girişi"
@@ -627,7 +629,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
             sx={getNavItemSx(theme)}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
-              <AssessmentIcon />
+              <BarChartIcon />
             </ListItemIcon>
             <ListItemText
               primary="Raporlar"
@@ -648,7 +650,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
           sx={getNavItemSx(theme)}
         >
           <ListItemIcon sx={{ minWidth: 40 }}>
-            <NotificationsIcon />
+            <NotificationsActiveIcon />
           </ListItemIcon>
           <ListItemText 
             primary="Bildirimlerim" 
@@ -795,10 +797,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
       ) : (
         /* Desktop Drawer */
         <Drawer
-          variant="permanent"
+          variant="persistent"
+          open={desktopOpen}
           sx={{
             display: { xs: 'none', md: 'block' },
-            width: drawerWidth,
+            width: desktopOpen ? drawerWidth : 0,
             flexShrink: 0,
             '& .MuiDrawer-paper': {
               width: drawerWidth,
@@ -806,6 +809,10 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle })
               borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
               backgroundColor: '#ffffff',
               boxShadow: '2px 0 8px rgba(0,0,0,0.04)',
+              transition: theme.transitions.create(['transform', 'width'], {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
             },
           }}
         >

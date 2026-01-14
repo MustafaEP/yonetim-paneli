@@ -1,54 +1,64 @@
+// src/pages/members/ActiveWaitingMembersPage.tsx
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   Box,
   Card,
   Typography,
+  Chip,
+  IconButton,
+  Tooltip,
   TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Chip,
-  IconButton,
-  Tooltip,
-  Alert,
-  InputAdornment,
-  Button,
-  Stack,
-  Grid,
   useTheme,
   alpha,
-  Paper,
+  InputAdornment,
+  Stack,
+  Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
+  Grid,
   RadioGroup,
   FormControlLabel,
   Radio,
   FormLabel,
-  CircularProgress,
+  Alert,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
-import { useNavigate } from 'react-router-dom';
-import SearchIcon from '@mui/icons-material/Search';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import SettingsIcon from '@mui/icons-material/Settings';
+import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import GroupsIcon from '@mui/icons-material/Groups';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import EditIcon from '@mui/icons-material/Edit';
+import ClearIcon from '@mui/icons-material/Clear';
+import PeopleIcon from '@mui/icons-material/People';
+import SettingsIcon from '@mui/icons-material/Settings';
+import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CloseIcon from '@mui/icons-material/Close';
-import ClearIcon from '@mui/icons-material/Clear';
-import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
+import { useNavigate } from 'react-router-dom';
 
 import type { MemberListItem, MemberStatus } from '../../types/member';
-import { getMembers, exportMembersToPdf, updateMember, deleteMember } from '../../api/membersApi';
-import MemberStatusChangeDialog from '../../components/members/MemberStatusChangeDialog';
+import {
+  getMembers,
+  rejectMember,
+  updateMember,
+  deleteMember,
+  exportMembersToPdf,
+} from '../../api/membersApi';
+import { exportToExcel, exportToPDF, type ExportColumn } from '../../utils/exportUtils';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { ActivateMemberButton } from '../../components/members/ActivateMemberButton';
+import MemberStatusChangeDialog from '../../components/members/MemberStatusChangeDialog';
 import { getBranches } from '../../api/branchesApi';
 import { getInstitutions } from '../../api/institutionsApi';
 import type { Province, District } from '../../types/region';
@@ -57,15 +67,14 @@ import {
   getDistricts,
 } from '../../api/regionsApi';
 
-const MembersListPage: React.FC = () => {
+const ActiveWaitingMembersPage: React.FC = () => {
   const theme = useTheme();
-  const navigate = useNavigate();
-  const { hasPermission, hasRole } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<MemberListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<MemberStatus | 'ALL'>('ALL'); // Varsayılan olarak Tümü
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'APPROVED'>('ALL');
   const [branchFilter, setBranchFilter] = useState<string>('ALL');
   const [provinceFilter, setProvinceFilter] = useState<string[]>([]);
   const [districtFilter, setDistrictFilter] = useState<string[]>([]);
@@ -74,8 +83,17 @@ const MembersListPage: React.FC = () => {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [institutions, setInstitutions] = useState<Array<{ id: string; name: string }>>([]);
-  const [error, setError] = useState<string | null>(null);
-  
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    type: 'activate' | 'reject' | null;
+    memberId: string | null;
+  }>({
+    open: false,
+    type: null,
+    memberId: null,
+  });
+  const [selectedMemberName, setSelectedMemberName] = useState('');
+
   // Durum değiştirme dialog state
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<MemberListItem | null>(null);
@@ -88,8 +106,38 @@ const MembersListPage: React.FC = () => {
   const [deletePayments, setDeletePayments] = useState(false);
   const [deleteDocuments, setDeleteDocuments] = useState(false);
 
+  const navigate = useNavigate();
+  const { hasPermission, hasRole } = useAuth();
+
+  const canApprove = hasPermission('MEMBER_APPROVE');
+  const canReject = hasPermission('MEMBER_REJECT');
+  const canUpdateMember = hasPermission('MEMBER_UPDATE');
   const canChangeStatus = hasPermission('MEMBER_STATUS_CHANGE');
   const canDeleteMember = hasRole('ADMIN');
+
+  // Status filtresine göre tema rengi
+  const statusTheme = useMemo(() => {
+    if (statusFilter === 'ACTIVE') {
+      return {
+        mainColor: theme.palette.success.main,
+        darkColor: theme.palette.success.dark,
+        lightColor: theme.palette.success.light,
+      };
+    } else if (statusFilter === 'APPROVED') {
+      return {
+        mainColor: theme.palette.info.main,
+        darkColor: theme.palette.info.dark,
+        lightColor: theme.palette.info.light,
+      };
+    } else {
+      // ALL seçilirse mavi-yeşil karışımı
+      return {
+        mainColor: '#0891b2', // Cyan
+        darkColor: '#0e7490',
+        lightColor: '#22d3ee',
+      };
+    }
+  }, [statusFilter, theme]);
 
   // Şubeleri yükle
   useEffect(() => {
@@ -159,10 +207,13 @@ const MembersListPage: React.FC = () => {
     loadInstitutions();
   }, []);
 
-  // Filtrelenmiş veriler
-  // Not: Backend status filtresine göre veri döndürür, bu yüzden frontend'de sadece diğer filtreler uygulanır
   const filteredRows = useMemo(() => {
     let filtered = rows;
+
+    // Durum filtresi
+    if (statusFilter !== 'ALL') {
+      filtered = filtered.filter((row) => row.status === statusFilter);
+    }
 
     // Şube filtresi
     if (branchFilter !== 'ALL') {
@@ -190,34 +241,37 @@ const MembersListPage: React.FC = () => {
       );
     }
 
-    // Arama filtresi (Sadece Ad ve Soyad)
+    // Metin araması
     if (searchText.trim()) {
       const searchLower = searchText.toLowerCase().trim();
       filtered = filtered.filter(
         (row) =>
           row.firstName.toLowerCase().includes(searchLower) ||
-          row.lastName.toLowerCase().includes(searchLower),
+          row.lastName.toLowerCase().includes(searchLower) ||
+          row.registrationNumber?.toLowerCase().includes(searchLower) ||
+          row.nationalId?.toLowerCase().includes(searchLower) ||
+          row.province?.name.toLowerCase().includes(searchLower) ||
+          row.institution?.name.toLowerCase().includes(searchLower),
       );
     }
 
     return filtered;
-  }, [rows, branchFilter, provinceFilter, districtFilter, institutionFilter, searchText]);
+  }, [rows, statusFilter, branchFilter, provinceFilter, districtFilter, institutionFilter, searchText]);
 
-  const getStatusLabel = (status: MemberStatus | 'ALL'): string => {
-    if (status === 'ALL') return 'Tümü';
+  const getStatusLabel = (status: MemberStatus): string => {
     switch (status) {
-      case 'ACTIVE':
-        return 'Aktif';
       case 'PENDING':
-        return 'Onay Bekliyor';
+        return 'Başvuru Alındı';
       case 'APPROVED':
         return 'Beklemede';
+      case 'ACTIVE':
+        return 'Aktif';
+      case 'REJECTED':
+        return 'Reddedildi';
       case 'RESIGNED':
         return 'İstifa';
       case 'EXPELLED':
         return 'İhraç';
-      case 'REJECTED':
-        return 'Reddedildi';
       case 'INACTIVE':
         return 'Pasif';
       default:
@@ -225,15 +279,16 @@ const MembersListPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: MemberStatus | 'ALL'): 'success' | 'warning' | 'error' | 'default' | 'info' => {
-    if (status === 'ALL') return 'info';
+  const getStatusColor = (
+    status: MemberStatus,
+  ): 'success' | 'warning' | 'error' | 'default' | 'info' => {
     switch (status) {
-      case 'ACTIVE':
-        return 'success';
       case 'PENDING':
         return 'warning';
       case 'APPROVED':
         return 'info';
+      case 'ACTIVE':
+        return 'success';
       case 'REJECTED':
       case 'EXPELLED':
         return 'error';
@@ -245,57 +300,124 @@ const MembersListPage: React.FC = () => {
     }
   };
 
-  // Status'a göre tema rengi config'i (MemberDetailPage'den alındı)
-  const getStatusThemeConfig = (status: MemberStatus | 'ALL') => {
-    if (status === 'ALL') {
-      // Tümü seçildiğinde mavi-yeşil karışımı
-      return {
-        mainColor: '#0891b2', // Cyan
-        darkColor: '#0e7490',
-        lightColor: '#22d3ee',
-      };
+  const loadMembers = async () => {
+    setLoading(true);
+    try {
+      // Hem APPROVED hem ACTIVE üyeleri getir
+      const [approvedMembers, activeMembers] = await Promise.all([
+        getMembers('APPROVED'),
+        getMembers('ACTIVE'),
+      ]);
+      
+      // İki listeyi birleştir
+      const allMembers = [...approvedMembers, ...activeMembers];
+      setRows(allMembers);
+      console.log('[ActiveWaitingMembersPage] Loaded members:', allMembers.length, `(APPROVED: ${approvedMembers.length}, ACTIVE: ${activeMembers.length})`);
+    } catch (e) {
+      console.error('Üyeler alınırken hata:', e);
+      toast.showError('Üyeler yüklenirken bir hata oluştu');
+      setRows([]);
+    } finally {
+      setLoading(false);
     }
-    const configs: any = {
-      ACTIVE: {
-        mainColor: theme.palette.success.main,
-        darkColor: theme.palette.success.dark,
-        lightColor: theme.palette.success.light,
-      },
-      PENDING: {
-        mainColor: theme.palette.warning.main,
-        darkColor: theme.palette.warning.dark,
-        lightColor: theme.palette.warning.light,
-      },
-      APPROVED: {
-        mainColor: theme.palette.info.main,
-        darkColor: theme.palette.info.dark,
-        lightColor: theme.palette.info.light,
-      },
-      REJECTED: {
-        mainColor: theme.palette.error.main,
-        darkColor: theme.palette.error.dark,
-        lightColor: theme.palette.error.light,
-      },
-      EXPELLED: {
-        mainColor: '#d32f2f',
-        darkColor: '#b71c1c',
-        lightColor: '#ef5350',
-      },
-      RESIGNED: {
-        mainColor: theme.palette.grey[600],
-        darkColor: theme.palette.grey[800],
-        lightColor: theme.palette.grey[400],
-      },
-      INACTIVE: {
-        mainColor: '#757575',
-        darkColor: '#616161',
-        lightColor: '#9e9e9e',
-      },
-    };
-    return configs[status] || configs.ACTIVE;
   };
 
-  const statusTheme = getStatusThemeConfig(statusFilter);
+  useEffect(() => {
+    loadMembers();
+  }, []);
+
+  const handleActivated = () => {
+    loadMembers();
+  };
+
+  const handleEditClick = (id: string) => {
+    if (!canUpdateMember) return;
+    navigate(`/members/${id}/edit`);
+  };
+
+  const handleRejectClick = (id: string, memberName: string) => {
+    if (!canReject) return;
+    setSelectedMemberName(memberName);
+    setConfirmDialog({
+      open: true,
+      type: 'reject',
+      memberId: id,
+    });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmDialog.memberId || !confirmDialog.type) return;
+
+    const id = confirmDialog.memberId;
+
+    setProcessingId(id);
+    setConfirmDialog({ open: false, type: null, memberId: null });
+
+    try {
+      if (confirmDialog.type === 'reject') {
+        await rejectMember(id);
+        await loadMembers();
+        toast.showSuccess('Üye başarıyla reddedildi.');
+      }
+    } catch (e) {
+      console.error('Üye işlenirken hata:', e);
+      toast.showError('Üye reddedilirken bir hata oluştu.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Durum değiştirme handler
+  const handleStatusChange = async (status: MemberStatus, reason?: string) => {
+    if (!selectedMember) return;
+
+    setUpdatingStatus(true);
+    try {
+      const updateData: { status: MemberStatus; cancellationReason?: string } = { status };
+      if (reason && (status === 'RESIGNED' || status === 'EXPELLED')) {
+        updateData.cancellationReason = reason;
+      }
+      await updateMember(selectedMember.id, updateData);
+      toast.showSuccess('Üye durumu başarıyla güncellendi');
+      setStatusDialogOpen(false);
+      setSelectedMember(null);
+      await loadMembers();
+    } catch (error: any) {
+      console.error('Durum güncellenirken hata:', error);
+      toast.showError(error.response?.data?.message || 'Durum güncellenirken bir hata oluştu');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // Silme handler
+  const handleDeleteMember = async () => {
+    if (!memberToDelete) return;
+
+    setDeleting(true);
+    try {
+      await deleteMember(memberToDelete.id, {
+        deletePayments,
+        deleteDocuments,
+      });
+      toast.showSuccess('Üye başarıyla silindi');
+      setDeleteDialogOpen(false);
+      setMemberToDelete(null);
+      setDeletePayments(false);
+      setDeleteDocuments(false);
+      await loadMembers();
+    } catch (error: any) {
+      console.error('Üye silinirken hata:', error);
+      toast.showError(error.response?.data?.message || 'Üye silinirken bir hata oluştu');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCloseConfirmDialog = () => {
+    if (processingId) return; // İşlem devam ederken kapatılamaz
+    setConfirmDialog({ open: false, type: null, memberId: null });
+  };
 
   const columns: GridColDef<MemberListItem>[] = [
     { 
@@ -357,14 +479,12 @@ const MembersListPage: React.FC = () => {
       renderCell: (params: GridRenderCellParams<MemberListItem>) => {
         const statusColor = getStatusColor(params.row.status);
         
-        // Safely get the color from palette with fallback
         const getShadowColor = (color: string): string => {
           const palette = theme.palette as any;
           const colorObj = palette[color];
           if (colorObj && colorObj.main) {
             return colorObj.main;
           }
-          // Fallback to grey if color not found
           return theme.palette.grey[500];
         };
         
@@ -411,205 +531,190 @@ const MembersListPage: React.FC = () => {
       filterable: false,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params: GridRenderCellParams<MemberListItem>) => (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Tooltip title="Detayları Görüntüle" arrow placement="top">
-            <IconButton
-              size="medium"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/members/${params.row.id}`);
-              }}
-              sx={{
-                width: 38,
-                height: 38,
-                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.1)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
-                border: `1px solid ${alpha(statusTheme.mainColor, 0.2)}`,
-                color: statusTheme.mainColor,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
-                  color: '#fff',
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.35)}`,
-                },
-              }}
-            >
-              <VisibilityIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          {canChangeStatus && params.row.status !== 'PENDING' && (
-            <Tooltip title="Durum Değiştir" arrow placement="top">
+      renderCell: (params: GridRenderCellParams<MemberListItem>) => {
+        const disabled = processingId === params.row.id;
+        const isApproved = params.row.status === 'APPROVED';
+        const isActive = params.row.status === 'ACTIVE';
+        
+        return (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Tooltip title="Detayları Görüntüle" arrow placement="top">
               <IconButton
                 size="medium"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedMember(params.row);
-                  setStatusDialogOpen(true);
+                  navigate(`/members/${params.row.id}?source=waiting`);
                 }}
                 sx={{
                   width: 38,
                   height: 38,
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.light, 0.05)} 100%)`,
-                  border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
-                  color: theme.palette.secondary.main,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                  color: theme.palette.primary.main,
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
                     color: '#fff',
                     transform: 'translateY(-2px)',
-                    boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.35)}`,
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
                   },
                 }}
               >
-                <SettingsIcon fontSize="small" />
+                <VisibilityIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          )}
-          {canDeleteMember && (
-            <Tooltip title="Üyeyi Sil" arrow placement="top">
-              <IconButton
-                size="medium"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMemberToDelete(params.row);
-                  setDeleteDialogOpen(true);
-                }}
-                sx={{
-                  width: 38,
-                  height: 38,
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.1)} 0%, ${alpha(theme.palette.error.light, 0.05)} 100%)`,
-                  border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
-                  color: theme.palette.error.main,
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
-                    color: '#fff',
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.35)}`,
-                  },
-                }}
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-      ),
+            
+            {/* APPROVED durumu için mevcut butonlar */}
+            {isApproved && (
+              <>
+                {canUpdateMember && (
+                  <Tooltip title="Bilgileri Düzenle" arrow placement="top">
+                    <span>
+                      <IconButton
+                        size="medium"
+                        disabled={disabled}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(params.row.id);
+                        }}
+                        sx={{
+                          width: 38,
+                          height: 38,
+                          background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.1)} 0%, ${alpha(theme.palette.info.light, 0.05)} 100%)`,
+                          border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                          color: theme.palette.info.main,
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
+                            color: '#fff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.35)}`,
+                          },
+                          '&:disabled': {
+                            opacity: 0.5,
+                          },
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                )}
+                {canApprove && (
+                  <Box onClick={(e) => e.stopPropagation()} sx={{ display: 'contents' }}>
+                    <ActivateMemberButton
+                      memberId={params.row.id}
+                      memberName={`${params.row.firstName} ${params.row.lastName}`}
+                      onActivated={handleActivated}
+                      disabled={disabled}
+                      variant="text"
+                      size="small"
+                      iconOnly={true}
+                    />
+                  </Box>
+                )}
+                {canReject && (
+                  <Tooltip title="Üyeyi Reddet" arrow placement="top">
+                    <span>
+                      <IconButton
+                        size="medium"
+                        disabled={disabled}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRejectClick(params.row.id, `${params.row.firstName} ${params.row.lastName}`);
+                        }}
+                        sx={{
+                          width: 38,
+                          height: 38,
+                          background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.1)} 0%, ${alpha(theme.palette.error.light, 0.05)} 100%)`,
+                          border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                          color: theme.palette.error.main,
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                            color: '#fff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.35)}`,
+                          },
+                          '&:disabled': {
+                            opacity: 0.5,
+                          },
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                )}
+              </>
+            )}
+            
+            {/* ACTIVE durumu için yeni butonlar */}
+            {isActive && (
+              <>
+                {canChangeStatus && (
+                  <Tooltip title="Durum Değiştir" arrow placement="top">
+                    <IconButton
+                      size="medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMember(params.row);
+                        setStatusDialogOpen(true);
+                      }}
+                      sx={{
+                        width: 38,
+                        height: 38,
+                        background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.light, 0.05)} 100%)`,
+                        border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+                        color: theme.palette.secondary.main,
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+                          color: '#fff',
+                          transform: 'translateY(-2px)',
+                          boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.35)}`,
+                        },
+                      }}
+                    >
+                      <SettingsIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {canDeleteMember && (
+                  <Tooltip title="Üyeyi Sil" arrow placement="top">
+                    <IconButton
+                      size="medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMemberToDelete(params.row);
+                        setDeleteDialogOpen(true);
+                      }}
+                      sx={{
+                        width: 38,
+                        height: 38,
+                        background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.1)} 0%, ${alpha(theme.palette.error.light, 0.05)} 100%)`,
+                        border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                        color: theme.palette.error.main,
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                          color: '#fff',
+                          transform: 'translateY(-2px)',
+                          boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.35)}`,
+                        },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </>
+            )}
+          </Box>
+        );
+      },
     },
   ];
-
-  // Durum değiştirme handler
-  const handleStatusChange = async (status: MemberStatus, reason?: string) => {
-    if (!selectedMember) return;
-
-    setUpdatingStatus(true);
-    try {
-      const updateData: { status: MemberStatus; cancellationReason?: string } = { status };
-      if (reason && (status === 'RESIGNED' || status === 'EXPELLED')) {
-        updateData.cancellationReason = reason;
-      }
-      await updateMember(selectedMember.id, updateData);
-      toast.showSuccess('Üye durumu başarıyla güncellendi');
-      setStatusDialogOpen(false);
-      setSelectedMember(null);
-      // Listeyi yeniden yükle
-      let data: MemberListItem[] = [];
-      if (statusFilter === 'ALL') {
-        // Tümü seçildiğinde tüm durumlardaki üyeleri paralel olarak çek
-        const statuses: MemberStatus[] = ['ACTIVE', 'APPROVED', 'INACTIVE', 'RESIGNED', 'EXPELLED'];
-        const results = await Promise.all(
-          statuses.map(status => getMembers(status))
-        );
-        // Tüm sonuçları birleştir
-        data = results.flat();
-      } else {
-        // Belirli bir durum seçildiğinde sadece o durumdaki üyeleri çek
-        data = await getMembers(statusFilter);
-      }
-      setRows(data);
-    } catch (error: any) {
-      console.error('Durum güncellenirken hata:', error);
-      toast.showError(error.response?.data?.message || 'Durum güncellenirken bir hata oluştu');
-    } finally {
-      setUpdatingStatus(false);
-    }
-  };
-
-  // Silme handler
-  const handleDeleteMember = async () => {
-    if (!memberToDelete) return;
-
-    setDeleting(true);
-    try {
-      await deleteMember(memberToDelete.id, {
-        deletePayments,
-        deleteDocuments,
-      });
-      toast.showSuccess('Üye başarıyla silindi');
-      setDeleteDialogOpen(false);
-      setMemberToDelete(null);
-      setDeletePayments(false);
-      setDeleteDocuments(false);
-      // Listeyi yeniden yükle
-      let data: MemberListItem[] = [];
-      if (statusFilter === 'ALL') {
-        // Tümü seçildiğinde tüm durumlardaki üyeleri paralel olarak çek
-        const statuses: MemberStatus[] = ['ACTIVE', 'APPROVED', 'INACTIVE', 'RESIGNED', 'EXPELLED'];
-        const results = await Promise.all(
-          statuses.map(status => getMembers(status))
-        );
-        // Tüm sonuçları birleştir
-        data = results.flat();
-      } else {
-        // Belirli bir durum seçildiğinde sadece o durumdaki üyeleri çek
-        data = await getMembers(statusFilter);
-      }
-      setRows(data);
-    } catch (error: any) {
-      console.error('Üye silinirken hata:', error);
-      toast.showError(error.response?.data?.message || 'Üye silinirken bir hata oluştu');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  useEffect(() => {
-    const fetchMembers = async () => {
-      setLoading(true);
-      try {
-        setError(null);
-        console.log('[MembersListPage] Fetching members with status:', statusFilter);
-        
-        let data: MemberListItem[] = [];
-        
-        if (statusFilter === 'ALL') {
-          // Tümü seçildiğinde tüm durumlardaki üyeleri paralel olarak çek
-          const statuses: MemberStatus[] = ['ACTIVE', 'APPROVED', 'INACTIVE', 'RESIGNED', 'EXPELLED'];
-          const results = await Promise.all(
-            statuses.map(status => getMembers(status))
-          );
-          // Tüm sonuçları birleştir
-          data = results.flat();
-          console.log('[MembersListPage] Received all members:', data.length);
-        } else {
-          // Belirli bir durum seçildiğinde sadece o durumdaki üyeleri çek
-          data = await getMembers(statusFilter);
-          console.log('[MembersListPage] Received members:', data.length);
-        }
-        
-        setRows(data);
-      } catch (error: any) {
-        console.error('Üyeler alınırken hata:', error);
-        const errorMessage = error?.response?.data?.message || error?.message || 'Üyeler alınırken bir hata oluştu';
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMembers();
-  }, [statusFilter]);
 
   return (
     <Box
@@ -617,14 +722,16 @@ const MembersListPage: React.FC = () => {
         pb: 4,
       }}
     >
-      {/* Modern Başlık Bölümü - Status'a göre dinamik renk */}
+      {/* Modern Başlık Bölümü */}
       <Box
         sx={{
           mb: 4,
           p: { xs: 3, sm: 4, md: 5 },
           borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
-          border: `1px solid ${alpha(statusTheme.mainColor, 0.1)}`,
+          background: statusFilter === 'ALL' 
+            ? `linear-gradient(135deg, ${alpha('#0891b2', 0.06)} 0%, ${alpha('#059669', 0.06)} 100%)`
+            : `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+          border: `1px solid ${alpha(statusTheme.mainColor, 0.15)}`,
           position: 'relative',
           overflow: 'hidden',
           '&::before': {
@@ -648,7 +755,9 @@ const MembersListPage: React.FC = () => {
                   width: { xs: 56, sm: 64 },
                   height: { xs: 56, sm: 64 },
                   borderRadius: 3,
-                  background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
+                  background: statusFilter === 'ALL'
+                    ? `linear-gradient(135deg, #0891b2 0%, #059669 100%)`
+                    : `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -660,7 +769,7 @@ const MembersListPage: React.FC = () => {
                   },
                 }}
               >
-                <GroupsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
+                <PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
               </Box>
               <Box>
                 <Typography
@@ -674,7 +783,7 @@ const MembersListPage: React.FC = () => {
                     textAlign: 'left',
                   }}
                 >
-                  Tüm Üyeler
+                  Üyeler
                 </Typography>
                 <Typography
                   variant="body1"
@@ -685,84 +794,21 @@ const MembersListPage: React.FC = () => {
                     textAlign: 'left',
                   }}
                 >
-                  Yetkili olduğunuz bölgedeki tüm üyeleri görüntüleyin ve yönetin
+                  Onaylanmış ve aktif üyeleri görüntüleyin ve yönetin
                 </Typography>
               </Box>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<PersonAddIcon />}
-              onClick={() => navigate('/members/applications/new')}
-              size="large"
-              sx={{
-                display: { xs: 'none', sm: 'flex' },
-                borderRadius: 2.5,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 4,
-                py: 1.5,
-                fontSize: '1rem',
-                background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
-                boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 12px 32px ${alpha(statusTheme.mainColor, 0.45)}`,
-                  background: `linear-gradient(135deg, ${statusTheme.darkColor} 0%, ${statusTheme.mainColor} 100%)`,
-                },
-              }}
-            >
-              Yeni Üye Ekle
-            </Button>
           </Box>
-
-          {/* Mobile Button */}
-          <Button
-            variant="contained"
-            startIcon={<PersonAddIcon />}
-            fullWidth
-            onClick={() => navigate('/members/applications/new')}
-            size="large"
-            sx={{
-              display: { xs: 'flex', sm: 'none' },
-              mt: 3,
-              borderRadius: 2.5,
-              textTransform: 'none',
-              fontWeight: 600,
-              py: 1.5,
-              fontSize: '1rem',
-              background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
-              boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
-            }}
-          >
-            Yeni Üye Ekle
-          </Button>
         </Box>
       </Box>
-
-      {/* Hata Mesajı */}
-      {error && (
-        <Alert 
-          severity="error" 
-          sx={{ 
-            mb: 4,
-            borderRadius: 3,
-            boxShadow: `0 4px 16px ${alpha(theme.palette.error.main, 0.15)}`,
-            border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
-          }} 
-          onClose={() => setError(null)}
-        >
-          {error}
-        </Alert>
-      )}
 
       {/* Ana Kart - Filtre ve Tablo */}
       <Card
         elevation={0}
         sx={{
-          borderRadius: 4,
-          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
           overflow: 'hidden',
           background: '#fff',
         }}
@@ -771,7 +817,9 @@ const MembersListPage: React.FC = () => {
         <Box
           sx={{
             p: { xs: 3, sm: 4 },
-            background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.02)} 0%, ${alpha(statusTheme.lightColor, 0.01)} 100%)`,
+            background: statusFilter === 'ALL'
+              ? `linear-gradient(135deg, ${alpha('#0891b2', 0.02)} 0%, ${alpha('#059669', 0.02)} 100%)`
+              : `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.02)} 0%, ${alpha(statusTheme.lightColor, 0.01)} 100%)`,
             borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
@@ -781,7 +829,9 @@ const MembersListPage: React.FC = () => {
                 width: 44,
                 height: 44,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
+                background: statusFilter === 'ALL'
+                  ? `linear-gradient(135deg, #0891b2 0%, #059669 100%)`
+                  : `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -800,10 +850,75 @@ const MembersListPage: React.FC = () => {
             </Box>
           </Box>
           <Grid container spacing={2.5}>
+            {/* Üyelik Durumu Filtresi */}
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+              <FormControl 
+                size="medium" 
+                fullWidth
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
+                    },
+                  },
+                }}
+              >
+                <InputLabel>Üyelik Durumu</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Üyelik Durumu"
+                  onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'APPROVED')}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: statusFilter !== 'ALL' ? 600 : 400,
+                      color: statusFilter !== 'ALL' ? statusTheme.mainColor : 'inherit',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: statusTheme.mainColor,
+                      borderWidth: 2,
+                    },
+                  }}
+                  MenuProps={{
+                    disablePortal: false,
+                    disableScrollLock: true,
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300,
+                        borderRadius: 12,
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="ALL">
+                    <Typography sx={{ fontWeight: statusFilter === 'ALL' ? 700 : 400 }}>
+                      Tümü
+                    </Typography>
+                  </MenuItem>
+                  <MenuItem value="ACTIVE">
+                    <Typography sx={{ fontWeight: statusFilter === 'ACTIVE' ? 700 : 400 }}>
+                      Aktif
+                    </Typography>
+                  </MenuItem>
+                  <MenuItem value="APPROVED">
+                    <Typography sx={{ fontWeight: statusFilter === 'APPROVED' ? 700 : 400 }}>
+                      Beklemede
+                    </Typography>
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
             {/* Arama */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <TextField
-                placeholder="Ad, Soyad ile arayın..."
+                placeholder="Ad, Soyad, TC Kimlik No, Kurum ile arayın..."
                 size="medium"
                 fullWidth
                 value={searchText}
@@ -833,104 +948,6 @@ const MembersListPage: React.FC = () => {
                   },
                 }}
               />
-            </Grid>
-            {/* Durum Filtresi */}
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-              <FormControl 
-                size="medium" 
-                fullWidth
-                sx={{ 
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                    borderRadius: 2.5,
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
-                    },
-                  },
-                }}
-              >
-                <InputLabel>Durum Filtresi</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Durum Filtresi"
-                  onChange={(e) => setStatusFilter(e.target.value as MemberStatus | 'ALL')}
-                  startAdornment={
-                    <InputAdornment position="start" sx={{ ml: 1 }}>
-                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
-                    </InputAdornment>
-                  }
-                  sx={{
-                    '& .MuiSelect-select': {
-                      fontWeight: 600,
-                      color: statusTheme.mainColor,
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: statusTheme.mainColor,
-                      borderWidth: 2,
-                    },
-                  }}
-                  MenuProps={{
-                    disablePortal: false,
-                    disableScrollLock: true,
-                    PaperProps: {
-                      style: {
-                        maxHeight: 300,
-                        borderRadius: 12,
-                      },
-                    },
-                  }}
-                >
-                  <MenuItem value="ALL">
-                    <Typography sx={{ 
-                      fontWeight: statusFilter === 'ALL' ? 700 : 400,
-                      color: statusFilter === 'ALL' ? getStatusThemeConfig('ALL').mainColor : 'inherit',
-                    }}>
-                      Tümü
-                    </Typography>
-                  </MenuItem>
-                  <MenuItem value="ACTIVE">
-                    <Typography sx={{ 
-                      fontWeight: statusFilter === 'ACTIVE' ? 700 : 400,
-                      color: statusFilter === 'ACTIVE' ? getStatusThemeConfig('ACTIVE').mainColor : 'inherit',
-                    }}>
-                      Aktif
-                    </Typography>
-                  </MenuItem>
-                  <MenuItem value="APPROVED">
-                    <Typography sx={{ 
-                      fontWeight: statusFilter === 'APPROVED' ? 700 : 400,
-                      color: statusFilter === 'APPROVED' ? getStatusThemeConfig('APPROVED').mainColor : 'inherit',
-                    }}>
-                      Beklemede
-                    </Typography>
-                  </MenuItem>
-                  <MenuItem value="INACTIVE">
-                    <Typography sx={{ 
-                      fontWeight: statusFilter === 'INACTIVE' ? 700 : 400,
-                      color: statusFilter === 'INACTIVE' ? getStatusThemeConfig('INACTIVE').mainColor : 'inherit',
-                    }}>
-                      Pasif
-                    </Typography>
-                  </MenuItem>
-                  <MenuItem value="RESIGNED">
-                    <Typography sx={{ 
-                      fontWeight: statusFilter === 'RESIGNED' ? 700 : 400,
-                      color: statusFilter === 'RESIGNED' ? getStatusThemeConfig('RESIGNED').mainColor : 'inherit',
-                    }}>
-                      İstifa
-                    </Typography>
-                  </MenuItem>
-                  <MenuItem value="EXPELLED">
-                    <Typography sx={{ 
-                      fontWeight: statusFilter === 'EXPELLED' ? 700 : 400,
-                      color: statusFilter === 'EXPELLED' ? getStatusThemeConfig('EXPELLED').mainColor : 'inherit',
-                    }}>
-                      İhraç
-                    </Typography>
-                  </MenuItem>
-                </Select>
-              </FormControl>
             </Grid>
             {/* Şube */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
@@ -1122,7 +1139,7 @@ const MembersListPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                     },
                   },
                 }}
@@ -1321,7 +1338,9 @@ const MembersListPage: React.FC = () => {
                 mt: 3,
                 p: 2.5,
                 borderRadius: 2.5,
-                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+                background: statusFilter === 'ALL'
+                  ? `linear-gradient(135deg, ${alpha('#0891b2', 0.08)} 0%, ${alpha('#059669', 0.08)} 100%)`
+                  : `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
                 border: `1px solid ${alpha(statusTheme.mainColor, 0.2)}`,
               }}
             >
@@ -1367,16 +1386,22 @@ const MembersListPage: React.FC = () => {
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                 {statusFilter !== 'ALL' && (
                   <Chip
-                    label={`Durum: ${getStatusLabel(statusFilter)}`}
+                    label={`Durum: ${statusFilter === 'ACTIVE' ? 'Aktif' : 'Beklemede'}`}
                     onDelete={() => setStatusFilter('ALL')}
                     deleteIcon={<CloseIcon />}
-                    color={getStatusColor(statusFilter)}
                     sx={{
                       fontWeight: 600,
                       fontSize: '0.85rem',
                       height: 32,
+                      backgroundColor: alpha(statusTheme.mainColor, 0.12),
+                      color: statusTheme.mainColor,
+                      border: `1px solid ${alpha(statusTheme.mainColor, 0.3)}`,
                       '& .MuiChip-deleteIcon': {
                         fontSize: '1.1rem',
+                        color: statusTheme.mainColor,
+                        '&:hover': {
+                          color: statusTheme.darkColor,
+                        },
                       },
                     }}
                   />
@@ -1386,13 +1411,19 @@ const MembersListPage: React.FC = () => {
                     label={`Şube: ${branches.find(b => b.id === branchFilter)?.name || branchFilter}`}
                     onDelete={() => setBranchFilter('ALL')}
                     deleteIcon={<CloseIcon />}
-                    color={getStatusColor(statusFilter)}
                     sx={{
                       fontWeight: 600,
                       fontSize: '0.85rem',
                       height: 32,
+                      backgroundColor: alpha(statusTheme.mainColor, 0.12),
+                      color: statusTheme.mainColor,
+                      border: `1px solid ${alpha(statusTheme.mainColor, 0.3)}`,
                       '& .MuiChip-deleteIcon': {
                         fontSize: '1.1rem',
+                        color: statusTheme.mainColor,
+                        '&:hover': {
+                          color: statusTheme.darkColor,
+                        },
                       },
                     }}
                   />
@@ -1407,13 +1438,19 @@ const MembersListPage: React.FC = () => {
                         setProvinceFilter(prev => prev.filter(id => id !== provinceId));
                       }}
                       deleteIcon={<CloseIcon />}
-                      color={getStatusColor(statusFilter)}
                       sx={{
                         fontWeight: 600,
                         fontSize: '0.85rem',
                         height: 32,
+                        backgroundColor: alpha(statusTheme.mainColor, 0.12),
+                        color: statusTheme.mainColor,
+                        border: `1px solid ${alpha(statusTheme.mainColor, 0.3)}`,
                         '& .MuiChip-deleteIcon': {
                           fontSize: '1.1rem',
+                          color: statusTheme.mainColor,
+                          '&:hover': {
+                            color: statusTheme.darkColor,
+                          },
                         },
                       }}
                     />
@@ -1429,13 +1466,19 @@ const MembersListPage: React.FC = () => {
                         setDistrictFilter(prev => prev.filter(id => id !== districtId));
                       }}
                       deleteIcon={<CloseIcon />}
-                      color={getStatusColor(statusFilter)}
                       sx={{
                         fontWeight: 600,
                         fontSize: '0.85rem',
                         height: 32,
+                        backgroundColor: alpha(statusTheme.mainColor, 0.12),
+                        color: statusTheme.mainColor,
+                        border: `1px solid ${alpha(statusTheme.mainColor, 0.3)}`,
                         '& .MuiChip-deleteIcon': {
                           fontSize: '1.1rem',
+                          color: statusTheme.mainColor,
+                          '&:hover': {
+                            color: statusTheme.darkColor,
+                          },
                         },
                       }}
                     />
@@ -1451,13 +1494,19 @@ const MembersListPage: React.FC = () => {
                         setInstitutionFilter(prev => prev.filter(id => id !== institutionId));
                       }}
                       deleteIcon={<CloseIcon />}
-                      color={getStatusColor(statusFilter)}
                       sx={{
                         fontWeight: 600,
                         fontSize: '0.85rem',
                         height: 32,
+                        backgroundColor: alpha(statusTheme.mainColor, 0.12),
+                        color: statusTheme.mainColor,
+                        border: `1px solid ${alpha(statusTheme.mainColor, 0.3)}`,
                         '& .MuiChip-deleteIcon': {
                           fontSize: '1.1rem',
+                          color: statusTheme.mainColor,
+                          '&:hover': {
+                            color: statusTheme.darkColor,
+                          },
                         },
                       }}
                     />
@@ -1468,13 +1517,19 @@ const MembersListPage: React.FC = () => {
                     label={`Arama: "${searchText}"`}
                     onDelete={() => setSearchText('')}
                     deleteIcon={<CloseIcon />}
-                    color={getStatusColor(statusFilter)}
                     sx={{
                       fontWeight: 600,
                       fontSize: '0.85rem',
                       height: 32,
+                      backgroundColor: alpha(statusTheme.mainColor, 0.12),
+                      color: statusTheme.mainColor,
+                      border: `1px solid ${alpha(statusTheme.mainColor, 0.3)}`,
                       '& .MuiChip-deleteIcon': {
                         fontSize: '1.1rem',
+                        color: statusTheme.mainColor,
+                        '&:hover': {
+                          color: statusTheme.darkColor,
+                        },
                       },
                     }}
                   />
@@ -1490,7 +1545,9 @@ const MembersListPage: React.FC = () => {
                 mt: 3,
                 p: 2,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+                background: statusFilter === 'ALL'
+                  ? `linear-gradient(135deg, ${alpha('#0891b2', 0.08)} 0%, ${alpha('#059669', 0.08)} 100%)`
+                  : `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
                 border: `1px solid ${alpha(statusTheme.mainColor, 0.15)}`,
               }}
             >
@@ -1498,14 +1555,14 @@ const MembersListPage: React.FC = () => {
                 variant="body2"
                 sx={{
                   fontWeight: 600,
-                  color: statusTheme.darkColor,
+                  color: statusFilter === 'ALL' ? '#0e7490' : statusTheme.darkColor,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1,
                   fontSize: '0.9rem',
                 }}
               >
-                <GroupsIcon fontSize="small" />
+                <PeopleIcon fontSize="small" />
                 {filteredRows.length} üye listeleniyor
                 {filteredRows.length !== rows.length && ` (Toplam ${rows.length} üyeden)`}
               </Typography>
@@ -1525,11 +1582,12 @@ const MembersListPage: React.FC = () => {
                 onClick={() => {
                   const exportColumns: ExportColumn[] = columns.map((col) => ({
                     field: col.field,
-                    headerName: col.headerName,
+                    headerName: col.headerName || col.field,
                     width: col.width,
                     valueGetter: col.valueGetter,
                   }));
-                  exportToExcel(filteredRows, exportColumns, 'uyeler');
+                  exportToExcel(filteredRows, exportColumns, 'uyeler-onayli-aktif');
+                  toast.showSuccess('Excel dosyası indirildi');
                 }}
                 sx={{ 
                   textTransform: 'none',
@@ -1560,6 +1618,7 @@ const MembersListPage: React.FC = () => {
                 onClick={async () => {
                   try {
                     await exportMembersToPdf();
+                    toast.showSuccess('PDF dosyası indirildi');
                   } catch (error) {
                     console.error('PDF export hatası:', error);
                     toast.showError('PDF export sırasında bir hata oluştu');
@@ -1594,11 +1653,12 @@ const MembersListPage: React.FC = () => {
                 onClick={() => {
                   const exportColumns: ExportColumn[] = columns.map((col) => ({
                     field: col.field,
-                    headerName: col.headerName,
+                    headerName: col.headerName || col.field,
                     width: col.width,
                     valueGetter: col.valueGetter,
                   }));
-                  exportToPDF(filteredRows, exportColumns, 'uyeler', 'Üyeler Listesi');
+                  exportToPDF(filteredRows, exportColumns, 'uyeler-onayli-aktif', 'Üyeler Listesi (Onaylı ve Aktif)');
+                  toast.showSuccess('HTML dosyası indirildi');
                 }}
                 sx={{ 
                   textTransform: 'none',
@@ -1642,8 +1702,10 @@ const MembersListPage: React.FC = () => {
                 alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
-                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.06)} 0%, ${alpha(statusTheme.lightColor, 0.03)} 100%)`,
-                borderBottom: `2px solid ${alpha(statusTheme.mainColor, 0.12)}`,
+                background: statusFilter === 'ALL'
+                  ? `linear-gradient(135deg, ${alpha('#0891b2', 0.06)} 0%, ${alpha('#059669', 0.06)} 100%)`
+                  : `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.06)} 0%, ${alpha(statusTheme.lightColor, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(statusTheme.mainColor, 0.15)}`,
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
@@ -1676,29 +1738,184 @@ const MembersListPage: React.FC = () => {
               },
             }}
           >
-            <DataGrid
-              rows={filteredRows}
-              columns={columns}
-              loading={loading}
-              getRowId={(row) => row.id}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 25, page: 0 } },
-                sorting: {
-                  sortModel: [{ field: 'registrationNumber', sort: 'asc' }],
-                },
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
-              disableRowSelectionOnClick
-              localeText={{
-                noRowsLabel: 'Üye bulunamadı',
-                MuiTablePagination: {
-                  labelRowsPerPage: 'Sayfa başına satır:',
-                },
-              }}
-            />
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            loading={loading}
+            getRowId={(row) => row.id}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 25, page: 0 } },
+              sorting: {
+                sortModel: [{ field: 'registrationNumber', sort: 'asc' }],
+              },
+            }}
+            pageSizeOptions={[10, 25, 50, 100]}
+            disableRowSelectionOnClick
+            localeText={{
+              noRowsLabel: 'Üye bulunamadı',
+            }}
+            slotProps={{
+              pagination: {
+                labelRowsPerPage: 'Sayfa başına satır:',
+              },
+            }}
+          />
           </Box>
         </Box>
       </Card>
+
+      {/* Aktifleştirme ve Reddetme Dialog'ları */}
+      {confirmDialog.type === 'reject' && (
+        <Dialog
+          open={confirmDialog.open}
+          onClose={handleCloseConfirmDialog}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 4,
+              boxShadow: `0 20px 60px ${alpha(theme.palette.common.black, 0.2)}`,
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              pb: 2.5,
+              pt: 3,
+              px: 3,
+              borderBottom: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.02)} 0%, ${alpha(theme.palette.error.light, 0.01)} 100%)`,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+              <Box
+                sx={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.error.main, 0.35)}`,
+                }}
+              >
+                <CloseIcon sx={{ fontSize: '2rem', color: '#fff' }} />
+              </Box>
+              <Box>
+                <Typography variant="h5" fontWeight={800} sx={{ mb: 0.5 }}>
+                  Üyeyi Reddet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Bu işlem geri alınamaz
+                </Typography>
+              </Box>
+            </Box>
+            {!processingId && (
+              <IconButton
+                onClick={handleCloseConfirmDialog}
+                size="medium"
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.error.main, 0.1),
+                    color: theme.palette.error.main,
+                  },
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            )}
+          </DialogTitle>
+
+          <DialogContent sx={{ pt: 3.5, pb: 3, px: 3 }}>
+            <Typography 
+              variant="body1" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 2, 
+                lineHeight: 1.7,
+                fontSize: '0.95rem',
+              }}
+            >
+              <strong>{selectedMemberName}</strong> isimli üyeyi reddetmek istediğinize emin misiniz?
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: theme.palette.error.main,
+                fontWeight: 600,
+                p: 2,
+                borderRadius: 2,
+                background: alpha(theme.palette.error.main, 0.1),
+              }}
+            >
+              ⚠️ Bu işlem geri alınamaz ve üye bilgileri kalıcı olarak reddedilmiş duruma geçecektir.
+            </Typography>
+          </DialogContent>
+
+          <DialogActions
+            sx={{
+              px: 3,
+              pb: 3,
+              pt: 2,
+              gap: 1.5,
+              borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.background.default, 0.8)} 0%, ${alpha(theme.palette.grey[50], 0.5)} 100%)`,
+              justifyContent: 'flex-end',
+            }}
+          >
+            <Button
+              onClick={handleCloseConfirmDialog}
+              disabled={!!processingId}
+              variant="outlined"
+              size="large"
+              sx={{
+                borderRadius: 2.5,
+                px: 4,
+                py: 1.25,
+                fontWeight: 700,
+                textTransform: 'none',
+                fontSize: '0.95rem',
+                borderWidth: '2px',
+                '&:hover': {
+                  borderWidth: '2px',
+                  backgroundColor: alpha(theme.palette.grey[500], 0.08),
+                },
+              }}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={!!processingId}
+              variant="contained"
+              size="large"
+              color="error"
+              startIcon={processingId ? <CircularProgress size={20} color="inherit" /> : <CloseIcon />}
+              sx={{
+                borderRadius: 2.5,
+                px: 4,
+                py: 1.25,
+                fontWeight: 700,
+                textTransform: 'none',
+                fontSize: '0.95rem',
+                background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+                boxShadow: `0 8px 24px ${alpha(theme.palette.error.main, 0.35)}`,
+                '&:hover': {
+                  boxShadow: `0 12px 32px ${alpha(theme.palette.error.main, 0.45)}`,
+                  background: `linear-gradient(135deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.main} 100%)`,
+                },
+              }}
+            >
+              {processingId ? 'Reddediliyor...' : 'Evet, Reddet'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* Durum Değiştirme Dialog */}
       {selectedMember && (
@@ -1947,4 +2164,5 @@ const MembersListPage: React.FC = () => {
   );
 };
 
-export default MembersListPage;
+export default ActiveWaitingMembersPage;
+

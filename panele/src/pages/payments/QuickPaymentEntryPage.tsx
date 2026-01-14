@@ -1,10 +1,11 @@
 // src/pages/payments/QuickPaymentEntryPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Card,
   Typography,
   Button,
+  IconButton,
   TextField,
   FormControl,
   InputLabel,
@@ -23,24 +24,20 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
-  Autocomplete,
-  IconButton,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
   FormControlLabel,
+  TablePagination,
+  Tooltip,
+  Stack,
 } from '@mui/material';
 import PaymentIcon from '@mui/icons-material/Payment';
 import SaveIcon from '@mui/icons-material/Save';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -48,7 +45,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { getInstitutions } from '../../api/institutionsApi';
 import { getMembers } from '../../api/membersApi';
-import { createPayment, updatePayment, deletePayment, getPayments, type PaymentType, type CreateMemberPaymentDto, type UpdateMemberPaymentDto } from '../../api/paymentsApi';
+import { createPayment, updatePayment, getPayments, type PaymentType, type CreateMemberPaymentDto, type UpdateMemberPaymentDto } from '../../api/paymentsApi';
 import type { MemberListItem } from '../../types/member';
 import type { Institution } from '../../api/institutionsApi';
 
@@ -86,9 +83,32 @@ const QuickPaymentEntryPage: React.FC = () => {
   });
   const [showOnlyUnpaidMembers, setShowOnlyUnpaidMembers] = useState(false);
 
+  // Tablo filtreleri
+  const [tableFilters, setTableFilters] = useState({
+    registrationNumber: '',
+    name: '',
+    nationalId: '',
+    institution: '',
+  });
+
+  // Debounced filtreler (performans için)
+  const [debouncedFilters, setDebouncedFilters] = useState(tableFilters);
+
+  // Debounce effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedFilters(tableFilters);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [tableFilters]);
+
   // Tablo satırları
   const [rows, setRows] = useState<PaymentRow[]>([]);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  
+  // Pagination (performans için)
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50); // Sayfa başına 50 satır
   
   // Uyarı dialog state
   const [duplicatePaymentDialog, setDuplicatePaymentDialog] = useState<{
@@ -105,21 +125,8 @@ const QuickPaymentEntryPage: React.FC = () => {
     rowId: '',
   });
 
-  // Kaldırma onay dialog state
-  const [deletePaymentDialog, setDeletePaymentDialog] = useState<{
-    open: boolean;
-    paymentId: string;
-    rowId: string;
-    memberName: string;
-  }>({
-    open: false,
-    paymentId: '',
-    rowId: '',
-    memberName: '',
-  });
 
   const canView = hasPermission('MEMBER_PAYMENT_LIST');
-  const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
 
   const monthNames = [
     'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -143,18 +150,26 @@ const QuickPaymentEntryPage: React.FC = () => {
   };
 
   const loadMembers = async (status: 'ACTIVE' | 'PENDING' | 'APPROVED', excludePaidMembers: boolean = false) => {
+    if (loadingMembers) {
+      return;
+    }
+
     setLoadingMembers(true);
     try {
+      // Kurum seçilmemişse uyarı ver ve çık
+      if (!filters.institutionId) {
+        toast.showWarning('Lütfen önce bir kurum seçin. Tüm üyeleri yüklemek performans sorunlarına yol açar.');
+        setLoadingMembers(false);
+        return;
+      }
+
       // Seçilen statüye göre üyeleri yükle
       const allMembers = await getMembers(status);
 
-      // Kurum filtresi uygula (eğer kurum seçildiyse)
-      let filteredMembers = allMembers;
-      if (filters.institutionId) {
-        filteredMembers = allMembers.filter(
-          (m) => m.institution?.id === filters.institutionId
-        );
-      }
+      // Kurum filtresi uygula (zorunlu)
+      let filteredMembers = allMembers.filter(
+        (m) => m.institution?.id === filters.institutionId
+      );
 
       // Eğer "Sadece bu ay ödeme yapmayan üyeleri göster" seçiliyse, bu ay ödeme yapmış üyeleri filtrele
       if (excludePaidMembers) {
@@ -177,19 +192,134 @@ const QuickPaymentEntryPage: React.FC = () => {
         }
       }
 
-      setMembers(filteredMembers);
+      // Mevcut satırlardaki üye ID'lerini topla (duplicate kontrolü için)
+      setRows((prevRows) => {
+        const existingMemberIds = new Set(
+          prevRows.filter((r) => r.memberId).map((r) => r.memberId)
+        );
 
-      if (filteredMembers.length === 0) {
+        // Gelen üyeleri tabloya yeni satırlar olarak ekle (batch processing ile)
+        let membersToAdd = filteredMembers.filter(
+          (member) => !existingMemberIds.has(member.id)
+        );
+        
+        if (membersToAdd.length === 0) {
+          const statusLabel = status === 'ACTIVE' ? 'aktif' : status === 'PENDING' ? 'bekleyen' : 'başvurusu yapılan';
+          const filterLabel = showOnlyUnpaidMembers ? ' (bu ay ödeme yapmayan)' : '';
+          const institutionLabel = 'Seçilen kurum için';
+          if (filteredMembers.length === 0) {
+            toast.showInfo(`${institutionLabel} ${statusLabel} üye bulunamadı${filterLabel}`);
+          } else {
+            toast.showInfo(`${institutionLabel} Tüm ${statusLabel} üyeler zaten tabloda mevcut${filterLabel}`);
+          }
+          return prevRows;
+        }
+
+        // Çok fazla üye varsa uyarı ver ve limit uygula
+        const MAX_MEMBERS = 1000;
+        if (membersToAdd.length > MAX_MEMBERS) {
+          toast.showWarning(`Performans için maksimum ${MAX_MEMBERS} üye eklenebilir. İlk ${MAX_MEMBERS} üye ekleniyor. Lütfen filtreleme kullanın.`);
+          membersToAdd = membersToAdd.slice(0, MAX_MEMBERS);
+        }
+
+        // Batch processing: Çok fazla üye varsa parça parça ekle (requestAnimationFrame ile optimize edildi)
+        // Küçük batch size ile UI donmasını önle
+        const BATCH_SIZE = 25; // Daha küçük batch size (daha akıcı)
+        const batches: PaymentRow[][] = [];
+        
+        // Batch'leri oluştur
+        for (let i = 0; i < membersToAdd.length; i += BATCH_SIZE) {
+          const batch = membersToAdd.slice(i, i + BATCH_SIZE).map((member) => ({
+            id: `draft-${Date.now()}-${Math.random()}-${member.id}`,
+            paymentId: undefined,
+            memberId: member.id,
+            registrationNumber: member.registrationNumber || '',
+            firstName: member.firstName,
+            lastName: member.lastName,
+            nationalId: member.nationalId || '',
+            institution: member.institution?.name || '',
+            amount: '',
+            paymentType: 'TEVKIFAT' as PaymentType,
+            description: '',
+            status: 'DRAFT' as const,
+            member: member,
+          }));
+          batches.push(batch);
+        }
+
+        // Batch'lerin boş olmamasını kontrol et
+        if (batches.length === 0) {
+          return prevRows;
+        }
+
+        // İlk batch'i hemen ekle (kullanıcı hemen bir şey görsün)
+        const firstBatch = batches[0];
+        const initialRows = [...prevRows, ...firstBatch];
+        
+        // Diğer batch'leri requestAnimationFrame ile akıcı şekilde ekle
+        if (batches.length > 1) {
+          let batchIndex = 1;
+          
+          const addNextBatch = () => {
+            // Index kontrolü
+            if (batchIndex >= batches.length) {
+              return;
+            }
+            
+            requestAnimationFrame(() => {
+              // Batch'in varlığını kontrol et
+              const currentBatch = batches[batchIndex];
+              if (!currentBatch || !Array.isArray(currentBatch)) {
+                return;
+              }
+              
+              setRows((currentRows) => {
+                const newRows = [...currentRows, ...currentBatch];
+                batchIndex++;
+                
+                // Sonraki batch'i ekle (eğer varsa)
+                if (batchIndex < batches.length) {
+                  // Her batch arasında kısa bir bekleme (UI'nin nefes alması için)
+                  setTimeout(() => {
+                    requestAnimationFrame(addNextBatch);
+                  }, 10); // 10ms bekle (çok hızlı ama UI'yi bloklamıyor)
+                }
+                
+                return newRows;
+              });
+            });
+          };
+          
+          // İlk batch'ten sonra diğer batch'leri eklemeye başla
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              requestAnimationFrame(addNextBatch);
+            }, 16); // ~1 frame bekle (60fps için)
+          });
+        }
+
         const statusLabel = status === 'ACTIVE' ? 'aktif' : status === 'PENDING' ? 'bekleyen' : 'başvurusu yapılan';
         const filterLabel = showOnlyUnpaidMembers ? ' (bu ay ödeme yapmayan)' : '';
-        const institutionLabel = filters.institutionId ? 'Seçilen kurum için' : 'Tüm kurumlar için';
-        toast.showInfo(`${institutionLabel} ${statusLabel} üye bulunamadı${filterLabel}`);
-      } else {
-        const statusLabel = status === 'ACTIVE' ? 'aktif' : status === 'PENDING' ? 'bekleyen' : 'başvurusu yapılan';
-        const filterLabel = showOnlyUnpaidMembers ? ' (bu ay ödeme yapmayan)' : '';
-        const institutionLabel = filters.institutionId ? 'Seçilen kurum için' : 'Tüm kurumlar için';
-        toast.showSuccess(`${institutionLabel} ${filteredMembers.length} ${statusLabel} üye bulundu${filterLabel}`);
-      }
+        const institutionLabel = 'Seçilen kurum için';
+
+        // Başarı mesajını state güncellemesi dışında, bir kez göstermek için
+        const addedCount = membersToAdd.length;
+
+        // State'i güncelle
+        const nextRows = initialRows;
+
+        // Toast'ı sadece gerçek eklenen satır sayısı > 0 ise göster
+        if (addedCount > 0) {
+          toast.showSuccess(
+            `${institutionLabel} ${addedCount} ${statusLabel} üye tabloya ekleniyor${filterLabel}`
+          );
+        }
+
+        return nextRows;
+      });
+
+      // Members state'ini en son hal ile güncelle
+      setMembers(filteredMembers);
     } catch (e) {
       console.error('Üyeler yüklenirken hata:', e);
       toast.showError('Üyeler yüklenirken bir hata oluştu');
@@ -198,141 +328,41 @@ const QuickPaymentEntryPage: React.FC = () => {
     }
   };
 
-  const handleAddRow = () => {
-    const newRow: PaymentRow = {
-      id: `draft-${Date.now()}-${Math.random()}`,
-      memberId: null,
-      registrationNumber: '',
-      firstName: '',
-      lastName: '',
-      nationalId: '',
-      institution: filters.institutionId ? institutions.find((i) => i.id === filters.institutionId)?.name || '' : '',
-      amount: '',
-      paymentType: 'TEVKIFAT',
-      description: '',
-      status: 'DRAFT',
-    };
-    setRows([...rows, newRow]);
-  };
 
-  const handleDeleteRow = (id: string) => {
-    setRows(rows.filter((r) => r.id !== id));
-    setSelectedRows((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
 
-  const handleEditRow = (id: string) => {
-    setRows(
-      rows.map((row) => {
-        if (row.id === id && row.status === 'SAVED') {
-          return { ...row, status: 'DRAFT' as const };
-        }
-        return row;
-      })
-    );
-  };
-
-  const handleDeletePayment = (rowId: string, paymentId: string, memberName: string) => {
-    setDeletePaymentDialog({
-      open: true,
-      paymentId,
-      rowId,
-      memberName,
-    });
-  };
-
-  const confirmDeletePayment = async () => {
-    const { paymentId, rowId } = deletePaymentDialog;
-    
-    if (!paymentId) {
-      toast.showError('Ödeme ID bulunamadı');
-      setDeletePaymentDialog({ open: false, paymentId: '', rowId: '', memberName: '' });
-      return;
-    }
-
-    try {
-      await deletePayment(paymentId);
-      
-      // Satırı listeden kaldır
-      setRows(rows.filter((r) => r.id !== rowId));
-      
-      toast.showSuccess('Ödeme başarıyla kaldırıldı');
-      setDeletePaymentDialog({ open: false, paymentId: '', rowId: '', memberName: '' });
-    } catch (e: any) {
-      console.error('Ödeme kaldırılırken hata:', e);
-      toast.showError(e?.response?.data?.message || 'Ödeme kaldırılırken bir hata oluştu');
-      setDeletePaymentDialog({ open: false, paymentId: '', rowId: '', memberName: '' });
-    }
-  };
-
-  const handleRowChange = (id: string, field: keyof PaymentRow, value: any) => {
-    setRows(
-      rows.map((row) => {
+  const handleRowChange = useCallback((id: string, field: keyof PaymentRow, value: any) => {
+    setRows((prevRows) =>
+      prevRows.map((row) => {
         if (row.id === id) {
-          const updated = { ...row, [field]: value };
-          return updated;
+          return { ...row, [field]: value };
         }
         return row;
       })
     );
-  };
+  }, []);
 
-  const handleMemberSelect = (id: string, member: MemberListItem | null) => {
-    setRows(
-      rows.map((row) => {
-        if (row.id === id) {
-          if (member) {
-            return {
-              ...row,
-              memberId: member.id,
-              member: member,
-              registrationNumber: member.registrationNumber || '',
-              firstName: member.firstName,
-              lastName: member.lastName,
-              nationalId: member.nationalId || '',
-              institution: member.institution?.name || '',
-            };
-          } else {
-            return {
-              ...row,
-              memberId: null,
-              member: undefined,
-              registrationNumber: '',
-              firstName: '',
-              lastName: '',
-              nationalId: '',
-              institution: filters.institutionId ? institutions.find((i) => i.id === filters.institutionId)?.name || '' : '',
-            };
-          }
-        }
-        return row;
-      })
-    );
-  };
-
-  const handleSelectRow = (id: string) => {
-    setSelectedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
+  // Filtrelenmiş satırları hesapla (useMemo ile optimize edildi)
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => {
+      const matchesRegistrationNumber = !debouncedFilters.registrationNumber ||
+        row.registrationNumber.toLowerCase().includes(debouncedFilters.registrationNumber.toLowerCase());
+      const matchesName = !debouncedFilters.name ||
+        `${row.firstName} ${row.lastName}`.toLowerCase().includes(debouncedFilters.name.toLowerCase());
+      const matchesNationalId = !debouncedFilters.nationalId ||
+        row.nationalId.includes(debouncedFilters.nationalId);
+      const matchesInstitution = !debouncedFilters.institution ||
+        row.institution.toLowerCase().includes(debouncedFilters.institution.toLowerCase());
+      
+      return matchesRegistrationNumber && matchesName && matchesNationalId && matchesInstitution;
     });
-  };
+  }, [rows, debouncedFilters]);
 
-  const handleSelectAll = () => {
-    const draftRows = rows.filter((r) => r.status === 'DRAFT');
-    if (selectedRows.size === draftRows.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(draftRows.map((r) => r.id)));
-    }
-  };
+  // Pagination için sayfalanmış satırlar (useMemo ile optimize edildi)
+  const paginatedRows = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredRows.slice(startIndex, endIndex);
+  }, [filteredRows, page, rowsPerPage]);
 
   const validateRow = (row: PaymentRow): string | null => {
     if (!row.memberId) {
@@ -344,24 +374,19 @@ const QuickPaymentEntryPage: React.FC = () => {
     return null;
   };
 
-  const handleSaveSelected = async () => {
-    if (selectedRows.size === 0) {
-      toast.showError('Lütfen kaydedilecek satırları seçin');
+  const handleSave = useCallback(async () => {
+    // Para eklenen satırları kaydet
+    const rowsToSave = rows.filter(
+      (r) => r.status === 'DRAFT' && r.amount && parseFloat(r.amount) > 0 && r.memberId
+    );
+
+    if (rowsToSave.length === 0) {
+      toast.showError('Kaydedilecek ödeme bulunamadı. Lütfen en az bir üye için tutar girin.');
       return;
     }
 
-    const rowsToSave = rows.filter((r) => selectedRows.has(r.id) && r.status === 'DRAFT');
     await saveRows(rowsToSave);
-  };
-
-  const handleSaveAll = async () => {
-    const draftRows = rows.filter((r) => r.status === 'DRAFT');
-    if (draftRows.length === 0) {
-      toast.showError('Kaydedilecek satır bulunamadı');
-      return;
-    }
-    await saveRows(draftRows);
-  };
+  }, [rows, toast]);
 
   const saveRows = async (rowsToSave: PaymentRow[]) => {
     // Validasyon
@@ -512,9 +537,9 @@ const QuickPaymentEntryPage: React.FC = () => {
 
       const results = await Promise.all(promises);
 
-      // Başarılı satırları güncelle ve paymentId'yi sakla
-      setRows(
-        rows.map((row) => {
+      // Başarılı satırları güncelle ve paymentId'yi sakla (functional update ile optimize edildi)
+      setRows((prevRows) =>
+        prevRows.map((row) => {
           const savedRowIndex = finalRowsToSave.findIndex((r) => r.id === row.id);
           if (savedRowIndex !== -1) {
             const savedPayment = results[savedRowIndex];
@@ -528,7 +553,6 @@ const QuickPaymentEntryPage: React.FC = () => {
         })
       );
 
-      setSelectedRows(new Set());
       toast.showSuccess(`${finalRowsToSave.length} ödeme başarıyla kaydedildi`);
     } catch (e: any) {
       console.error('Ödemeler kaydedilirken hata:', e);
@@ -546,8 +570,145 @@ const QuickPaymentEntryPage: React.FC = () => {
     );
   }
 
-  const draftRows = rows.filter((r) => r.status === 'DRAFT');
-  const savedRows = rows.filter((r) => r.status === 'SAVED');
+  // Optimize edilmiş hesaplamalar (useMemo ile)
+  const draftRows = useMemo(() => rows.filter((r) => r.status === 'DRAFT'), [rows]);
+  const savedRows = useMemo(() => rows.filter((r) => r.status === 'SAVED'), [rows]);
+  
+  // Para eklenen üyeler (tutar girilmiş ve üye seçilmiş satırlar)
+  const rowsWithAmount = useMemo(() => {
+    return rows.filter(
+      (r) => r.status === 'DRAFT' && r.amount && parseFloat(r.amount) > 0 && r.memberId
+    );
+  }, [rows]);
+  
+  const totalAmount = useMemo(() => {
+    return rowsWithAmount.reduce((sum, row) => sum + parseFloat(row.amount || '0'), 0);
+  }, [rowsWithAmount]);
+
+  // Kurum bazlı özet (para eklenen üyeler için)
+  const institutionSummaries = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        institution: string;
+        count: number;
+        total: number;
+      }
+    >();
+
+    rowsWithAmount.forEach((row) => {
+      const key = row.institution || 'Diğer / Kurumsuz';
+      const existing = map.get(key);
+      const amount = parseFloat(row.amount || '0') || 0;
+
+      if (existing) {
+        existing.count += 1;
+        existing.total += amount;
+      } else {
+        map.set(key, {
+          institution: key,
+          count: 1,
+          total: amount,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) =>
+      a.institution.localeCompare(b.institution, 'tr')
+    );
+  }, [rowsWithAmount]);
+
+  // Tablodaki satırlara göre kurum bazlı özet (tüm satırlar için)
+  const institutionRowSummaries = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        institution: string;
+        count: number;
+      }
+    >();
+
+    rows.forEach((row) => {
+      const key = row.institution || 'Diğer / Kurumsuz';
+      const existing = map.get(key);
+
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(key, {
+          institution: key,
+          count: 1,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) =>
+      a.institution.localeCompare(b.institution, 'tr')
+    );
+  }, [rows]);
+
+  // Tek satırın tutarını temizle
+  const handleClearAmount = useCallback((rowId: string) => {
+    setRows((prevRows) =>
+      prevRows.map((row) =>
+        row.id === rowId
+          ? {
+              ...row,
+              amount: '',
+            }
+          : row
+      )
+    );
+  }, []);
+
+  // Belirli bir kuruma ait tüm satırların tutarını temizle
+  const handleClearInstitutionAmounts = useCallback((institutionName: string) => {
+    setRows((prevRows) =>
+      prevRows.map((row) =>
+        (row.institution || 'Diğer / Kurumsuz') === institutionName
+          ? {
+              ...row,
+              amount: '',
+            }
+          : row
+      )
+    );
+  }, []);
+
+  // Belirli bir kuruma ait tüm satırları tamamen kaldır
+  const handleRemoveInstitutionRows = useCallback(
+    (institutionName: string) => {
+      setRows((prevRows) =>
+        prevRows.filter(
+          (row) => (row.institution || 'Diğer / Kurumsuz') !== institutionName
+        )
+      );
+
+      const summary = institutionRowSummaries.find(
+        (s) => s.institution === institutionName
+      );
+      if (summary && summary.count > 0) {
+        toast.showInfo(
+          `${summary.count} adet "${institutionName}" kurumuna ait satır kaldırıldı.`
+        );
+      }
+    },
+    [institutionRowSummaries, toast]
+  );
+
+  // Tüm para eklenen üyeleri temizle
+  const handleClearAllAmounts = useCallback(() => {
+    setRows((prevRows) =>
+      prevRows.map((row) =>
+        row.amount && parseFloat(row.amount) > 0
+          ? {
+              ...row,
+              amount: '',
+            }
+          : row
+      )
+    );
+  }, []);
 
   return (
     <Box
@@ -626,6 +787,8 @@ const QuickPaymentEntryPage: React.FC = () => {
           </Box>
         </Box>
       </Box>
+
+      {/* Kullanım İpuçları kaldırıldı */}
 
       {/* Filtreler */}
       <Card
@@ -716,8 +879,11 @@ const QuickPaymentEntryPage: React.FC = () => {
                 value={filters.institutionId}
                 label="Kurum"
                 onChange={(e) => setFilters({ ...filters, institutionId: e.target.value })}
+                required
               >
-                <MenuItem value="">Tümü</MenuItem>
+                <MenuItem value="" disabled>
+                  <em>Lütfen bir kurum seçin (zorunlu)</em>
+                </MenuItem>
                 {institutions.map((institution) => (
                   <MenuItem key={institution.id} value={institution.id}>
                     {institution.name}
@@ -765,7 +931,7 @@ const QuickPaymentEntryPage: React.FC = () => {
             <Button
               variant="contained"
               onClick={() => loadMembers('ACTIVE', showOnlyUnpaidMembers)}
-              disabled={loadingMembers}
+              disabled={loadingMembers || !filters.institutionId}
               startIcon={loadingMembers ? <CircularProgress size={18} color="inherit" /> : <CheckCircleIcon />}
               sx={{
                 flex: { xs: '1 1 100%', sm: '0 1 auto' },
@@ -781,7 +947,7 @@ const QuickPaymentEntryPage: React.FC = () => {
               variant="outlined"
               color="warning"
               onClick={() => loadMembers('PENDING', showOnlyUnpaidMembers)}
-              disabled={loadingMembers}
+              disabled={loadingMembers || !filters.institutionId}
               startIcon={loadingMembers ? <CircularProgress size={18} /> : <HourglassEmptyIcon />}
               sx={{
                 flex: { xs: '1 1 100%', sm: '0 1 auto' },
@@ -809,6 +975,11 @@ const QuickPaymentEntryPage: React.FC = () => {
             >
               Başvurusu Yapılan Üyeleri Getir
             </Button>
+            {!filters.institutionId && (
+              <Alert severity="warning" sx={{ flex: '1 1 100%', mt: 1 }}>
+                Sistemin performansını korumak için üyeler aşamalı olarak yüklenmektedir. Tüm üyeleri görmek için butonları birkaç kez kullanabilirsiniz.
+              </Alert>
+            )}
           </Box>
         </Box>
       </Card>
@@ -824,74 +995,73 @@ const QuickPaymentEntryPage: React.FC = () => {
           background: '#fff',
         }}
       >
-        {/* Üst Butonlar */}
+        {/* Üst Bilgi */}
         <Box
           sx={{
             p: 2.5,
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 2,
+            flexDirection: 'column',
+            gap: 1.5,
             borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
-          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleAddRow}
-              disabled={!canAddPayment}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-              }}
-            >
-              Yeni Satır Ekle
-            </Button>
-            {draftRows.length > 0 && (
-              <>
-                <Button
-                  variant="outlined"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSaveSelected}
-                  disabled={saving || selectedRows.size === 0}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Seçilenleri Kaydet ({selectedRows.size})
-                </Button>
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                  onClick={handleSaveAll}
-                  disabled={saving}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Tümünü Kaydet ({draftRows.length})
-                </Button>
-              </>
-            )}
-          </Box>
           <Chip
-            label={`${rows.length} satır • ${draftRows.length} taslak • ${savedRows.length} kaydedildi`}
+            label={`${rows.length} satır • ${draftRows.length} taslak • ${savedRows.length} kaydedildi • ${filteredRows.length} görüntüleniyor`}
             size="small"
             sx={{
+              alignSelf: 'flex-start',
               fontWeight: 600,
               fontSize: '0.75rem',
               bgcolor: alpha(theme.palette.info.main, 0.08),
               color: 'text.primary',
             }}
           />
+
+          {institutionRowSummaries.length > 0 && (
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1,
+              }}
+            >
+              {institutionRowSummaries.map((item) => (
+                <Box
+                  key={item.institution}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    px: 1.75,
+                    py: 0.65,
+                    borderRadius: 999,
+                    background: alpha(theme.palette.primary.main, 0.12),
+                    boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{ fontSize: '0.8rem', fontWeight: 600, color: theme.palette.primary.dark }}
+                  >
+                    {item.count} {item.institution} üyesi listeleniyor
+                  </Typography>
+                  <Tooltip
+                    title={`"${item.institution}" kurumuna ait tüm satırları kaldır`}
+                  >
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleRemoveInstitutionRows(item.institution)}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        ×
+                      </Typography>
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              ))}
+            </Box>
+          )}
         </Box>
 
         {/* Tablo */}
@@ -899,142 +1069,111 @@ const QuickPaymentEntryPage: React.FC = () => {
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox" sx={{ bgcolor: 'background.paper', fontWeight: 600 }}>
-                  <Checkbox
-                    checked={draftRows.length > 0 && selectedRows.size === draftRows.length}
-                    indeterminate={selectedRows.size > 0 && selectedRows.size < draftRows.length}
-                    onChange={handleSelectAll}
-                    size="small"
-                  />
-                </TableCell>
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Üye Kayıt No</TableCell>
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Ad Soyad</TableCell>
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>TC Kimlik No</TableCell>
-                <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Kurum</TableCell>
-                <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Aidat Tutarı</TableCell>
-                <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Durum</TableCell>
-                <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>İşlemler</TableCell>
+                    <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Kurum</TableCell>
+                    <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Aidat Tutarı</TableCell>
+              </TableRow>
+              {/* Filtre Satırı */}
+              <TableRow>
+                <TableCell sx={{ bgcolor: alpha(theme.palette.grey[100], 0.5), p: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Filtrele..."
+                    value={tableFilters.registrationNumber}
+                    onChange={(e) => setTableFilters({ ...tableFilters, registrationNumber: e.target.value })}
+                    fullWidth
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.75rem' } }}
+                  />
+                </TableCell>
+                <TableCell sx={{ bgcolor: alpha(theme.palette.grey[100], 0.5), p: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Filtrele..."
+                    value={tableFilters.name}
+                    onChange={(e) => setTableFilters({ ...tableFilters, name: e.target.value })}
+                    fullWidth
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.75rem' } }}
+                  />
+                </TableCell>
+                <TableCell sx={{ bgcolor: alpha(theme.palette.grey[100], 0.5), p: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Filtrele..."
+                    value={tableFilters.nationalId}
+                    onChange={(e) => setTableFilters({ ...tableFilters, nationalId: e.target.value })}
+                    fullWidth
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.75rem' } }}
+                  />
+                </TableCell>
+                <TableCell sx={{ bgcolor: alpha(theme.palette.grey[100], 0.5), p: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Filtrele..."
+                    value={tableFilters.institution}
+                    onChange={(e) => setTableFilters({ ...tableFilters, institution: e.target.value })}
+                    fullWidth
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.75rem' } }}
+                  />
+                </TableCell>
+                <TableCell sx={{ bgcolor: alpha(theme.palette.grey[100], 0.5) }}></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {rows.length === 0 ? (
+              {paginatedRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
-                      Henüz satır eklenmedi. "Yeni Satır Ekle" butonuna tıklayarak başlayın.
+                      {rows.length === 0 
+                        ? 'Henüz satır eklenmedi. Üstteki butonlardan birine tıklayarak üyeleri getirin.'
+                        : 'Filtre kriterlerine uygun satır bulunamadı.'}
                     </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((row) => {
+                paginatedRows.map((row) => {
                   const isSaved = row.status === 'SAVED';
-                  const isSelected = selectedRows.has(row.id);
                   return (
                     <TableRow
                       key={row.id}
                       sx={{
                         bgcolor: isSaved ? alpha(theme.palette.success.main, 0.06) : 'transparent',
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.02),
+                        },
                       }}
                     >
-                      <TableCell padding="checkbox">
-                        {!isSaved && (
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={() => handleSelectRow(row.id)}
-                            size="small"
-                          />
-                        )}
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                          {row.registrationNumber || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                          {row.firstName} {row.lastName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                          {row.nationalId || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                          {row.institution || '-'}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         {isSaved ? (
-                          <Typography variant="body2">{row.registrationNumber || '-'}</Typography>
-                        ) : (
-                          <Autocomplete
-                            size="small"
-                            options={members}
-                            value={row.member || null}
-                            onChange={(_, newValue) => {
-                              handleMemberSelect(row.id, newValue);
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 600,
+                              color: theme.palette.success.main,
+                              fontSize: '0.875rem',
                             }}
-                            getOptionLabel={(option) =>
-                              `${option.firstName} ${option.lastName}${option.registrationNumber ? ` (${option.registrationNumber})` : ''}`
-                            }
-                            inputValue={row.member ? (row.registrationNumber || '') : ''}
-                            onInputChange={(_, _value, reason) => {
-                              // Seçim yapıldığında (reason === 'reset') inputValue kayıt no olur
-                              // Arama yapılırken (reason === 'input') arama terimi gösterilir
-                              if (reason === 'reset' && row.member) {
-                                // Seçim yapıldı, zaten handleMemberSelect ile güncellenecek
-                                return;
-                              }
-                            }}
-                            renderInput={(params) => (
-                              <TextField
-                                {...params}
-                                placeholder="Üye ara..."
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                  }
-                                }}
-                              />
-                            )}
-                            sx={{ minWidth: 150 }}
-                            filterOptions={(options, { inputValue }) => {
-                              const searchTerm = inputValue.toLowerCase();
-                              return options.filter(
-                                (option) =>
-                                  `${option.firstName} ${option.lastName}`.toLowerCase().includes(searchTerm) ||
-                                  (option.registrationNumber &&
-                                    option.registrationNumber.toLowerCase().includes(searchTerm)) ||
-                                  (option.nationalId && option.nationalId.includes(searchTerm))
-                              );
-                            }}
-                            noOptionsText="Üye bulunamadı"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {isSaved ? (
-                          <Typography variant="body2">
-                            {row.firstName} {row.lastName}
-                          </Typography>
-                        ) : (
-                          <TextField
-                            size="small"
-                            value={`${row.firstName} ${row.lastName}`}
-                            disabled
-                            sx={{ minWidth: 150 }}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {isSaved ? (
-                          <Typography variant="body2">{row.nationalId || '-'}</Typography>
-                        ) : (
-                          <TextField
-                            size="small"
-                            value={row.nationalId}
-                            disabled
-                            sx={{ minWidth: 120 }}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {isSaved ? (
-                          <Typography variant="body2">{row.institution || '-'}</Typography>
-                        ) : (
-                          <TextField
-                            size="small"
-                            value={row.institution}
-                            disabled
-                            sx={{ minWidth: 150 }}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {isSaved ? (
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.success.main, fontSize: '0.875rem' }}>
+                          >
                             ₺{parseFloat(row.amount || '0').toFixed(2)}
                           </Typography>
                         ) : (
@@ -1049,51 +1188,6 @@ const QuickPaymentEntryPage: React.FC = () => {
                           />
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={isSaved ? 'Hazır' : 'Taslak'}
-                          size="small"
-                          color={isSaved ? 'success' : 'warning'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          {isSaved ? (
-                            <>
-                              <Tooltip title="Düzelt">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleEditRow(row.id)}
-                                  color="primary"
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              {row.paymentId && (
-                                <Tooltip title="Kaldır">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleDeletePayment(row.id, row.paymentId!, `${row.firstName} ${row.lastName}`)}
-                                    color="error"
-                                  >
-                                    <DeleteIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
-                            </>
-                          ) : (
-                            <Tooltip title="Satırı Sil">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteRow(row.id)}
-                                color="error"
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                        </Box>
-                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -1101,7 +1195,259 @@ const QuickPaymentEntryPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Pagination */}
+        {filteredRows.length > 0 && (
+          <TablePagination
+            component="div"
+            count={filteredRows.length}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[25, 50, 100, 200]}
+            labelRowsPerPage="Sayfa başına satır:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+            sx={{
+              borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                fontSize: '0.875rem',
+              },
+            }}
+          />
+        )}
       </Card>
+
+      {/* Para Eklenen Üyeler Bölümü */}
+      {rowsWithAmount.length > 0 && (
+        <Card
+          elevation={0}
+          sx={{
+            mt: 3,
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            boxShadow: `0 2px 8px ${alpha(theme.palette.common.black, 0.04)}`,
+            overflow: 'hidden',
+            background: '#fff',
+          }}
+        >
+          <Box sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 2,
+                  background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <PaymentIcon sx={{ fontSize: '1.25rem', color: '#fff' }} />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                  Para Eklenen Üyeler
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: 'text.secondary', fontSize: '0.8125rem' }}
+                >
+                  {rowsWithAmount.length} üye • Toplam: ₺{totalAmount.toFixed(2)}
+                </Typography>
+              </Box>
+              <Box>
+                <Tooltip title="Tüm para eklenen üyelerdeki tutarları temizler">
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={handleClearAllAmounts}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    Tümünü Temizle
+                  </Button>
+                </Tooltip>
+              </Box>
+            </Box>
+
+            {/* Kurum Bazlı Özet */}
+            {institutionSummaries.length > 0 && (
+              <Box
+                sx={{
+                  mb: 2.5,
+                  p: 1.5,
+                  borderRadius: 2,
+                  background: alpha(theme.palette.success.main, 0.03),
+                  border: `1px solid ${alpha(theme.palette.success.main, 0.18)}`,
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  sx={{ fontWeight: 700, fontSize: '0.85rem', mb: 1 }}
+                >
+                  Kurum Bazlı Özet
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                  }}
+                >
+                  {institutionSummaries.map((item) => (
+                    <Box
+                      key={item.institution}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.25,
+                        py: 0.75,
+                        borderRadius: 999,
+                        background: alpha(theme.palette.success.main, 0.06),
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{ fontSize: '0.8rem', fontWeight: 600 }}
+                      >
+                        {item.institution}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontSize: '0.8rem', color: 'text.secondary' }}
+                      >
+                        {item.count} üye • ₺{item.total.toFixed(2)}
+                      </Typography>
+                      <Tooltip title="Bu kuruma ait satırlardaki tutarları temizle">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() =>
+                            handleClearInstitutionAmounts(item.institution)
+                          }
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            ×
+                          </Typography>
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            <TableContainer sx={{ maxHeight: 400 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Üye Kayıt No</TableCell>
+                    <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Ad Soyad</TableCell>
+                    <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>TC Kimlik No</TableCell>
+                    <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Kurum</TableCell>
+                    <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }} align="right">Tutar</TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: 600,
+                        bgcolor: 'background.paper',
+                        fontSize: '0.8125rem',
+                        textAlign: 'center',
+                      }}
+                    >
+                      İşlemler
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rowsWithAmount.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      sx={{
+                        bgcolor: alpha(theme.palette.success.main, 0.04),
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.success.main, 0.08),
+                        },
+                      }}
+                    >
+                      <TableCell>{row.registrationNumber || '-'}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {row.firstName} {row.lastName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{row.nationalId || '-'}</TableCell>
+                      <TableCell>{row.institution || '-'}</TableCell>
+                      <TableCell align="right">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: theme.palette.success.main,
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          ₺{parseFloat(row.amount || '0').toFixed(2)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Bu satırdaki tutarı temizle">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleClearAmount(row.id)}
+                          >
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              ×
+                            </Typography>
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Kaydet Butonu - sağa hizalı */}
+            <Box
+              sx={{
+                mt: 2.5,
+                display: 'flex',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <Button
+                variant="contained"
+                color="success"
+                size="medium"
+                startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                onClick={handleSave}
+                disabled={saving || rowsWithAmount.length === 0}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                  px: 3,
+                  py: 1,
+                  minWidth: 180,
+                }}
+              >
+                {saving ? 'Kaydediliyor...' : `Kaydet (${rowsWithAmount.length} ödeme)`}
+              </Button>
+            </Box>
+          </Box>
+        </Card>
+      )}
 
       {/* Aynı Ay Ödeme Uyarı Dialog */}
       <Dialog
@@ -1184,69 +1530,6 @@ const QuickPaymentEntryPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Ödeme Kaldırma Onay Dialog */}
-      <Dialog
-        open={deletePaymentDialog.open}
-        onClose={() => setDeletePaymentDialog({ open: false, paymentId: '', rowId: '', memberName: '' })}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
-      >
-        <DialogTitle sx={{ pb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <DeleteIcon sx={{ fontSize: '1.5rem', color: '#fff' }} />
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                Ödeme Kaldırma Onayı
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8125rem' }}>
-                Bu işlem geri alınamaz
-              </Typography>
-            </Box>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ fontSize: '1rem', mb: 2 }}>
-            <strong>{deletePaymentDialog.memberName}</strong> için kaydedilen ödemeyi kaldırmak istediğinizden emin misiniz?
-          </DialogContentText>
-          <DialogContentText sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
-            Bu işlem ödeme kaydını kalıcı olarak siler ve geri alınamaz.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5, gap: 1 }}>
-          <Button
-            onClick={() => setDeletePaymentDialog({ open: false, paymentId: '', rowId: '', memberName: '' })}
-            variant="outlined"
-            sx={{ textTransform: 'none', fontWeight: 600 }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={confirmDeletePayment}
-            variant="contained"
-            color="error"
-            sx={{ textTransform: 'none', fontWeight: 600 }}
-          >
-            Kaldır
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

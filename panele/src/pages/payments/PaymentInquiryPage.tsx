@@ -224,7 +224,7 @@ const PaymentInquiryPage: React.FC = () => {
     },
     {
       field: 'amount',
-      headerName: 'Ödenen Tutar',
+      headerName: 'Ödeme',
       width: 150,
       align: 'right',
       valueGetter: (value) =>
