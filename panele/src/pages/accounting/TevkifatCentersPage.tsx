@@ -1,5 +1,5 @@
 // src/pages/accounting/TevkifatCentersPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -78,7 +78,9 @@ const TevkifatCentersPage: React.FC = () => {
   const [rows, setRows] = useState<TevkifatCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  // Varsayılan olarak sadece aktifleri göster: "kaldır" işlemi soft-delete (isActive=false)
+  // olduğu için kullanıcı kaldırınca listeden kalkmış gibi görünsün.
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingCenter, setDeletingCenter] = useState<TevkifatCenter | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -177,6 +179,13 @@ const TevkifatCentersPage: React.FC = () => {
       (statusFilter === 'INACTIVE' && !row.isActive);
     return matchesSearch && matchesStatus;
   });
+
+  // Hedef tevkifat merkezi seçimi için kullanılabilir merkezler
+  const availableTevkifatCenters = useMemo(() => {
+    return rows.filter(
+      (center) => center.id !== deletingCenter?.id && center.isActive
+    );
+  }, [rows, deletingCenter?.id]);
 
   // Tevkifat Unvanları handler'ları
   const handleOpenTitleDialog = (title?: TevkifatTitle) => {
@@ -279,6 +288,25 @@ const TevkifatCentersPage: React.FC = () => {
       minWidth: 250,
       align: 'left',
       headerAlign: 'left',
+    },
+    {
+      field: 'isActive',
+      headerName: 'Durum',
+      width: 140,
+      sortable: true,
+      align: 'left',
+      headerAlign: 'left',
+      renderCell: (params) => {
+        const isActive = Boolean(params.row?.isActive);
+        return (
+          <Chip
+            label={isActive ? 'Aktif' : 'Pasif'}
+            color={isActive ? 'success' : 'default'}
+            size="small"
+            sx={{ fontWeight: 600 }}
+          />
+        );
+      },
     },
     {
       field: 'actions',
@@ -1337,14 +1365,23 @@ const TevkifatCentersPage: React.FC = () => {
                     <MenuItem value="">
                       <em>Hedef tevkifat merkezi seçin</em>
                     </MenuItem>
-                    {rows
-                      .filter(center => center.id !== deletingCenter?.id && center.isActive)
-                      .map((center) => (
+                    {loading ? (
+                      <MenuItem disabled>
+                        <CircularProgress size={16} sx={{ mr: 1 }} />
+                        Yükleniyor...
+                      </MenuItem>
+                    ) : availableTevkifatCenters.length === 0 ? (
+                      <MenuItem disabled>
+                        Kullanılabilir tevkifat merkezi bulunamadı
+                      </MenuItem>
+                    ) : (
+                      availableTevkifatCenters.map((center) => (
                         <MenuItem key={center.id} value={center.id}>
                           {center.name}
                           {center.memberCount !== undefined && ` (${center.memberCount} üye)`}
                         </MenuItem>
-                      ))}
+                      ))
+                    )}
                   </Select>
                   <Alert severity="info" sx={{ mt: 1.5, borderRadius: 2 }}>
                     Üyeler bu tevkifat merkezine taşınacaktır

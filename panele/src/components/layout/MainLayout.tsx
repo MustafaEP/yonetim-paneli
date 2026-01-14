@@ -30,6 +30,13 @@ const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  
+  // Desktop sidebar durumu - localStorage'dan yükle
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const { isAuthenticated, isLoading } = useAuth();
   const { getSettingValue } = useSystemSettings();
 
@@ -78,6 +85,15 @@ const MainLayout: React.FC = () => {
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  // Desktop sidebar toggle - localStorage'a kaydet
+  const handleSidebarToggle = () => {
+    setSidebarOpen((prev) => {
+      const newValue = !prev;
+      localStorage.setItem('sidebarOpen', JSON.stringify(newValue));
+      return newValue;
+    });
   };
 
   // Loading durumunda spinner göster
@@ -135,18 +151,22 @@ const MainLayout: React.FC = () => {
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
-          {/* Mobile Menu Button */}
-          {isMobile && (
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { md: 'none' } }}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
+          {/* Menu Button - Mobile ve Desktop */}
+          <IconButton
+            color="inherit"
+            aria-label="toggle drawer"
+            edge="start"
+            onClick={isMobile ? handleDrawerToggle : handleSidebarToggle}
+            sx={{ 
+              mr: 2,
+              transition: 'transform 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.1)',
+              },
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
 
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
             {resolvedLogoUrl ? (
@@ -243,7 +263,11 @@ const MainLayout: React.FC = () => {
       </AppBar>
 
       {/* Sidebar */}
-      <Sidebar mobileOpen={mobileOpen} onDrawerToggle={handleDrawerToggle} />
+      <Sidebar 
+        mobileOpen={mobileOpen} 
+        onDrawerToggle={handleDrawerToggle}
+        desktopOpen={sidebarOpen}
+      />
 
       {/* Ana İçerik */}
       <Box
@@ -254,9 +278,13 @@ const MainLayout: React.FC = () => {
           backgroundColor: '#f8f9fa',
           display: 'flex',
           flexDirection: 'column',
-          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          width: '100%',
           overflow: 'hidden',
           direction: 'ltr',
+          transition: theme.transitions.create(['margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
         }}
       >
         {/* Spacer for AppBar */}

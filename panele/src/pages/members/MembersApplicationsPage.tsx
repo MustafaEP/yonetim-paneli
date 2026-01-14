@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import type { MemberApplicationRow, MemberStatus } from '../../types/member';
 import {
   getMemberApplications,
+  getMembers,
   approveMember,
   rejectMember,
 } from '../../api/membersApi';
@@ -47,6 +48,7 @@ const MembersApplicationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'PENDING' | 'REJECTED'>('PENDING');
   const [provinceFilter, setProvinceFilter] = useState<string>('ALL');
   const [createdByFilter, setCreatedByFilter] = useState<string>('ALL');
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -65,6 +67,19 @@ const MembersApplicationsPage: React.FC = () => {
 
   const canApprove = hasPermission('MEMBER_APPROVE');
   const canReject = hasPermission('MEMBER_REJECT');
+
+  // Status'a göre tema rengi
+  const statusTheme = statusFilter === 'PENDING' 
+    ? {
+        mainColor: theme.palette.warning.main,
+        darkColor: theme.palette.warning.dark,
+        lightColor: theme.palette.warning.light,
+      }
+    : {
+        mainColor: theme.palette.error.main,
+        darkColor: theme.palette.error.dark,
+        lightColor: theme.palette.error.light,
+      };
 
   const filteredRows = useMemo(() => {
     let filtered = rows;
@@ -164,7 +179,24 @@ const MembersApplicationsPage: React.FC = () => {
   const loadApplications = async () => {
     setLoading(true);
     try {
-      const data = await getMemberApplications();
+      let data: MemberApplicationRow[];
+      if (statusFilter === 'PENDING') {
+        data = await getMemberApplications();
+      } else {
+        // REJECTED için getMembers kullan
+        const rejectedMembers = await getMembers('REJECTED');
+        // MemberListItem'ı MemberApplicationRow'a dönüştür
+        data = rejectedMembers.map(member => ({
+          id: member.id,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          nationalId: member.nationalId,
+          province: member.province,
+          createdBy: null, // REJECTED üyelerde createdBy bilgisi olmayabilir
+          createdAt: member.createdAt || '',
+          status: member.status,
+        })) as MemberApplicationRow[];
+      }
       setRows(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Üye başvuruları alınırken hata:', e);
@@ -176,7 +208,7 @@ const MembersApplicationsPage: React.FC = () => {
 
   useEffect(() => {
     loadApplications();
-  }, []);
+  }, [statusFilter]);
 
   const handleApproveClick = (id: string) => {
     if (!canApprove) return;
@@ -378,6 +410,7 @@ const MembersApplicationsPage: React.FC = () => {
       renderCell: (params: GridRenderCellParams<MemberApplicationRow>) => {
         const disabled = processingId === params.row.id;
         const isPending = params.row.status === 'PENDING';
+        const isRejected = params.row.status === 'REJECTED';
         return (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <Tooltip title="Detayları Görüntüle" arrow placement="top">
@@ -405,7 +438,7 @@ const MembersApplicationsPage: React.FC = () => {
                 <VisibilityIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            {canApprove && isPending && (
+            {canApprove && isPending && statusFilter === 'PENDING' && (
               <Tooltip title="Başvuruyu Onayla" arrow placement="top">
                 <span>
                   <IconButton
@@ -438,7 +471,7 @@ const MembersApplicationsPage: React.FC = () => {
                 </span>
               </Tooltip>
             )}
-            {canReject && isPending && (
+            {canReject && isPending && statusFilter === 'PENDING' && (
               <Tooltip title="Başvuruyu Reddet" arrow placement="top">
                 <span>
                   <IconButton
@@ -489,8 +522,8 @@ const MembersApplicationsPage: React.FC = () => {
           mb: 4,
           p: { xs: 3, sm: 4, md: 5 },
           borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${alpha(theme.palette.warning.light, 0.05)} 100%)`,
-          border: `1px solid ${alpha(theme.palette.warning.main, 0.1)}`,
+          background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+          border: `1px solid ${alpha(statusTheme.mainColor, 0.1)}`,
           position: 'relative',
           overflow: 'hidden',
           '&::before': {
@@ -500,7 +533,7 @@ const MembersApplicationsPage: React.FC = () => {
             right: 0,
             width: '300px',
             height: '300px',
-            background: `radial-gradient(circle, ${alpha(theme.palette.warning.main, 0.1)} 0%, transparent 70%)`,
+            background: `radial-gradient(circle, ${alpha(statusTheme.mainColor, 0.1)} 0%, transparent 70%)`,
             borderRadius: '50%',
             transform: 'translate(30%, -30%)',
           },
@@ -514,15 +547,15 @@ const MembersApplicationsPage: React.FC = () => {
                   width: { xs: 56, sm: 64 },
                   height: { xs: 56, sm: 64 },
                   borderRadius: 3,
-                  background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
+                  background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: `0 8px 24px ${alpha(theme.palette.warning.main, 0.35)}`,
+                  boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-4px) scale(1.05)',
-                    boxShadow: `0 12px 32px ${alpha(theme.palette.warning.main, 0.45)}`,
+                    boxShadow: `0 12px 32px ${alpha(statusTheme.mainColor, 0.45)}`,
                   },
                 }}
               >
@@ -555,54 +588,58 @@ const MembersApplicationsPage: React.FC = () => {
                 </Typography>
               </Box>
             </Box>
+            {statusFilter === 'PENDING' && (
+              <Button
+                variant="contained"
+                startIcon={<PersonAddIcon />}
+                onClick={() => navigate('/members/applications/new')}
+                size="large"
+                sx={{
+                  display: { xs: 'none', sm: 'flex' },
+                  borderRadius: 2.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1rem',
+                  background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
+                  boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 12px 32px ${alpha(statusTheme.mainColor, 0.45)}`,
+                    background: `linear-gradient(135deg, ${statusTheme.darkColor} 0%, ${statusTheme.mainColor} 100%)`,
+                  },
+                }}
+              >
+                Yeni Başvuru
+              </Button>
+            )}
+          </Box>
+
+          {/* Mobile Button */}
+          {statusFilter === 'PENDING' && (
             <Button
               variant="contained"
               startIcon={<PersonAddIcon />}
+              fullWidth
               onClick={() => navigate('/members/applications/new')}
               size="large"
               sx={{
-                display: { xs: 'none', sm: 'flex' },
+                display: { xs: 'flex', sm: 'none' },
+                mt: 3,
                 borderRadius: 2.5,
                 textTransform: 'none',
                 fontWeight: 600,
-                px: 4,
                 py: 1.5,
                 fontSize: '1rem',
-                background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
-                boxShadow: `0 8px 24px ${alpha(theme.palette.warning.main, 0.35)}`,
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 12px 32px ${alpha(theme.palette.warning.main, 0.45)}`,
-                  background: `linear-gradient(135deg, ${theme.palette.warning.dark} 0%, ${theme.palette.warning.main} 100%)`,
-                },
+                background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
+                boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
               }}
             >
               Yeni Başvuru
             </Button>
-          </Box>
-
-          {/* Mobile Button */}
-          <Button
-            variant="contained"
-            startIcon={<PersonAddIcon />}
-            fullWidth
-            onClick={() => navigate('/members/applications/new')}
-            size="large"
-            sx={{
-              display: { xs: 'flex', sm: 'none' },
-              mt: 3,
-              borderRadius: 2.5,
-              textTransform: 'none',
-              fontWeight: 600,
-              py: 1.5,
-              fontSize: '1rem',
-              background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
-              boxShadow: `0 8px 24px ${alpha(theme.palette.warning.main, 0.35)}`,
-            }}
-          >
-            Yeni Başvuru
-          </Button>
+          )}
         </Box>
       </Box>
 
@@ -621,7 +658,7 @@ const MembersApplicationsPage: React.FC = () => {
         <Box
           sx={{
             p: { xs: 3, sm: 4 },
-            background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.02)} 0%, ${alpha(theme.palette.warning.light, 0.01)} 100%)`,
+            background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.02)} 0%, ${alpha(statusTheme.lightColor, 0.01)} 100%)`,
             borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
@@ -631,11 +668,11 @@ const MembersApplicationsPage: React.FC = () => {
                 width: 44,
                 height: 44,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
+                background: `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.3)}`,
+                boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.3)}`,
               }}
             >
               <FilterListIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
@@ -650,6 +687,66 @@ const MembersApplicationsPage: React.FC = () => {
             </Box>
           </Box>
           <Grid container spacing={2.5}>
+            {/* Durum Filtresi */}
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+              <FormControl 
+                size="medium" 
+                fullWidth
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#fff',
+                    borderRadius: 2.5,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
+                    },
+                  },
+                }}
+              >
+                <InputLabel>Durum</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Durum"
+                  onChange={(e) => setStatusFilter(e.target.value as 'PENDING' | 'REJECTED')}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <FilterListIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: 600,
+                      color: statusTheme.mainColor,
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: statusTheme.mainColor,
+                      borderWidth: 2,
+                    },
+                  }}
+                  MenuProps={{
+                    disablePortal: false,
+                    disableScrollLock: true,
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300,
+                        borderRadius: 12,
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="PENDING">
+                    <Typography sx={{ fontWeight: statusFilter === 'PENDING' ? 700 : 400 }}>
+                      Onay Bekliyor
+                    </Typography>
+                  </MenuItem>
+                  <MenuItem value="REJECTED">
+                    <Typography sx={{ fontWeight: statusFilter === 'REJECTED' ? 700 : 400 }}>
+                      Reddedilen
+                    </Typography>
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
             {/* Arama */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <TextField
@@ -671,14 +768,14 @@ const MembersApplicationsPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: theme.palette.warning.main,
+                        borderColor: statusTheme.mainColor,
                         borderWidth: '2px',
                       },
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
+                      boxShadow: `0 4px 16px ${alpha(statusTheme.mainColor, 0.2)}`,
                     },
                   },
                 }}
@@ -695,7 +792,7 @@ const MembersApplicationsPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                     },
                   },
                 }}
@@ -713,10 +810,10 @@ const MembersApplicationsPage: React.FC = () => {
                   sx={{
                     '& .MuiSelect-select': {
                       fontWeight: provinceFilter !== 'ALL' ? 600 : 400,
-                      color: provinceFilter !== 'ALL' ? theme.palette.warning.main : 'inherit',
+                      color: provinceFilter !== 'ALL' ? statusTheme.mainColor : 'inherit',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.warning.main,
+                      borderColor: statusTheme.mainColor,
                       borderWidth: 2,
                     },
                   }}
@@ -741,10 +838,10 @@ const MembersApplicationsPage: React.FC = () => {
                         key={province.id} 
                         value={province.id}
                         sx={{
-                          backgroundColor: isSelected ? alpha(theme.palette.warning.main, 0.1) : 'transparent',
+                          backgroundColor: isSelected ? alpha(statusTheme.mainColor, 0.1) : 'transparent',
                           '&:hover': {
                             backgroundColor: isSelected 
-                              ? alpha(theme.palette.warning.main, 0.15) 
+                              ? alpha(statusTheme.mainColor, 0.15) 
                               : alpha(theme.palette.action.hover, 0.05),
                           },
                         }}
@@ -752,7 +849,7 @@ const MembersApplicationsPage: React.FC = () => {
                         <Typography 
                           sx={{ 
                             fontWeight: isSelected ? 700 : 400,
-                            color: isSelected ? theme.palette.warning.main : 'inherit',
+                            color: isSelected ? statusTheme.mainColor : 'inherit',
                           }}
                         >
                           {province.name}
@@ -774,7 +871,7 @@ const MembersApplicationsPage: React.FC = () => {
                     borderRadius: 2.5,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.12)}`,
+                      boxShadow: `0 4px 12px ${alpha(statusTheme.mainColor, 0.12)}`,
                     },
                   },
                 }}
@@ -792,10 +889,10 @@ const MembersApplicationsPage: React.FC = () => {
                   sx={{
                     '& .MuiSelect-select': {
                       fontWeight: createdByFilter !== 'ALL' ? 600 : 400,
-                      color: createdByFilter !== 'ALL' ? theme.palette.warning.main : 'inherit',
+                      color: createdByFilter !== 'ALL' ? statusTheme.mainColor : 'inherit',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.warning.main,
+                      borderColor: statusTheme.mainColor,
                       borderWidth: 2,
                     },
                   }}
@@ -820,10 +917,10 @@ const MembersApplicationsPage: React.FC = () => {
                         key={user.id} 
                         value={user.id}
                         sx={{
-                          backgroundColor: isSelected ? alpha(theme.palette.warning.main, 0.1) : 'transparent',
+                          backgroundColor: isSelected ? alpha(statusTheme.mainColor, 0.1) : 'transparent',
                           '&:hover': {
                             backgroundColor: isSelected 
-                              ? alpha(theme.palette.warning.main, 0.15) 
+                              ? alpha(statusTheme.mainColor, 0.15) 
                               : alpha(theme.palette.action.hover, 0.05),
                           },
                         }}
@@ -833,7 +930,7 @@ const MembersApplicationsPage: React.FC = () => {
                             variant="body2" 
                             sx={{
                               fontWeight: isSelected ? 700 : 600,
-                              color: isSelected ? theme.palette.warning.main : 'inherit',
+                              color: isSelected ? statusTheme.mainColor : 'inherit',
                             }}
                           >
                             {user.firstName} {user.lastName}
@@ -857,8 +954,8 @@ const MembersApplicationsPage: React.FC = () => {
                 mt: 3,
                 p: 2.5,
                 borderRadius: 2.5,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${alpha(theme.palette.warning.light, 0.05)} 100%)`,
-                border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+                border: `1px solid ${alpha(statusTheme.mainColor, 0.2)}`,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
@@ -866,7 +963,7 @@ const MembersApplicationsPage: React.FC = () => {
                   variant="body2"
                   sx={{
                     fontWeight: 700,
-                    color: theme.palette.warning.main,
+                    color: statusTheme.mainColor,
                     fontSize: '0.95rem',
                     display: 'flex',
                     alignItems: 'center',
@@ -957,15 +1054,15 @@ const MembersApplicationsPage: React.FC = () => {
                 mt: 3,
                 p: 2,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${alpha(theme.palette.warning.light, 0.05)} 100%)`,
-                border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}`,
+                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
+                border: `1px solid ${alpha(statusTheme.mainColor, 0.15)}`,
               }}
             >
               <Typography
                 variant="body2"
                 sx={{
                   fontWeight: 600,
-                  color: theme.palette.warning.dark,
+                  color: statusTheme.darkColor,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1,
@@ -973,8 +1070,8 @@ const MembersApplicationsPage: React.FC = () => {
                 }}
               >
                 <AssignmentIcon fontSize="small" />
-                {filteredRows.length} başvuru listeleniyor
-                {filteredRows.length !== rows.length && ` (Toplam ${rows.length} başvurudan)`}
+                {filteredRows.length} {statusFilter === 'PENDING' ? 'başvuru' : 'reddedilen üye'} listeleniyor
+                {filteredRows.length !== rows.length && ` (Toplam ${rows.length} ${statusFilter === 'PENDING' ? 'başvurudan' : 'reddedilen üyeden'})`}
               </Typography>
             </Box>
           )}
@@ -999,8 +1096,8 @@ const MembersApplicationsPage: React.FC = () => {
                 alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
-                background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.06)} 0%, ${alpha(theme.palette.warning.light, 0.03)} 100%)`,
-                borderBottom: `2px solid ${alpha(theme.palette.warning.main, 0.12)}`,
+                background: `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.06)} 0%, ${alpha(statusTheme.lightColor, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(statusTheme.mainColor, 0.12)}`,
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
@@ -1016,8 +1113,8 @@ const MembersApplicationsPage: React.FC = () => {
               '& .MuiDataGrid-row': {
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.warning.main, 0.03),
-                  boxShadow: `inset 4px 0 0 ${theme.palette.warning.main}`,
+                  backgroundColor: alpha(statusTheme.mainColor, 0.03),
+                  boxShadow: `inset 4px 0 0 ${statusTheme.mainColor}`,
                 },
                 '&:nth-of-type(even)': {
                   backgroundColor: alpha(theme.palette.grey[50], 0.3),

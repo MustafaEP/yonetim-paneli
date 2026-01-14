@@ -171,28 +171,28 @@ const MemberDetailPage = () => {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
 
   // Member verisini yükle
-  useEffect(() => {
+  const loadMember = async () => {
     if (!id) return;
-
-    const loadMember = async () => {
-      setLoadingMember(true);
-      try {
-        const data = await getMemberById(id);
-        setMember(data);
-        
-        // Eğer üye bir panel kullanıcısıysa, tam kullanıcı detaylarını yükle
-        if (data.user?.id) {
-          loadUserDetail(data.user.id);
-          loadUserScopes(data.user.id);
-        }
-      } catch (error) {
-        console.error('Üye detayı alınırken hata:', error);
-      } finally {
-        setLoadingMember(false);
+    setLoadingMember(true);
+    try {
+      const data = await getMemberById(id);
+      setMember(data);
+      
+      // Eğer üye bir panel kullanıcısıysa, tam kullanıcı detaylarını yükle
+      if (data.user?.id) {
+        loadUserDetail(data.user.id);
+        loadUserScopes(data.user.id);
       }
-    };
+    } catch (error) {
+      console.error('Üye detayı alınırken hata:', error);
+    } finally {
+      setLoadingMember(false);
+    }
+  };
 
+  useEffect(() => {
     loadMember();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Panel kullanıcı detaylarını yükle
@@ -305,6 +305,19 @@ const MemberDetailPage = () => {
         if (memberApp) {
           setHasApplication(true);
           setApplicationStatus(memberApp.status);
+          
+          // Eğer başvuru onaylandıysa ve member'da user yoksa, member'ı yeniden yükle
+          if (memberApp.status === 'APPROVED' && !member.user?.id) {
+            // Member'ı yeniden yükle
+            const updatedMember = await getMemberById(member.id);
+            setMember(updatedMember);
+            
+            // Eğer artık user varsa, user detaylarını yükle
+            if (updatedMember.user?.id) {
+              loadUserDetail(updatedMember.user.id);
+              loadUserScopes(updatedMember.user.id);
+            }
+          }
         } else {
           setHasApplication(false);
           setApplicationStatus(null);
@@ -314,6 +327,7 @@ const MemberDetailPage = () => {
       }
     };
     checkApplication();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [member?.id]);
 
   // Rol güncelleme handler
@@ -1070,26 +1084,6 @@ const MemberDetailPage = () => {
           </Typography>
         </Alert>
       )}
-      {source === 'waiting' && (
-        <Alert 
-          severity="warning" 
-          icon={<HourglassEmptyIcon />}
-          sx={{ 
-            mb: 3,
-            borderRadius: 3,
-            '& .MuiAlert-icon': {
-              fontSize: '1.5rem',
-            },
-          }}
-        >
-          <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-            Bekleyen Üye Detayı
-          </Typography>
-          <Typography variant="body2">
-            Bu sayfa bekleyen üyeler listesinden açıldı. Üyeyi aktifleştirebilir veya reddedebilirsiniz.
-          </Typography>
-        </Alert>
-      )}
       {/* Header Card */}
       <Card
         elevation={0}
@@ -1544,23 +1538,7 @@ const MemberDetailPage = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
                   <CircularProgress size={40} />
                 </Box>
-              ) : scopes.length === 0 ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 4,
-                    borderRadius: 2,
-                    background: alpha(theme.palette.grey[500], 0.05),
-                    border: `1px dashed ${alpha(theme.palette.grey[500], 0.2)}`,
-                    textAlign: 'center',
-                  }}
-                >
-                  <LocationOnIcon sx={{ fontSize: 48, color: alpha(theme.palette.grey[500], 0.3), mb: 2 }} />
-                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
-                    Bu kullanıcıya atanmış bir scope bulunmuyor.
-                  </Typography>
-                </Paper>
-              ) : (
+              ) : scopes.length === 0 ? null : (
                 <Paper 
                   elevation={0}
                   sx={{ 
@@ -1784,8 +1762,9 @@ const MemberDetailPage = () => {
         </>
       ) : (
         <>
-          {/* Terfi Et Kartı - Sadece panel kullanıcısı değilse ve koşullar uygunsa */}
-          {!hasApplication && canCreatePanelUserApplication && member?.status === 'ACTIVE' && (
+          {/* Terfi Et Kartı - Sadece panel kullanıcısı değilse ve koşullar uygunsa
+              Not: Başvuru REJECTED ise tekrar başvuru yapılabilsin */}
+          {(!hasApplication || applicationStatus === 'REJECTED') && canCreatePanelUserApplication && member?.status === 'ACTIVE' && (
             <Card
               elevation={0}
               sx={{
@@ -1958,10 +1937,10 @@ const MemberDetailPage = () => {
               }}
             >
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                Panel Kullanıcı Başvurusu Reddedildi
+                Panel Kullanıcı Başvurusu Reddedilmiştir
               </Typography>
-              <Typography variant="body2">
-                Bu üye için oluşturulan panel kullanıcı başvurusu reddedilmiş.
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Bu üye için oluşturulan panel kullanıcı başvurusu reddedilmiştir. İsterseniz tekrar panel kullanıcılığına terfi etme talebi oluşturabilirsiniz.
               </Typography>
             </Alert>
           )}

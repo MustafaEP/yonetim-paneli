@@ -4,7 +4,6 @@ import {
   Box,
   Card,
   Typography,
-  Grid,
   TextField,
   MenuItem,
   Button,
@@ -19,6 +18,7 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import { useParams, useNavigate } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
 import PersonIcon from '@mui/icons-material/Person';
@@ -27,7 +27,6 @@ import EmailIcon from '@mui/icons-material/Email';
 import BadgeIcon from '@mui/icons-material/Badge';
 import PlaceIcon from '@mui/icons-material/Place';
 import SaveIcon from '@mui/icons-material/Save';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import WorkIcon from '@mui/icons-material/Work';
 
@@ -51,7 +50,6 @@ import { getProfessions } from '../../api/professionsApi';
 import type { Profession } from '../../api/professionsApi';
 import { getTevkifatCenters, getTevkifatTitles } from '../../api/accountingApi';
 import type { TevkifatCenter, TevkifatTitle } from '../../api/accountingApi';
-import httpClient from '../../api/httpClient';
 
 const MemberUpdatePage: React.FC = () => {
   const theme = useTheme();
@@ -559,9 +557,13 @@ const MemberUpdatePage: React.FC = () => {
           severity="error" 
           sx={{ 
             mb: 4,
-            borderRadius: 3,
-            boxShadow: `0 4px 16px ${alpha(theme.palette.error.main, 0.15)}`,
-            border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+            borderRadius: 4,
+            boxShadow: `0 8px 24px ${alpha(theme.palette.error.main, 0.2)}`,
+            border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+            backgroundColor: alpha(theme.palette.error.main, 0.05),
+            '& .MuiAlert-icon': {
+              fontSize: '1.5rem',
+            },
           }} 
           onClose={() => setError(null)}
         >
@@ -573,46 +575,51 @@ const MemberUpdatePage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 4,
-          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          borderRadius: 5,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          boxShadow: `0 8px 40px ${alpha(theme.palette.common.black, 0.08)}`,
           overflow: 'hidden',
           background: '#fff',
         }}
       >
-        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Box sx={{ p: { xs: 3, sm: 4, md: 5 } }}>
           {/* Kişisel Bilgiler Bölümü */}
           <Box 
             sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 2, 
-              mb: 3,
-              pb: 2,
-              borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+              mb: 4,
+              pb: 3,
+              borderBottom: `3px solid ${alpha(theme.palette.primary.main, 0.08)}`,
+              position: 'relative',
             }}
           >
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              <PersonIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+              <Box
+                sx={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
+                }}
+              >
+                <PersonIcon sx={{ fontSize: '1.5rem', color: '#fff' }} />
+              </Box>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' }, mb: 0.5 }}>
+                  Kişisel Bilgiler
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                  Üyenin temel bilgilerini güncelleyin
+                </Typography>
+              </Box>
             </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
-              Kişisel Bilgiler
-            </Typography>
           </Box>
 
-          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-            <Grid item xs={12} md={6}>
+          <Grid container spacing={3}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Ad *"
                 value={form.firstName}
@@ -622,27 +629,33 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <PersonIcon sx={{ color: theme.palette.primary.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '250px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Soyad *"
                 value={form.lastName}
@@ -652,27 +665,33 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <PersonIcon sx={{ color: theme.palette.primary.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '250px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Telefon"
                 value={form.phone}
@@ -681,27 +700,33 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PhoneIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <PhoneIcon sx={{ color: theme.palette.primary.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '200px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="E-posta"
                 value={form.email}
@@ -711,41 +736,57 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <EmailIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <EmailIcon sx={{ color: theme.palette.primary.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '200px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '200px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>Cinsiyet</InputLabel>
                 <Select
                   value={form.gender}
                   onChange={(e) => handleChange('gender', e.target.value)}
                   label="Cinsiyet"
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   }}
                 >
@@ -757,7 +798,7 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Anne Adı"
                 value={form.motherName}
@@ -766,27 +807,33 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <PersonIcon sx={{ color: theme.palette.primary.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '200px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Baba Adı"
                 value={form.fatherName}
@@ -795,27 +842,33 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <PersonIcon sx={{ color: theme.palette.primary.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '200px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Doğum Tarihi"
                 type="date"
@@ -825,30 +878,29 @@ const MemberUpdatePage: React.FC = () => {
                 InputLabelProps={{
                   shrink: true,
                 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
-                    </InputAdornment>
-                  ),
-                }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '200px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Doğum Yeri"
                 value={form.birthplace}
@@ -857,41 +909,57 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <PlaceIcon sx={{ color: theme.palette.primary.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '200px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '200px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>Öğrenim Durumu</InputLabel>
                 <Select
                   value={form.educationStatus}
                   onChange={(e) => handleChange('educationStatus', e.target.value)}
                   label="Öğrenim Durumu"
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   }}
                 >
@@ -903,21 +971,31 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>İl (Kayıtlı Olduğu Yer)</InputLabel>
                 <Select
                   value={form.provinceId}
                   onChange={(e) => handleChange('provinceId', e.target.value)}
                   label="İl (Kayıtlı Olduğu Yer)"
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   }}
                 >
@@ -931,8 +1009,15 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>İlçe (Kayıtlı Olduğu Yer)</InputLabel>
                 <Select
                   value={form.districtId}
@@ -940,13 +1025,16 @@ const MemberUpdatePage: React.FC = () => {
                   label="İlçe (Kayıtlı Olduğu Yer)"
                   disabled={!form.provinceId}
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
                   }}
                 >
@@ -961,44 +1049,44 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: { xs: 3.5, sm: 4.5 }, borderWidth: 1.5, opacity: 0.5 }} />
+          <Divider sx={{ my: 5, borderWidth: 1, opacity: 0.1 }} />
 
           {/* Üyelik & Yönetim Kurulu Bilgileri */}
           <Box 
             sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 2, 
-              mb: { xs: 2.5, sm: 3.5 },
-              pb: { xs: 1.5, sm: 2.5 },
-              borderBottom: `3px solid ${alpha(theme.palette.success.main, 0.12)}`,
+              mb: 4,
+              pb: 3,
+              borderBottom: `3px solid ${alpha(theme.palette.success.main, 0.08)}`,
             }}
           >
-            <Box
-              sx={{
-                width: { xs: 44, sm: 48 },
-                height: { xs: 44, sm: 48 },
-                borderRadius: 2.5,
-                background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 6px 16px ${alpha(theme.palette.success.main, 0.35)}`,
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'rotate(-5deg) scale(1.05)',
-                },
-              }}
-            >
-              <AccountBalanceWalletIcon sx={{ fontSize: { xs: '1.3rem', sm: '1.5rem' }, color: '#fff' }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+              <Box
+                sx={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.35)}`,
+                }}
+              >
+                <AccountBalanceWalletIcon sx={{ fontSize: '1.5rem', color: '#fff' }} />
+              </Box>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' }, mb: 0.5 }}>
+                  Üyelik & Yönetim Kurulu Bilgileri
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                  Üyelik kaydı ve yönetim kurulu bilgilerini güncelleyin
+                </Typography>
+              </Box>
             </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.15rem', sm: '1.3rem' }, letterSpacing: '-0.3px' }}>
-              Üyelik & Yönetim Kurulu Bilgileri
-            </Typography>
           </Box>
 
-          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-            <Grid item xs={12} md={6}>
+          <Grid container spacing={3}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Üye Kayıt No"
                 value={form.registrationNumber}
@@ -1007,41 +1095,57 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <BadgeIcon sx={{ color: theme.palette.success.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '250px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.success.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.success.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>Üye Grubu</InputLabel>
                 <Select
                   value={form.memberGroupId}
                   onChange={(e) => handleChange('memberGroupId', e.target.value)}
                   label="Üye Grubu"
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.success.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.success.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.2)}`,
                     },
                   }}
                 >
@@ -1055,136 +1159,31 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Yönetim Kurulu Karar Tarihi"
-                type="date"
-                value={form.boardDecisionDate}
-                onChange={(e) => handleChange('boardDecisionDate', e.target.value)}
-                fullWidth
-                InputLabelProps={{
-                  shrink: true,
-                }}
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
                 sx={{
-                  minWidth: { xs: '100%', sm: '250px' },
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.15)}`,
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.25)}`,
-                    },
-                  },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                 }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Yönetim Kurulu Karar Defter No"
-                value={form.boardDecisionBookNo}
-                onChange={(e) => handleChange('boardDecisionBookNo', e.target.value)}
-                fullWidth
-                sx={{
-                  minWidth: { xs: '100%', sm: '250px' },
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.15)}`,
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.25)}`,
-                    },
-                  },
-                }}
-              />
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: { xs: 3.5, sm: 4.5 }, borderWidth: 1.5, opacity: 0.5 }} />
-
-          {/* İş Bilgileri */}
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 2, 
-              mb: { xs: 2.5, sm: 3.5 },
-              pb: { xs: 1.5, sm: 2.5 },
-              borderBottom: `3px solid ${alpha(theme.palette.warning.main, 0.12)}`,
-            }}
-          >
-            <Box
-              sx={{
-                width: { xs: 44, sm: 48 },
-                height: { xs: 44, sm: 48 },
-                borderRadius: 2.5,
-                background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 6px 16px ${alpha(theme.palette.warning.main, 0.35)}`,
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'rotate(-5deg) scale(1.05)',
-                },
-              }}
-            >
-              <WorkIcon sx={{ fontSize: { xs: '1.3rem', sm: '1.5rem' }, color: '#fff' }} />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.15rem', sm: '1.3rem' }, letterSpacing: '-0.3px' }}>
-              İş Bilgileri
-            </Typography>
-          </Box>
-
-          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
-                <InputLabel>Kurum</InputLabel>
-                <Select
-                  value={form.institutionId}
-                  onChange={(e) => handleChange('institutionId', e.target.value)}
-                  onOpen={() => loadInstitutions()}
-                  label="Kurum"
-                  sx={{
-                    borderRadius: 2.5,
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
-                    },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {institutions.map((institution) => (
-                    <MenuItem key={institution.id} value={institution.id}>
-                      {institution.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+              >
                 <InputLabel>Şube</InputLabel>
                 <Select
                   value={form.branchId}
                   onChange={(e) => handleChange('branchId', e.target.value)}
                   label="Şube"
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.success.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.success.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.2)}`,
                     },
                   }}
                 >
@@ -1198,8 +1197,145 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
+            <Grid xs={12} sm={6} md={4}>
+              <TextField
+                label="Yönetim Kurulu Karar Tarihi"
+                type="date"
+                value={form.boardDecisionDate}
+                onChange={(e) => handleChange('boardDecisionDate', e.target.value)}
+                fullWidth
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.success.main, 0.02),
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.success.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.2)}`,
+                    },
+                  },
+                }}
+              />
+            </Grid>
+
+            <Grid xs={12} sm={6} md={4}>
+              <TextField
+                label="Yönetim Kurulu Karar Defter No"
+                value={form.boardDecisionBookNo}
+                onChange={(e) => handleChange('boardDecisionBookNo', e.target.value)}
+                fullWidth
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.success.main, 0.02),
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.success.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.2)}`,
+                    },
+                  },
+                }}
+              />
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 5, borderWidth: 1, opacity: 0.1 }} />
+
+          {/* İş Bilgileri */}
+          <Box 
+            sx={{ 
+              mb: 4,
+              pb: 3,
+              borderBottom: `3px solid ${alpha(theme.palette.warning.main, 0.08)}`,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+              <Box
+                sx={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.warning.main, 0.35)}`,
+                }}
+              >
+                <WorkIcon sx={{ fontSize: '1.5rem', color: '#fff' }} />
+              </Box>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' }, mb: 0.5 }}>
+                  İş Bilgileri
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                  Üyenin çalıştığı kurum ve görev bilgilerini güncelleyin
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          <Grid container spacing={3}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
+                <InputLabel>Kurum</InputLabel>
+                <Select
+                  value={form.institutionId}
+                  onChange={(e) => handleChange('institutionId', e.target.value)}
+                  onOpen={() => loadInstitutions()}
+                  label="Kurum"
+                  sx={{
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.02),
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.warning.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
+                    },
+                  }}
+                >
+                  <MenuItem value="">Seçiniz</MenuItem>
+                  {institutions.map((institution) => (
+                    <MenuItem key={institution.id} value={institution.id}>
+                      {institution.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
             {/* Görev Birimi */}
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Görev Birimi"
                 value={form.dutyUnit}
@@ -1208,20 +1344,26 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <WorkIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <WorkIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '250px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.warning.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
                   },
                 }}
@@ -1229,8 +1371,15 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Meslek(Unvan) */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>Meslek(Unvan)</InputLabel>
                 <Select
                   value={form.professionId}
@@ -1238,17 +1387,20 @@ const MemberUpdatePage: React.FC = () => {
                   label="Meslek(Unvan)"
                   startAdornment={
                     <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.25rem', ml: 1 }} />
+                      <BadgeIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }} />
                     </InputAdornment>
                   }
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.warning.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
                   }}
                 >
@@ -1263,31 +1415,34 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum Adresi */}
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <TextField
                 label="Kurum Adresi"
                 value={form.institutionAddress}
                 onChange={(e) => handleChange('institutionAddress', e.target.value)}
-                fullWidth
                 multiline
-                rows={2}
+                rows={3}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <PlaceIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '300px' },
+                  width: '100%',
+                  maxWidth: '1240px',
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.warning.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
                   },
                 }}
@@ -1295,8 +1450,15 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum İli - Kurum İlçesi */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>Kurum İli</InputLabel>
                 <Select
                   value={form.institutionProvinceId}
@@ -1304,17 +1466,20 @@ const MemberUpdatePage: React.FC = () => {
                   label="Kurum İli"
                   startAdornment={
                     <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.25rem', ml: 1 }} />
+                      <PlaceIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }} />
                     </InputAdornment>
                   }
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.warning.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
                   }}
                 >
@@ -1328,8 +1493,15 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>Kurum İlçesi</InputLabel>
                 <Select
                   value={form.institutionDistrictId}
@@ -1338,17 +1510,20 @@ const MemberUpdatePage: React.FC = () => {
                   disabled={!form.institutionProvinceId}
                   startAdornment={
                     <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: 'text.secondary', fontSize: '1.25rem', ml: 1 }} />
+                      <PlaceIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }} />
                     </InputAdornment>
                   }
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.warning.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
                   }}
                 >
@@ -1363,7 +1538,7 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum Sicil No - Kadro Unvan Kodu */}
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Kurum Sicil No"
                 value={form.institutionRegNo}
@@ -1372,27 +1547,33 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <BadgeIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '250px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.warning.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
                   },
                 }}
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} sm={6} md={4}>
               <TextField
                 label="Kadro Unvan Kodu"
                 value={form.staffTitleCode}
@@ -1401,20 +1582,26 @@ const MemberUpdatePage: React.FC = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+                      <BadgeIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem' }} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
-                  minWidth: { xs: '100%', sm: '250px' },
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.warning.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
                   },
                 }}
@@ -1422,58 +1609,68 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: { xs: 3.5, sm: 4.5 }, borderWidth: 1.5, opacity: 0.5 }} />
+          <Divider sx={{ my: 5, borderWidth: 1, opacity: 0.1 }} />
 
           {/* Tevkifat Bilgileri */}
           <Box 
             sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 2, 
-              mb: { xs: 2.5, sm: 3.5 },
-              pb: { xs: 1.5, sm: 2.5 },
-              borderBottom: `3px solid ${alpha(theme.palette.secondary.main, 0.12)}`,
+              mb: 4,
+              pb: 3,
+              borderBottom: `3px solid ${alpha(theme.palette.info.main, 0.08)}`,
             }}
           >
-            <Box
-              sx={{
-                width: { xs: 44, sm: 48 },
-                height: { xs: 44, sm: 48 },
-                borderRadius: 2.5,
-                background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 6px 16px ${alpha(theme.palette.secondary.main, 0.35)}`,
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'rotate(-5deg) scale(1.05)',
-                },
-              }}
-            >
-              <AccountBalanceWalletIcon sx={{ fontSize: { xs: '1.3rem', sm: '1.5rem' }, color: '#fff' }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+              <Box
+                sx={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 8px 24px ${alpha(theme.palette.info.main, 0.35)}`,
+                }}
+              >
+                <AccountBalanceWalletIcon sx={{ fontSize: '1.5rem', color: '#fff' }} />
+              </Box>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' }, mb: 0.5 }}>
+                  Tevkifat Bilgileri
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                  Üyenin tevkifat merkezi ve ünvan bilgilerini güncelleyin
+                </Typography>
+              </Box>
             </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.15rem', sm: '1.3rem' }, letterSpacing: '-0.3px' }}>
-              Tevkifat Bilgileri
-            </Typography>
           </Box>
 
-          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+          <Grid container spacing={3}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>Tevkifat Kurumu</InputLabel>
                 <Select
                   value={form.tevkifatCenterId}
                   onChange={(e) => handleChange('tevkifatCenterId', e.target.value)}
                   label="Tevkifat Kurumu"
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.info.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.secondary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.info.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.info.main, 0.2)}`,
                     },
                   }}
                 >
@@ -1487,21 +1684,31 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: { xs: '100%', sm: '250px' } }}>
+            <Grid xs={12} sm={6} md={4}>
+              <FormControl 
+                sx={{
+                  width: '100%',
+                  minWidth: '250px',
+                  maxWidth: '400px',
+                  flexShrink: 0,
+                }}
+              >
                 <InputLabel>Tevkifat Ünvanı</InputLabel>
                 <Select
                   value={form.tevkifatTitleId}
                   onChange={(e) => handleChange('tevkifatTitleId', e.target.value)}
                   label="Tevkifat Ünvanı"
                   sx={{
-                    borderRadius: 2.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(theme.palette.info.main, 0.02),
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: `0 2px 8px ${alpha(theme.palette.secondary.main, 0.15)}`,
+                      backgroundColor: alpha(theme.palette.info.main, 0.04),
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.25)}`,
+                      backgroundColor: '#fff',
+                      boxShadow: `0 4px 16px ${alpha(theme.palette.info.main, 0.2)}`,
                     },
                   }}
                 >
@@ -1522,10 +1729,10 @@ const MemberUpdatePage: React.FC = () => {
               display: 'flex',
               flexDirection: { xs: 'column', sm: 'row' },
               justifyContent: 'flex-end', 
-              gap: { xs: 1.5, sm: 2.5 }, 
-              mt: { xs: 4, sm: 5, md: 6 },
-              pt: { xs: 3, sm: 4 },
-              borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+              gap: 3, 
+              mt: 6,
+              pt: 5,
+              borderTop: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
             }}
           >
             <Button
@@ -1536,16 +1743,16 @@ const MemberUpdatePage: React.FC = () => {
                 borderRadius: 3,
                 textTransform: 'none',
                 fontWeight: 600,
-                px: { xs: 3, sm: 4, md: 5 },
-                py: { xs: 1.25, sm: 1.5 },
-                fontSize: { xs: '0.95rem', sm: '1rem' },
+                px: 4,
+                py: 1.5,
+                fontSize: '1rem',
                 borderWidth: 2,
-                minWidth: { xs: '100%', sm: '140px' },
-                transition: 'all 0.3s ease',
+                minWidth: { xs: '100%', sm: '160px' },
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
                   borderWidth: 2,
                   transform: 'translateY(-2px)',
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.text.primary, 0.15)}`,
+                  boxShadow: `0 8px 20px ${alpha(theme.palette.text.primary, 0.12)}`,
                 },
               }}
             >
@@ -1560,18 +1767,22 @@ const MemberUpdatePage: React.FC = () => {
                 borderRadius: 3,
                 textTransform: 'none',
                 fontWeight: 700,
-                px: { xs: 3, sm: 4, md: 5 },
-                py: { xs: 1.25, sm: 1.5 },
-                fontSize: { xs: '0.95rem', sm: '1rem' },
-                minWidth: { xs: '100%', sm: '160px' },
-                boxShadow: `0 6px 20px 0 ${alpha(theme.palette.primary.main, 0.4)}`,
-                transition: 'all 0.3s ease',
+                px: 5,
+                py: 1.5,
+                fontSize: '1rem',
+                minWidth: { xs: '100%', sm: '180px' },
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.4)}`,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
-                  boxShadow: `0 8px 28px 0 ${alpha(theme.palette.primary.main, 0.5)}`,
+                  boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.5)}`,
                   transform: 'translateY(-3px)',
                 },
                 '&:active': {
                   transform: 'translateY(-1px)',
+                },
+                '&.Mui-disabled': {
+                  background: alpha(theme.palette.primary.main, 0.3),
                 },
               }}
             >
