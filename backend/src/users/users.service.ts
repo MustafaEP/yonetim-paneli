@@ -155,6 +155,9 @@ export class UsersService {
 
   async findAll() {
     return this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         customRoles: {
@@ -164,6 +167,18 @@ export class UsersService {
           },
           include: {
             permissions: true,
+          },
+        },
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            nationalId: true,
+            email: true,
+            phone: true,
+            status: true,
+            registrationNumber: true,
           },
         },
       },

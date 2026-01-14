@@ -458,109 +458,115 @@ export class AccountingService {
    * Tevkifat merkezi sil (soft delete - isActive: false)
    */
   async deleteTevkifatCenter(id: string, dto: DeleteTevkifatCenterDto) {
-    const center = await this.prisma.tevkifatCenter.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: {
-            members: true,
+    // Transaction içinde tüm işlemleri yap
+    return this.prisma.$transaction(async (tx) => {
+      const center = await tx.tevkifatCenter.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              members: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!center) {
-      throw new NotFoundException('Tevkifat merkezi bulunamadı');
-    }
+      if (!center) {
+        throw new NotFoundException('Tevkifat merkezi bulunamadı');
+      }
 
-    // Üyelere göre işlem yap
-    switch (dto.memberActionType) {
-      case MemberActionOnTevkifatCenterDelete.REMOVE_TEVKIFAT_CENTER:
-        // Üyelerin tevkifat merkezi bilgisini kaldır (tevkifatCenterId = null)
-        await this.prisma.member.updateMany({
-          where: { tevkifatCenterId: id },
-          data: { tevkifatCenterId: null },
-        });
-        break;
+      // Üyelere göre işlem yap
+      switch (dto.memberActionType) {
+        case MemberActionOnTevkifatCenterDelete.REMOVE_TEVKIFAT_CENTER:
+          // Üyelerin tevkifat merkezi bilgisini kaldır (tevkifatCenterId = null)
+          await tx.member.updateMany({
+            where: { tevkifatCenterId: id },
+            data: { tevkifatCenterId: null },
+          });
+          break;
 
-      case MemberActionOnTevkifatCenterDelete.TRANSFER_TO_TEVKIFAT_CENTER:
-        // Üyeleri başka bir tevkifat merkezine taşı
-        if (!dto.targetTevkifatCenterId) {
-          throw new BadRequestException('TRANSFER_TO_TEVKIFAT_CENTER seçeneği için targetTevkifatCenterId gereklidir');
-        }
-        const targetCenter = await this.prisma.tevkifatCenter.findUnique({
-          where: { id: dto.targetTevkifatCenterId },
-        });
-        if (!targetCenter) {
-          throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
-        }
-        await this.prisma.member.updateMany({
-          where: { tevkifatCenterId: id },
-          data: { tevkifatCenterId: dto.targetTevkifatCenterId },
-        });
-        break;
+        case MemberActionOnTevkifatCenterDelete.TRANSFER_TO_TEVKIFAT_CENTER:
+          // Üyeleri başka bir tevkifat merkezine taşı
+          if (!dto.targetTevkifatCenterId) {
+            throw new BadRequestException('TRANSFER_TO_TEVKIFAT_CENTER seçeneği için targetTevkifatCenterId gereklidir');
+          }
+          const targetCenter = await tx.tevkifatCenter.findUnique({
+            where: { id: dto.targetTevkifatCenterId },
+          });
+          if (!targetCenter) {
+            throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
+          }
+          await tx.member.updateMany({
+            where: { tevkifatCenterId: id },
+            data: { tevkifatCenterId: dto.targetTevkifatCenterId },
+          });
+          break;
 
-      case MemberActionOnTevkifatCenterDelete.REMOVE_AND_DEACTIVATE:
-        // Üyelerin tevkifat merkezi bilgisini kaldır ve pasif et
-        await this.prisma.member.updateMany({
-          where: { tevkifatCenterId: id },
-          data: {
-            tevkifatCenterId: null,
-            status: 'INACTIVE',
-            isActive: false,
-          },
-        });
-        break;
+        case MemberActionOnTevkifatCenterDelete.REMOVE_AND_DEACTIVATE:
+          // Üyelerin tevkifat merkezi bilgisini kaldır ve pasif et
+          await tx.member.updateMany({
+            where: { tevkifatCenterId: id },
+            data: {
+              tevkifatCenterId: null,
+              status: 'INACTIVE',
+              isActive: false,
+            },
+          });
+          break;
 
-      case MemberActionOnTevkifatCenterDelete.TRANSFER_AND_DEACTIVATE:
-        // Üyeleri başka bir tevkifat merkezine taşı ve pasif et
-        if (!dto.targetTevkifatCenterId) {
-          throw new BadRequestException('TRANSFER_AND_DEACTIVATE seçeneği için targetTevkifatCenterId gereklidir');
-        }
-        const targetCenter2 = await this.prisma.tevkifatCenter.findUnique({
-          where: { id: dto.targetTevkifatCenterId },
-        });
-        if (!targetCenter2) {
-          throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
-        }
-        await this.prisma.member.updateMany({
-          where: { tevkifatCenterId: id },
-          data: {
-            tevkifatCenterId: dto.targetTevkifatCenterId,
-            status: 'INACTIVE',
-            isActive: false,
-          },
-        });
-        break;
+        case MemberActionOnTevkifatCenterDelete.TRANSFER_AND_DEACTIVATE:
+          // Üyeleri başka bir tevkifat merkezine taşı ve pasif et
+          if (!dto.targetTevkifatCenterId) {
+            throw new BadRequestException('TRANSFER_AND_DEACTIVATE seçeneği için targetTevkifatCenterId gereklidir');
+          }
+          const targetCenter2 = await tx.tevkifatCenter.findUnique({
+            where: { id: dto.targetTevkifatCenterId },
+          });
+          if (!targetCenter2) {
+            throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
+          }
+          await tx.member.updateMany({
+            where: { tevkifatCenterId: id },
+            data: {
+              tevkifatCenterId: dto.targetTevkifatCenterId,
+              status: 'INACTIVE',
+              isActive: false,
+            },
+          });
+          break;
 
-      case MemberActionOnTevkifatCenterDelete.TRANSFER_AND_CANCEL:
-        // Üyeleri başka bir tevkifat merkezine taşı ve iptal et
-        if (!dto.targetTevkifatCenterId) {
-          throw new BadRequestException('TRANSFER_AND_CANCEL seçeneği için targetTevkifatCenterId gereklidir');
-        }
-        const targetCenter3 = await this.prisma.tevkifatCenter.findUnique({
-          where: { id: dto.targetTevkifatCenterId },
-        });
-        if (!targetCenter3) {
-          throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
-        }
-        await this.prisma.member.updateMany({
-          where: { tevkifatCenterId: id },
-          data: {
-            tevkifatCenterId: dto.targetTevkifatCenterId,
-            status: 'RESIGNED',
-          },
-        });
-        break;
+        case MemberActionOnTevkifatCenterDelete.TRANSFER_AND_CANCEL:
+          // Üyeleri başka bir tevkifat merkezine taşı ve iptal et
+          if (!dto.targetTevkifatCenterId) {
+            throw new BadRequestException('TRANSFER_AND_CANCEL seçeneği için targetTevkifatCenterId gereklidir');
+          }
+          const targetCenter3 = await tx.tevkifatCenter.findUnique({
+            where: { id: dto.targetTevkifatCenterId },
+          });
+          if (!targetCenter3) {
+            throw new NotFoundException('Hedef tevkifat merkezi bulunamadı');
+          }
+          await tx.member.updateMany({
+            where: { tevkifatCenterId: id },
+            data: {
+              tevkifatCenterId: dto.targetTevkifatCenterId,
+              status: 'RESIGNED',
+            },
+          });
+          break;
 
-      default:
-        throw new BadRequestException('Geçersiz memberActionType');
-    }
+        default:
+          throw new BadRequestException('Geçersiz memberActionType');
+      }
 
-    // Tevkifat merkezini pasif yap (soft delete)
-    return this.prisma.tevkifatCenter.update({
-      where: { id },
-      data: { isActive: false },
+      // Tevkifat merkezini pasif yap (soft delete)
+      const updatedCenter = await tx.tevkifatCenter.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      // Güncellenmiş merkezi döndür
+      return updatedCenter;
     });
   }
 
