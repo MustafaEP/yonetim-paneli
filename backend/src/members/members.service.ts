@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberApplicationDto } from './dto/create-member-application.dto';
 import { CancelMemberDto } from './dto/cancel-member.dto';
 import { ApproveMemberDto } from './dto/approve-member.dto';
-import { MemberStatus, MemberSource } from '@prisma/client';
+import { MemberStatus, MemberSource, Prisma } from '@prisma/client';
 import { MemberScopeService } from './member-scope.service';
 import { MemberHistoryService } from './member-history.service';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
@@ -65,22 +65,10 @@ export class MembersService {
    * Sistem ayarlarına göre zorunlu alanları kontrol et
    */
   private validateRequiredFields(dto: CreateMemberApplicationDto, provinceId?: string, districtId?: string) {
-    // İkamet il/ilçe kontrolü (özel kontrol çünkü scope'dan da gelebilir)
-    if (this.configService.getSystemSettingBoolean('MEMBERSHIP_REQUIRE_PROVINCE_DISTRICT', false)) {
-      const finalProvinceId = provinceId || dto.provinceId;
-      const finalDistrictId = districtId || dto.districtId;
-      if (!finalProvinceId || !finalDistrictId) {
-        throw new BadRequestException('İkamet il ve ilçe alanları zorunludur');
-      }
-    }
+    // Not: motherName, fatherName, birthplace, gender, educationStatus, phone, provinceId, districtId
+    // artık her zaman zorunlu olduğu için burada kontrol edilmiyor.
 
     const requiredFields = [
-      { key: 'MEMBERSHIP_REQUIRE_MOTHER_NAME', field: 'motherName', label: 'Anne adı' },
-      { key: 'MEMBERSHIP_REQUIRE_FATHER_NAME', field: 'fatherName', label: 'Baba adı' },
-      { key: 'MEMBERSHIP_REQUIRE_BIRTHPLACE', field: 'birthplace', label: 'Doğum yeri' },
-      { key: 'MEMBERSHIP_REQUIRE_GENDER', field: 'gender', label: 'Cinsiyet' },
-      { key: 'MEMBERSHIP_REQUIRE_EDUCATION', field: 'educationStatus', label: 'Öğrenim durumu' },
-      { key: 'MEMBERSHIP_REQUIRE_PHONE', field: 'phone', label: 'Telefon' },
       { key: 'MEMBERSHIP_REQUIRE_EMAIL', field: 'email', label: 'E-posta' },
       { key: 'MEMBERSHIP_REQUIRE_INSTITUTION_REG_NO', field: 'institutionRegNo', label: 'Kurum sicil no' },
       // Not: DTO ve DB alanı "dutyUnit". Eskiden "workUnit" adıyla kontrol edildiği için
@@ -311,8 +299,41 @@ export class MembersService {
       throw new BadRequestException('Kurum seçimi zorunludur');
     }
 
-    // Sistem ayarlarına göre zorunlu alanları kontrol et
-    this.validateRequiredFields(dto, provinceId, districtId);
+    // Her zaman zorunlu olan alanlar
+    if (!dto.motherName || dto.motherName.trim() === '') {
+      throw new BadRequestException('Anne adı zorunludur');
+    }
+    if (!dto.fatherName || dto.fatherName.trim() === '') {
+      throw new BadRequestException('Baba adı zorunludur');
+    }
+    if (!dto.birthDate) {
+      throw new BadRequestException('Doğum tarihi zorunludur');
+    }
+    if (!dto.birthplace || dto.birthplace.trim() === '') {
+      throw new BadRequestException('Doğum yeri zorunludur');
+    }
+    if (!dto.gender) {
+      throw new BadRequestException('Cinsiyet seçimi zorunludur');
+    }
+    if (!dto.educationStatus) {
+      throw new BadRequestException('Öğrenim durumu zorunludur');
+    }
+    if (!dto.phone || dto.phone.trim() === '') {
+      throw new BadRequestException('Telefon numarası zorunludur');
+    }
+    
+    // İl ve İlçe kontrolü (scope'dan veya DTO'dan gelebilir)
+    const finalProvinceId = provinceId || dto.provinceId;
+    const finalDistrictId = districtId || dto.districtId;
+    if (!finalProvinceId) {
+      throw new BadRequestException('İl seçimi zorunludur');
+    }
+    if (!finalDistrictId) {
+      throw new BadRequestException('İlçe seçimi zorunludur');
+    }
+
+    // Sistem ayarlarına göre ek zorunlu alanları kontrol et
+    this.validateRequiredFields(dto, finalProvinceId, finalDistrictId);
 
     // Yönetim kurulu kararı kontrolü
     const requireBoardDecision = this.configService.getSystemSettingBoolean('MEMBERSHIP_REQUIRE_BOARD_DECISION', false);
@@ -343,54 +364,67 @@ export class MembersService {
       approvedAt = new Date();
     }
 
-    const member = await this.prisma.member.create({
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        nationalId: dto.nationalId,
-        phone: dto.phone,
-        email: dto.email,
-        source: source,
-        status: initialStatus,
-        createdByUserId: createdByUserId || null,
-        approvedByUserId: approvedByUserId || null,
-        approvedAt,
-        previousCancelledMemberId: previousCancelledMemberId || null,
-        provinceId: provinceId || null,
-        districtId: districtId || null,
-        // Kurum Detay Bilgileri
-        dutyUnit: dto.dutyUnit,
-        institutionAddress: dto.institutionAddress,
-        institutionProvinceId: dto.institutionProvinceId,
-        institutionDistrictId: dto.institutionDistrictId,
-        professionId: dto.professionId,
-        institutionRegNo: dto.institutionRegNo,
-        staffTitleCode: dto.staffTitleCode,
-        
-        // 🔹 Üyelik & Yönetim Kurulu Bilgileri
-        membershipInfoOptionId: dto.membershipInfoOptionId,
-        memberGroupId: dto.memberGroupId,
-        registrationNumber: registrationNumber,
-        boardDecisionDate: dto.boardDecisionDate ? new Date(dto.boardDecisionDate) : null,
-        boardDecisionBookNo: dto.boardDecisionBookNo,
-        
-        // 🔹 Kimlik & Kişisel Bilgiler
-        motherName: dto.motherName,
-        fatherName: dto.fatherName,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : null,
-        birthplace: dto.birthplace,
-        gender: dto.gender,
-        
-        // 🔹 Eğitim & İletişim Bilgileri
-        educationStatus: dto.educationStatus,
-        
-        // 🔹 Kurum Bilgileri
-        institutionId: dto.institutionId,
-        tevkifatCenterId: dto.tevkifatCenterId,
-        tevkifatTitleId: dto.tevkifatTitleId,
-        branchId: dto.branchId, // Zorunlu
-      },
-    });
+    const data: Prisma.MemberCreateInput = {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      nationalId: dto.nationalId,
+      phone: dto.phone,
+      email: dto.email,
+      source: source,
+      status: initialStatus,
+      approvedAt,
+
+      createdBy: createdByUserId ? { connect: { id: createdByUserId } } : undefined,
+      approvedBy: approvedByUserId ? { connect: { id: approvedByUserId } } : undefined,
+      previousCancelledMember: previousCancelledMemberId
+        ? { connect: { id: previousCancelledMemberId } }
+        : undefined,
+
+      province: { connect: { id: dto.provinceId } },
+      district: { connect: { id: dto.districtId } },
+
+      // Kurum Detay Bilgileri
+      dutyUnit: dto.dutyUnit,
+      institutionAddress: dto.institutionAddress,
+      institutionProvince: dto.institutionProvinceId
+        ? { connect: { id: dto.institutionProvinceId } }
+        : undefined,
+      institutionDistrict: dto.institutionDistrictId
+        ? { connect: { id: dto.institutionDistrictId } }
+        : undefined,
+      profession: dto.professionId ? { connect: { id: dto.professionId } } : undefined,
+      institutionRegNo: dto.institutionRegNo,
+      staffTitleCode: dto.staffTitleCode,
+
+      // 🔹 Üyelik & Yönetim Kurulu Bilgileri
+      membershipInfoOption: dto.membershipInfoOptionId
+        ? { connect: { id: dto.membershipInfoOptionId } }
+        : undefined,
+      memberGroup: dto.memberGroupId ? { connect: { id: dto.memberGroupId } } : undefined,
+      registrationNumber: registrationNumber,
+      boardDecisionDate: dto.boardDecisionDate ? new Date(dto.boardDecisionDate) : null,
+      boardDecisionBookNo: dto.boardDecisionBookNo,
+
+      // 🔹 Kimlik & Kişisel Bilgiler
+      motherName: dto.motherName,
+      fatherName: dto.fatherName,
+      birthDate: new Date(dto.birthDate),
+      birthplace: dto.birthplace,
+      gender: dto.gender,
+
+      // 🔹 Eğitim & İletişim Bilgileri
+      educationStatus: dto.educationStatus,
+
+      // 🔹 Kurum Bilgileri (zorunlu)
+      institution: { connect: { id: dto.institutionId } },
+      tevkifatCenter: dto.tevkifatCenterId
+        ? { connect: { id: dto.tevkifatCenterId } }
+        : undefined,
+      tevkifatTitle: dto.tevkifatTitleId ? { connect: { id: dto.tevkifatTitleId } } : undefined,
+      branch: dto.branchId ? { connect: { id: dto.branchId } } : undefined,
+    };
+
+    const member = await this.prisma.member.create({ data });
 
     // History kaydet
     const memberData: Record<string, any> = {
@@ -736,6 +770,45 @@ export class MembersService {
       updateData.cancellationReason = null;
     }
 
+    // Status değişikliği yapılıyorsa ve APPROVED veya ACTIVE'e geçiyorsa zorunlu alanları kontrol et
+    if (dto.status && (dto.status === MemberStatus.APPROVED || dto.status === MemberStatus.ACTIVE)) {
+      // Güncellenmiş değerleri al (DTO'dan gelen veya mevcut değerler)
+      const registrationNumber = dto.registrationNumber !== undefined ? dto.registrationNumber : oldMember.registrationNumber;
+      const boardDecisionDate = dto.boardDecisionDate !== undefined ? (dto.boardDecisionDate ? new Date(dto.boardDecisionDate) : null) : oldMember.boardDecisionDate;
+      const boardDecisionBookNo = dto.boardDecisionBookNo !== undefined ? dto.boardDecisionBookNo : oldMember.boardDecisionBookNo;
+      const tevkifatCenterId = dto.tevkifatCenterId !== undefined ? dto.tevkifatCenterId : oldMember.tevkifatCenterId;
+      const tevkifatTitleId = dto.tevkifatTitleId !== undefined ? dto.tevkifatTitleId : oldMember.tevkifatTitleId;
+      const branchId = dto.branchId !== undefined ? dto.branchId : oldMember.branchId;
+
+      const missingFields: string[] = [];
+
+      if (!registrationNumber || registrationNumber.trim() === '') {
+        missingFields.push('Üye Numarası');
+      }
+      if (!boardDecisionDate) {
+        missingFields.push('Yönetim Kurulu Karar Tarihi');
+      }
+      if (!boardDecisionBookNo || boardDecisionBookNo.trim() === '') {
+        missingFields.push('Yönetim Karar Defteri No');
+      }
+      if (!tevkifatCenterId) {
+        missingFields.push('Tevkifat Kurumu');
+      }
+      if (!tevkifatTitleId) {
+        missingFields.push('Tevkifat Ünvanı');
+      }
+      if (!branchId) {
+        missingFields.push('Şube');
+      }
+
+      if (missingFields.length > 0) {
+        const statusLabel = dto.status === MemberStatus.APPROVED ? 'bekleme (APPROVED)' : 'aktif (ACTIVE)';
+        throw new BadRequestException(
+          `Üye ${statusLabel} durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`
+        );
+      }
+    }
+
     // Güncelle
     const updatedMember = await this.prisma.member.update({
       where: { id },
@@ -787,6 +860,43 @@ export class MembersService {
     // 1. PENDING → (approve) → APPROVED (waiting list)
     // 2. APPROVED → (activate) → ACTIVE (main member list)
     // Therefore, approve sets status to APPROVED (not ACTIVE)
+    
+    // Zorunlu alanları kontrol et (APPROVED status'una geçerken)
+    const missingFields: string[] = [];
+    
+    // DTO'dan gelen değerleri kontrol et, yoksa mevcut üye verilerini kontrol et
+    const registrationNumber = dto?.registrationNumber || member.registrationNumber;
+    const boardDecisionDate = dto?.boardDecisionDate || member.boardDecisionDate;
+    const boardDecisionBookNo = dto?.boardDecisionBookNo || member.boardDecisionBookNo;
+    const tevkifatCenterId = dto?.tevkifatCenterId || member.tevkifatCenterId;
+    const tevkifatTitleId = dto?.tevkifatTitleId || member.tevkifatTitleId;
+    const branchId = dto?.branchId || member.branchId;
+
+    if (!registrationNumber || registrationNumber.trim() === '') {
+      missingFields.push('Üye Numarası');
+    }
+    if (!boardDecisionDate) {
+      missingFields.push('Yönetim Kurulu Karar Tarihi');
+    }
+    if (!boardDecisionBookNo || boardDecisionBookNo.trim() === '') {
+      missingFields.push('Yönetim Karar Defteri No');
+    }
+    if (!tevkifatCenterId) {
+      missingFields.push('Tevkifat Kurumu');
+    }
+    if (!tevkifatTitleId) {
+      missingFields.push('Tevkifat Ünvanı');
+    }
+    if (!branchId) {
+      missingFields.push('Şube');
+    }
+
+    if (missingFields.length > 0) {
+      throw new BadRequestException(
+        `Üye bekleme (APPROVED) durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`
+      );
+    }
+
     const updateData: any = {
       status: MemberStatus.APPROVED,
       approvedByUserId,
@@ -820,14 +930,6 @@ export class MembersService {
     if (dto?.memberGroupId) {
       updateData.memberGroupId = dto.memberGroupId;
     }
-
-    // branchId zorunlu - eğer dto'da yoksa mevcut üyenin branchId'sini kullan
-    if (dto?.branchId) {
-      updateData.branchId = dto.branchId;
-    } else if (!member.branchId) {
-      throw new BadRequestException('Şube seçimi zorunludur. Lütfen bir şube seçin.');
-    }
-    // Eğer dto'da branchId yoksa ve member'da varsa, mevcut branchId korunur (updateData'ya eklenmez)
 
     const oldMember = await this.getById(id);
     const oldData: Record<string, any> = {
@@ -915,6 +1017,34 @@ export class MembersService {
 
     if (member.status !== MemberStatus.APPROVED) {
       throw new BadRequestException('Sadece onaylanmış (APPROVED) durumundaki üyeler aktifleştirilebilir');
+    }
+
+    // Zorunlu alanları kontrol et (ACTIVE status'una geçerken)
+    const missingFields: string[] = [];
+
+    if (!member.registrationNumber || member.registrationNumber.trim() === '') {
+      missingFields.push('Üye Numarası');
+    }
+    if (!member.boardDecisionDate) {
+      missingFields.push('Yönetim Kurulu Karar Tarihi');
+    }
+    if (!member.boardDecisionBookNo || member.boardDecisionBookNo.trim() === '') {
+      missingFields.push('Yönetim Karar Defteri No');
+    }
+    if (!member.tevkifatCenterId) {
+      missingFields.push('Tevkifat Kurumu');
+    }
+    if (!member.tevkifatTitleId) {
+      missingFields.push('Tevkifat Ünvanı');
+    }
+    if (!member.branchId) {
+      missingFields.push('Şube');
+    }
+
+    if (missingFields.length > 0) {
+      throw new BadRequestException(
+        `Üye aktif (ACTIVE) durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`
+      );
     }
 
     const oldData: Record<string, any> = {

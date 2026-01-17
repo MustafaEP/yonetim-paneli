@@ -681,8 +681,10 @@ const MemberDetailPage = () => {
   // Üye aktifleştirildikten sonra callback
   const handleMemberActivated = async () => {
     if (!id) return;
-    const updatedMember = await getMemberById(id);
-    setMember(updatedMember);
+    // Üye bilgilerini yeniden yükle
+    await loadMember();
+    // Source parametresini kaldırarak URL'i güncelle
+    navigate(`/members/${id}`, { replace: true });
   };
 
   // Reddetme dialog'unu açma
@@ -1064,7 +1066,7 @@ const MemberDetailPage = () => {
       p: { xs: 2, sm: 3 }
     }}>
       {/* Source Banner - Üye Başvuruları veya Bekleyen Üyeler */}
-      {source === 'application' && (
+      {member?.status === 'PENDING' && (
         <Alert 
           severity="info" 
           icon={<AssignmentIcon />}
@@ -2043,12 +2045,8 @@ const MemberDetailPage = () => {
           </Card>
         )}
 
-        {/* Onaylama İşlemi Alanı - Sadece Bekleyen Üyeler için */}
-        {(
-          (source === 'application' && member?.status === 'PENDING') ||
-          (source === 'waiting' && member?.status === 'APPROVED') ||
-          (!source && member?.status === 'PENDING')
-        ) && canChangeStatus && (
+        {/* Onaylama İşlemi Alanı - PENDING veya APPROVED durumları için */}
+        {(member?.status === 'PENDING' || member?.status === 'APPROVED') && canChangeStatus && (
           <Card
             elevation={0}
             sx={{
@@ -2101,14 +2099,12 @@ const MemberDetailPage = () => {
                   </Box>
                   <Box>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.text.primary, mb: 0.5, lineHeight: 1.3 }}>
-                      {source === 'application' && member?.status === 'PENDING' && 'Üye Başvurusu Onaylama'}
-                      {source === 'waiting' && member?.status === 'APPROVED' && 'Üyeyi Aktifleştirme'}
-                      {!source && member?.status === 'PENDING' && 'Üye Onaylama İşlemleri'}
+                      {member?.status === 'PENDING' && 'Üye Başvurusu Onaylama'}
+                      {member?.status === 'APPROVED' && 'Üyeyi Aktifleştirme'}
                     </Typography>
                     <Typography variant="body2" sx={{ color: theme.palette.text.secondary, lineHeight: 1.6, maxWidth: 500 }}>
-                      {source === 'application' && member?.status === 'PENDING' && 'Bu başvuruyu onaylayarak üyeyi bekleyen üyeler listesine ekleyebilir veya başvuruyu reddedebilirsiniz.'}
-                      {source === 'waiting' && member?.status === 'APPROVED' && 'Onaylanmış bu üyeyi aktif hale getirerek ana üye listesine ekleyebilirsiniz.'}
-                      {!source && member?.status === 'PENDING' && 'Bu üyeyi aktif hale getirerek ana üye listesine ekleyebilirsiniz.'}
+                      {member?.status === 'PENDING' && 'Bu başvuruyu onaylayarak üyeyi bekleyen üyeler listesine ekleyebilir veya başvuruyu reddedebilirsiniz.'}
+                      {member?.status === 'APPROVED' && 'Onaylanmış bu üyeyi aktif hale getirerek ana üye listesine ekleyebilirsiniz.'}
                     </Typography>
                     <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                       <Chip 
@@ -2119,7 +2115,7 @@ const MemberDetailPage = () => {
                         variant="outlined"
                         sx={{ fontWeight: 600 }}
                       />
-                      {source === 'application' && (
+                      {member?.status === 'PENDING' && (
                         <Chip 
                           icon={<AssignmentIcon />} 
                           label="Başvuru Aşamasında" 
@@ -2128,7 +2124,7 @@ const MemberDetailPage = () => {
                           sx={{ fontWeight: 600 }}
                         />
                       )}
-                      {source === 'waiting' && (
+                      {member?.status === 'APPROVED' && (
                         <Chip 
                           icon={<HourglassEmptyIcon />} 
                           label="Aktifleşme Bekliyor" 
@@ -2143,8 +2139,8 @@ const MemberDetailPage = () => {
                 
                 {/* Butonlar */}
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5, minWidth: { xs: '100%', sm: 'auto' } }}>
-                  {/* Üye Başvuruları için */}
-                  {source === 'application' && member?.status === 'PENDING' && (
+                  {/* Üye Başvuruları için - PENDING durumu */}
+                  {member?.status === 'PENDING' && (
                     <>
                       <Button
                         variant="contained"
@@ -2204,8 +2200,8 @@ const MemberDetailPage = () => {
                     </>
                   )}
 
-                  {/* Bekleyen Üyeler için */}
-                  {source === 'waiting' && member?.status === 'APPROVED' && (
+                  {/* Bekleyen Üyeler için - APPROVED durumu */}
+                  {member?.status === 'APPROVED' && (
                     <>
                       <ActivateMemberButton
                         memberId={id!}
@@ -2244,37 +2240,6 @@ const MemberDetailPage = () => {
                         Üyeyi Reddet
                       </Button>
                     </>
-                  )}
-
-                  {/* Normal PENDING durumu için */}
-                  {!source && member?.status === 'PENDING' && (
-                    <Button
-                      variant="contained"
-                      size="large"
-                      startIcon={<CheckCircleIcon />}
-                      onClick={() => handleStatusChange('ACTIVE')}
-                      disabled={updatingStatus}
-                      sx={{
-                        borderRadius: 2.5,
-                        textTransform: 'none',
-                        fontWeight: 700,
-                        bgcolor: theme.palette.success.main,
-                        color: '#fff',
-                        px: 3,
-                        py: 1.5,
-                        fontSize: '0.95rem',
-                        boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
-                        whiteSpace: 'nowrap',
-                        '&:hover': {
-                          bgcolor: theme.palette.success.dark,
-                          transform: 'translateY(-2px)',
-                          boxShadow: `0 8px 20px ${alpha(theme.palette.success.main, 0.4)}`,
-                        },
-                        transition: 'all 0.3s ease',
-                      }}
-                    >
-                      Üyeyi Aktifleştir
-                    </Button>
                   )}
                 </Box>
               </Box>
@@ -3281,7 +3246,7 @@ const MemberDetailPage = () => {
       )}
 
       {/* Üye Başvurusu Onaylama Dialog */}
-      {member && source === 'application' && (
+      {member && member.status === 'PENDING' && (
         <MemberApprovalDialog
           open={approveDialogOpen}
           onClose={() => {

@@ -35,14 +35,14 @@ export class CreateMemberApplicationDto {
   nationalId: string;
 
   @ApiProperty({
-    description: 'Telefon numarası',
+    description: 'Telefon numarası (zorunlu)',
     example: '05551234567',
     type: String,
-    required: false,
+    required: true,
   })
   @IsString()
-  @IsOptional()
-  phone?: string;
+  @IsNotEmpty()
+  phone: string;
 
   @ApiProperty({
     description: 'E-posta adresi',
@@ -119,77 +119,77 @@ export class CreateMemberApplicationDto {
 
   // 🔹 Kimlik & Kişisel Bilgiler
   @ApiProperty({
-    description: 'Anne adı (seçmeli)',
+    description: 'Anne adı (zorunlu)',
     example: 'Ayşe',
     type: String,
-    required: false,
+    required: true,
   })
   @IsString()
-  @IsOptional()
-  motherName?: string;
+  @IsNotEmpty()
+  motherName: string;
 
   @ApiProperty({
-    description: 'Baba adı (seçmeli)',
+    description: 'Baba adı (zorunlu)',
     example: 'Ali',
     type: String,
-    required: false,
+    required: true,
   })
   @IsString()
-  @IsOptional()
-  fatherName?: string;
+  @IsNotEmpty()
+  fatherName: string;
 
   @ApiProperty({
-    description: 'Doğum tarihi (seçmeli)',
+    description: 'Doğum tarihi (zorunlu)',
     example: '1990-01-15',
     type: String,
     format: 'date',
-    required: false,
+    required: true,
   })
   @IsDateString()
-  @IsOptional()
-  birthDate?: string;
+  @IsNotEmpty()
+  birthDate: string;
 
   @ApiProperty({
-    description: 'Doğum yeri (seçmeli)',
+    description: 'Doğum yeri (zorunlu)',
     example: 'İstanbul',
     type: String,
-    required: false,
+    required: true,
   })
   @IsString()
-  @IsOptional()
-  birthplace?: string;
+  @IsNotEmpty()
+  birthplace: string;
 
   @ApiProperty({
-    description: 'Cinsiyet (seçmeli)',
+    description: 'Cinsiyet (zorunlu)',
     example: Gender.MALE,
     enum: Gender,
-    required: false,
+    required: true,
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsEnum(Gender)
-  gender?: Gender;
+  gender: Gender;
 
   // 🔹 Eğitim & İletişim Bilgileri
   @ApiProperty({
-    description: 'Öğrenim durumu (seçmeli)',
+    description: 'Öğrenim durumu (zorunlu)',
     example: EducationStatus.COLLEGE,
     enum: EducationStatus,
-    required: false,
+    required: true,
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsEnum(EducationStatus)
-  educationStatus?: EducationStatus;
+  educationStatus: EducationStatus;
 
   // 🔹 Kurum Bilgileri
   @ApiProperty({
-    description: 'Çalıştığı kurum ID',
+    description: 'Çalıştığı kurum ID (zorunlu)',
     example: 'institution-uuid-123',
     type: String,
-    required: false,
+    required: true,
   })
   @IsString()
-  @IsOptional()
-  institutionId?: string;
+  @IsNotEmpty()
+  institutionId: string;
 
   @ApiProperty({
     description: 'Tevkifat merkezi ID (seçmeli)',
@@ -212,35 +212,35 @@ export class CreateMemberApplicationDto {
   tevkifatTitleId?: string;
 
   @ApiProperty({
-    description: 'Bağlı olduğu şube ID (zorunlu)',
+    description: 'Bağlı olduğu şube ID (seçmeli)',
     example: 'branch-uuid-123',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+
+  // Mevcut alanlar (kayıtlı olduğu yer)
+  @ApiProperty({
+    description: 'İl ID (zorunlu)',
+    example: 'province-uuid-123',
     type: String,
     required: true,
   })
   @IsString()
   @IsNotEmpty()
-  branchId: string;
-
-  // Mevcut alanlar (kayıtlı olduğu yer)
-  @ApiProperty({
-    description: 'İl ID (opsiyonel, kullanıcının scope\'una göre otomatik set edilir)',
-    example: 'province-uuid-123',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  provinceId?: string;
+  provinceId: string;
 
   @ApiProperty({
-    description: 'İlçe ID (opsiyonel, kullanıcının scope\'una göre otomatik set edilir)',
+    description: 'İlçe ID (zorunlu)',
     example: 'district-uuid-123',
     type: String,
-    required: false,
+    required: true,
   })
   @IsString()
-  @IsOptional()
-  districtId?: string;
+  @IsNotEmpty()
+  districtId: string;
 
   // 🔹 Kurum Detay Bilgileri
   @ApiProperty({
