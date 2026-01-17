@@ -693,10 +693,16 @@ async function main() {
       status: MemberStatus.ACTIVE,
       source: MemberSource.DIRECT,
       provinceId: burcuProvinceId,
-      districtId: burcuDistrictId,
+      districtId: burcuDistrictId!,
       branchId: defaultBranchId, // Zorunlu
       registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
       institutionId: burcuInstitutionId,
+      motherName: generateParentName(),
+      fatherName: generateParentName(),
+      birthDate: generateBirthDate(),
+      birthplace: generateBirthplace(),
+      gender: generateGender('Burcu'),
+      educationStatus: generateEducationStatus(),
       createdByUserId: users[0],
       approvedByUserId: users[0],
       approvedAt: burcuCreatedAt,
@@ -850,6 +856,22 @@ async function main() {
     const institutionId = institutionsList[Math.floor(Math.random() * institutionsList.length)].id;
 
     try {
+      // districtId zorunlu, eğer yoksa bir ilçe seç
+      let finalDistrictId = districtId;
+      if (!finalDistrictId && provinceId) {
+        const districtsInProvince = await prisma.district.findMany({
+          where: { provinceId },
+          take: 1,
+        });
+        if (districtsInProvince.length > 0) {
+          finalDistrictId = districtsInProvince[0].id;
+        }
+      }
+      if (!finalDistrictId) {
+        console.warn(`⚠️  İlçe bulunamadı, üye atlanıyor: ${firstName} ${lastName}`);
+        continue;
+      }
+
       const member = await prisma.member.create({
         data: {
           firstName,
@@ -860,10 +882,16 @@ async function main() {
           status,
           source,
           provinceId,
-          districtId,
+          districtId: finalDistrictId,
           branchId, // Zorunlu
           registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
           institutionId,
+          motherName: generateParentName(),
+          fatherName: generateParentName(),
+          birthDate: generateBirthDate(),
+          birthplace: generateBirthplace(),
+          gender: generateGender(firstName),
+          educationStatus: generateEducationStatus(),
           createdByUserId: users[Math.floor(Math.random() * users.length)],
           approvedByUserId: status === MemberStatus.ACTIVE 
             ? users[Math.floor(Math.random() * users.length)]
@@ -891,43 +919,12 @@ async function main() {
   // 10. Üyeler için gerekli güncellemeler tamamlandı
 
   // 11. Mevcut üyelere ilçe ataması (eğer ilçeleri yoksa)
+  // Not: districtId artık zorunlu olduğu için bu kod artık çalışmayacak
+  // Eski veriler için gerekirse migration ile düzeltilmeli
   console.log('📍 Mevcut üyelere ilçe atanıyor...');
-  const membersWithoutDistrict = await prisma.member.findMany({
-    where: {
-      districtId: null,
-      provinceId: { not: null },
-      deletedAt: null,
-    },
-    select: {
-      id: true,
-      provinceId: true,
-    },
-  });
-
-  let districtUpdateCount = 0;
-  for (const member of membersWithoutDistrict) {
-    if (member.provinceId) {
-      // Bu ile ait district'leri bul
-      const districtsInProvince = await prisma.district.findMany({
-        where: { provinceId: member.provinceId },
-        select: { id: true },
-      });
-
-      if (districtsInProvince.length > 0) {
-        // Rastgele bir ilçe seç
-        const randomDistrict = districtsInProvince[Math.floor(Math.random() * districtsInProvince.length)];
-        
-        await prisma.member.update({
-          where: { id: member.id },
-          data: { districtId: randomDistrict.id },
-        });
-        districtUpdateCount++;
-      }
-    }
-  }
-  if (districtUpdateCount > 0) {
-    console.log(`   - ${districtUpdateCount} üyeye ilçe atandı`);
-  }
+  // districtId artık zorunlu olduğu için bu sorgu artık sonuç döndürmeyecek
+  // Bu kısım artık gerekli değil çünkü districtId zorunlu
+  console.log('   - districtId artık zorunlu olduğu için ilçe atama işlemi atlandı');
 
   console.log('✅ Seed işlemi tamamlandı!');
   console.log(`   - ${TURKISH_PROVINCES.length} il eklendi`);
@@ -1106,6 +1103,12 @@ async function main() {
       institutionId: true,
       source: true,
       cancelledAt: true,
+      motherName: true,
+      fatherName: true,
+      birthDate: true,
+      birthplace: true,
+      gender: true,
+      educationStatus: true,
     },
     orderBy: {
       cancelledAt: 'desc',
@@ -1175,21 +1178,33 @@ async function main() {
         reRegisterInstitutionId = fallbackInstitution.id;
       }
 
+      // districtId zorunlu
+      if (!cancelledMember.districtId) {
+        console.warn(`⚠️  İlçe bilgisi yok, yeniden üye kaydı atlanıyor: ${cancelledMember.id}`);
+        continue;
+      }
+
       const newMember = await prisma.member.create({
         data: {
           firstName: cancelledMember.firstName,
           lastName: cancelledMember.lastName,
           nationalId: cancelledMember.nationalId, // Orijinal TC'yi kullan
-          phone: cancelledMember.phone,
+          phone: cancelledMember.phone || generatePhone(),
           email: cancelledMember.email,
           source: cancelledMember.source || MemberSource.DIRECT,
           status: MemberStatus.PENDING,
-          provinceId: cancelledMember.provinceId,
+          provinceId: cancelledMember.provinceId!,
           districtId: cancelledMember.districtId,
           branchId: branchIdForReRegister, // Zorunlu
           previousCancelledMemberId: cancelledMember.id, // Önceki iptal kaydına bağla
           registrationNumber: `UYE-${String(memberRegistrationCounter).padStart(5, '0')}`,
           institutionId: reRegisterInstitutionId,
+          motherName: cancelledMember.motherName || generateParentName(),
+          fatherName: cancelledMember.fatherName || generateParentName(),
+          birthDate: cancelledMember.birthDate || generateBirthDate(),
+          birthplace: cancelledMember.birthplace || generateBirthplace(),
+          gender: cancelledMember.gender || generateGender(cancelledMember.firstName),
+          educationStatus: cancelledMember.educationStatus || generateEducationStatus(),
           createdByUserId: users[Math.floor(Math.random() * users.length)],
           createdAt: reRegisteredAt,
           updatedAt: reRegisteredAt,
@@ -2984,6 +2999,12 @@ Sendika Yönetimi
         // Kayıt numarası (benzersiz olmalı)
         const registrationNumber = `UYE-${String(currentRegistrationCounter + i).padStart(5, '0')}`;
         
+        // districtId zorunlu kontrolü
+        if (!districtId) {
+          console.warn(`⚠️  İlçe bulunamadı, üye atlanıyor: ${firstName} ${lastName}`);
+          continue;
+        }
+
         // Üye oluştur
         const newActiveMember = await prisma.member.create({
           data: {

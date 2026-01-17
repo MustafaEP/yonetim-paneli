@@ -79,9 +79,9 @@ model User {
   notificationSettings UserNotificationSettings? @relation("UserNotificationSettings")
 
   // 🔹 Panel kullanıcı başvuru ilişkileri
-  member                    Member?                        @relation("MemberUser")
-  reviewedPanelApplications PanelUserApplication[]         @relation("PanelUserApplicationReviewedBy")
-  createdPanelApplication   PanelUserApplication?          @relation("PanelUserApplicationCreatedUser")
+  member                    Member?                @relation("MemberUser")
+  reviewedPanelApplications PanelUserApplication[] @relation("PanelUserApplicationReviewedBy")
+  createdPanelApplication   PanelUserApplication?  @relation("PanelUserApplicationCreatedUser")
 }
 
 enum MemberStatus {
@@ -125,7 +125,7 @@ model Member {
   firstName  String
   lastName   String
   nationalId String       @unique // TC (zorunlu)
-  phone      String?
+  phone      String // Telefon (zorunlu)
   email      String?
   status     MemberStatus @default(PENDING)
   source     MemberSource @default(DIRECT)
@@ -134,33 +134,33 @@ model Member {
   membershipInfoOptionId String? // Admin tarafından yönetilen seçmeli bilgi
   membershipInfoOption   MembershipInfoOption? @relation(fields: [membershipInfoOptionId], references: [id])
   memberGroupId          String? // Üye grubu (Üye, Fahri Üye vb.)
-  memberGroup            MemberGroup?         @relation(fields: [memberGroupId], references: [id])
+  memberGroup            MemberGroup?          @relation(fields: [memberGroupId], references: [id])
   registrationNumber     String?               @unique // Üye kayıt numarası (onay sırasında atanır, benzersiz, admin belirler)
   boardDecisionDate      DateTime? // Yönetim kurulu karar tarihi
   boardDecisionBookNo    String? // Yönetim kurulu karar defter no
 
   // 🔹 Kimlik & Kişisel Bilgiler
-  motherName String? // Anne adı (seçmeli)
-  fatherName String? // Baba adı (seçmeli)
-  birthDate  DateTime? // Doğum tarihi (seçmeli)
-  birthplace String? // Doğum yeri (seçmeli)
-  gender     Gender? // Cinsiyet (seçmeli)
+  motherName String // Anne adı (zorunlu)
+  fatherName String // Baba adı (zorunlu)
+  birthDate  DateTime // Doğum tarihi (zorunlu)
+  birthplace String // Doğum yeri (zorunlu)
+  gender     Gender // Cinsiyet (zorunlu)
 
   // 🔹 Eğitim & İletişim Bilgileri
-  educationStatus EducationStatus? // Öğrenim durumu (seçmeli)
+  educationStatus EducationStatus // Öğrenim durumu (zorunlu)
 
   // 🔹 Kurum Bilgileri
-  institutionId    String  // Çalıştığı kurum (zorunlu)
+  institutionId    String // Çalıştığı kurum (zorunlu)
   tevkifatCenterId String? // Tevkifat merkezi (seçmeli)
   tevkifatTitleId  String? // Tevkifat ünvanı (seçmeli)
   branchId         String? // Bağlı olduğu şube (opsiyonel)
 
   // Bölge ilişkileri (ikamet adresi - çalıştığı yer değil)
-  provinceId String?
-  districtId String?
+  provinceId String // İl (zorunlu)
+  districtId String // İlçe (zorunlu)
 
-  province Province? @relation("MemberProvince", fields: [provinceId], references: [id])
-  district District? @relation("MemberDistrict", fields: [districtId], references: [id])
+  province Province @relation("MemberProvince", fields: [provinceId], references: [id])
+  district District @relation("MemberDistrict", fields: [districtId], references: [id])
 
   // 🔹 Kurum ilişkileri
   institution    Institution     @relation(fields: [institutionId], references: [id])
@@ -178,8 +178,8 @@ model Member {
   staffTitleCode        String? // Kadro Unvan Kodu
 
   // 🔹 Kurum detay ilişkileri
-  institutionProvince Province? @relation("MemberInstitutionProvince", fields: [institutionProvinceId], references: [id])
-  institutionDistrict District? @relation("MemberInstitutionDistrict", fields: [institutionDistrictId], references: [id])
+  institutionProvince Province?   @relation("MemberInstitutionProvince", fields: [institutionProvinceId], references: [id])
+  institutionDistrict District?   @relation("MemberInstitutionDistrict", fields: [institutionDistrictId], references: [id])
   profession          Profession? @relation(fields: [professionId], references: [id])
 
   createdByUserId  String?
@@ -211,8 +211,8 @@ model Member {
   payments MemberPayment[]
 
   // 🔹 Panel kullanıcı ilişkisi
-  userId String?              @unique // Panel kullanıcısına terfi ettiyse User ID
-  user   User?                 @relation("MemberUser", fields: [userId], references: [id])
+  userId String? @unique // Panel kullanıcısına terfi ettiyse User ID
+  user   User?   @relation("MemberUser", fields: [userId], references: [id])
 
   // 🔹 Panel kullanıcı başvurusu
   panelUserApplication PanelUserApplication?
@@ -239,16 +239,16 @@ model Province {
   name String
   code String? @unique
 
-  districts                District[]
-  members                  Member[]         @relation("MemberProvince")
-  memberInstitutionProvinces Member[]        @relation("MemberInstitutionProvince")
-  tevkifatCenters          TevkifatCenter[] @relation("ProvinceTevkifatCenters")
-  institutions             Institution[]    @relation("ProvinceInstitutions")
-  branches                 Branch[]         @relation("ProvinceBranches")
+  districts                  District[]
+  members                    Member[]         @relation("MemberProvince")
+  memberInstitutionProvinces Member[]         @relation("MemberInstitutionProvince")
+  tevkifatCenters            TevkifatCenter[] @relation("ProvinceTevkifatCenters")
+  institutions               Institution[]    @relation("ProvinceInstitutions")
+  branches                   Branch[]         @relation("ProvinceBranches")
 
-  userScopes                  UserScope[]
-  customRoleScopes            CustomRoleScope[]
-  panelUserApplicationScopes  PanelUserApplicationScope[]
+  userScopes                 UserScope[]
+  customRoleScopes           CustomRoleScope[]
+  panelUserApplicationScopes PanelUserApplicationScope[]
 }
 
 model District {
@@ -257,15 +257,15 @@ model District {
   provinceId String
   province   Province @relation(fields: [provinceId], references: [id])
 
-  members                  Member[]         @relation("MemberDistrict")
-  memberInstitutionDistricts Member[]        @relation("MemberInstitutionDistrict")
-  tevkifatCenters          TevkifatCenter[] @relation("DistrictTevkifatCenters")
-  institutions             Institution[]    @relation("DistrictInstitutions")
-  branches                 Branch[]         @relation("DistrictBranches")
+  members                    Member[]         @relation("MemberDistrict")
+  memberInstitutionDistricts Member[]         @relation("MemberInstitutionDistrict")
+  tevkifatCenters            TevkifatCenter[] @relation("DistrictTevkifatCenters")
+  institutions               Institution[]    @relation("DistrictInstitutions")
+  branches                   Branch[]         @relation("DistrictBranches")
 
-  userScopes                  UserScope[]
-  customRoleScopes            CustomRoleScope[]
-  panelUserApplicationScopes  PanelUserApplicationScope[]
+  userScopes                 UserScope[]
+  customRoleScopes           CustomRoleScope[]
+  panelUserApplicationScopes PanelUserApplicationScope[]
 }
 
 model UserScope {
@@ -280,8 +280,8 @@ model UserScope {
   district District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
 
   deletedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@unique([userId, provinceId, districtId])
   @@index([userId])
@@ -303,9 +303,9 @@ model CustomRole {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  permissions     CustomRolePermission[]
-  roleScopes      CustomRoleScope[]
-  users           User[]                 @relation("UserCustomRoles")
+  permissions           CustomRolePermission[]
+  roleScopes            CustomRoleScope[]
+  users                 User[]                 @relation("UserCustomRoles")
   panelUserApplications PanelUserApplication[]
 }
 
@@ -323,20 +323,20 @@ model CustomRolePermission {
 
 // 🔹 Rol Yetki Alanları (Bir role birden fazla il/ilçe atanabilir)
 model CustomRoleScope {
-  id         String      @id @default(cuid())
-  roleId     String
-  role       CustomRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  
+  id     String     @id @default(cuid())
+  roleId String
+  role   CustomRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
   provinceId String?
   districtId String?
-  
-  province   Province?   @relation(fields: [provinceId], references: [id], onDelete: Cascade)
-  district   District?   @relation(fields: [districtId], references: [id], onDelete: Cascade)
-  
-  deletedAt  DateTime?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  
+
+  province Province? @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  district District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
   @@unique([roleId, provinceId, districtId])
   @@index([roleId])
   @@index([provinceId])
@@ -393,10 +393,10 @@ enum DocumentTemplateType {
 }
 
 enum DocumentUploadStatus {
-  PENDING_UPLOAD  // Required but not uploaded yet
-  STAGING         // Uploaded to temporary storage, awaiting review
-  APPROVED        // Admin approved, moved to permanent storage
-  REJECTED        // Admin rejected, file deleted from staging
+  PENDING_UPLOAD // Required but not uploaded yet
+  STAGING // Uploaded to temporary storage, awaiting review
+  APPROVED // Admin approved, moved to permanent storage
+  REJECTED // Admin rejected, file deleted from staging
 }
 
 model DocumentTemplate {
@@ -414,38 +414,38 @@ model DocumentTemplate {
 }
 
 model MemberDocument {
-  id              String                @id @default(cuid())
-  memberId        String
-  member          Member                 @relation(fields: [memberId], references: [id])
-  templateId      String?
-  template        DocumentTemplate?      @relation(fields: [templateId], references: [id])
-  documentType    String
-  fileName        String                 // Original filename (for display)
-  fileUrl         String?                // URL to file (null if not approved)
-  secureFileName  String?                // Secure hash-based filename
-  fileSize        Int?                   // File size in bytes
-  mimeType        String?                // Detected MIME type
-  
+  id             String            @id @default(cuid())
+  memberId       String
+  member         Member            @relation(fields: [memberId], references: [id])
+  templateId     String?
+  template       DocumentTemplate? @relation(fields: [templateId], references: [id])
+  documentType   String
+  fileName       String // Original filename (for display)
+  fileUrl        String? // URL to file (null if not approved)
+  secureFileName String? // Secure hash-based filename
+  fileSize       Int? // File size in bytes
+  mimeType       String? // Detected MIME type
+
   // Upload status and workflow
-  uploadStatus    DocumentUploadStatus   @default(PENDING_UPLOAD)
-  stagingPath     String?                // Temporary file path (staging)
-  permanentPath   String?                // Permanent file path (approved)
-  
+  uploadStatus  DocumentUploadStatus @default(PENDING_UPLOAD)
+  stagingPath   String? // Temporary file path (staging)
+  permanentPath String? // Permanent file path (approved)
+
   // Admin review
-  reviewedBy      String?                // Admin user ID who reviewed
-  reviewedByUser  User?                  @relation("DocumentReviewedBy", fields: [reviewedBy], references: [id])
+  reviewedBy      String? // Admin user ID who reviewed
+  reviewedByUser  User?     @relation("DocumentReviewedBy", fields: [reviewedBy], references: [id])
   reviewedAt      DateTime?
-  adminNote       String?                @db.Text // Admin's note/comment
-  rejectionReason String?                @db.Text // Reason for rejection
-  
-  generatedAt     DateTime               @default(now())
+  adminNote       String?   @db.Text // Admin's note/comment
+  rejectionReason String?   @db.Text // Reason for rejection
+
+  generatedAt     DateTime @default(now())
   generatedBy     String
-  generatedByUser User?                  @relation("DocumentGeneratedBy", fields: [generatedBy], references: [id])
+  generatedByUser User?    @relation("DocumentGeneratedBy", fields: [generatedBy], references: [id])
 
-  deletedAt       DateTime?
+  deletedAt DateTime?
 
-  createdAt       DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([memberId])
   @@index([generatedBy])
@@ -752,12 +752,12 @@ model Branch {
 model Institution {
   id         String    @id @default(cuid())
   name       String
-  provinceId String?   // İl'e bağlıysa
-  districtId String?   // İlçe'ye bağlıysa
+  provinceId String? // İl'e bağlıysa
+  districtId String? // İlçe'ye bağlıysa
   isActive   Boolean   @default(false) // Admin onayı olmadan aktif olmaz
   approvedAt DateTime? // Admin onay tarihi
-  approvedBy String?   // Admin kullanıcı ID
-  createdBy  String?   // İl/İlçe başkanı kullanıcı ID
+  approvedBy String? // Admin kullanıcı ID
+  createdBy  String? // İl/İlçe başkanı kullanıcı ID
 
   province Province? @relation("ProvinceInstitutions", fields: [provinceId], references: [id])
   district District? @relation("DistrictInstitutions", fields: [districtId], references: [id])
@@ -792,8 +792,8 @@ model TevkifatCenter {
   provinceId String? // İl'e bağlıysa
   districtId String? // İlçe'ye bağlıysa
 
-  province Province? @relation("ProvinceTevkifatCenters", fields: [provinceId], references: [id])
-  district District? @relation("DistrictTevkifatCenters", fields: [districtId], references: [id])
+  province Province?       @relation("ProvinceTevkifatCenters", fields: [provinceId], references: [id])
+  district District?       @relation("DistrictTevkifatCenters", fields: [districtId], references: [id])
   members  Member[]
   files    TevkifatFile[]
   payments MemberPayment[]
@@ -998,38 +998,38 @@ model Profession {
 
 // 🔹 Panel Kullanıcı Başvuruları
 enum PanelUserApplicationStatus {
-  PENDING    // Onay bekliyor
-  APPROVED   // Onaylandı, User oluşturuldu
-  REJECTED   // Reddedildi
+  PENDING // Onay bekliyor
+  APPROVED // Onaylandı, User oluşturuldu
+  REJECTED // Reddedildi
 }
 
 model PanelUserApplication {
-  id          String                        @id @default(cuid())
-  memberId    String                        @unique // Bir üye sadece bir başvuru yapabilir
-  member      Member                        @relation(fields: [memberId], references: [id])
-  
-  requestedRoleId String                    // Seçilen CustomRole ID
-  requestedRole   CustomRole                @relation(fields: [requestedRoleId], references: [id])
-  
-  status      PanelUserApplicationStatus    @default(PENDING)
-  requestNote String?                       @db.Text // Başvuru notu (isteğe bağlı)
-  
+  id       String @id @default(cuid())
+  memberId String @unique // Bir üye sadece bir başvuru yapabilir
+  member   Member @relation(fields: [memberId], references: [id])
+
+  requestedRoleId String // Seçilen CustomRole ID
+  requestedRole   CustomRole @relation(fields: [requestedRoleId], references: [id])
+
+  status      PanelUserApplicationStatus @default(PENDING)
+  requestNote String?                    @db.Text // Başvuru notu (isteğe bağlı)
+
   // Onay/Red bilgileri
-  reviewedBy  String?                       // Onaylayan/Reddeden kullanıcı
-  reviewedByUser User?                      @relation("PanelUserApplicationReviewedBy", fields: [reviewedBy], references: [id])
-  reviewedAt  DateTime?
-  reviewNote  String?                       @db.Text // Onay/Red notu
-  
+  reviewedBy     String? // Onaylayan/Reddeden kullanıcı
+  reviewedByUser User?     @relation("PanelUserApplicationReviewedBy", fields: [reviewedBy], references: [id])
+  reviewedAt     DateTime?
+  reviewNote     String?   @db.Text // Onay/Red notu
+
   // Oluşturulan User (onaylandığında)
-  createdUserId String?                     @unique // Onaylandığında oluşturulan User ID
-  createdUser   User?                       @relation("PanelUserApplicationCreatedUser", fields: [createdUserId], references: [id])
-  
+  createdUserId String? @unique // Onaylandığında oluşturulan User ID
+  createdUser   User?   @relation("PanelUserApplicationCreatedUser", fields: [createdUserId], references: [id])
+
   // 🔹 Başvuruda seçilen yetki alanları
   applicationScopes PanelUserApplicationScope[]
-  
-  createdAt   DateTime                      @default(now())
-  updatedAt   DateTime                      @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([memberId])
   @@index([status])
   @@index([requestedRoleId])
@@ -1038,20 +1038,20 @@ model PanelUserApplication {
 
 // 🔹 Panel Kullanıcı Başvurusu Yetki Alanları (Başvuruda seçilen il/ilçeler)
 model PanelUserApplicationScope {
-  id                    String                @id @default(cuid())
-  applicationId         String
-  application           PanelUserApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  
-  provinceId            String?
-  districtId            String?
-  
-  province              Province?             @relation(fields: [provinceId], references: [id], onDelete: Cascade)
-  district              District?             @relation(fields: [districtId], references: [id], onDelete: Cascade)
-  
-  deletedAt             DateTime?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  
+  id            String               @id @default(cuid())
+  applicationId String
+  application   PanelUserApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  provinceId String?
+  districtId String?
+
+  province Province? @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  district District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
   @@unique([applicationId, provinceId, districtId])
   @@index([applicationId])
   @@index([provinceId])

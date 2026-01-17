@@ -79,7 +79,6 @@ export class ReportsService {
         where: {
           ...where,
           status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
-          provinceId: { not: null },
         },
         _count: {
           id: true,

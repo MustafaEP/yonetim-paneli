@@ -1,0 +1,98 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Manuel tetikleme için
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SSH_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_SSH_HOST }}
+          VPS_USER: ${{ secrets.VPS_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH || '/var/www/yonetim-paneli' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
+            set -e
+            echo "🚀 GitHub Actions deployment başlatılıyor..."
+            
+            # Proje dizinine git
+            cd "${{ secrets.VPS_DEPLOY_PATH || '/var/www/yonetim-paneli' }}"
+            
+            # Git'ten son değişiklikleri çek
+            echo "📥 Git'ten güncellemeler çekiliyor..."
+            git fetch origin
+            CURRENT_BRANCH=\$(git branch --show-current || echo "main")
+            if git show-ref --verify --quiet refs/heads/main; then
+              git reset --hard origin/main
+            elif git show-ref --verify --quiet refs/heads/master; then
+              git reset --hard origin/master
+            else
+              git reset --hard origin/\${CURRENT_BRANCH}
+            fi
+            git clean -fd
+            
+            # deploy-vps.sh script'i varsa kullan, yoksa manuel deployment yap
+            if [ -f "./deploy-vps.sh" ]; then
+              echo "📜 deploy-vps.sh script'i kullanılıyor..."
+              chmod +x ./deploy-vps.sh
+              ./deploy-vps.sh
+            else
+              echo "📜 Manuel deployment yapılıyor..."
+              
+              # Docker container'ları durdur (sadece backend ve frontend)
+              echo "🛑 Mevcut container'lar durduruluyor..."
+              docker-compose stop backend frontend || true
+              
+              # Backend ve Frontend'i yeniden build et
+              echo "🔨 Backend ve Frontend yeniden build ediliyor..."
+              docker-compose build --no-cache backend frontend
+              
+              # Container'ları başlat (migration'lar otomatik çalışacak)
+              echo "▶️  Container'lar başlatılıyor..."
+              docker-compose up -d backend frontend
+              
+              # Kısa bir bekleme
+              sleep 10
+              
+              # Container durumunu kontrol et
+              echo "📊 Container durumları:"
+              docker-compose ps
+              
+              # Backend loglarının son 30 satırını göster
+              echo "📋 Backend logları (son 30 satır):"
+              docker-compose logs --tail=30 backend || true
+              
+              # Frontend loglarının son 30 satırını göster
+              echo "📋 Frontend logları (son 30 satır):"
+              docker-compose logs --tail=30 frontend || true
+              
+              echo ""
+              echo "✅ Deployment tamamlandı!"
+              echo "📊 Tüm loglar için: docker-compose logs -f"
+            fi
+          EOF
+      
+      - name: Health Check (Optional)
+        if: ${{ secrets.VPS_HEALTH_CHECK_URL }}
+        run: |
+          echo "🔍 Health check yapılıyor..."
+          sleep 15
+          curl -f ${{ secrets.VPS_HEALTH_CHECK_URL }} || echo "⚠️ Health check failed, but deployment completed"
+

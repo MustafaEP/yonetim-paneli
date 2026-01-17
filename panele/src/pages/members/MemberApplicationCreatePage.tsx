@@ -100,7 +100,7 @@ const MemberApplicationCreatePage: React.FC = () => {
     provinceId: string;
     districtId: string;
     institutionId: string;
-    // Şube ve Tevkifat (branchId zorunlu)
+    // Şube ve Tevkifat (branchId seçmeli)
     branchId: string;
     tevkifatCenterId: string;
     tevkifatTitle: string;
@@ -761,17 +761,15 @@ const MemberApplicationCreatePage: React.FC = () => {
       setErrorDialogOpen(true);
       return false;
     }
-    if (!form.email.trim()) {
-      setError('E-posta adresi zorunludur.');
-      setErrorDialogOpen(true);
-      return false;
-    }
-    const emailError = getEmailError(form.email);
-    if (emailError) {
-      setError(emailError);
-      setEmailError(emailError);
-      setErrorDialogOpen(true);
-      return false;
+    // Email zorunlu değil, sadece format kontrolü yap
+    if (form.email.trim()) {
+      const emailError = getEmailError(form.email);
+      if (emailError) {
+        setError(emailError);
+        setEmailError(emailError);
+        setErrorDialogOpen(true);
+        return false;
+      }
     }
     if (!form.institutionId) {
       setError('Kurum seçimi zorunludur.');
@@ -878,7 +876,7 @@ const MemberApplicationCreatePage: React.FC = () => {
         }
       }
       
-      navigate(`/members/${created.id}`);
+      navigate(`/members/${created.id}?source=application`);
     } catch (e: any) {
       console.error('Üye başvurusu oluşturulurken hata:', e);
       const errorMessage = e?.response?.data?.message || e?.message || 'Başvuru oluşturulurken bir hata oluştu.';
@@ -1386,12 +1384,11 @@ const MemberApplicationCreatePage: React.FC = () => {
 
             <Grid item xs={12} md={6}>
               <TextField
-                label="E-posta *"
+                label="E-posta"
                 type="email"
                 value={form.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 fullWidth
-                required
                 error={!!emailError}
                 placeholder="ornek@email.com"
                 InputProps={{
