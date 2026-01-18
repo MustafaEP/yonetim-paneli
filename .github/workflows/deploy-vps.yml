@@ -16,11 +16,25 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_SSH_HOST }}
+          VPS_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
+          if [ -z "${VPS_HOST:-}" ]; then
+            echo "❌ Missing secret: VPS_SSH_HOST"
+            exit 1
+          fi
+          if [ -z "${VPS_KEY:-}" ]; then
+            echo "❌ Missing secret: VPS_SSH_PRIVATE_KEY"
+            exit 1
+          fi
+          printf '%s' "$VPS_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_SSH_HOST }} >> ~/.ssh/known_hosts
+          # Best-effort: don't fail deployment if keyscan has a transient DNS/network issue
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
       
       - name: Deploy to VPS
         env:
