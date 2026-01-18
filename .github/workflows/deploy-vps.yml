@@ -88,11 +88,3 @@ jobs:
               echo "📊 Tüm loglar için: docker-compose logs -f"
             fi
           EOF
-      
-      - name: Health Check (Optional)
-        if: ${{ secrets.VPS_HEALTH_CHECK_URL }}
-        run: |
-          echo "🔍 Health check yapılıyor..."
-          sleep 15
-          curl -f ${{ secrets.VPS_HEALTH_CHECK_URL }} || echo "⚠️ Health check failed, but deployment completed"
-
