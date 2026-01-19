@@ -16,11 +16,9 @@ import {
   alpha,
   InputAdornment,
   Stack,
-  Paper,
   Button,
   CircularProgress,
   Alert,
-  Grid,
   Fade,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
@@ -87,10 +85,6 @@ const PanelUserApplicationsPage: React.FC = () => {
 
     return filtered;
   }, [rows, statusFilter, searchText]);
-
-  const pendingCount = filteredRows.filter(r => r.status === 'PENDING').length;
-  const approvedCount = filteredRows.filter(r => r.status === 'APPROVED').length;
-  const rejectedCount = filteredRows.filter(r => r.status === 'REJECTED').length;
 
   const columns: GridColDef<PanelUserApplication>[] = [
     {
@@ -342,97 +336,6 @@ const PanelUserApplicationsPage: React.FC = () => {
         />
         <Box sx={{ mb: 4 }}>
 
-          {/* İstatistik Kartları */}
-          {!loading && (
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={4}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.1)} 0%, ${alpha(theme.palette.warning.light, 0.05)} 100%)`,
-                    border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: `0 8px 24px ${alpha(theme.palette.warning.main, 0.15)}`,
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
-                        Bekleyen Başvuru
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.warning.main, textAlign: 'left' }}>
-                        {pendingCount}
-                      </Typography>
-                    </Box>
-                    <PendingIcon sx={{ fontSize: 40, color: alpha(theme.palette.warning.main, 0.3) }} />
-                  </Box>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.1)} 0%, ${alpha(theme.palette.success.light, 0.05)} 100%)`,
-                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.15)}`,
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
-                        Onaylanan Başvuru
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.success.main, textAlign: 'left' }}>
-                        {approvedCount}
-                      </Typography>
-                    </Box>
-                    <CheckCircleIcon sx={{ fontSize: 40, color: alpha(theme.palette.success.main, 0.3) }} />
-                  </Box>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.1)} 0%, ${alpha(theme.palette.error.light, 0.05)} 100%)`,
-                    border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: `0 8px 24px ${alpha(theme.palette.error.main, 0.15)}`,
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
-                        Reddedilen Başvuru
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.error.main, textAlign: 'left' }}>
-                        {rejectedCount}
-                      </Typography>
-                    </Box>
-                    <CancelIcon sx={{ fontSize: 40, color: alpha(theme.palette.error.main, 0.3) }} />
-                  </Box>
-                </Paper>
-              </Grid>
-            </Grid>
-          )}
-        </Box>
-
         {/* Ana Kart */}
         <Card
           elevation={0}
@@ -601,6 +504,7 @@ const PanelUserApplicationsPage: React.FC = () => {
             />
           </Box>
         </Card>
+        </Box>
 
         {/* Onay Dialog */}
         {selectedApplication && (

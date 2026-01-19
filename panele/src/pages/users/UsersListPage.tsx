@@ -15,9 +15,7 @@ import {
   InputAdornment,
   useTheme,
   alpha,
-  Paper,
   Stack,
-  Grid,
   Fade,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
@@ -207,9 +205,6 @@ const UsersListPage: React.FC = () => {
     fetchUsers();
   }, []);
 
-  const activeUsersCount = filteredRows.filter(u => u.isActive).length;
-  const inactiveUsersCount = filteredRows.filter(u => !u.isActive).length;
-
   return (
     <Fade in timeout={300}>
       <Box sx={{ pb: 4 }}>
@@ -224,97 +219,6 @@ const UsersListPage: React.FC = () => {
           sx={{ mb: 0 }}
         />
         <Box sx={{ mb: 4 }}>
-
-          {/* İstatistik Kartları */}
-          {!loading && (
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={4}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`,
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
-                        Toplam Kullanıcı
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main, textAlign: 'left' }}>
-                        {filteredRows.length}
-                      </Typography>
-                    </Box>
-                    <PeopleIcon sx={{ fontSize: 40, color: alpha(theme.palette.primary.main, 0.3) }} />
-                  </Box>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.1)} 0%, ${alpha(theme.palette.success.light, 0.05)} 100%)`,
-                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: `0 8px 24px ${alpha(theme.palette.success.main, 0.15)}`,
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
-                        Aktif Kullanıcı
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.success.main, textAlign: 'left' }}>
-                        {activeUsersCount}
-                      </Typography>
-                    </Box>
-                    <CheckCircleIcon sx={{ fontSize: 40, color: alpha(theme.palette.success.main, 0.3) }} />
-                  </Box>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.grey[500], 0.1)} 0%, ${alpha(theme.palette.grey[300], 0.05)} 100%)`,
-                    border: `1px solid ${alpha(theme.palette.grey[500], 0.2)}`,
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: `0 8px 24px ${alpha(theme.palette.grey[500], 0.15)}`,
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 0.5, textAlign: 'left' }}>
-                        Pasif Kullanıcı
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.grey[600], textAlign: 'left' }}>
-                        {inactiveUsersCount}
-                      </Typography>
-                    </Box>
-                    <CancelIcon sx={{ fontSize: 40, color: alpha(theme.palette.grey[500], 0.3) }} />
-                  </Box>
-                </Paper>
-              </Grid>
-            </Grid>
-          )}
-        </Box>
 
         {/* Ana Kart */}
         <Card
@@ -495,6 +399,7 @@ const UsersListPage: React.FC = () => {
             />
           </Box>
         </Card>
+        </Box>
       </Box>
     </Fade>
   );
