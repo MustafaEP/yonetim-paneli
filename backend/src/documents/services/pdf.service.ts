@@ -421,60 +421,26 @@ export class PdfService {
    * Template'i HTML wrapper ile sarmala (CSS ve format için)
    */
   wrapTemplateWithHtml(content: string): string {
-    // Eğer zaten HTML ise (<!DOCTYPE veya <html> ile başlıyorsa) wrapper ekleme
-    if (content.trim().toLowerCase().startsWith('<!doctype') || 
-        content.trim().toLowerCase().startsWith('<html')) {
+    const trimmed = content.trim();
+    const lower = trimmed.toLowerCase();
+
+    // Eğer tam HTML dokümanı ise (antet wrapper'ın içine gömmemek için) body içeriğini çıkar
+    if (lower.startsWith('<!doctype') || lower.startsWith('<html')) {
+      const bodyMatch = trimmed.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      if (bodyMatch?.[1]) {
+        return bodyMatch[1];
+      }
+      // Body bulunamazsa olduğu gibi dön (fallback)
       return content;
     }
 
-    // Plain text ise HTML wrapper ekle
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @page {
-      size: A4;
-      margin: 0;
+    // Eğer HTML fragment ise olduğu gibi dön
+    if (trimmed.startsWith('<')) {
+      return content;
     }
-    body {
-      font-family: 'Arial', 'Helvetica', sans-serif;
-      font-size: 10pt; /* Küçük font */
-      line-height: 1.4;
-      color: #000;
-      margin: 0;
-      padding: 0;
-    }
-    .document-content {
-      white-space: pre-wrap; /* Satır sonlarını koru */
-      word-wrap: break-word;
-      padding: 0; /* Padding yok - antetli kağıt wrapper'ı ekleyecek */
-    }
-    h1 {
-      font-size: 14pt;
-      margin: 8px 0;
-      font-weight: bold;
-    }
-    h2 {
-      font-size: 12pt;
-      margin: 6px 0;
-      font-weight: bold;
-    }
-    h3 {
-      font-size: 11pt;
-      margin: 5px 0;
-      font-weight: bold;
-    }
-    p {
-      margin: 6px 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="document-content">${content}</div>
-</body>
-</html>`;
+
+    // Plain text ise basit bir wrapper ile satır sonlarını koru
+    return `<div style="white-space:pre-wrap;word-break:break-word;">${content}</div>`;
   }
 
   /**
