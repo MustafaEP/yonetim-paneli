@@ -198,6 +198,8 @@ export class DocumentsService {
       boardDecisionBookNo: member.boardDecisionBookNo || '',
       membershipInfoOption: member.membershipInfoOption?.label || '',
       memberGroup: member.memberGroup?.name || '',
+      // Varsayılan foto (boşsa kırık ikon olmasın diye 1x1 transparan)
+      photoDataUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
       // Nakil belgesi için ekstra değişkenler (DTO'dan gelmeli)
       oldProvince: '',
       oldDistrict: '',
@@ -214,10 +216,27 @@ export class DocumentsService {
     // HTML wrapper ekle (eğer yoksa)
     htmlContent = this.pdfService.wrapTemplateWithHtml(htmlContent);
 
-    // Dosya adı ve yolu oluştur
-    const fileName = `${template.type}_${member.registrationNumber || member.id}_${Date.now()}.pdf`;
+    // Dosya adı ve yolu oluştur (isteğe bağlı custom fileName)
+    const sanitizeBaseName = (name: string) =>
+      name
+        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 120);
+
+    const suggestedBase = dto.fileName ? sanitizeBaseName(dto.fileName.replace(/\.pdf$/i, '')) : '';
+    const defaultBase = `${template.type}_${member.registrationNumber || member.id}_${Date.now()}`;
+    let baseName = suggestedBase || defaultBase;
+
+    let fileName = `${baseName}.pdf`;
     const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
-    const filePath = path.join(uploadsDir, fileName);
+    let filePath = path.join(uploadsDir, fileName);
+
+    // Çakışma varsa sonuna timestamp ekle
+    if (fs.existsSync(filePath)) {
+      fileName = `${baseName}_${Date.now()}.pdf`;
+      filePath = path.join(uploadsDir, fileName);
+    }
     const fileUrl = `/uploads/documents/${fileName}`;
 
     // Uploads dizinini oluştur
