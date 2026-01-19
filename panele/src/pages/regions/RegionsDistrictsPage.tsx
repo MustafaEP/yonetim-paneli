@@ -22,6 +22,7 @@ import {
   getProvinces,
   getDistricts,
 } from '../../api/regionsApi';
+import PageHeader from '../../components/layout/PageHeader';
 
 const RegionsDistrictsPage: React.FC = () => {
   const theme = useTheme();
@@ -104,75 +105,14 @@ const RegionsDistrictsPage: React.FC = () => {
       pb: 4,
     }}>
       {/* Modern Header */}
-      <Box sx={{ pt: { xs: 3, md: 4 }, pb: { xs: 3, md: 4 } }}>
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 4,
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            color: 'white',
-            overflow: 'visible',
-            position: 'relative',
-            boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderRadius: 4,
-              padding: '2px',
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor',
-              maskComposite: 'exclude',
-            }
-          }}
-        >
-          <Box sx={{ p: { xs: 3, md: 4 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
-              <Box
-                sx={{
-                  width: { xs: 60, md: 80 },
-                  height: { xs: 60, md: 80 },
-                  borderRadius: '20px',
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  backdropFilter: 'blur(10px)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                }}
-              >
-                <LocationCityIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'white' }} />
-              </Box>
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
-                    mb: 1,
-                  }}
-                >
-                  İlçeler
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    opacity: 0.95,
-                    fontSize: { xs: '0.875rem', md: '1rem' },
-                  }}
-                >
-                  İllere bağlı ilçeleri görüntüleyin ve filtreleyin
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        </Card>
-      </Box>
+      <PageHeader
+        icon={<LocationCityIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="İlçeler"
+        description="İllere bağlı ilçeleri görüntüleyin ve filtreleyin"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
 
       {/* Ana Kart */}
       <Card

@@ -52,6 +52,7 @@ import {
   type CreateTevkifatTitleDto,
 } from '../../api/accountingApi';
 import DeleteTevkifatCenterDialog from '../../components/accounting/DeleteTevkifatCenterDialog';
+import PageHeader from '../../components/layout/PageHeader';
 
 const TevkifatCentersPage: React.FC = () => {
   const theme = useTheme();
@@ -325,78 +326,17 @@ const TevkifatCentersPage: React.FC = () => {
   return (
     <Box sx={{ pb: 4 }}>
       {/* Modern Başlık Bölümü */}
-      <Box
-        sx={{
-          mb: 4,
-          p: { xs: 3, sm: 4, md: 5 },
-          borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            width: '300px',
-            height: '300px',
-            background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
-            borderRadius: '50%',
-            transform: 'translate(30%, -30%)',
-          },
-        }}
-      >
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box
-                sx={{
-                  width: { xs: 56, sm: 64 },
-                  height: { xs: 56, sm: 64 },
-                  borderRadius: 3,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-4px) scale(1.05)',
-                    boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.45)}`,
-                  },
-                }}
-              >
-                <BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h3"
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
-                    color: theme.palette.text.primary,
-                    mb: 0.5,
-                    letterSpacing: '-0.02em',
-                  }}
-                >
-                  Tevkifat Merkezleri
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    fontSize: { xs: '0.9rem', sm: '1rem' },
-                    fontWeight: 500,
-                  }}
-                >
-                  Kurumlardan gelen toplu aidat kesintilerinin merkezi takibi ve unvan yönetimi
-                </Typography>
-              </Box>
-            </Box>
-            {canManage && (
-              <Button
-                variant="contained"
+      <PageHeader
+        icon={<BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Tevkifat Merkezleri"
+        description="Kurumlardan gelen toplu aidat kesintilerinin merkezi takibi ve unvan yönetimi"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+        rightContent={
+          canManage ? (
+            <Button
+              variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => {
                   if (activeTab === 0) {
@@ -426,11 +366,10 @@ const TevkifatCentersPage: React.FC = () => {
               >
                 {activeTab === 0 ? 'Yeni Tevkifat Merkezi' : 'Yeni Unvan Ekle'}
               </Button>
-            )}
-          </Box>
-
-          {/* Mobile Button */}
-          {canManage && (
+            ) : undefined
+        }
+        mobileContent={
+          canManage ? (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -444,8 +383,6 @@ const TevkifatCentersPage: React.FC = () => {
               }}
               size="large"
               sx={{
-                display: { xs: 'flex', sm: 'none' },
-                mt: 3,
                 borderRadius: 2.5,
                 textTransform: 'none',
                 fontWeight: 600,
@@ -457,9 +394,9 @@ const TevkifatCentersPage: React.FC = () => {
             >
               {activeTab === 0 ? 'Yeni Tevkifat Merkezi' : 'Yeni Unvan Ekle'}
             </Button>
-          )}
-        </Box>
-      </Box>
+          ) : undefined
+        }
+      />
 
       {/* Tabs */}
       <Card

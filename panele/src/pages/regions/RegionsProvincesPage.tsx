@@ -18,6 +18,7 @@ import PinDropIcon from '@mui/icons-material/PinDrop';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 
 import type { Province, District } from '../../types/region';
+import PageHeader from '../../components/layout/PageHeader';
 import {
   getProvinces,
   getDistricts,
@@ -153,60 +154,14 @@ const RegionsProvincesPage: React.FC = () => {
       pb: 4,
     }}>
       {/* Başlık Bölümü */}
-      <Box sx={{ pt: { xs: 3, md: 4 }, pb: { xs: 2, md: 3 } }}>
-      <Card
-        elevation={0}
-        sx={{
-          mb: 3,
-          borderRadius: 3,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.95)} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: '#fff',
-          overflow: 'hidden',
-          position: 'relative',
-          border: 'none',
-          boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
-        }}
-      >
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -50,
-            right: -50,
-            width: 200,
-            height: 200,
-            borderRadius: '50%',
-            background: alpha('#fff', 0.1),
-          }}
-        />
-        <Box sx={{ p: 3, position: 'relative', zIndex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Box
-              sx={{
-                width: 64,
-                height: 64,
-                borderRadius: 2,
-                background: alpha('#fff', 0.2),
-                backdropFilter: 'blur(10px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `2px solid ${alpha('#fff', 0.3)}`,
-                boxShadow: `0 4px 20px ${alpha('#000', 0.2)}`,
-              }}
-            >
-              <MapIcon sx={{ fontSize: '2rem' }} />
-            </Box>
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-                İller ve İlçeler
-              </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9 }}>
-                İlleri seçerek ilçelerini görüntüleyin
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-      </Card>
+      <PageHeader
+        icon={<MapIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="İller ve İlçeler"
+        description="İlleri seçerek ilçelerini görüntüleyin"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
 
       {/* İki Tablo - Yan Yana Grid Layout */}
       <Grid container spacing={3}>

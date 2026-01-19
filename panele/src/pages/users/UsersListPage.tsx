@@ -33,6 +33,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import type { UserListItem } from '../../types/user';
 import { getUsers, getUserById } from '../../api/usersApi';
 import { useToast } from '../../hooks/useToast';
+import PageHeader from '../../components/layout/PageHeader';
 
 const UsersListPage: React.FC = () => {
   const theme = useTheme();
@@ -213,50 +214,16 @@ const UsersListPage: React.FC = () => {
     <Fade in timeout={300}>
       <Box sx={{ pb: 4 }}>
         {/* Başlık Bölümü */}
+        <PageHeader
+          icon={<PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+          title="Panel Kullanıcıları"
+          description="Sistemde tanımlı tüm kullanıcıları ve rollerini görüntüleyin"
+          color={theme.palette.primary.main}
+          darkColor={theme.palette.primary.dark}
+          lightColor={theme.palette.primary.light}
+          sx={{ mb: 0 }}
+        />
         <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 2.5,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mr: 2,
-                  boxShadow: `0 8px 16px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                }}
-              >
-                <PeopleIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                    color: theme.palette.text.primary,
-                    mb: 0.5,
-                    textAlign: 'left',
-                  }}
-                >
-                  Panel Kullanıcıları
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                    textAlign: 'left',
-                  }}
-                >
-                  Sistemde tanımlı tüm kullanıcıları ve rollerini görüntüleyin
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
 
           {/* İstatistik Kartları */}
           {!loading && (

@@ -45,7 +45,6 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import WarningIcon from '@mui/icons-material/Warning';
 import PaymentIcon from '@mui/icons-material/Payment';
 import SettingsIcon from '@mui/icons-material/Settings';
-import GetAppIcon from '@mui/icons-material/GetApp';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BadgeIcon from '@mui/icons-material/Badge';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -97,6 +96,7 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import BookIcon from '@mui/icons-material/Book';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import PageHeader from '../../components/layout/PageHeader';
 
 const MemberDetailPage = () => {
   const theme = useTheme();
@@ -638,6 +638,17 @@ const MemberDetailPage = () => {
     }
   };
 
+  const handleExportPdf = async () => {
+    if (!id) return;
+    try {
+      await exportMemberDetailToPdf(id);
+      toast.showSuccess('PDF dosyası indirildi');
+    } catch (error: any) {
+      console.error('PDF export hatası:', error);
+      toast.showError(error.response?.data?.message || 'PDF export sırasında bir hata oluştu');
+    }
+  };
+
   // Template'den ekstra değişkenleri çıkar
   const getExtraVariablesFromTemplate = (template: DocumentTemplate): string[] => {
     const standardVars = new Set([
@@ -1157,162 +1168,112 @@ const MemberDetailPage = () => {
       p: { xs: 2, sm: 3 }
     }}>
       {/* Header Card */}
-      <Card
-        elevation={0}
-        sx={{
-          mb: 3,
-          borderRadius: 4,
-          background: statusConfig.headerGradient,
-          color: '#fff',
-          overflow: 'hidden',
-          position: 'relative',
-          border: 'none',
-          boxShadow: `0 12px 40px ${alpha(statusConfig.headerShadow, 0.35)}`,
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            borderRadius: 4,
-            padding: '2px',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude',
-          },
-        }}
-      >
-        {/* Dekoratif arka plan elemanları */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -100,
-            right: -100,
-            width: 300,
-            height: 300,
-            borderRadius: '50%',
-            background: alpha('#fff', 0.08),
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: -50,
-            left: -50,
-            width: 200,
-            height: 200,
-            borderRadius: '50%',
-            background: alpha('#fff', 0.05),
-          }}
-        />
-        
-        <CardContent sx={{ p: { xs: 2.5, sm: 4 }, position: 'relative', zIndex: 1 }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 2, sm: 3 } }}>
-            <Avatar
-              sx={{
-                width: { xs: 64, sm: 90 },
-                height: { xs: 64, sm: 90 },
-                fontSize: { xs: '1.6rem', sm: '2.2rem' },
-                fontWeight: 700,
-                bgcolor: alpha('#fff', 0.2),
-                border: `4px solid ${alpha('#fff', 0.3)}`,
-                boxShadow: `0 8px 24px ${alpha('#000', 0.25)}`,
-              }}
-            >
-              {member?.firstName?.[0] || ''}
-              {member?.lastName?.[0] || ''}
-            </Avatar>
-
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
-                    fontWeight: 700,
-                    fontSize: { xs: '1.5rem', sm: '2rem' },
-                    wordBreak: 'break-word',
-                    ...(member?.user && {
-                      textShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                      position: 'relative',
-                    }),
-                  }}
-                >
-                  {member?.firstName || ''} {member?.lastName || ''}
-                </Typography>
-                {member?.user && (
-                  <Chip
-                    icon={<SecurityIcon />}
-                    label="Panel Kullanıcısı"
-                    size="small"
-                    sx={{
-                      bgcolor: alpha('#fff', 0.25),
-                      color: '#fff',
-                      fontWeight: 700,
-                      border: `2px solid ${alpha('#fff', 0.4)}`,
-                      backdropFilter: 'blur(10px)',
-                      boxShadow: `0 4px 12px ${alpha('#000', 0.2)}`,
-                      fontSize: '0.75rem',
-                      height: 28,
-                      '& .MuiChip-icon': { 
-                        color: '#fff',
-                        fontSize: '1rem',
-                      },
-                      animation: 'pulse 2s ease-in-out infinite',
-                      '@keyframes pulse': {
-                        '0%, 100%': {
-                          transform: 'scale(1)',
-                          boxShadow: `0 4px 12px ${alpha('#000', 0.2)}`,
-                        },
-                        '50%': {
-                          transform: 'scale(1.02)',
-                          boxShadow: `0 6px 16px ${alpha('#000', 0.3)}`,
-                        },
-                      },
-                    }}
-                  />
-                )}
-              </Box>
-              <Typography 
-                variant="body1" 
-                sx={{ 
-                  opacity: 0.9, 
-                  mb: 1,
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                  wordBreak: 'break-word',
-                }}
-              >
-                {member?.nationalId && `TC: ${member.nationalId}`}
-                {member?.nationalId && member?.registrationNumber && ' • '}
-                {member?.registrationNumber && `Kayıt No: ${member.registrationNumber}`}
-              </Typography>
-
+      <PageHeader
+        icon={
+          <PersonIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
+        }
+        iconSize={{ xs: 56, sm: 64 }}
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            {member?.firstName || ''} {member?.lastName || ''}
+            {member?.user && (
               <Chip
-                icon={statusConfig.icon}
-                label={statusConfig.label}
+                icon={<SecurityIcon />}
+                label="Panel Kullanıcısı"
                 size="small"
+                sx={{
+                  bgcolor: alpha('#fff', 0.25),
+                  color: '#fff',
+                  fontWeight: 700,
+                  border: `2px solid ${alpha('#fff', 0.4)}`,
+                  backdropFilter: 'blur(10px)',
+                  boxShadow: `0 4px 12px ${alpha('#000', 0.2)}`,
+                  fontSize: '0.75rem',
+                  height: 28,
+                  '& .MuiChip-icon': { 
+                    color: '#fff',
+                    fontSize: '1rem',
+                  },
+                }}
+              />
+            )}
+          </Box>
+        }
+        description={
+          member?.nationalId && member?.registrationNumber
+            ? `TC: ${member.nationalId} • Kayıt No: ${member.registrationNumber} • ${statusConfig.label}`
+            : member?.nationalId
+            ? `TC: ${member.nationalId} • ${statusConfig.label}`
+            : member?.registrationNumber
+            ? `Kayıt No: ${member.registrationNumber} • ${statusConfig.label}`
+            : statusConfig.label
+        }
+        color={statusConfig.headerShadow}
+        darkColor={statusConfig.headerShadow}
+        lightColor={alpha(statusConfig.headerShadow, 0.1)}
+        backgroundGradient={statusConfig.headerGradient}
+        rightContent={
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Stack 
+              direction={{ xs: 'column', sm: 'row' }} 
+              spacing={1.5}
+            >
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/members/${id}/edit`)}
                 sx={{
                   bgcolor: alpha('#fff', 0.2),
                   color: '#fff',
                   fontWeight: 600,
+                  backdropFilter: 'blur(10px)',
                   border: `1px solid ${alpha('#fff', 0.3)}`,
-                  '& .MuiChip-icon': { color: '#fff' },
+                  fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                  py: { xs: 1, sm: 1.5 },
+                  '&:hover': {
+                    bgcolor: alpha('#fff', 0.3),
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
+                  },
+                  transition: 'all 0.3s ease',
                 }}
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: { xs: '100%', sm: 'auto' } }}>
-              {/* İlk Satır: Düzenle ve PDF İndir Butonları */}
+              >
+                Düzenle
+              </Button>
+              {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
+                <Button
+                  variant="contained"
+                  startIcon={<SettingsIcon />}
+                  onClick={() => setStatusDialogOpen(true)}
+                  sx={{
+                    bgcolor: alpha('#fff', 0.2),
+                    color: '#fff',
+                    fontWeight: 600,
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${alpha('#fff', 0.3)}`,
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                    py: { xs: 1, sm: 1.5 },
+                    '&:hover': {
+                      bgcolor: alpha('#fff', 0.3),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  Durum Değiştir
+                </Button>
+              )}
+            </Stack>
+            {member?.status === 'PENDING' && canChangeStatus && (
               <Stack 
                 direction={{ xs: 'column', sm: 'row' }} 
                 spacing={1.5}
               >
                 <Button
                   variant="contained"
-                  startIcon={<EditIcon />}
-                  onClick={() => navigate(`/members/${id}/edit`)}
-                  fullWidth={true}
+                  startIcon={<CheckIcon />}
+                  onClick={handleOpenApproveDialog}
                   sx={{
                     bgcolor: alpha('#fff', 0.2),
                     color: '#fff',
@@ -1327,19 +1288,16 @@ const MemberDetailPage = () => {
                       boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
                     },
                     transition: 'all 0.3s ease',
-                    display: { xs: 'flex', sm: 'inline-flex' },
                   }}
                 >
-                  Düzenle
+                  Onayla
                 </Button>
-                {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
                 <Button
-                  variant="contained"
-                  startIcon={<SettingsIcon />}
-                  onClick={() => setStatusDialogOpen(true)}
-                  fullWidth={true}
+                  variant="outlined"
+                  startIcon={<CloseIcon />}
+                  onClick={handleOpenRejectDialog}
                   sx={{
-                    bgcolor: alpha('#fff', 0.2),
+                    bgcolor: alpha('#fff', 0.1),
                     color: '#fff',
                     fontWeight: 600,
                     backdropFilter: 'blur(10px)',
@@ -1347,22 +1305,44 @@ const MemberDetailPage = () => {
                     fontSize: { xs: '0.875rem', sm: '0.9375rem' },
                     py: { xs: 1, sm: 1.5 },
                     '&:hover': {
-                      bgcolor: alpha('#fff', 0.3),
+                      bgcolor: alpha('#fff', 0.2),
                       transform: 'translateY(-2px)',
                       boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
                     },
                     transition: 'all 0.3s ease',
-                    display: { xs: 'flex', sm: 'inline-flex' },
                   }}
                 >
-                  Durum Değiştir
+                  Reddet
                 </Button>
-              )}
               </Stack>
-            </Box>
+            )}
+            {(member?.status === 'ACTIVE' || member?.status === 'APPROVED') && canUploadDocument && (
+              <Button
+                variant="contained"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={handleExportPdf}
+                sx={{
+                  bgcolor: alpha('#fff', 0.2),
+                  color: '#fff',
+                  fontWeight: 600,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha('#fff', 0.3)}`,
+                  fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                  py: { xs: 1, sm: 1.5 },
+                  '&:hover': {
+                    bgcolor: alpha('#fff', 0.3),
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                PDF İndir
+              </Button>
+            )}
           </Box>
-        </CardContent>
-      </Card>
+        }
+      />
 
       {/* Panel Kullanıcı Bilgileri - Detaylı */}
       {member.user ? (
@@ -2531,7 +2511,7 @@ const MemberDetailPage = () => {
                           <Button
                             size="small"
                             variant="outlined"
-                            startIcon={<GetAppIcon />}
+                            startIcon={<PictureAsPdfIcon />}
                             onClick={async () => {
                               try {
                                 setLoadingPdf(true);

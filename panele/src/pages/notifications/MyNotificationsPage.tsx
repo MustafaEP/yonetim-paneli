@@ -38,6 +38,7 @@ import {
   type UserNotification,
 } from '../../api/notificationsApi';
 import { useToast } from '../../hooks/useToast';
+import PageHeader from '../../components/layout/PageHeader';
 
 const formatTimeAgo = (date: Date | string): string => {
   const now = new Date();
@@ -192,61 +193,34 @@ const MyNotificationsPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <NotificationsIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-          </Box>
-          <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              Bildirimlerim
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              {unreadCount > 0 ? `${unreadCount} okunmamış bildirim` : 'Tüm bildirimler okundu'}
-            </Typography>
-          </Box>
-        </Box>
-        <Stack direction="row" spacing={1}>
-          {unreadCount > 0 && (
+      <PageHeader
+        icon={<NotificationsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Bildirimlerim"
+        description={unreadCount > 0 ? `${unreadCount} okunmamış bildirim` : 'Tüm bildirimler okundu'}
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+        rightContent={
+          <Stack direction="row" spacing={1}>
+            {unreadCount > 0 && (
+              <Button
+                variant="outlined"
+                startIcon={<MarkAsReadIcon />}
+                onClick={handleMarkAllAsRead}
+              >
+                Tümünü Okundu İşaretle
+              </Button>
+            )}
             <Button
               variant="outlined"
-              startIcon={<MarkAsReadIcon />}
-              onClick={handleMarkAllAsRead}
+              startIcon={<SettingsIcon />}
+              onClick={() => navigate('/notifications/settings')}
             >
-              Tümünü Okundu İşaretle
+              Ayarlar
             </Button>
-          )}
-          <IconButton onClick={() => navigate('/notifications/settings')}>
-            <SettingsIcon />
-          </IconButton>
-        </Stack>
-      </Box>
+          </Stack>
+        }
+      />
 
       <Card
         elevation={0}

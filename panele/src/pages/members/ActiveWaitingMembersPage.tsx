@@ -66,6 +66,7 @@ import {
   getProvinces,
   getDistricts,
 } from '../../api/regionsApi';
+import PageHeader from '../../components/layout/PageHeader';
 
 const ActiveWaitingMembersPage: React.FC = () => {
   const theme = useTheme();
@@ -727,84 +728,14 @@ const ActiveWaitingMembersPage: React.FC = () => {
       }}
     >
       {/* Modern Başlık Bölümü */}
-      <Box
-        sx={{
-          mb: 4,
-          p: { xs: 3, sm: 4, md: 5 },
-          borderRadius: 4,
-          background: statusFilter === 'ALL' 
-            ? `linear-gradient(135deg, ${alpha('#0891b2', 0.06)} 0%, ${alpha('#059669', 0.06)} 100%)`
-            : `linear-gradient(135deg, ${alpha(statusTheme.mainColor, 0.08)} 0%, ${alpha(statusTheme.lightColor, 0.05)} 100%)`,
-          border: `1px solid ${alpha(statusTheme.mainColor, 0.15)}`,
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            width: '300px',
-            height: '300px',
-            background: `radial-gradient(circle, ${alpha(statusTheme.mainColor, 0.1)} 0%, transparent 70%)`,
-            borderRadius: '50%',
-            transform: 'translate(30%, -30%)',
-          },
-        }}
-      >
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box
-                sx={{
-                  width: { xs: 56, sm: 64 },
-                  height: { xs: 56, sm: 64 },
-                  borderRadius: 3,
-                  background: statusFilter === 'ALL'
-                    ? `linear-gradient(135deg, #0891b2 0%, #059669 100%)`
-                    : `linear-gradient(135deg, ${statusTheme.mainColor} 0%, ${statusTheme.darkColor} 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: `0 8px 24px ${alpha(statusTheme.mainColor, 0.35)}`,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-4px) scale(1.05)',
-                    boxShadow: `0 12px 32px ${alpha(statusTheme.mainColor, 0.45)}`,
-                  },
-                }}
-              >
-                <PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h3"
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
-                    color: theme.palette.text.primary,
-                    mb: 0.5,
-                    letterSpacing: '-0.02em',
-                    textAlign: 'left',
-                  }}
-                >
-                  Üyeler
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    fontSize: { xs: '0.9rem', sm: '1rem' },
-                    fontWeight: 500,
-                    textAlign: 'left',
-                  }}
-                >
-                  Onaylanmış ve aktif üyeleri görüntüleyin ve yönetin
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      </Box>
+      <PageHeader
+        icon={<PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Üyeler"
+        description="Onaylanmış ve aktif üyeleri görüntüleyin ve yönetin"
+        color={statusFilter === 'ALL' ? '#0891b2' : statusTheme.mainColor}
+        darkColor={statusFilter === 'ALL' ? '#059669' : statusTheme.darkColor}
+        lightColor={statusFilter === 'ALL' ? undefined : statusTheme.lightColor}
+      />
 
       {/* Ana Kart - Filtre ve Tablo */}
       <Card

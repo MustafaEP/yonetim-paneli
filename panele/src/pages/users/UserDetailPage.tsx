@@ -68,6 +68,7 @@ import UserRolesDialog from '../../components/users/UserRolesDialog';
 import { updateUserRoles } from '../../api/usersApi';
 
 import UserPermissionsSection from '../../components/users/UserPermissionsSection';
+import PageHeader from '../../components/layout/PageHeader';
 
 const UserDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -371,50 +372,14 @@ const UserDetailPage: React.FC = () => {
     <Fade in timeout={300}>
       <Box sx={{ pb: 4 }}>
         {/* Başlık Bölümü */}
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 3,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mr: 2,
-                  boxShadow: `0 8px 16px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                }}
-              >
-                <PersonIcon sx={{ color: '#fff', fontSize: '2rem' }} />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                    color: theme.palette.text.primary,
-                    mb: 0.5,
-                  }}
-                >
-                  {fullName}
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <EmailIcon sx={{ fontSize: '1rem', color: theme.palette.text.secondary }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: theme.palette.text.secondary,
-                      fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                    }}
-                  >
-                    {user.email}
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
+        <PageHeader
+          icon={<PersonIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+          title={fullName}
+          description={user.email}
+          color={theme.palette.primary.main}
+          darkColor={theme.palette.primary.dark}
+          lightColor={theme.palette.primary.light}
+          rightContent={
             <Chip
               icon={user.isActive ? <CheckCircleIcon /> : <CancelIcon />}
               label={user.isActive ? 'Aktif' : 'Pasif'}
@@ -426,8 +391,8 @@ const UserDetailPage: React.FC = () => {
                 '& .MuiChip-icon': { fontSize: '1.1rem' }
               }}
             />
-          </Box>
-        </Box>
+          }
+        />
 
         {/* Kullanıcı Bilgileri Kartı */}
         <Card

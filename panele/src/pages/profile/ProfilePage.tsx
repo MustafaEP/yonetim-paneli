@@ -30,6 +30,7 @@ import UserPermissionsSection from '../../components/users/UserPermissionsSectio
 import { getUserScopes } from '../../api/regionsApi';
 import type { UserScope } from '../../types/region';
 import type { Role } from '../../types/user';
+import PageHeader from '../../components/layout/PageHeader';
 
 const ProfilePage: React.FC = () => {
   const theme = useTheme();
@@ -101,58 +102,14 @@ const ProfilePage: React.FC = () => {
       <Fade in={mounted} timeout={800}>
         <Box>
           {/* Başlık Bölümü */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Zoom in={mounted} timeout={600}>
-                <Box
-                  sx={{
-                    width: { xs: 36, sm: 40 },
-                    height: { xs: 36, sm: 40 },
-                    borderRadius: 2,
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mr: 2,
-                    boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    '&:hover': {
-                      transform: 'rotate(5deg) scale(1.05)',
-                      boxShadow: `0 6px 24px ${alpha(theme.palette.primary.main, 0.5)}`,
-                    },
-                  }}
-                >
-                  <PersonIcon sx={{ color: '#fff', fontSize: { xs: '1.3rem', sm: '1.5rem' } }} />
-                </Box>
-              </Zoom>
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    mb: 0.5,
-                  }}
-                >
-                  Profilim
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    fontSize: { xs: '0.875rem', sm: '0.95rem' },
-                    fontWeight: 500,
-                  }}
-                >
-                  Kişisel bilgileriniz ve yetki alanlarınızı görüntüleyin
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
+          <PageHeader
+            icon={<PersonIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+            title="Profilim"
+            description="Kişisel bilgileriniz ve yetki alanlarınızı görüntüleyin"
+            color={theme.palette.primary.main}
+            darkColor={theme.palette.primary.dark}
+            lightColor={theme.palette.primary.light}
+          />
 
           <Grid container spacing={{ xs: 2, sm: 3 }}>
             {/* Sol Taraf - Kullanıcı Bilgileri */}

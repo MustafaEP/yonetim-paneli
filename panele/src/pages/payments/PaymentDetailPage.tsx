@@ -28,6 +28,7 @@ import {
   type PaymentType,
 } from '../../api/paymentsApi';
 import { httpClient } from '../../api/httpClient';
+import PageHeader from '../../components/layout/PageHeader';
 
 const PaymentDetailPage: React.FC = () => {
   const theme = useTheme();
@@ -134,113 +135,14 @@ const PaymentDetailPage: React.FC = () => {
       </Box>
 
       {/* Modern Header Card */}
-      <Card
-        elevation={0}
-        sx={{
-          mb: 3,
-          borderRadius: 4,
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: '#fff',
-          overflow: 'hidden',
-          position: 'relative',
-          border: 'none',
-          boxShadow: `0 12px 40px ${alpha(theme.palette.primary.main, 0.35)}`,
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            borderRadius: 4,
-            padding: '2px',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude',
-          },
-        }}
-      >
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -100,
-            right: -100,
-            width: 300,
-            height: 300,
-            borderRadius: '50%',
-            background: alpha('#fff', 0.08),
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: -50,
-            left: -50,
-            width: 200,
-            height: 200,
-            borderRadius: '50%',
-            background: alpha('#fff', 0.05),
-          }}
-        />
-        
-        <Box sx={{ p: { xs: 2.5, sm: 4 }, position: 'relative', zIndex: 1 }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: { xs: 2, sm: 3 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box
-                sx={{
-                  width: { xs: 56, sm: 64 },
-                  height: { xs: 56, sm: 64 },
-                  borderRadius: 3,
-                  background: alpha('#fff', 0.2),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: `0 8px 24px ${alpha('#000', 0.25)}`,
-                }}
-              >
-                <PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                    mb: 0.5,
-                  }}
-                >
-                  Ödeme Detayı
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    opacity: 0.9,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                  }}
-                >
-                  {payment.member?.firstName && payment.member?.lastName
-                    ? `${payment.member.firstName} ${payment.member.lastName}`
-                    : payment.createdByUser
-                    ? `${payment.createdByUser.firstName} ${payment.createdByUser.lastName}`
-                    : 'Üye bilgisi yok'}
-                </Typography>
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-              <Chip
-                label={paymentTypeLabels[payment.paymentType]}
-                sx={{
-                  bgcolor: alpha('#fff', 0.2),
-                  color: '#fff',
-                  fontWeight: 600,
-                  border: `1px solid ${alpha('#fff', 0.3)}`,
-                }}
-              />
-            </Box>
-          </Box>
-        </Box>
-      </Card>
+      <PageHeader
+        icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Ödeme Detayı"
+        description={payment ? `${payment.member.firstName} ${payment.member.lastName} - ${paymentTypeLabels[payment.type]} - ${payment.amount} TL` : 'Ödeme detay bilgileri'}
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
 
       <Grid container spacing={3}>
         {/* Üye Bilgisi */}

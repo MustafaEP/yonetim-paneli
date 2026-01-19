@@ -46,6 +46,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import ApprovePanelUserApplicationDialog from '../../components/users/ApprovePanelUserApplicationDialog';
 import RejectPanelUserApplicationDialog from '../../components/users/RejectPanelUserApplicationDialog';
+import PageHeader from '../../components/layout/PageHeader';
 
 const PanelUserApplicationsPage: React.FC = () => {
   const theme = useTheme();
@@ -330,48 +331,16 @@ const PanelUserApplicationsPage: React.FC = () => {
     <Fade in timeout={300}>
       <Box sx={{ pb: 4 }}>
         {/* Başlık Bölümü */}
+        <PageHeader
+          icon={<BadgeIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+          title="Panel Kullanıcı Başvuruları"
+          description="Üyelerin panel kullanıcılığına terfi başvurularını görüntüleyin ve yönetin"
+          color={theme.palette.warning.main}
+          darkColor={theme.palette.warning.dark}
+          lightColor={theme.palette.warning.light}
+          sx={{ mb: 0 }}
+        />
         <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2.5,
-                background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 2,
-                boxShadow: `0 8px 16px 0 ${alpha(theme.palette.warning.main, 0.3)}`,
-              }}
-            >
-              <BadgeIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-            </Box>
-            <Box>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                  color: theme.palette.text.primary,
-                  mb: 0.5,
-                  textAlign: 'left',
-                }}
-              >
-                Panel Kullanıcı Başvuruları
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                  textAlign: 'left',
-                }}
-              >
-                Üyelerin panel kullanıcılığına terfi başvurularını görüntüleyin ve yönetin
-              </Typography>
-            </Box>
-          </Box>
 
           {/* İstatistik Kartları */}
           {!loading && (
