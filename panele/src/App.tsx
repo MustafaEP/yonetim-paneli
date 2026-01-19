@@ -2,6 +2,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { SnackbarProvider } from 'notistack';
+import { ErrorDialogProvider } from './context/ErrorDialogContext';
 import LoginPage from './pages/auth/LoginPage';
 import MembersListPage from './pages/members/MembersListPage';
 import MembersByStatusPage from './pages/members/MembersByStatusPage';
@@ -39,6 +40,7 @@ import PaymentsListPage from './pages/payments/PaymentsListPage';
 import PaymentDetailPage from './pages/payments/PaymentDetailPage';
 import PaymentInquiryPage from './pages/payments/PaymentInquiryPage';
 import QuickPaymentEntryPage from './pages/payments/QuickPaymentEntryPage';
+import RecentPaymentsPage from './pages/payments/RecentPaymentsPage';
 import BranchDetailPage from './pages/regions/BranchDetailPage';
 import InstitutionsPage from './pages/regions/InstitutionsPage';
 import InstitutionDetailPage from './pages/regions/InstitutionDetailPage';
@@ -100,14 +102,15 @@ const ForbiddenPage: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <SnackbarProvider
-      maxSnack={3}
-      anchorOrigin={{
-        vertical: 'top',
-        horizontal: 'right',
-      }}
-      autoHideDuration={4000}
-    >
+    <ErrorDialogProvider>
+      <SnackbarProvider
+        maxSnack={3}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        autoHideDuration={4000}
+      >
       <Routes>
       <Route path="/login" element={<LoginPage />} />
 
@@ -236,6 +239,7 @@ const App: React.FC = () => {
           <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_LIST" />}>
             <Route path="/payments" element={<PaymentsListPage />} />
             <Route path="/payments/inquiry" element={<PaymentInquiryPage />} />
+            <Route path="/payments/recent" element={<RecentPaymentsPage />} />
             <Route path="/payments/quick-entry" element={<QuickPaymentEntryPage />} />
           </Route>
           {/* Ödeme Detay: MEMBER_PAYMENT_VIEW */}
@@ -252,6 +256,7 @@ const App: React.FC = () => {
       </Route>
     </Routes>
     </SnackbarProvider>
+    </ErrorDialogProvider>
   );
 };
 

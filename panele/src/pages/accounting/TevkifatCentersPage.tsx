@@ -1,5 +1,5 @@
 // src/pages/accounting/TevkifatCentersPage.tsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -10,25 +10,16 @@ import {
   InputAdornment,
   IconButton,
   Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   CircularProgress,
   Alert,
   useTheme,
   alpha,
   Paper,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormLabel,
-  Divider,
   Tabs,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Tab,
   Table,
   TableBody,
@@ -37,7 +28,6 @@ import {
   TableHead,
   TableRow,
   Chip,
-  Switch,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
@@ -49,22 +39,19 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
 import BadgeIcon from '@mui/icons-material/Badge';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import {
   getTevkifatCenters,
-  deleteTevkifatCenter,
   getTevkifatTitles,
   createTevkifatTitle,
   updateTevkifatTitle,
   deleteTevkifatTitle,
   type TevkifatCenter,
-  type DeleteTevkifatCenterDto,
   type TevkifatTitle,
   type CreateTevkifatTitleDto,
 } from '../../api/accountingApi';
+import DeleteTevkifatCenterDialog from '../../components/accounting/DeleteTevkifatCenterDialog';
 
 const TevkifatCentersPage: React.FC = () => {
   const theme = useTheme();
@@ -78,14 +65,8 @@ const TevkifatCentersPage: React.FC = () => {
   const [rows, setRows] = useState<TevkifatCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  // Varsayılan olarak sadece aktifleri göster: "kaldır" işlemi soft-delete (isActive=false)
-  // olduğu için kullanıcı kaldırınca listeden kalkmış gibi görünsün.
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingCenter, setDeletingCenter] = useState<TevkifatCenter | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteActionType, setDeleteActionType] = useState<DeleteTevkifatCenterDto['memberActionType']>('REMOVE_TEVKIFAT_CENTER');
-  const [deleteTargetTevkifatCenterId, setDeleteTargetTevkifatCenterId] = useState<string>('');
 
   // Tevkifat Unvanları state
   const [titles, setTitles] = useState<TevkifatTitle[]>([]);
@@ -98,6 +79,7 @@ const TevkifatCentersPage: React.FC = () => {
   const [deactivateTitleDialogOpen, setDeactivateTitleDialogOpen] = useState(false);
   const [deletingTitle, setDeletingTitle] = useState<TevkifatTitle | null>(null);
   const [deactivatingTitle, setDeactivatingTitle] = useState<TevkifatTitle | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const canView = hasPermission('ACCOUNTING_VIEW');
   const canManage = hasPermission('ACCOUNTING_VIEW'); // Admin yetkisi
@@ -135,57 +117,17 @@ const TevkifatCentersPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deletingCenter) return;
-
-    // Transfer seçenekleri için hedef merkez kontrolü
-    if (
-      (deleteActionType === 'TRANSFER_TO_TEVKIFAT_CENTER' ||
-        deleteActionType === 'TRANSFER_AND_DEACTIVATE' ||
-        deleteActionType === 'TRANSFER_AND_CANCEL') &&
-      !deleteTargetTevkifatCenterId
-    ) {
-      toast.showError('Lütfen hedef tevkifat merkezi seçin');
-      return;
-    }
-
-    setDeleting(true);
-    try {
-      const dto: DeleteTevkifatCenterDto = {
-        memberActionType: deleteActionType,
-        ...(deleteTargetTevkifatCenterId && { targetTevkifatCenterId: deleteTargetTevkifatCenterId }),
-      };
-      await deleteTevkifatCenter(deletingCenter.id, dto);
-      toast.showSuccess('Tevkifat merkezi kaldırıldı');
-      setDeleteDialogOpen(false);
-      setDeletingCenter(null);
-      setDeleteActionType('REMOVE_TEVKIFAT_CENTER');
-      setDeleteTargetTevkifatCenterId('');
-      loadCenters();
-    } catch (e: any) {
-      console.error('Tevkifat merkezi silinirken hata:', e);
-      toast.showError(e.response?.data?.message || 'Tevkifat merkezi silinirken bir hata oluştu');
-    } finally {
-      setDeleting(false);
-    }
+  const handleDeleteSuccess = () => {
+    loadCenters();
   };
 
+  // Sadece aktif tevkifat merkezlerini göster
   const filteredRows = rows.filter((row) => {
     const matchesSearch =
       row.name.toLowerCase().includes(searchText.toLowerCase());
-    const matchesStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'ACTIVE' && row.isActive) ||
-      (statusFilter === 'INACTIVE' && !row.isActive);
-    return matchesSearch && matchesStatus;
+    return matchesSearch && row.isActive;
   });
 
-  // Hedef tevkifat merkezi seçimi için kullanılabilir merkezler
-  const availableTevkifatCenters = useMemo(() => {
-    return rows.filter(
-      (center) => center.id !== deletingCenter?.id && center.isActive
-    );
-  }, [rows, deletingCenter?.id]);
 
   // Tevkifat Unvanları handler'ları
   const handleOpenTitleDialog = (title?: TevkifatTitle) => {
@@ -290,25 +232,6 @@ const TevkifatCentersPage: React.FC = () => {
       headerAlign: 'left',
     },
     {
-      field: 'isActive',
-      headerName: 'Durum',
-      width: 140,
-      sortable: true,
-      align: 'left',
-      headerAlign: 'left',
-      renderCell: (params) => {
-        const isActive = Boolean(params.row?.isActive);
-        return (
-          <Chip
-            label={isActive ? 'Aktif' : 'Pasif'}
-            color={isActive ? 'success' : 'default'}
-            size="small"
-            sx={{ fontWeight: 600 }}
-          />
-        );
-      },
-    },
-    {
       field: 'actions',
       headerName: 'İşlemler',
       width: 200,
@@ -354,8 +277,6 @@ const TevkifatCentersPage: React.FC = () => {
                     size="small"
                     onClick={() => {
                       setDeletingCenter(center);
-                      setDeleteActionType('REMOVE_TEVKIFAT_CENTER');
-                      setDeleteTargetTevkifatCenterId('');
                       setDeleteDialogOpen(true);
                     }}
                     sx={{
@@ -667,37 +588,6 @@ const TevkifatCentersPage: React.FC = () => {
                     ),
                   }}
                 />
-                <FormControl 
-                  size="medium" 
-                  sx={{ 
-                    minWidth: { xs: '100%', sm: 180 },
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#fff',
-                      borderRadius: 2.5,
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
-                      },
-                    },
-                  }}
-                >
-                  <InputLabel>Durum Filtresi</InputLabel>
-                  <Select
-                    value={statusFilter}
-                    label="Durum Filtresi"
-                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                    sx={{
-                      '& .MuiSelect-select': {
-                        fontWeight: statusFilter !== 'ALL' ? 600 : 400,
-                        color: statusFilter !== 'ALL' ? theme.palette.primary.main : 'inherit',
-                      },
-                    }}
-                  >
-                    <MenuItem value="ALL">Tümü</MenuItem>
-                    <MenuItem value="ACTIVE">Aktif</MenuItem>
-                    <MenuItem value="INACTIVE">Pasif</MenuItem>
-                  </Select>
-                </FormControl>
               </Box>
 
               {/* Sonuç Sayısı */}
@@ -1161,278 +1051,22 @@ const TevkifatCentersPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Pasif Yap Dialog */}
-      <Dialog 
-        open={deleteDialogOpen} 
-        onClose={() => !deleting && setDeleteDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            boxShadow: `0 8px 32px ${alpha(theme.palette.warning.main, 0.15)}`,
-          },
+      {/* Tevkifat Merkezi Kaldırma Dialog */}
+      <DeleteTevkifatCenterDialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setDeletingCenter(null);
         }}
-      >
-        <DialogTitle 
-            sx={{ 
-              pb: 1,
-              pt: 3,
-              px: 3,
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              color: theme.palette.error.main,
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.3)}`,
-              }}
-            >
-              <DeleteIcon />
-            </Box>
-            Tevkifat Merkezini Kaldır
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3, px: 3 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Alert severity="warning" sx={{ borderRadius: 2 }}>
-              <Typography variant="body2" fontWeight={600} gutterBottom>
-                "{deletingCenter?.name}" adlı tevkifat merkezini kaldırmak istediğinize emin misiniz?
-              </Typography>
-              <Typography variant="body2">
-                Bu tevkifat merkezine bağlı {deletingCenter?.memberCount || 0} üye bulunmaktadır. 
-                Tevkifat merkezini kaldırmadan önce üyelere ne yapılacağını seçmeniz gerekmektedir.
-              </Typography>
-            </Alert>
-
-            <Box>
-              <FormLabel sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.95rem', display: 'block' }}>
-                Üyelere Ne Yapılacak?
-              </FormLabel>
-              <RadioGroup
-                value={deleteActionType}
-                onChange={(e) => setDeleteActionType(e.target.value as DeleteTevkifatCenterDto['memberActionType'])}
-                sx={{ gap: 1 }}
-              >
-                <FormControlLabel
-                  value="REMOVE_TEVKIFAT_CENTER"
-                  control={<Radio />}
-                  label={
-                    <Box>
-                      <Typography variant="body1" fontWeight={600}>
-                        Tevkifat Merkezi Bilgisini Kaldır
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Üyelerin tevkifat merkezi bilgisi kaldırılacak (null yapılacak), durumları değişmeyecek
-                      </Typography>
-                    </Box>
-                  }
-                  sx={{
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                    p: 1.5,
-                    m: 0,
-                    '&:hover': {
-                      bgcolor: alpha(theme.palette.primary.main, 0.04),
-                    },
-                  }}
-                />
-                <FormControlLabel
-                  value="TRANSFER_TO_TEVKIFAT_CENTER"
-                  control={<Radio />}
-                  label={
-                    <Box>
-                      <Typography variant="body1" fontWeight={600}>
-                        Başka Bir Tevkifat Merkezine Taşı
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Üyeler seçilen tevkifat merkezine taşınacak, durumları değişmeyecek
-                      </Typography>
-                    </Box>
-                  }
-                  sx={{
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                    p: 1.5,
-                    m: 0,
-                    '&:hover': {
-                      bgcolor: alpha(theme.palette.primary.main, 0.04),
-                    },
-                  }}
-                />
-                <FormControlLabel
-                  value="REMOVE_AND_DEACTIVATE"
-                  control={<Radio />}
-                  label={
-                    <Box>
-                      <Typography variant="body1" fontWeight={600}>
-                        Tevkifat Merkezi Bilgisini Kaldır ve Pasif Et
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Üyelerin tevkifat merkezi bilgisi kaldırılacak ve pasif duruma getirilecek
-                      </Typography>
-                    </Box>
-                  }
-                  sx={{
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                    p: 1.5,
-                    m: 0,
-                    '&:hover': {
-                      bgcolor: alpha(theme.palette.warning.main, 0.04),
-                    },
-                  }}
-                />
-                <FormControlLabel
-                  value="TRANSFER_AND_DEACTIVATE"
-                  control={<Radio />}
-                  label={
-                    <Box>
-                      <Typography variant="body1" fontWeight={600}>
-                        Başka Bir Tevkifat Merkezine Taşı ve Pasif Et
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Üyeler seçilen tevkifat merkezine taşınacak ve pasif duruma getirilecek
-                      </Typography>
-                    </Box>
-                  }
-                  sx={{
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                    p: 1.5,
-                    m: 0,
-                    '&:hover': {
-                      bgcolor: alpha(theme.palette.warning.main, 0.04),
-                    },
-                  }}
-                />
-                <FormControlLabel
-                  value="TRANSFER_AND_CANCEL"
-                  control={<Radio />}
-                  label={
-                    <Box>
-                      <Typography variant="body1" fontWeight={600}>
-                        Başka Bir Tevkifat Merkezine Taşı ve İptal Et
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Üyeler seçilen tevkifat merkezine taşınacak ve üyelikleri iptal edilecek (İstifa)
-                      </Typography>
-                    </Box>
-                  }
-                  sx={{
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                    p: 1.5,
-                    m: 0,
-                    '&:hover': {
-                      bgcolor: alpha(theme.palette.error.main, 0.04),
-                    },
-                  }}
-                />
-              </RadioGroup>
-            </Box>
-
-            {(deleteActionType === 'TRANSFER_TO_TEVKIFAT_CENTER' ||
-              deleteActionType === 'TRANSFER_AND_DEACTIVATE' ||
-              deleteActionType === 'TRANSFER_AND_CANCEL') && (
-              <>
-                <Divider />
-                <FormControl fullWidth required>
-                  <InputLabel>Hedef Tevkifat Merkezi</InputLabel>
-                  <Select
-                    value={deleteTargetTevkifatCenterId}
-                    onChange={(e) => setDeleteTargetTevkifatCenterId(e.target.value)}
-                    label="Hedef Tevkifat Merkezi"
-                    disabled={deleting}
-                    sx={{
-                      borderRadius: 2,
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: alpha(theme.palette.divider, 0.2),
-                      },
-                    }}
-                  >
-                    <MenuItem value="">
-                      <em>Hedef tevkifat merkezi seçin</em>
-                    </MenuItem>
-                    {loading ? (
-                      <MenuItem disabled>
-                        <CircularProgress size={16} sx={{ mr: 1 }} />
-                        Yükleniyor...
-                      </MenuItem>
-                    ) : availableTevkifatCenters.length === 0 ? (
-                      <MenuItem disabled>
-                        Kullanılabilir tevkifat merkezi bulunamadı
-                      </MenuItem>
-                    ) : (
-                      availableTevkifatCenters.map((center) => (
-                        <MenuItem key={center.id} value={center.id}>
-                          {center.name}
-                          {center.memberCount !== undefined && ` (${center.memberCount} üye)`}
-                        </MenuItem>
-                      ))
-                    )}
-                  </Select>
-                  <Alert severity="info" sx={{ mt: 1.5, borderRadius: 2 }}>
-                    Üyeler bu tevkifat merkezine taşınacaktır
-                  </Alert>
-                </FormControl>
-              </>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 2, gap: 1.5 }}>
-          <Button 
-            onClick={() => {
-              setDeleteDialogOpen(false);
-              setDeletingCenter(null);
-              setDeleteActionType('REMOVE_TEVKIFAT_CENTER');
-              setDeleteTargetTevkifatCenterId('');
-            }} 
-            disabled={deleting}
-            sx={{ 
-              borderRadius: 2,
-              px: 3,
-              fontWeight: 600,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleDelete}
-            color="error"
-            variant="contained"
-            disabled={
-              deleting || 
-              (deleteActionType !== 'REMOVE_TEVKIFAT_CENTER' && 
-               deleteActionType !== 'REMOVE_AND_DEACTIVATE' && 
-               !deleteTargetTevkifatCenterId)
-            }
-            startIcon={deleting ? <CircularProgress size={16} /> : <DeleteIcon />}
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              fontWeight: 600,
-              boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.3)}`,
-              '&:hover': {
-                boxShadow: `0 6px 16px ${alpha(theme.palette.error.main, 0.4)}`,
-              },
-            }}
-          >
-            {deleting ? 'Kaldırılıyor...' : 'Kaldır'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        center={deletingCenter ? {
+          id: deletingCenter.id,
+          name: deletingCenter.name,
+          memberCount: deletingCenter.memberCount,
+        } : null}
+        availableCenters={rows}
+        loadingCenters={loading}
+        onSuccess={handleDeleteSuccess}
+      />
 
     </Box>
   );

@@ -22,24 +22,27 @@ import {
   FormControl,
   InputLabel,
   FormHelperText,
+  Chip,
+  Paper,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DescriptionIcon from '@mui/icons-material/Description';
-import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PersonIcon from '@mui/icons-material/Person';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import CloseIcon from '@mui/icons-material/Close';
 import Autocomplete from '@mui/material/Autocomplete';
 
 import type { MemberDocument, DocumentTemplate, GenerateDocumentDto } from '../../api/documentsApi';
-import { getMemberDocuments, uploadMemberDocument, downloadDocument, viewDocument, generateDocument, getDocumentTemplates } from '../../api/documentsApi';
+import { getMemberDocuments, uploadMemberDocument, generateDocument, getDocumentTemplates } from '../../api/documentsApi';
 import { getMembers } from '../../api/membersApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import type { MemberListItem } from '../../types/member';
 import { DOCUMENT_TYPES, getDocumentTypeLabel } from '../../utils/documentTypes';
+import httpClient from '../../api/httpClient';
 
 const MemberDocumentsPage: React.FC = () => {
   const { memberId: paramMemberId } = useParams<{ memberId?: string }>();
@@ -62,7 +65,12 @@ const MemberDocumentsPage: React.FC = () => {
   const [customFileName, setCustomFileName] = useState<string>('');
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
+  const [extraVariables, setExtraVariables] = useState<Record<string, string>>({});
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfTitle, setPdfTitle] = useState<string>('');
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   const canView = hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
   const canUpload = hasPermission('DOCUMENT_GENERATE_PDF');
@@ -172,22 +180,105 @@ const MemberDocumentsPage: React.FC = () => {
   const handleOpenGenerateDialog = () => {
     setGenerateDialogOpen(true);
     setSelectedTemplate(null);
+    setExtraVariables({});
     loadTemplates();
+  };
+
+  // Template'den ekstra değişkenleri çıkar (şablonda var ama backend'in otomatik doldurmadıkları)
+  const getExtraVariablesFromTemplate = (template: DocumentTemplate): string[] => {
+    const standardVars = new Set([
+      'firstName',
+      'lastName',
+      'fullName',
+      'memberNumber',
+      'nationalId',
+      'phone',
+      'email',
+      'province',
+      'district',
+      'institution',
+      'branch',
+      'date',
+      'joinDate',
+      'applicationDate',
+      'validUntil',
+      'birthPlace',
+      'gender',
+      'educationStatus',
+      'position',
+      'workUnitAddress',
+      'birthDate',
+      'motherName',
+      'fatherName',
+      'dutyUnit',
+      'institutionAddress',
+      'boardDecisionDate',
+      'boardDecisionBookNo',
+      'membershipInfoOption',
+      'memberGroup',
+    ]);
+
+    const varRegex = /\{\{\s*(\w+)\s*\}\}/g;
+    const foundVars = new Set<string>();
+    let match;
+
+    while ((match = varRegex.exec(template.template)) !== null) {
+      const varName = match[1];
+      if (!standardVars.has(varName)) {
+        foundVars.add(varName);
+      }
+    }
+
+    return Array.from(foundVars);
+  };
+
+  const getVariableLabel = (varName: string): string => {
+    const labels: Record<string, string> = {
+      oldProvince: 'Eski İl',
+      oldDistrict: 'Eski İlçe',
+      oldInstitution: 'Eski Kurum',
+      oldBranch: 'Eski Şube',
+      transferReason: 'Nakil Nedeni',
+
+      eventName: 'Etkinlik Adı',
+      eventDate: 'Etkinlik Tarihi',
+      eventPlace: 'Etkinlik Yeri',
+      eventDescription: 'Etkinlik Açıklaması',
+
+      invitationDate: 'Davet Tarihi',
+      meetingDate: 'Toplantı Tarihi',
+      meetingPlace: 'Toplantı Yeri',
+
+      subject: 'Konu',
+      reason: 'Sebep',
+      description: 'Açıklama',
+    };
+
+    return labels[varName] || varName.replace(/([A-Z])/g, ' $1').trim();
   };
 
   const handleGenerate = async () => {
     if (!selectedMember || !selectedTemplate) return;
+
+    // Boş değişkenleri kontrol et (şablondan gelen ekstra alanlar)
+    const emptyVars = Object.entries(extraVariables).filter(([_, value]) => !value || value.trim() === '');
+    if (emptyVars.length > 0) {
+      toast.showError(`Lütfen tüm alanları doldurun: ${emptyVars.map(([k]) => getVariableLabel(k)).join(', ')}`);
+      return;
+    }
 
     setGenerating(true);
     try {
       const payload: GenerateDocumentDto = {
         memberId: selectedMember.id,
         templateId: selectedTemplate.id,
+        variables: Object.keys(extraVariables).length > 0 ? extraVariables : undefined,
       };
       await generateDocument(payload);
       toast.showSuccess('PDF doküman başarıyla oluşturuldu');
       setGenerateDialogOpen(false);
       setSelectedTemplate(null);
+      setExtraVariables({});
       loadDocuments();
     } catch (e: any) {
       console.error('PDF oluşturulurken hata:', e);
@@ -202,20 +293,59 @@ const MemberDocumentsPage: React.FC = () => {
       field: 'documentType',
       headerName: 'Doküman Türü',
       flex: 1,
-      minWidth: 200,
+      minWidth: 180,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
-        return getDocumentTypeLabel(params.value || 'UPLOADED');
+        const label = getDocumentTypeLabel(params.value || 'UPLOADED');
+        const colors: Record<string, string> = {
+          'MEMBER_REGISTRATION': theme.palette.primary.main,
+          'PAYMENT_RECEIPT': theme.palette.success.main,
+          'DOCUMENT': theme.palette.info.main,
+          'UPLOADED': theme.palette.secondary.main,
+        };
+        const color = colors[params.value] || theme.palette.grey[500];
+        
+        return (
+          <Chip
+            label={label}
+            size="small"
+            sx={{
+              bgcolor: alpha(color, 0.1),
+              color: color,
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              height: 24,
+              borderRadius: 1.5,
+              border: `1px solid ${alpha(color, 0.2)}`,
+            }}
+          />
+        );
       },
     },
     {
       field: 'fileName',
       headerName: 'Dosya Adı',
-      flex: 1,
-      minWidth: 200,
-      align: 'center',
+      flex: 2,
+      minWidth: 250,
+      align: 'left',
       headerAlign: 'center',
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+          <PictureAsPdfIcon sx={{ color: theme.palette.error.main, fontSize: '1.2rem', flexShrink: 0 }} />
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {params.value || 'Belge'}
+          </Typography>
+        </Box>
+      ),
     },
     {
       field: 'generatedAt',
@@ -225,7 +355,17 @@ const MemberDocumentsPage: React.FC = () => {
       headerAlign: 'center',
       renderCell: (params) => {
         if (!params.value) return '-';
-        return new Date(params.value).toLocaleString('tr-TR');
+        const date = new Date(params.value);
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.875rem', lineHeight: 1.4 }}>
+              {date.toLocaleDateString('tr-TR')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+              {date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+            </Typography>
+          </Box>
+        );
       },
     },
     {
@@ -236,55 +376,68 @@ const MemberDocumentsPage: React.FC = () => {
       headerAlign: 'center',
       renderCell: (params) => {
         const user = params.row.generatedByUser;
-        if (!user) return '-';
-        return `${user.firstName} ${user.lastName}`;
+        if (!user) return <Typography variant="body2" color="text.secondary">-</Typography>;
+        return (
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {user.firstName} {user.lastName}
+          </Typography>
+        );
       },
     },
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 150,
+      width: 100,
       sortable: false,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
         const doc = params.row as MemberDocument;
         return (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-            <Tooltip title="Görüntüle">
-              <IconButton
-                size="small"
-                onClick={async () => {
-                  try {
-                    await viewDocument(doc.id);
-                  } catch (error) {
-                    console.error('Dosya görüntülenirken hata:', error);
-                    toast.showError('Dosya görüntülenemedi');
+          <Tooltip title="PDF Görüntüle">
+            <IconButton
+              size="small"
+              onClick={async () => {
+                try {
+                  setLoadingPdf(true);
+                  const token = localStorage.getItem('accessToken');
+                  const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+                  const url = `${API_BASE_URL}/documents/view/${doc.id}`;
+                  
+                  const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                    },
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Dosya görüntülenemedi');
                   }
-                }}
-                sx={{ color: theme.palette.info.main }}
-              >
-                <VisibilityIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="İndir">
-              <IconButton
-                size="small"
-                onClick={async () => {
-                  try {
-                    // Dosya adını veritabanından al ve direkt kullan
-                    await downloadDocument(doc.id, doc.fileName);
-                  } catch (error) {
-                    console.error('Dosya indirilirken hata:', error);
-                    toast.showError('Dosya indirilemedi');
-                  }
-                }}
-                sx={{ color: theme.palette.primary.main }}
-              >
-                <DownloadIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
+
+                  const blob = await response.blob();
+                  const blobUrl = window.URL.createObjectURL(blob);
+                  setPdfUrl(blobUrl);
+                  setPdfTitle(doc.fileName || 'Belge');
+                  setPdfViewerOpen(true);
+                  setLoadingPdf(false);
+                } catch (error) {
+                  console.error('Dosya görüntülenirken hata:', error);
+                  toast.showError('Dosya görüntülenemedi');
+                  setLoadingPdf(false);
+                }
+              }}
+              sx={{
+                bgcolor: alpha(theme.palette.info.main, 0.1),
+                color: theme.palette.info.main,
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.info.main, 0.2),
+                },
+              }}
+            >
+              <VisibilityIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         );
       },
     },
@@ -422,41 +575,184 @@ const MemberDocumentsPage: React.FC = () => {
       </Box>
 
       {selectedMember ? (
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-          }}
-        >
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            loading={loading}
-            autoHeight
-            disableRowSelectionOnClick
-            pageSizeOptions={[10, 25, 50, 100]}
-            initialState={{
-              pagination: {
-                paginationModel: { pageSize: 25 },
-              },
-            }}
+        <>
+          {/* İstatistik Kartları */}
+          {rows.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  flex: 1,
+                  minWidth: 200,
+                  p: 2.5,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 100%)`,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
+                  Toplam Doküman
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                  {rows.length}
+                </Typography>
+              </Paper>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  flex: 1,
+                  minWidth: 200,
+                  p: 2.5,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.08)} 0%, ${alpha(theme.palette.success.main, 0.02)} 100%)`,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
+                  Oluşturulan PDF
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.success.main }}>
+                  {rows.filter(r => r.documentType !== 'UPLOADED').length}
+                </Typography>
+              </Paper>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  flex: 1,
+                  minWidth: 200,
+                  p: 2.5,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.info.main, 0.02)} 100%)`,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
+                  Yüklenen Doküman
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.info.main }}>
+                  {rows.filter(r => r.documentType === 'UPLOADED').length}
+                </Typography>
+              </Paper>
+            </Box>
+          )}
+
+          <Card
+            elevation={0}
             sx={{
-              border: 'none',
-              '& .MuiDataGrid-cell': {
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              },
+              borderRadius: 3,
+              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              overflow: 'hidden',
             }}
-          />
-        </Card>
+          >
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              loading={loading}
+              autoHeight
+              disableRowSelectionOnClick
+              pageSizeOptions={[10, 25, 50, 100]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 25 },
+                },
+              }}
+              localeText={{
+                noRowsLabel: 'Doküman bulunamadı',
+                MuiTablePagination: {
+                  labelRowsPerPage: 'Sayfa başına satır:',
+                  labelDisplayedRows: ({ from, to, count }) =>
+                    `${from}–${to} / ${count !== -1 ? count : `${to}'den fazla`}`,
+                },
+              }}
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-row': {
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                  },
+                },
+                '& .MuiDataGrid-cell': {
+                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                  py: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.06),
+                  borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                  },
+                },
+                '& .MuiDataGrid-footerContainer': {
+                  borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  backgroundColor: alpha(theme.palette.background.default, 0.4),
+                },
+              }}
+            />
+          </Card>
+
+          {rows.length === 0 && !loading && (
+            <Box
+              sx={{
+                textAlign: 'center',
+                py: 8,
+                px: 2,
+              }}
+            >
+              <DescriptionIcon
+                sx={{
+                  fontSize: 80,
+                  color: alpha(theme.palette.text.secondary, 0.3),
+                  mb: 2,
+                }}
+              />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                Henüz doküman bulunmuyor
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Bu üye için henüz doküman oluşturulmamış veya yüklenmemiş.
+              </Typography>
+              {canUpload && (
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={handleOpenGenerateDialog}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      boxShadow: `0 4px 14px 0 ${alpha(theme.palette.error.main, 0.3)}`,
+                      bgcolor: theme.palette.error.main,
+                      '&:hover': {
+                        bgcolor: theme.palette.error.dark,
+                      },
+                    }}
+                  >
+                    PDF Oluştur
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<UploadFileIcon />}
+                    onClick={() => setUploadDialogOpen(true)}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                    }}
+                  >
+                    Doküman Yükle
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
+        </>
       ) : (
         <Card
           elevation={0}
@@ -464,12 +760,22 @@ const MemberDocumentsPage: React.FC = () => {
             borderRadius: 3,
             border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
             boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-            p: 4,
+            p: 6,
             textAlign: 'center',
           }}
         >
-          <Typography variant="body1" color="text.secondary">
-            Lütfen bir üye seçin
+          <PersonIcon
+            sx={{
+              fontSize: 80,
+              color: alpha(theme.palette.primary.main, 0.3),
+              mb: 2,
+            }}
+          />
+          <Typography variant="h6" color="text.primary" gutterBottom sx={{ fontWeight: 600 }}>
+            Üye Seçiniz
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Doküman geçmişini görüntülemek için yukarıdan bir üye seçin
           </Typography>
         </Card>
       )}
@@ -489,10 +795,45 @@ const MemberDocumentsPage: React.FC = () => {
         }} 
         maxWidth="sm" 
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+          },
+        }}
       >
-        <DialogTitle>Doküman Yükle</DialogTitle>
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            pb: 2,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <UploadFileIcon sx={{ color: theme.palette.primary.main }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Doküman Yükle
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              PDF formatında doküman yükleyin
+            </Typography>
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 3 }}>
             <TextField
               fullWidth
               type="file"
@@ -503,8 +844,24 @@ const MemberDocumentsPage: React.FC = () => {
               helperText="Sadece PDF dosyaları yüklenebilir"
             />
             {selectedFile && (
-              <Alert severity="info">
-                Seçilen dosya: <strong>{selectedFile.name}</strong> ({(selectedFile.size / 1024).toFixed(2)} KB)
+              <Alert 
+                severity="success"
+                icon={<PictureAsPdfIcon />}
+                sx={{ 
+                  borderRadius: 2,
+                  '& .MuiAlert-message': {
+                    width: '100%',
+                  },
+                }}
+              >
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    Seçilen dosya:
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>{selectedFile.name}</strong> ({(selectedFile.size / 1024).toFixed(2)} KB)
+                  </Typography>
+                </Box>
               </Alert>
             )}
             <TextField
@@ -543,7 +900,14 @@ const MemberDocumentsPage: React.FC = () => {
             />
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            gap: 1.5,
+          }}
+        >
           <Button 
             onClick={() => {
               setUploadDialogOpen(false);
@@ -553,6 +917,11 @@ const MemberDocumentsPage: React.FC = () => {
               setDescription('');
             }} 
             disabled={uploading}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+            }}
           >
             İptal
           </Button>
@@ -561,6 +930,13 @@ const MemberDocumentsPage: React.FC = () => {
             variant="contained"
             disabled={uploading || !selectedFile || !documentType}
             startIcon={uploading ? <CircularProgress size={16} /> : <UploadFileIcon />}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+              fontWeight: 600,
+              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+            }}
           >
             {uploading ? 'Yükleniyor...' : 'Yükle'}
           </Button>
@@ -578,10 +954,45 @@ const MemberDocumentsPage: React.FC = () => {
         }} 
         maxWidth="sm" 
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+          },
+        }}
       >
-        <DialogTitle>PDF Doküman Oluştur</DialogTitle>
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            pb: 2,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.error.main, 0.1),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <PictureAsPdfIcon sx={{ color: theme.palette.error.main }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              PDF Doküman Oluştur
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Şablon seçerek PDF oluşturun
+            </Typography>
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 3 }}>
             {loadingTemplates ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
                 <CircularProgress />
@@ -594,6 +1005,17 @@ const MemberDocumentsPage: React.FC = () => {
                   onChange={(e) => {
                     const template = templates.find(t => t.id === e.target.value);
                     setSelectedTemplate(template || null);
+
+                    if (template) {
+                      const extraVars = getExtraVariablesFromTemplate(template);
+                      const newExtraVariables: Record<string, string> = {};
+                      extraVars.forEach((varName) => {
+                        newExtraVariables[varName] = '';
+                      });
+                      setExtraVariables(newExtraVariables);
+                    } else {
+                      setExtraVariables({});
+                    }
                   }}
                   label="Şablon Seç"
                 >
@@ -611,26 +1033,92 @@ const MemberDocumentsPage: React.FC = () => {
               </FormControl>
             )}
             {selectedTemplate && (
-              <Alert severity="info">
-                <Typography variant="body2" fontWeight={600} gutterBottom>
-                  Seçilen Şablon: {selectedTemplate.name}
-                </Typography>
-                {selectedTemplate.description && (
-                  <Typography variant="body2" color="text.secondary">
-                    {selectedTemplate.description}
-                  </Typography>
+              <>
+                <Alert 
+                  severity="success"
+                  icon={<PictureAsPdfIcon />}
+                  sx={{ 
+                    borderRadius: 2,
+                    '& .MuiAlert-message': {
+                      width: '100%',
+                    },
+                  }}
+                >
+                  <Box>
+                    <Typography variant="body2" fontWeight={600} gutterBottom>
+                      Seçilen Şablon: {selectedTemplate.name}
+                    </Typography>
+                    {selectedTemplate.description && (
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedTemplate.description}
+                      </Typography>
+                    )}
+                  </Box>
+                </Alert>
+
+                {/* Şablonda olup otomatik dolmayan alanlar */}
+                {Object.keys(extraVariables).length > 0 && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography variant="body2" fontWeight={600} color="text.secondary">
+                      Lütfen aşağıdaki bilgileri doldurun:
+                    </Typography>
+                    {Object.keys(extraVariables).map((varName) => {
+                      const isMulti =
+                        varName.toLowerCase().includes('reason') ||
+                        varName.toLowerCase().includes('description');
+
+                      const value = extraVariables[varName] || '';
+                      const isEmpty = value.trim() === '';
+
+                      return (
+                        <TextField
+                          key={varName}
+                          label={getVariableLabel(varName)}
+                          value={value}
+                          onChange={(e) =>
+                            setExtraVariables((prev) => ({
+                              ...prev,
+                              [varName]: e.target.value,
+                            }))
+                          }
+                          fullWidth
+                          size="small"
+                          required
+                          disabled={generating}
+                          placeholder={`${getVariableLabel(varName)} girin`}
+                          error={isEmpty}
+                          helperText={isEmpty ? 'Bu alan zorunludur' : ''}
+                          multiline={isMulti}
+                          rows={isMulti ? 3 : 1}
+                          sx={{ borderRadius: 2 }}
+                        />
+                      );
+                    })}
+                  </Box>
                 )}
-              </Alert>
+              </>
             )}
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            gap: 1.5,
+          }}
+        >
           <Button
             onClick={() => {
               setGenerateDialogOpen(false);
               setSelectedTemplate(null);
             }}
             disabled={generating}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+            }}
           >
             İptal
           </Button>
@@ -639,10 +1127,122 @@ const MemberDocumentsPage: React.FC = () => {
             variant="contained"
             disabled={!selectedTemplate || generating}
             startIcon={generating ? <CircularProgress size={16} /> : <PictureAsPdfIcon />}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+              fontWeight: 600,
+              bgcolor: theme.palette.error.main,
+              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.error.main, 0.3)}`,
+              '&:hover': {
+                bgcolor: theme.palette.error.dark,
+              },
+            }}
           >
             {generating ? 'Oluşturuluyor...' : 'PDF Oluştur'}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* PDF Görüntüleme Dialog */}
+      <Dialog
+        open={pdfViewerOpen}
+        onClose={() => {
+          setPdfViewerOpen(false);
+          if (pdfUrl) {
+            window.URL.revokeObjectURL(pdfUrl);
+            setPdfUrl(null);
+          }
+        }}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            height: '90vh',
+            maxHeight: '90vh',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            pb: 2,
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {pdfTitle}
+          </Typography>
+          <IconButton
+            onClick={() => {
+              setPdfViewerOpen(false);
+              if (pdfUrl) {
+                window.URL.revokeObjectURL(pdfUrl);
+                setPdfUrl(null);
+              }
+            }}
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.error.main, 0.1),
+                color: theme.palette.error.main,
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            p: 0,
+            height: 'calc(90vh - 80px)',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {loadingPdf ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <CircularProgress size={48} />
+              <Typography variant="body2" color="text.secondary">
+                PDF yükleniyor...
+              </Typography>
+            </Box>
+          ) : pdfUrl ? (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+                overflow: 'hidden',
+                '& iframe': {
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                },
+                // PDF viewer sidebar'ını gizle
+                '& embed': {
+                  width: '100%',
+                  height: '100%',
+                },
+              }}
+            >
+              <embed
+                src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                type="application/pdf"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                }}
+              />
+            </Box>
+          ) : null}
+        </DialogContent>
       </Dialog>
     </Box>
   );

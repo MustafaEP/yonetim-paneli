@@ -197,7 +197,13 @@ const MembersApplicationsPage: React.FC = () => {
           status: member.status,
         })) as MemberApplicationRow[];
       }
-      setRows(Array.isArray(data) ? data : []);
+      // Kayıt tarihine göre sırala (yeni üyeler önce)
+      const sortedData = (Array.isArray(data) ? data : []).sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA; // Azalan sıralama (yeni önce)
+      });
+      setRows(sortedData);
     } catch (e) {
       console.error('Üye başvuruları alınırken hata:', e);
       setRows([]);

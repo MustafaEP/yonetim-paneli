@@ -1286,88 +1286,112 @@ async function main() {
   const templates = [
     {
       name: 'Üye Sertifikası',
-      description: 'Üyelik sertifikası için standart şablon - Detaylı format',
-      template: `═══════════════════════════════════════════════════════════
-                    ÜYE SERTİFİKASI
-═══════════════════════════════════════════════════════════
+      description: 'Kurumsal üyelik sertifikası (A4, resmi format)',
+      template: `
+<div style="text-align:center;">
+  <div style="font-size:16pt;font-weight:800;letter-spacing:.5px;">ÜYE SERTİFİKASI</div>
+  <div style="margin-top:6px;font-size:10pt;color:#444;">Bu belge sendika üyeliğini resmî olarak teyit eder.</div>
+</div>
 
-Bu sertifika, {{firstName}} {{lastName}} adlı kişinin sendikamıza 
-üye olduğunu ve sendika üyeliğinin aktif olduğunu belgeler.
+<div style="border-top:1px solid #111;margin:14px 0 16px;"></div>
 
-═══════════════════════════════════════════════════════════
-                    ÜYE BİLGİLERİ
-═══════════════════════════════════════════════════════════
+<div style="font-size:11pt;">
+  Bu sertifika, <b>{{firstName}} {{lastName}}</b> adlı kişinin sendikamıza üye olduğunu ve üyeliğinin aktif olduğunu belgeler.
+</div>
 
-Ad Soyad          : {{firstName}} {{lastName}}
-Üye Numarası      : {{memberNumber}}
-TC Kimlik No      : {{nationalId}}
-Üyelik Tarihi     : {{joinDate}}
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-Telefon           : {{phone}}
-E-posta           : {{email}}
+<div style="margin-top:14px;">
+  <div style="font-size:12pt;font-weight:700;margin-bottom:8px;">Üye Bilgileri</div>
+  <table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+    <tbody>
+      <tr><td style="width:34%;padding:6px 0;color:#333;">Ad Soyad</td><td style="padding:6px 0;">: <b>{{firstName}} {{lastName}}</b></td></tr>
+      <tr><td style="padding:6px 0;color:#333;">Üye Numarası</td><td style="padding:6px 0;">: {{memberNumber}}</td></tr>
+      <tr><td style="padding:6px 0;color:#333;">T.C. Kimlik No</td><td style="padding:6px 0;">: {{nationalId}}</td></tr>
+      <tr><td style="padding:6px 0;color:#333;">Üyelik Tarihi</td><td style="padding:6px 0;">: {{joinDate}}</td></tr>
+      <tr><td style="padding:6px 0;color:#333;">İl / İlçe</td><td style="padding:6px 0;">: {{province}} / {{district}}</td></tr>
+      <tr><td style="padding:6px 0;color:#333;">Kurum</td><td style="padding:6px 0;">: {{institution}}</td></tr>
+      <tr><td style="padding:6px 0;color:#333;">Şube</td><td style="padding:6px 0;">: {{branch}}</td></tr>
+      <tr><td style="padding:6px 0;color:#333;">Telefon</td><td style="padding:6px 0;">: {{phone}}</td></tr>
+      <tr><td style="padding:6px 0;color:#333;">E-posta</td><td style="padding:6px 0;">: {{email}}</td></tr>
+    </tbody>
+  </table>
+</div>
 
-═══════════════════════════════════════════════════════════
+<div style="border-top:1px solid #ddd;margin:18px 0 12px;"></div>
 
-Bu sertifika {{date}} tarihinde düzenlenmiştir.
-
-Saygılarımızla,
-Sendika Yönetimi
-
-[İmza Alanı]
-═══════════════════════════════════════════════════════════`,
+<table style="width:100%;font-size:10.5pt;">
+  <tr>
+    <td style="width:50%;vertical-align:top;color:#555;">Düzenlenme Tarihi: <b>{{date}}</b></td>
+    <td style="width:50%;text-align:right;vertical-align:top;">
+      <div style="font-weight:700;">Sendika Yönetimi</div>
+      <div style="margin-top:38px;">İmza / Kaşe</div>
+    </td>
+  </tr>
+</table>`,
       type: DocumentTemplateType.MEMBER_CERTIFICATE,
       isActive: true,
     },
     {
       name: 'Üye Kartı',
-      description: 'Üye kimlik kartı şablonu - Profesyonel format',
-      template: `┌─────────────────────────────────────────┐
-│         SENDİKA ÜYE KARTI              │
-├─────────────────────────────────────────┤
-│                                         │
-│  AD SOYAD                               │
-│  {{firstName}} {{lastName}}            │
-│                                         │
-│  ÜYE NO: {{memberNumber}}              │
-│  TC KİMLİK: {{nationalId}}             │
-│                                         │
-│  İL: {{province}}                      │
-│  İLÇE: {{district}}                    │
-│  KURUM: {{institution}}                │
-│                                         │
-│  ÜYELİK TARİHİ: {{joinDate}}           │
-│  GEÇERLİLİK: {{validUntil}}            │
-│                                         │
-│  [Fotoğraf Alanı]                      │
-│                                         │
-│  Bu kart, sendika üyeliğini belgeler.  │
-│                                         │
-└─────────────────────────────────────────┘`,
+      description: 'Üye kartı (A4 üzerinde kart formatı)',
+      template: `
+<div style="display:flex;justify-content:center;">
+  <div style="width:90mm;border:1px solid #111;border-radius:10px;overflow:hidden;">
+    <div style="padding:10px 12px;background:#0b3a7a;color:#fff;">
+      <div style="font-size:10pt;font-weight:800;letter-spacing:.6px;">SENDİKA ÜYE KARTI</div>
+      <div style="font-size:8.5pt;opacity:.9;margin-top:2px;">Resmî Üyelik Kimliği</div>
+    </div>
+    <div style="padding:12px;">
+      <div style="font-size:12pt;font-weight:800;">{{firstName}} {{lastName}}</div>
+      <div style="margin-top:8px;font-size:9.5pt;">
+        <div><span style="color:#444;">Üye No</span>: <b>{{memberNumber}}</b></div>
+        <div><span style="color:#444;">T.C.</span>: {{nationalId}}</div>
+        <div><span style="color:#444;">İl/İlçe</span>: {{province}} / {{district}}</div>
+        <div><span style="color:#444;">Kurum</span>: {{institution}}</div>
+        <div><span style="color:#444;">Şube</span>: {{branch}}</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;align-items:flex-end;">
+        <div style="width:26mm;height:34mm;border:1px dashed #999;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#777;">
+          Fotoğraf
+        </div>
+        <div style="font-size:8.5pt;color:#555;flex:1;">
+          <div>Üyelik Tarihi: <b>{{joinDate}}</b></div>
+          <div>Geçerlilik: <b>{{validUntil}}</b></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:8px 12px;border-top:1px solid #eee;font-size:8.5pt;color:#555;">
+      Bu kart sendika üyeliğini belgeler.
+    </div>
+  </div>
+</div>`,
       type: DocumentTemplateType.MEMBER_CARD,
       isActive: true,
     },
     {
       name: 'Genel Mektup',
-      description: 'Genel amaçlı mektup şablonu - Resmi format',
-      template: `═══════════════════════════════════════════════════════════
-                    RESMİ YAZIŞMA
-═══════════════════════════════════════════════════════════
+      description: 'Resmî yazışma şablonu (konu + içerik)',
+      template: `
+<div style="text-align:right;font-size:10.5pt;color:#444;">
+  Tarih: <b>{{date}}</b>
+</div>
 
-Sayın {{firstName}} {{lastName}},
+<div style="margin-top:10px;font-size:11pt;">
+  <div style="font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
+</div>
 
-{{content}}
+<div style="margin-top:10px;border:1px solid #ddd;border-radius:8px;padding:10px 12px;">
+  <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>Konu:</b> {{subject}}</div>
+  <div style="font-size:11pt;white-space:pre-wrap;">{{content}}</div>
+</div>
 
-Yukarıda belirtilen konu hakkında bilgilerinize sunulur.
+<div style="margin-top:16px;font-size:11pt;">
+  Bilgilerinize sunar, gereğini rica ederiz.
+</div>
 
-Saygılarımızla,
-
-Sendika Yönetimi
-{{date}}
-
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:22px;text-align:right;">
+  <div style="font-weight:700;">Sendika Yönetimi</div>
+  <div style="margin-top:40px;">İmza / Kaşe</div>
+</div>`,
       type: DocumentTemplateType.LETTER,
       isActive: true,
     },
@@ -1801,8 +1825,15 @@ Sendika Yönetimi
     },
     {
       key: 'SITE_LOGO_URL',
-      value: '/logo.png',
+      value: '/uploads/logos/default-logo.png',
       description: 'Site logo URL',
+      category: SystemSettingCategory.GENERAL,
+      isEditable: true,
+    },
+    {
+      key: 'DOCUMENT_HEADER_PAPER_PATH',
+      value: '/uploads/header-paper/yonetim_paneli_antetli_kagit.pdf',
+      description: 'Üye dökümanları için antetli kağıt dosyası yolu',
       category: SystemSettingCategory.GENERAL,
       isEditable: true,
     },
@@ -3375,14 +3406,14 @@ Sendika Yönetimi
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
 
-    // Her aktif üye için son 3-6 ay arası rastgele ödemeler oluştur (3 üye için toplam 3-9 ödeme)
+    // Her aktif üye için son 3-12 ay arası rastgele ödemeler oluştur (3 üye için toplam 3-9 ödeme)
     activeMembers.forEach((member, index) => {
       // Üye başına 1-3 arası ödeme oluştur
       const paymentCount = 1 + Math.floor(Math.random() * 3);
       
       for (let i = 0; i < paymentCount; i++) {
-        // Geçmiş 6 ay içinde rastgele bir ay seç
-        const monthsAgo = Math.floor(Math.random() * 6);
+        // Geçmiş 12 ay içinde rastgele bir ay seç (daha çeşitli tarihler için)
+        const monthsAgo = Math.floor(Math.random() * 12);
         let paymentYear = currentYear;
         let paymentMonth = currentMonth - monthsAgo;
         
@@ -3407,11 +3438,12 @@ Sendika Yönetimi
           continue;
         }
 
-        // Tutar (seed için sıfırlandı)
-        const amount = '0.00';
+        // Tutar (100-250 TL arası rastgele)
+        const amount = (100 + Math.random() * 150).toFixed(2);
 
-        // Ödeme tarihi (dönem ayının rastgele bir günü)
-        const paymentDate = new Date(paymentYear, paymentMonth - 1, 1 + Math.floor(Math.random() * 28));
+        // Ödeme tarihi (dönem ayının rastgele bir günü, son 12 ay içinde rastgele)
+        const daysInMonth = new Date(paymentYear, paymentMonth, 0).getDate();
+        const paymentDate = new Date(paymentYear, paymentMonth - 1, 1 + Math.floor(Math.random() * daysInMonth));
 
         // %80 onaylı, %20 onaysız
         const isApproved = Math.random() < 0.8;
@@ -3451,6 +3483,133 @@ Sendika Yönetimi
     console.log(`   - ${payments.length} ödeme kaydı eklendi (tümü tevkifat)`);
     console.log(`   - Onaylı: ${payments.filter(p => p.isApproved).length}`);
     console.log(`   - Onaysız: ${payments.filter(p => !p.isApproved).length}`);
+
+    // 🔹 Ek 100 ödeme daha ekle (aynı kurallarla)
+    console.log('💳 Ek 100 ödeme daha ekleniyor...');
+    const additionalPayments: typeof payments = [];
+    
+    // Tevkifat merkezi olan üyeleri filtrele
+    const membersWithTevkifat = activeMembers.filter(m => m.tevkifatCenterId);
+    
+    if (membersWithTevkifat.length === 0) {
+      console.log('   ⚠️  Tevkifat merkezi olan üye bulunamadı, ek ödeme eklenemedi');
+    } else {
+      for (let i = 0; i < 100; i++) {
+        // Rastgele bir aktif üye seç (tevkifat merkezi olan)
+        const randomMember = membersWithTevkifat[Math.floor(Math.random() * membersWithTevkifat.length)];
+        
+        // Geçmiş 12 ay içinde rastgele bir ay seç
+        const monthsAgo = Math.floor(Math.random() * 12);
+        let paymentYear = currentYear;
+        let paymentMonth = currentMonth - monthsAgo;
+        
+        // Ay negatif olursa bir önceki yıla geç
+        while (paymentMonth <= 0) {
+          paymentMonth += 12;
+          paymentYear -= 1;
+        }
+        
+        // Tutar (100-250 TL arası rastgele)
+        const amount = (100 + Math.random() * 150).toFixed(2);
+        
+        // Ödeme tarihi (dönem ayının rastgele bir günü)
+        const daysInMonth = new Date(paymentYear, paymentMonth, 0).getDate();
+        const paymentDate = new Date(paymentYear, paymentMonth - 1, 1 + Math.floor(Math.random() * daysInMonth));
+        
+        // %80 onaylı, %20 onaysız
+        const isApproved = Math.random() < 0.8;
+        
+        additionalPayments.push({
+          memberId: randomMember.id,
+          registrationNumber: randomMember.registrationNumber,
+          paymentDate,
+          paymentPeriodMonth: paymentMonth,
+          paymentPeriodYear: paymentYear,
+          amount,
+          paymentType: PaymentType.TEVKIFAT,
+          tevkifatCenterId: randomMember.tevkifatCenterId,
+          tevkifatFileId: null,
+          description: `${paymentMonth}/${paymentYear} tevkifat ödemesi`,
+          documentUrl: isApproved ? `uploads/payments/payment-${randomMember.id}-${paymentYear}-${paymentMonth}-${i}.pdf` : null,
+          isApproved,
+          approvedByUserId: isApproved ? approvedByUserId : null,
+          approvedAt: isApproved ? new Date(paymentDate.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000) : null,
+          createdByUserId,
+          ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        });
+      }
+    }
+    
+    // Ek ödemeleri toplu ekle
+    if (additionalPayments.length > 0) {
+      for (let i = 0; i < additionalPayments.length; i += batchSize) {
+        const batch = additionalPayments.slice(i, i + batchSize);
+        await prisma.memberPayment.createMany({
+          data: batch,
+          skipDuplicates: true,
+        });
+      }
+      console.log(`   - ${additionalPayments.length} ek ödeme kaydı eklendi`);
+      console.log(`   - Onaylı: ${additionalPayments.filter(p => p.isApproved).length}`);
+      console.log(`   - Onaysız: ${additionalPayments.filter(p => !p.isApproved).length}`);
+    }
+
+    // 🔹 Onaylı ödemeler için PDF dosyaları oluştur
+    console.log('📄 Ödeme belgesi PDF dosyaları oluşturuluyor...');
+    const sourcePaymentPdfPath = path.join(prismaDir, 'Odeme.pdf');
+    const paymentsUploadsDir = isProduction 
+      ? path.join(process.cwd(), 'uploads', 'payments')
+      : path.join(__dirname, '..', 'uploads', 'payments');
+    
+    // Uploads/payments klasörünü oluştur (yoksa)
+    if (!fs.existsSync(paymentsUploadsDir)) {
+      fs.mkdirSync(paymentsUploadsDir, { recursive: true });
+    }
+
+    // Kaynak PDF dosyasının var olup olmadığını kontrol et
+    if (!fs.existsSync(sourcePaymentPdfPath)) {
+      console.warn(`   ⚠️  Kaynak ödeme PDF dosyası bulunamadı: ${sourcePaymentPdfPath}`);
+      console.warn(`   ⚠️  Ödeme belgesi PDF dosyaları oluşturulamadı`);
+    } else {
+      // Onaylı ödemeleri al (documentUrl'i olanlar)
+      const approvedPayments = await prisma.memberPayment.findMany({
+        where: {
+          documentUrl: { not: null },
+          isApproved: true,
+        },
+        select: {
+          id: true,
+          documentUrl: true,
+          memberId: true,
+        },
+      });
+
+      if (approvedPayments.length > 0) {
+        let paymentDocumentCount = 0;
+
+        for (const payment of approvedPayments) {
+          try {
+            if (!payment.documentUrl) continue;
+
+            // documentUrl formatı: uploads/payments/payment-{memberId}-{year}-{month}.pdf
+            // Dosya adını çıkar
+            const fileName = payment.documentUrl.split('/').pop() || `payment-${payment.id}.pdf`;
+            const targetFilePath = path.join(paymentsUploadsDir, fileName);
+
+            // PDF dosyasını kopyala
+            fs.copyFileSync(sourcePaymentPdfPath, targetFilePath);
+            paymentDocumentCount++;
+          } catch (error) {
+            console.error(`   ⚠️  Ödeme ${payment.id} için PDF oluşturulurken hata:`, error);
+          }
+        }
+
+        console.log(`   - ${paymentDocumentCount} ödeme belgesi PDF dosyası oluşturuldu`);
+      } else {
+        console.log('   ⚠️  Onaylı ödeme bulunamadı, PDF dosyaları oluşturulamadı');
+      }
+    }
 
     // 🔹 Tevkifat Dosyaları Oluştur (Son Tevkifat Ayı için)
     console.log('📁 Tevkifat dosyaları oluşturuluyor...');
@@ -3571,6 +3730,27 @@ Sendika Yönetimi
 
     await prisma.systemLog.createMany({ data: logs });
     console.log(`   - ${logs.length} sistem logu eklendi`);
+  }
+
+  // 🔹 Antetli kağıt dosyasını kopyala
+  console.log('📋 Antetli kağıt dosyası kopyalanıyor...');
+  const sourceHeaderPaperPath = path.join(prismaDir, 'yonetim_paneli_antetli_kagit.pdf');
+  const headerPaperDir = isProduction 
+    ? path.join(process.cwd(), 'uploads', 'header-paper')
+    : path.join(__dirname, '..', 'uploads', 'header-paper');
+  
+  // Header paper klasörünü oluştur (yoksa)
+  if (!fs.existsSync(headerPaperDir)) {
+    fs.mkdirSync(headerPaperDir, { recursive: true });
+  }
+
+  // Antetli kağıt dosyasını kopyala
+  if (fs.existsSync(sourceHeaderPaperPath)) {
+    const targetHeaderPaperPath = path.join(headerPaperDir, 'yonetim_paneli_antetli_kagit.pdf');
+    fs.copyFileSync(sourceHeaderPaperPath, targetHeaderPaperPath);
+    console.log(`   ✅ Antetli kağıt dosyası kopyalandı: ${targetHeaderPaperPath}`);
+  } else {
+    console.warn(`   ⚠️  Antetli kağıt kaynak dosyası bulunamadı: ${sourceHeaderPaperPath}`);
   }
 
   // 🔹 Her üye için üye kayıt PDF dosyası oluştur

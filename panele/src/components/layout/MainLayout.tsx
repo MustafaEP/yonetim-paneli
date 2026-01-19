@@ -23,6 +23,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useSystemSettings } from '../../context/SystemSettingsContext';
 import { useDocumentHead } from '../../hooks/useDocumentHead';
 import { Avatar } from '@mui/material';
+import { getMemberById } from '../../api/membersApi';
+import type { MemberDetail } from '../../types/member';
 
 const MainLayout: React.FC = () => {
   const theme = useTheme();
@@ -42,6 +44,9 @@ const MainLayout: React.FC = () => {
 
   const siteName = getSettingValue('SITE_NAME', 'Sendika Yönetim Paneli');
   const siteLogoUrl = getSettingValue('SITE_LOGO_URL', '');
+
+  // Üye bilgisi için state (breadcrumb'da kullanmak için)
+  const [memberInfo, setMemberInfo] = useState<{ id: string; name: string } | null>(null);
   
   // Footer text'i useMemo ile optimize et
   const footerText = useMemo(() => {
@@ -135,6 +140,36 @@ const MainLayout: React.FC = () => {
     provinces: 'İller',
     districts: 'İlçeler',
   };
+
+  // Üye detay sayfasında üye bilgisini çek
+  useEffect(() => {
+    const currentPathnames = location.pathname.split('/').filter((x) => x);
+    const isMemberDetailPage = currentPathnames.length === 2 && currentPathnames[0] === 'members' && currentPathnames[1] !== 'applications' && currentPathnames[1] !== 'waiting' && currentPathnames[1] !== 'approved' && currentPathnames[1] !== 'status' && !breadcrumbNameMap[currentPathnames[1]];
+    
+    if (isMemberDetailPage) {
+      const memberId = currentPathnames[1];
+      // Eğer aynı üye zaten yüklenmişse tekrar yükleme
+      if (memberInfo?.id === memberId) {
+        return;
+      }
+      
+      getMemberById(memberId)
+        .then((member: MemberDetail) => {
+          setMemberInfo({
+            id: memberId,
+            name: `${member.firstName} ${member.lastName}`.trim(),
+          });
+        })
+        .catch((error) => {
+          console.error('Üye bilgisi alınırken hata:', error);
+          setMemberInfo(null);
+        });
+    } else {
+      // Üye detay sayfası değilse state'i temizle
+      setMemberInfo(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -298,14 +333,7 @@ const MainLayout: React.FC = () => {
               py: { xs: 1.5, sm: 2, md: 2.5 },
               backgroundColor: '#ffffff',
               borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-              overflowX: 'auto',
-              '&::-webkit-scrollbar': {
-                height: '4px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.2),
-                borderRadius: '4px',
-              },
+              overflow: 'hidden',
             }}
           >
             <Breadcrumbs
@@ -314,6 +342,12 @@ const MainLayout: React.FC = () => {
               sx={{
                 '& .MuiBreadcrumbs-ol': {
                   flexWrap: 'nowrap',
+                  overflow: 'hidden',
+                },
+                '& .MuiBreadcrumbs-li': {
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                 },
               }}
             >
@@ -328,6 +362,9 @@ const MainLayout: React.FC = () => {
                   fontSize: { xs: '0.8rem', sm: '0.875rem' },
                   fontWeight: 500,
                   whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '150px',
                   '&:hover': {
                     color: theme.palette.primary.main,
                   },
@@ -338,7 +375,12 @@ const MainLayout: React.FC = () => {
               {pathnames.map((value, index) => {
                 const last = index === pathnames.length - 1;
                 const to = `/${pathnames.slice(0, index + 1).join('/')}`;
-                const breadcrumbText = breadcrumbNameMap[value] || value.charAt(0).toUpperCase() + value.slice(1);
+                
+                // Üye detay sayfası için özel kontrol
+                let breadcrumbText = breadcrumbNameMap[value] || value.charAt(0).toUpperCase() + value.slice(1);
+                if (index === 1 && pathnames[0] === 'members' && memberInfo && memberInfo.id === value) {
+                  breadcrumbText = memberInfo.name;
+                }
 
                 return last ? (
                   <Typography
@@ -350,6 +392,9 @@ const MainLayout: React.FC = () => {
                       fontSize: { xs: '0.8rem', sm: '0.875rem' },
                       fontWeight: 600,
                       whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: { xs: '200px', sm: '300px', md: '400px' },
                     }}
                   >
                     {breadcrumbText}
@@ -367,6 +412,9 @@ const MainLayout: React.FC = () => {
                       fontSize: { xs: '0.8rem', sm: '0.875rem' },
                       fontWeight: 500,
                       whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: { xs: '150px', sm: '200px', md: '250px' },
                       '&:hover': {
                         color: theme.palette.primary.main,
                       },

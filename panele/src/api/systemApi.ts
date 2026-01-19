@@ -72,6 +72,18 @@ export const uploadLogo = async (file: File): Promise<string> => {
   return res.data.url;
 };
 
+// Antetli kağıt yükleme
+export const uploadHeaderPaper = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('headerPaper', file);
+
+  const res = await httpClient.post<{ url: string }>(
+    '/system/upload-header-paper',
+    formData,
+  );
+  return res.data.url;
+};
+
 // Sistem logları
 export const getSystemLogs = async (params?: {
   userId?: string;

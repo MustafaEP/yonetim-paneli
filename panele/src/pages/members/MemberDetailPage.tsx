@@ -59,16 +59,15 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SecurityIcon from '@mui/icons-material/Security';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { getMemberById, exportMemberDetailToPdf, updateMember, approveMember, rejectMember, getMemberHistory } from '../../api/membersApi';
+import httpClient from '../../api/httpClient';
 import MemberStatusChangeDialog from '../../components/members/MemberStatusChangeDialog';
 import PromoteToPanelUserDialog from '../../components/members/PromoteToPanelUserDialog';
 import MemberApprovalDialog, { type ApproveFormData } from '../../components/members/MemberApprovalDialog';
 import { ActivateMemberButton } from '../../components/members/ActivateMemberButton';
-import { getMemberPayments, viewPaymentDocument, downloadPaymentDocument } from '../../api/paymentsApi';
+import { getMemberPayments } from '../../api/paymentsApi';
 import { getPanelUserApplications } from '../../api/panelUserApplicationsApi';
 import { 
   getMemberDocuments, 
-  viewDocument, 
-  downloadDocument, 
   uploadMemberDocument,
   generateDocument,
   getDocumentTemplates,
@@ -116,6 +115,12 @@ const MemberDetailPage = () => {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [memberHistory, setMemberHistory] = useState<MemberHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // PDF görüntüleme dialog state
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfTitle, setPdfTitle] = useState<string>('');
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   // Panel kullanıcı detay state'leri
   const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
@@ -579,19 +584,32 @@ const MemberDetailPage = () => {
     loadTemplates();
   };
 
+  // Ekstra değişkenler için state
+  const [extraVariables, setExtraVariables] = useState<Record<string, string>>({});
+
   const handleGenerate = async () => {
     if (!id || !selectedTemplate) return;
+
+    // Boş değişkenleri kontrol et
+    const emptyVars = Object.entries(extraVariables).filter(([_, value]) => !value || value.trim() === '');
+    if (emptyVars.length > 0) {
+      const emptyVarNames = emptyVars.map(([key]) => key).join(', ');
+      toast.showError(`Lütfen tüm alanları doldurun: ${emptyVarNames}`);
+      return;
+    }
 
     setGenerating(true);
     try {
       const payload: GenerateDocumentDto = {
         memberId: id,
         templateId: selectedTemplate.id,
+        variables: Object.keys(extraVariables).length > 0 ? extraVariables : undefined,
       };
       await generateDocument(payload);
       toast.showSuccess('PDF evrak başarıyla oluşturuldu');
       setGenerateDialogOpen(false);
       setSelectedTemplate(null);
+      setExtraVariables({});
       // Evrakları yeniden yükle
       const data = await getMemberDocuments(id);
       setDocuments(data);
@@ -603,13 +621,64 @@ const MemberDetailPage = () => {
     }
   };
 
+  // Template'den ekstra değişkenleri çıkar
+  const getExtraVariablesFromTemplate = (template: DocumentTemplate): string[] => {
+    const standardVars = new Set([
+      'firstName', 'lastName', 'fullName', 'memberNumber', 'nationalId', 'phone', 'email',
+      'province', 'district', 'institution', 'branch', 'date', 'joinDate',
+      'applicationDate', 'validUntil', 'birthPlace', 'gender', 'educationStatus',
+      'position', 'workUnitAddress',
+      'birthDate', 'motherName', 'fatherName',
+      'dutyUnit', 'institutionAddress',
+      'boardDecisionDate', 'boardDecisionBookNo',
+      'membershipInfoOption', 'memberGroup'
+    ]);
+
+    const varRegex = /\{\{\s*(\w+)\s*\}\}/g;
+    const foundVars = new Set<string>();
+    let match;
+
+    while ((match = varRegex.exec(template.template)) !== null) {
+      const varName = match[1];
+      if (!standardVars.has(varName)) {
+        foundVars.add(varName);
+      }
+    }
+
+    return Array.from(foundVars);
+  };
+
+  // Değişken adlarını Türkçe etiketlere çevir
+  const getVariableLabel = (varName: string): string => {
+    const labels: Record<string, string> = {
+      'oldProvince': 'Eski İl',
+      'oldDistrict': 'Eski İlçe',
+      'oldInstitution': 'Eski Kurum',
+      'oldBranch': 'Eski Şube',
+      'transferReason': 'Nakil Nedeni',
+      'eventDate': 'Etkinlik Tarihi',
+      'eventPlace': 'Etkinlik Yeri',
+      'eventName': 'Etkinlik Adı',
+      'eventDescription': 'Etkinlik Açıklaması',
+      'invitationDate': 'Davet Tarihi',
+      'meetingDate': 'Toplantı Tarihi',
+      'meetingPlace': 'Toplantı Yeri',
+      'subject': 'Konu',
+      'reason': 'Sebep',
+      'description': 'Açıklama',
+    };
+    
+    // Eğer tanımlıysa label kullan, yoksa camelCase'i boşluklarla ayır
+    return labels[varName] || varName.replace(/([A-Z])/g, ' $1').trim();
+  };
+
   // Durum değiştirme handler
   const handleStatusChange = async (status: MemberStatus, reason?: string) => {
     if (!id || !member) return;
 
     setUpdatingStatus(true);
     try {
-      const updateData: { status: MemberStatus; cancellationReason?: string } = { status };
+      const updateData: any = { status };
       if (reason && (status === 'RESIGNED' || status === 'EXPELLED')) {
         updateData.cancellationReason = reason;
       }
@@ -998,7 +1067,6 @@ const MemberDetailPage = () => {
           borderColor: alpha(theme.palette.primary.main, 0.2),
           transform: 'translateY(-2px)',
         },
-        height: '100%',
       }}
     >
       <Box
@@ -1065,27 +1133,6 @@ const MemberDetailPage = () => {
       mx: 'auto',
       p: { xs: 2, sm: 3 }
     }}>
-      {/* Source Banner - Üye Başvuruları veya Bekleyen Üyeler */}
-      {member?.status === 'PENDING' && (
-        <Alert 
-          severity="info" 
-          icon={<AssignmentIcon />}
-          sx={{ 
-            mb: 3,
-            borderRadius: 3,
-            '& .MuiAlert-icon': {
-              fontSize: '1.5rem',
-            },
-          }}
-        >
-          <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-            Üye Başvurusu Detayı
-          </Typography>
-          <Typography variant="body2">
-            Bu sayfa üye başvuruları listesinden açıldı. Başvuruyu onaylayabilir veya reddedebilirsiniz.
-          </Typography>
-        </Alert>
-      )}
       {/* Header Card */}
       <Card
         elevation={0}
@@ -1261,37 +1308,6 @@ const MemberDetailPage = () => {
                   }}
                 >
                   Düzenle
-                </Button>
-                <Button
-                  variant="contained"
-                  startIcon={<PictureAsPdfIcon />}
-                  onClick={async () => {
-                    try {
-                      await exportMemberDetailToPdf(id!);
-                      toast.showSuccess('PDF başarıyla indirildi');
-                    } catch (error) {
-                      toast.showError('PDF indirilemedi');
-                    }
-                  }}
-                  fullWidth={true}
-                  sx={{
-                    bgcolor: alpha('#fff', 0.2),
-                    color: '#fff',
-                    fontWeight: 600,
-                    backdropFilter: 'blur(10px)',
-                    border: `1px solid ${alpha('#fff', 0.3)}`,
-                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                    py: { xs: 1, sm: 1.5 },
-                    '&:hover': {
-                      bgcolor: alpha('#fff', 0.3),
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
-                    },
-                    transition: 'all 0.3s ease',
-                    display: { xs: 'flex', sm: 'inline-flex' },
-                  }}
-                >
-                  PDF İndir
                 </Button>
                 {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
                 <Button
@@ -2295,9 +2311,9 @@ const MemberDetailPage = () => {
           </Box>
         </SectionCard>
 
-        {/* Kurum ve Şube Bilgileri */}
+        {/* Kurum, Şube, Tevkifat ve Üyelik Bilgileri - Yeni Düzen */}
         <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' } }}>
-          {/* Kurum Bilgileri */}
+          {/* Sol Sütun - Kurum Bilgileri */}
           <SectionCard title="Kurum Bilgileri" icon={<WorkIcon />}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <InfoRow label="Kurum Adı" value={member?.institution?.name || '-'} icon={<AccountBalanceIcon />} />
@@ -2311,41 +2327,41 @@ const MemberDetailPage = () => {
             </Box>
           </SectionCard>
 
-          {/* Şube Bilgileri */}
-          <SectionCard title="Şube Bilgileri" icon={<CorporateFareIcon />}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <InfoRow
-                label="Şube"
-                value={member?.branch?.name ? `${member.branch.name}${member.branch.code ? ` (${member.branch.code})` : ''}` : '-'}
-                icon={<AccountBalanceIcon />}
-              />
-            </Box>
-          </SectionCard>
-        </Box>
+          {/* Sağ Sütun - Şube, Tevkifat ve Üyelik Bilgileri */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Şube Bilgileri */}
+            <SectionCard title="Şube Bilgileri" icon={<CorporateFareIcon />}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <InfoRow
+                  label="Şube"
+                  value={member?.branch?.name ? `${member.branch.name}${member.branch.code ? ` (${member.branch.code})` : ''}` : '-'}
+                  icon={<AccountBalanceIcon />}
+                />
+              </Box>
+            </SectionCard>
 
-        {/* Tevkifat ve Üyelik Bilgileri */}
-        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' } }}>
-          {/* Tevkifat */}
-          <SectionCard title="Tevkifat Bilgileri" icon={<AccountBalanceIcon />}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <InfoRow label="Tevkifat Kurumu" value={member?.tevkifatCenter?.name || '-'} icon={<CorporateFareIcon />} />
-              <InfoRow label="Tevkifat Ünvanı" value={member?.tevkifatTitle?.name || '-'} icon={<WorkIcon />} />
-            </Box>
-          </SectionCard>
+            {/* Tevkifat Bilgileri */}
+            <SectionCard title="Tevkifat Bilgileri" icon={<AccountBalanceIcon />}>
+              <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                <InfoRow label="Tevkifat Kurumu" value={member?.tevkifatCenter?.name || '-'} icon={<CorporateFareIcon />} />
+                <InfoRow label="Tevkifat Ünvanı" value={member?.tevkifatTitle?.name || '-'} icon={<WorkIcon />} />
+              </Box>
+            </SectionCard>
 
-          {/* Üyelik Bilgileri */}
-          <SectionCard title="Üyelik Bilgileri" icon={<PersonIcon />}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <InfoRow label="Üyelik Durumu" value={statusConfig.label} icon={<CheckCircleIcon />} />
-              <InfoRow label="Üye Grubu" value={member?.membershipInfoOption?.label || '-'} icon={<PersonIcon />} />
-              <InfoRow label="Yönetim Karar Defteri No" value={member?.boardDecisionBookNo || '-'} icon={<BadgeIcon />} />
-              <InfoRow
-                label="Yönetim Kurulu Karar Tarihi"
-                value={member?.boardDecisionDate ? new Date(member.boardDecisionDate).toLocaleDateString('tr-TR') : '-'}
-                icon={<CalendarTodayIcon />}
-              />
-            </Box>
-          </SectionCard>
+            {/* Üyelik Bilgileri */}
+            <SectionCard title="Üyelik Bilgileri" icon={<PersonIcon />}>
+              <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                <InfoRow label="Üyelik Durumu" value={statusConfig.label} icon={<CheckCircleIcon />} />
+                <InfoRow label="Üye Grubu" value={member?.membershipInfoOption?.label || '-'} icon={<PersonIcon />} />
+                <InfoRow label="Yönetim Karar Defteri No" value={member?.boardDecisionBookNo || '-'} icon={<BadgeIcon />} />
+                <InfoRow
+                  label="Yönetim Kurulu Karar Tarihi"
+                  value={member?.boardDecisionDate ? new Date(member.boardDecisionDate).toLocaleDateString('tr-TR') : '-'}
+                  icon={<CalendarTodayIcon />}
+                />
+              </Box>
+            </SectionCard>
+          </Box>
         </Box>
 
         {/* Üyelik Evrakları */}
@@ -2495,10 +2511,32 @@ const MemberDetailPage = () => {
                             startIcon={<GetAppIcon />}
                             onClick={async () => {
                               try {
-                                await viewDocument(document.id);
+                                setLoadingPdf(true);
+                                const token = localStorage.getItem('accessToken');
+                                const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+                                const url = `${API_BASE_URL}/documents/view/${document.id}`;
+                                
+                                const response = await fetch(url, {
+                                  method: 'GET',
+                                  headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                  },
+                                });
+
+                                if (!response.ok) {
+                                  throw new Error('Dosya görüntülenemedi');
+                                }
+
+                                const blob = await response.blob();
+                                const blobUrl = window.URL.createObjectURL(blob);
+                                setPdfUrl(blobUrl);
+                                setPdfTitle(document.fileName || 'Belge');
+                                setPdfViewerOpen(true);
+                                setLoadingPdf(false);
                               } catch (error) {
                                 console.error('Dosya görüntülenirken hata:', error);
                                 toast.showError('Dosya görüntülenemedi');
+                                setLoadingPdf(false);
                               }
                             }}
                             sx={{
@@ -2509,28 +2547,6 @@ const MemberDetailPage = () => {
                             }}
                           >
                             Görüntüle
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<GetAppIcon />}
-                            onClick={async () => {
-                              try {
-                                await downloadDocument(document.id, document.fileName);
-                                toast.showSuccess('Dosya başarıyla indirildi');
-                              } catch (error) {
-                                console.error('Dosya indirilirken hata:', error);
-                                toast.showError('Dosya indirilemedi');
-                              }
-                            }}
-                            sx={{
-                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                              px: { xs: 1, sm: 1.5 },
-                              py: { xs: 0.5, sm: 0.75 },
-                              minWidth: 'auto',
-                            }}
-                          >
-                            İndir
                           </Button>
                         </Box>
                       </TableCell>
@@ -2683,10 +2699,39 @@ const MemberDetailPage = () => {
                                   startIcon={<PictureAsPdfIcon />}
                                   onClick={async () => {
                                     try {
-                                      await viewPaymentDocument(payment.id);
+                                      setLoadingPdf(true);
+                                      const token = localStorage.getItem('accessToken');
+                                      const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+                                      const url = `${API_BASE_URL}/payments/${payment.id}/document/view`;
+                                      
+                                      const response = await fetch(url, {
+                                        method: 'GET',
+                                        headers: {
+                                          'Authorization': `Bearer ${token}`,
+                                        },
+                                      });
+
+                                      if (!response.ok) {
+                                        const errorText = await response.text();
+                                        console.error('PDF görüntüleme hatası:', response.status, errorText);
+                                        if (response.status === 404) {
+                                          throw new Error('Ödeme belgesi bulunamadı. Belge yüklenmemiş olabilir.');
+                                        }
+                                        throw new Error(errorText || 'Dosya görüntülenemedi');
+                                      }
+
+                                      const blob = await response.blob();
+                                      const blobUrl = window.URL.createObjectURL(blob);
+                                      const urlParts = payment.documentUrl!.split('/');
+                                      const fileName = urlParts[urlParts.length - 1] || 'Ödeme Belgesi';
+                                      setPdfUrl(blobUrl);
+                                      setPdfTitle(fileName);
+                                      setPdfViewerOpen(true);
+                                      setLoadingPdf(false);
                                     } catch (error) {
                                       console.error('Dosya görüntülenirken hata:', error);
                                       toast.showError('Dosya görüntülenemedi');
+                                      setLoadingPdf(false);
                                     }
                                   }}
                                   sx={{
@@ -2697,31 +2742,6 @@ const MemberDetailPage = () => {
                                   }}
                                 >
                                   Görüntüle
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  startIcon={<GetAppIcon />}
-                                  onClick={async () => {
-                                    try {
-                                      // URL'den dosya adını çıkar (opsiyonel, backend'den gelecek)
-                                      const urlParts = payment.documentUrl!.split('/');
-                                      const urlFileName = urlParts[urlParts.length - 1];
-                                      await downloadPaymentDocument(payment.id, urlFileName);
-                                      toast.showSuccess('Dosya başarıyla indirildi');
-                                    } catch (error) {
-                                      console.error('Dosya indirilirken hata:', error);
-                                      toast.showError('Dosya indirilemedi');
-                                    }
-                                  }}
-                                  sx={{
-                                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                                    px: { xs: 1, sm: 1.5 },
-                                    py: { xs: 0.5, sm: 0.75 },
-                                    minWidth: 'auto',
-                                  }}
-                                >
-                                  İndir
                                 </Button>
                               </Box>
                             ) : (
@@ -3019,6 +3039,17 @@ const MemberDetailPage = () => {
                     onChange={(e) => {
                       const template = templates.find(t => t.id === e.target.value);
                       setSelectedTemplate(template || null);
+                      // Template değiştiğinde ekstra değişkenleri sıfırla
+                      if (template) {
+                        const extraVars = getExtraVariablesFromTemplate(template);
+                        const newExtraVariables: Record<string, string> = {};
+                        extraVars.forEach(varName => {
+                          newExtraVariables[varName] = '';
+                        });
+                        setExtraVariables(newExtraVariables);
+                      } else {
+                        setExtraVariables({});
+                      }
                     }}
                     label="Şablon Seç"
                     disabled={generating}
@@ -3043,16 +3074,48 @@ const MemberDetailPage = () => {
                 </FormControl>
               )}
               {selectedTemplate && (
-                <Alert severity="info" sx={{ borderRadius: 2 }}>
-                  <Typography variant="body2" fontWeight={600} gutterBottom>
-                    Seçilen Şablon: {selectedTemplate.name}
-                  </Typography>
-                  {selectedTemplate.description && (
-                    <Typography variant="body2" color="text.secondary">
-                      {selectedTemplate.description}
+                <>
+                  <Alert severity="info" sx={{ borderRadius: 2 }}>
+                    <Typography variant="body2" fontWeight={600} gutterBottom>
+                      Seçilen Şablon: {selectedTemplate.name}
                     </Typography>
+                    {selectedTemplate.description && (
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedTemplate.description}
+                      </Typography>
+                    )}
+                  </Alert>
+
+                  {/* Ekstra değişkenler varsa input alanları göster */}
+                  {Object.keys(extraVariables).length > 0 && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Typography variant="body2" fontWeight={600} color="text.secondary">
+                        Lütfen aşağıdaki bilgileri doldurun:
+                      </Typography>
+                      {Object.keys(extraVariables).map((varName) => (
+                        <TextField
+                          key={varName}
+                          label={getVariableLabel(varName)}
+                          value={extraVariables[varName]}
+                          onChange={(e) => setExtraVariables(prev => ({
+                            ...prev,
+                            [varName]: e.target.value
+                          }))}
+                          fullWidth
+                          size="small"
+                          required
+                          disabled={generating}
+                          placeholder={`${getVariableLabel(varName)} girin`}
+                          error={!extraVariables[varName] || extraVariables[varName].trim() === ''}
+                          helperText={(!extraVariables[varName] || extraVariables[varName].trim() === '') ? 'Bu alan zorunludur' : ''}
+                          multiline={varName.toLowerCase().includes('reason') || varName.toLowerCase().includes('description')}
+                          rows={varName.toLowerCase().includes('reason') || varName.toLowerCase().includes('description') ? 3 : 1}
+                          sx={{ borderRadius: 2 }}
+                        />
+                      ))}
+                    </Box>
                   )}
-                </Alert>
+                </>
               )}
             </Box>
           </DialogContent>
@@ -3444,6 +3507,107 @@ const MemberDetailPage = () => {
           }}
         />
       )}
+
+      {/* PDF Görüntüleme Dialog */}
+      <Dialog
+        open={pdfViewerOpen}
+        onClose={() => {
+          setPdfViewerOpen(false);
+          if (pdfUrl) {
+            window.URL.revokeObjectURL(pdfUrl);
+            setPdfUrl(null);
+          }
+        }}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            height: '90vh',
+            maxHeight: '90vh',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            pb: 2,
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {pdfTitle}
+          </Typography>
+          <IconButton
+            onClick={() => {
+              setPdfViewerOpen(false);
+              if (pdfUrl) {
+                window.URL.revokeObjectURL(pdfUrl);
+                setPdfUrl(null);
+              }
+            }}
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.error.main, 0.1),
+                color: theme.palette.error.main,
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            p: 0,
+            height: 'calc(90vh - 80px)',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {loadingPdf ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <CircularProgress size={48} />
+              <Typography variant="body2" color="text.secondary">
+                PDF yükleniyor...
+              </Typography>
+            </Box>
+          ) : pdfUrl ? (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+                overflow: 'hidden',
+                '& iframe': {
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                },
+                // PDF viewer sidebar'ını gizle
+                '& embed': {
+                  width: '100%',
+                  height: '100%',
+                },
+              }}
+            >
+              <embed
+                src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                type="application/pdf"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                }}
+              />
+            </Box>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

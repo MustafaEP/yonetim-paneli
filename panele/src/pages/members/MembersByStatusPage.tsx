@@ -471,9 +471,14 @@ const MembersByStatusPage: React.FC = () => {
       toast.showSuccess('Üye durumu başarıyla güncellendi');
       setStatusDialogOpen(false);
       setSelectedMember(null);
-      // Listeyi yeniden yükle
+      // Listeyi yeniden yükle ve kayıt tarihine göre sırala (yeni üyeler önce)
       const data = await getMembers();
-      setRows(data);
+      const sortedData = data.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA; // Azalan sıralama (yeni önce)
+      });
+      setRows(sortedData);
     } catch (error: any) {
       console.error('Durum güncellenirken hata:', error);
       toast.showError(error.response?.data?.message || 'Durum güncellenirken bir hata oluştu');
@@ -497,9 +502,14 @@ const MembersByStatusPage: React.FC = () => {
       setMemberToDelete(null);
       setDeletePayments(false);
       setDeleteDocuments(false);
-      // Listeyi yeniden yükle
+      // Listeyi yeniden yükle ve kayıt tarihine göre sırala (yeni üyeler önce)
       const data = await getMembers();
-      setRows(data);
+      const sortedData = data.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA; // Azalan sıralama (yeni önce)
+      });
+      setRows(sortedData);
     } catch (error: any) {
       console.error('Üye silinirken hata:', error);
       toast.showError(error.response?.data?.message || 'Üye silinirken bir hata oluştu');
@@ -514,8 +524,14 @@ const MembersByStatusPage: React.FC = () => {
         setError(null);
         console.log('[MembersByStatusPage] Fetching members...');
         const data = await getMembers();
-        console.log('[MembersByStatusPage] Received members:', data);
-        setRows(data);
+        // Kayıt tarihine göre sırala (yeni üyeler önce)
+        const sortedData = data.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA; // Azalan sıralama (yeni önce)
+        });
+        console.log('[MembersByStatusPage] Received members:', sortedData);
+        setRows(sortedData);
       } catch (error: any) {
         console.error('Üyeler alınırken hata:', error);
         const errorMessage = error?.response?.data?.message || error?.message || 'Üyeler alınırken bir hata oluştu';
