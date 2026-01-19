@@ -182,8 +182,12 @@ const ActiveWaitingMembersPage: React.FC = () => {
         getMembers('ACTIVE'),
       ]);
       
-      // İki listeyi birleştir
-      const allMembers = [...approvedMembers, ...activeMembers];
+      // İki listeyi birleştir ve kayıt tarihine göre sırala (yeni üyeler önce)
+      const allMembers = [...approvedMembers, ...activeMembers].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA; // Azalan sıralama (yeni önce)
+      });
       setRows(allMembers);
       console.log('[ActiveWaitingMembersPage] Loaded members:', allMembers.length, `(APPROVED: ${approvedMembers.length}, ACTIVE: ${activeMembers.length})`);
     } catch (e) {

@@ -28,7 +28,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import BuildIcon from '@mui/icons-material/Build';
 import type { SystemSetting } from '../../../api/systemApi';
-import { uploadLogo } from '../../../api/systemApi';
+import { uploadLogo, uploadHeaderPaper } from '../../../api/systemApi';
 import { useToast } from '../../../hooks/useToast';
 import { useSystemSettings } from '../../../context/SystemSettingsContext';
 
@@ -49,7 +49,9 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
   const [localSettings, setLocalSettings] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingHeaderPaper, setUploadingHeaderPaper] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const headerPaperInputRef = useRef<HTMLInputElement>(null);
 
   const getSetting = (key: string): SystemSetting | undefined => {
     return settings.find((s) => s.key === key);
@@ -112,6 +114,38 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
       setUploadingLogo(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleHeaderPaperUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // PDF, PNG veya JPG kabul et (PNG/JPG öneriliyor - daha hızlı)
+    if (!file.type.match(/(pdf|png|jpg|jpeg)$/) && !file.name.match(/\.(pdf|png|jpg|jpeg)$/i)) {
+      toast.error('Lütfen bir PDF, PNG veya JPG dosyası seçin (PNG/JPG öneriliyor)');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Dosya boyutu 10MB\'dan küçük olmalıdır');
+      return;
+    }
+
+    setUploadingHeaderPaper(true);
+    try {
+      const headerPaperUrl = await uploadHeaderPaper(file);
+      await onUpdate('DOCUMENT_HEADER_PAPER_PATH', headerPaperUrl);
+      await refreshSettings();
+      toast.success('Antetli kağıt başarıyla yüklendi');
+    } catch (error: any) {
+      console.error('Antetli kağıt yüklenirken hata:', error);
+      toast.error(error?.response?.data?.message || 'Antetli kağıt yüklenirken bir hata oluştu');
+    } finally {
+      setUploadingHeaderPaper(false);
+      if (headerPaperInputRef.current) {
+        headerPaperInputRef.current.value = '';
       }
     }
   };
@@ -391,6 +425,44 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                   {getValue('SITE_LOGO_URL') && (
                     <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', mt: 0.5, color: 'success.main', fontWeight: 500 }}>
                       ✓ Logo başarıyla yüklendi
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Divider sx={{ my: 1 }} />
+              <Typography variant="body2" sx={{ mb: 2, fontWeight: 600, color: theme.palette.text.secondary }}>
+                Antetli Kağıt (PDF Arka Plan)
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    Üye dökümanları için kullanılacak antetli kağıt dosyası. Bu PDF dosyası tüm üye dökümanlarının arka planı olarak kullanılır.
+                  </Typography>
+                  <input
+                    ref={headerPaperInputRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                    onChange={handleHeaderPaperUpload}
+                    style={{ display: 'none' }}
+                  />
+                  <Button
+                    variant="outlined"
+                    startIcon={uploadingHeaderPaper ? <CircularProgress size={16} /> : <UploadIcon />}
+                    onClick={() => headerPaperInputRef.current?.click()}
+                    disabled={uploadingHeaderPaper}
+                    size="small"
+                  >
+                    {uploadingHeaderPaper ? 'Yükleniyor...' : 'Antetli Kağıt Yükle'}
+                  </Button>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                    PNG, JPG veya PDF formatı (PNG/JPG öneriliyor - daha hızlı, Maksimum 10MB)
+                  </Typography>
+                  {getValue('DOCUMENT_HEADER_PAPER_PATH') && (
+                    <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', mt: 0.5, color: 'success.main', fontWeight: 500 }}>
+                      ✓ Antetli kağıt başarıyla yüklendi
                     </Typography>
                   )}
                 </Box>

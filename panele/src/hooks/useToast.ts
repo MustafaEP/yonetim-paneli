@@ -1,8 +1,10 @@
 // src/hooks/useToast.ts
 import { useSnackbar } from 'notistack';
+import { useErrorDialog } from '../context/ErrorDialogContext';
 
 export const useToast = () => {
   const { enqueueSnackbar } = useSnackbar();
+  const errorDialog = useErrorDialog();
 
   const showSuccess = (message: string) => {
     enqueueSnackbar(message, {
@@ -12,10 +14,16 @@ export const useToast = () => {
   };
 
   const showError = (message: string) => {
-    enqueueSnackbar(message, {
-      variant: 'error',
-      autoHideDuration: 4000,
-    });
+    // Hata mesajlarını artık pop-up (Dialog) olarak göster
+    // Eğer ErrorDialogProvider yoksa snackbar'a geri dön
+    if (errorDialog) {
+      errorDialog.showError(message, 'Hata');
+    } else {
+      enqueueSnackbar(message, {
+        variant: 'error',
+        autoHideDuration: 4000,
+      });
+    }
   };
 
   const showWarning = (message: string) => {

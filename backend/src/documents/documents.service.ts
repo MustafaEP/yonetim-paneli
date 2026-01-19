@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ConfigService } from '../config/config.service';
 import { CreateDocumentTemplateDto, UpdateDocumentTemplateDto, GenerateDocumentDto } from './dto';
 import { DocumentTemplateType, DocumentUploadStatus } from '@prisma/client';
 import type { Response } from 'express';
@@ -16,6 +17,7 @@ export class DocumentsService {
     private prisma: PrismaService,
     private pdfService: PdfService,
     private fileStorageService: FileStorageService,
+    private configService: ConfigService,
   ) {}
 
   // Şablonlar
@@ -139,6 +141,8 @@ export class DocumentsService {
         district: true,
         institution: true,
         branch: true,
+        membershipInfoOption: true,
+        memberGroup: true,
       },
     });
 
@@ -153,11 +157,14 @@ export class DocumentsService {
       : member.createdAt 
         ? new Date(member.createdAt).toLocaleDateString('tr-TR')
         : '';
+    const birthDate = member.birthDate ? new Date(member.birthDate).toLocaleDateString('tr-TR') : '';
+    const boardDecisionDate = member.boardDecisionDate ? new Date(member.boardDecisionDate).toLocaleDateString('tr-TR') : '';
     
     // Varsayılan değişkenler
     const variables: Record<string, string> = {
       firstName: member.firstName || '',
       lastName: member.lastName || '',
+      fullName: `${member.firstName || ''} ${member.lastName || ''}`.trim(),
       memberNumber: member.registrationNumber || '',
       nationalId: member.nationalId || '',
       phone: member.phone || '',
@@ -173,6 +180,9 @@ export class DocumentsService {
         : '',
       validUntil: new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()).toLocaleDateString('tr-TR'),
       birthPlace: member.birthplace || '',
+      birthDate: birthDate,
+      motherName: member.motherName || '',
+      fatherName: member.fatherName || '',
       gender: member.gender ? (member.gender === 'MALE' ? 'Erkek' : member.gender === 'FEMALE' ? 'Kadın' : 'Diğer') : '',
       educationStatus: member.educationStatus 
         ? (member.educationStatus === 'PRIMARY' ? 'İlkokul' 
@@ -182,12 +192,27 @@ export class DocumentsService {
         : '',
       position: '',
       workUnitAddress: '',
-      // Özel değişkenler (DTO'dan gelebilir)
+      dutyUnit: member.dutyUnit || '',
+      institutionAddress: member.institutionAddress || '',
+      boardDecisionDate: boardDecisionDate,
+      boardDecisionBookNo: member.boardDecisionBookNo || '',
+      membershipInfoOption: member.membershipInfoOption?.label || '',
+      memberGroup: member.memberGroup?.name || '',
+      // Nakil belgesi için ekstra değişkenler (DTO'dan gelmeli)
+      oldProvince: '',
+      oldDistrict: '',
+      oldInstitution: '',
+      oldBranch: '',
+      transferReason: '',
+      // Özel değişkenler (DTO'dan gelebilir - üstteki boş değerleri override edebilir)
       ...dto.variables,
     };
 
     // Şablon içindeki değişkenleri değiştir
-    const htmlContent = this.pdfService.replaceTemplateVariables(template.template, variables);
+    let htmlContent = this.pdfService.replaceTemplateVariables(template.template, variables);
+    
+    // HTML wrapper ekle (eğer yoksa)
+    htmlContent = this.pdfService.wrapTemplateWithHtml(htmlContent);
 
     // Dosya adı ve yolu oluştur
     const fileName = `${template.type}_${member.registrationNumber || member.id}_${Date.now()}.pdf`;
@@ -201,10 +226,32 @@ export class DocumentsService {
     }
 
     try {
+      // Antetli kağıt yolunu veritabanından çek
+      const headerPaperPath = this.configService.getSystemSetting('DOCUMENT_HEADER_PAPER_PATH');
+      let finalHeaderPaperPath: string | undefined;
+
+      if (headerPaperPath) {
+        // Eğer yol relative ise (uploads ile başlıyorsa), process.cwd() ile birleştir
+        if (headerPaperPath.startsWith('/uploads/')) {
+          finalHeaderPaperPath = path.join(process.cwd(), headerPaperPath);
+        } else if (!path.isAbsolute(headerPaperPath)) {
+          finalHeaderPaperPath = path.join(process.cwd(), headerPaperPath);
+        } else {
+          finalHeaderPaperPath = headerPaperPath;
+        }
+
+        // Dosya var mı kontrol et
+        if (!fs.existsSync(finalHeaderPaperPath)) {
+          this.logger.warn(`Antetli kağıt dosyası bulunamadı: ${finalHeaderPaperPath}`);
+          finalHeaderPaperPath = undefined;
+        }
+      }
+
       // HTML'i PDF'e dönüştür
       await this.pdfService.generatePdfFromHtml(htmlContent, filePath, {
         format: 'A4',
         printBackground: true,
+        headerPaperPath: finalHeaderPaperPath,
       });
 
       this.logger.log(`PDF document generated: ${filePath}`);

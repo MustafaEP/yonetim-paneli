@@ -184,5 +184,60 @@ export class SystemController {
     const logoUrl = `/uploads/logos/${file.filename}`;
     return { url: logoUrl };
   }
+
+  // Antetli kağıt yükleme (PNG/JPG öneriliyor - daha hızlı)
+  @Permissions(Permission.SYSTEM_SETTINGS_MANAGE)
+  @Post('upload-header-paper')
+  @UseInterceptors(
+    FileInterceptor('headerPaper', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const uploadPath = join(process.cwd(), 'uploads', 'header-paper');
+          if (!existsSync(uploadPath)) {
+            mkdirSync(uploadPath, { recursive: true });
+          }
+          cb(null, uploadPath);
+        },
+        filename: (req, file, cb) => {
+          // Dosya uzantısını koru
+          const ext = extname(file.originalname);
+          cb(null, `yonetim_paneli_antetli_kagit${ext}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        // PDF, PNG, JPG kabul et
+        if (!file.mimetype.match(/\/(pdf|png|jpg|jpeg)$/)) {
+          return cb(new BadRequestException('Sadece PDF, PNG veya JPG dosyaları yüklenebilir'), false);
+        }
+        cb(null, true);
+      },
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB
+      },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        headerPaper: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Antetli kağıt yükle (PNG/JPG öneriliyor)' })
+  @ApiResponse({ status: 201, description: 'Antetli kağıt başarıyla yüklendi' })
+  @ApiResponse({ status: 400, description: 'Geçersiz dosya' })
+  async uploadHeaderPaper(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Dosya yüklenemedi');
+    }
+
+    const headerPaperUrl = `/uploads/header-paper/${file.filename}`;
+    return { url: headerPaperUrl };
+  }
 }
 

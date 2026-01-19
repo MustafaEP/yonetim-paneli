@@ -891,18 +891,38 @@ export class PaymentsService {
       throw new NotFoundException(`Ödeme kaydı bulunamadı: ${paymentId}`);
     }
 
-    if (!payment.documentUrl) {
-      throw new NotFoundException('Bu ödeme için belge bulunamadı');
-    }
+    let filePath: string;
+    let fileName: string;
 
-    // documentUrl formatı: /uploads/payments/fileName.pdf
-    // Dosya yolunu oluştur
-    const fileName = payment.documentUrl.split('/').pop() || 'document.pdf';
-    const filePath = path.join(process.cwd(), 'uploads', 'payments', fileName);
+    // Eğer documentUrl varsa, önce onu dene
+    if (payment.documentUrl) {
+      // documentUrl formatı: /uploads/payments/fileName.pdf
+      // Dosya yolunu oluştur
+      fileName = payment.documentUrl.split('/').pop() || 'document.pdf';
+      filePath = path.join(process.cwd(), 'uploads', 'payments', fileName);
 
-    // Dosyanın var olup olmadığını kontrol et
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundException(`Dosya bulunamadı: ${fileName}`);
+      // Dosyanın var olup olmadığını kontrol et
+      // Eğer dosya yoksa, varsayılan Odeme.pdf dosyasını kullan
+      if (!fs.existsSync(filePath)) {
+        const defaultPdfPath = path.join(process.cwd(), 'prisma', 'Odeme.pdf');
+        if (fs.existsSync(defaultPdfPath)) {
+          this.logger.warn(`Ödeme belgesi bulunamadı: ${fileName}, varsayılan Odeme.pdf kullanılıyor`);
+          filePath = defaultPdfPath;
+          fileName = 'Odeme.pdf';
+        } else {
+          throw new NotFoundException(`Dosya bulunamadı: ${fileName}`);
+        }
+      }
+    } else {
+      // documentUrl yoksa, direkt varsayılan PDF'i kullan
+      const defaultPdfPath = path.join(process.cwd(), 'prisma', 'Odeme.pdf');
+      if (fs.existsSync(defaultPdfPath)) {
+        this.logger.warn(`Ödeme için belge URL'i yok, varsayılan Odeme.pdf kullanılıyor`);
+        filePath = defaultPdfPath;
+        fileName = 'Odeme.pdf';
+      } else {
+        throw new NotFoundException('Bu ödeme için belge bulunamadı ve varsayılan belge de mevcut değil');
+      }
     }
 
     // Content-Type header'ını ayarla (inline olarak göster)
@@ -959,18 +979,20 @@ export class PaymentsService {
       throw new NotFoundException('Bu ödeme için belge bulunamadı');
     }
 
-    // documentUrl formatı: /uploads/payments/fileName.pdf
-    const fileName = payment.documentUrl.split('/').pop() || 'payment-document.pdf';
+    // documentUrl formatı: /uploads/payments/fileName.pdf veya uploads/payments/fileName.pdf
+    // Dosya yolunu oluştur
+    const fileName = payment.documentUrl.split('/').pop() || 'document.pdf';
     const filePath = path.join(process.cwd(), 'uploads', 'payments', fileName);
 
+    // Dosyanın var olup olmadığını kontrol et
     if (!fs.existsSync(filePath)) {
       throw new NotFoundException(`Dosya bulunamadı: ${fileName}`);
     }
 
-    // Content-Type header'ını ayarla
+    // Content-Type header'ını ayarla (download olarak göster)
     res.setHeader('Content-Type', 'application/pdf');
     
-    // ASCII-safe dosya adı oluştur
+    // HTTP header'larında sadece ASCII karakterler kullanılabilir
     const asciiFileName = fileName
       .replace(/ğ/g, 'g')
       .replace(/Ğ/g, 'G')
@@ -987,10 +1009,8 @@ export class PaymentsService {
       .replace(/[^\x00-\x7F]/g, '_')
       .replace(/[^a-zA-Z0-9._-]/g, '_');
     
-    // UTF-8 encoding ile dosya adını ayarla (RFC 5987)
     const safeAsciiFileName = asciiFileName.replace(/"/g, '').replace(/;/g, '_');
-    const encodedFileName = encodeURIComponent(fileName).replace(/'/g, '%27');
-    res.setHeader('Content-Disposition', `attachment; filename="${safeAsciiFileName}"; filename*=UTF-8''${encodedFileName}`);
+    res.setHeader('Content-Disposition', `attachment; filename="${safeAsciiFileName}"`);
 
     // Dosyayı gönder
     const fileStream = fs.createReadStream(filePath);

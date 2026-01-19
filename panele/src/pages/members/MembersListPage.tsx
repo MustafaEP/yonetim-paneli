@@ -589,12 +589,22 @@ const MembersListPage: React.FC = () => {
           const results = await Promise.all(
             statuses.map(status => getMembers(status))
           );
-          // Tüm sonuçları birleştir
-          data = results.flat();
+          // Tüm sonuçları birleştir ve kayıt tarihine göre sırala (yeni üyeler önce)
+          data = results.flat().sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0).getTime();
+            const dateB = new Date(b.createdAt || 0).getTime();
+            return dateB - dateA; // Azalan sıralama (yeni önce)
+          });
           console.log('[MembersListPage] Received all members:', data.length);
         } else {
           // Belirli bir durum seçildiğinde sadece o durumdaki üyeleri çek
+          // Backend zaten sıralıyor ama yine de frontend'de sıralayalım
           data = await getMembers(statusFilter);
+          data = data.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0).getTime();
+            const dateB = new Date(b.createdAt || 0).getTime();
+            return dateB - dateA; // Azalan sıralama (yeni önce)
+          });
           console.log('[MembersListPage] Received members:', data.length);
         }
         
@@ -1684,7 +1694,7 @@ const MembersListPage: React.FC = () => {
               initialState={{
                 pagination: { paginationModel: { pageSize: 25, page: 0 } },
                 sorting: {
-                  sortModel: [{ field: 'registrationNumber', sort: 'asc' }],
+                  sortModel: [{ field: 'createdAt', sort: 'desc' }],
                 },
               }}
               pageSizeOptions={[10, 25, 50, 100]}

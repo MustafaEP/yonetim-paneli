@@ -89,6 +89,32 @@ export class PaymentsController {
   }
 
   @Permissions(Permission.MEMBER_PAYMENT_VIEW)
+  @Get(':id/document/view')
+  @ApiOperation({ summary: 'Ödeme belgesi görüntüle', description: 'Ödeme belgesini yeni sekmede aç' })
+  @ApiParam({ name: 'id', description: 'Ödeme ID' })
+  @ApiResponse({ status: 200, description: 'Dosya görüntüleniyor' })
+  @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
+  async viewPaymentDocument(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    await this.paymentsService.viewPaymentDocument(id, res);
+  }
+
+  @Permissions(Permission.MEMBER_PAYMENT_VIEW)
+  @Get(':id/document/download')
+  @ApiOperation({ summary: 'Ödeme belgesi indir', description: 'Ödeme belgesini indir' })
+  @ApiParam({ name: 'id', description: 'Ödeme ID' })
+  @ApiResponse({ status: 200, description: 'Dosya indiriliyor' })
+  @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
+  async downloadPaymentDocument(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    await this.paymentsService.downloadPaymentDocument(id, res);
+  }
+
+  @Permissions(Permission.MEMBER_PAYMENT_VIEW)
   @Get(':id')
   @ApiOperation({ summary: 'Ödeme detayı', description: 'Ödeme kaydı detayları' })
   @ApiResponse({ status: 200, description: 'Ödeme detayı' })
@@ -201,31 +227,5 @@ export class PaymentsController {
       Number(paymentPeriodYear),
       fileName,
     );
-  }
-
-  @Permissions(Permission.MEMBER_PAYMENT_VIEW)
-  @Get(':id/document/view')
-  @ApiOperation({ summary: 'Ödeme belgesi görüntüle', description: 'Ödeme belgesini yeni sekmede aç' })
-  @ApiParam({ name: 'id', description: 'Ödeme ID' })
-  @ApiResponse({ status: 200, description: 'Dosya görüntüleniyor' })
-  @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
-  async viewPaymentDocument(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
-    await this.paymentsService.viewPaymentDocument(id, res);
-  }
-
-  @Permissions(Permission.MEMBER_PAYMENT_VIEW)
-  @Get(':id/document/download')
-  @ApiOperation({ summary: 'Ödeme belgesi indir', description: 'Ödeme belgesini indir' })
-  @ApiParam({ name: 'id', description: 'Ödeme ID' })
-  @ApiResponse({ status: 200, description: 'Dosya indiriliyor' })
-  @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
-  async downloadPaymentDocument(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
-    await this.paymentsService.downloadPaymentDocument(id, res);
   }
 }

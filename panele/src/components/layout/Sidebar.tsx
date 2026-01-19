@@ -43,6 +43,7 @@ import PauseCircleIcon from '@mui/icons-material/PauseCircle';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import HistoryIcon from '@mui/icons-material/History';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import type { SxProps, Theme } from '@mui/material';
@@ -591,6 +592,24 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
               </ListItemIcon>
               <ListItemText
                 primary="Özel Ödeme Sorgulama"
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/payments/recent"
+              selected={location.pathname === '/payments/recent'}
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <HistoryIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary="Son Ödemeler"
                 primaryTypographyProps={{
                   fontSize: '0.9rem',
                   fontWeight: 500,

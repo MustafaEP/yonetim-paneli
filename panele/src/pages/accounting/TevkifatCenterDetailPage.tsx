@@ -20,19 +20,6 @@ import {
   useTheme,
   alpha,
   Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormLabel,
-  Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -44,13 +31,12 @@ import { useToast } from '../../hooks/useToast';
 import {
   getTevkifatCenterById,
   getTevkifatFiles,
-  deleteTevkifatCenter,
   getTevkifatCenters,
   type TevkifatCenterDetail,
   type TevkifatFile,
-  type DeleteTevkifatCenterDto,
   type TevkifatCenter,
 } from '../../api/accountingApi';
+import DeleteTevkifatCenterDialog from '../../components/accounting/DeleteTevkifatCenterDialog';
 import { getMembers } from '../../api/membersApi';
 import { DataGrid } from '@mui/x-data-grid';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -72,9 +58,6 @@ const TevkifatCenterDetailPage: React.FC = () => {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const membersSectionRef = React.useRef<HTMLDivElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteActionType, setDeleteActionType] = useState<DeleteTevkifatCenterDto['memberActionType']>('REMOVE_TEVKIFAT_CENTER');
-  const [deleteTargetTevkifatCenterId, setDeleteTargetTevkifatCenterId] = useState<string>('');
   const [availableCenters, setAvailableCenters] = useState<TevkifatCenter[]>([]);
 
   const canView = hasPermission('ACCOUNTING_VIEW');
@@ -170,36 +153,8 @@ const TevkifatCenterDetailPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!id) return;
-
-    // Transfer seçenekleri için hedef merkez kontrolü
-    if (
-      (deleteActionType === 'TRANSFER_TO_TEVKIFAT_CENTER' ||
-        deleteActionType === 'TRANSFER_AND_DEACTIVATE' ||
-        deleteActionType === 'TRANSFER_AND_CANCEL') &&
-      !deleteTargetTevkifatCenterId
-    ) {
-      toast.showError('Lütfen hedef tevkifat merkezi seçin');
-      return;
-    }
-
-    setDeleting(true);
-    try {
-      const dto: DeleteTevkifatCenterDto = {
-        memberActionType: deleteActionType,
-        ...(deleteTargetTevkifatCenterId && { targetTevkifatCenterId: deleteTargetTevkifatCenterId }),
-      };
-      await deleteTevkifatCenter(id, dto);
-      toast.showSuccess('Tevkifat merkezi kaldırıldı');
-      setDeleteDialogOpen(false);
-      navigate('/accounting/tevkifat-centers');
-    } catch (e: any) {
-      console.error('Tevkifat merkezi silinirken hata:', e);
-      toast.showError(e.response?.data?.message || 'Tevkifat merkezi silinirken bir hata oluştu');
-    } finally {
-      setDeleting(false);
-    }
+  const handleDeleteSuccess = () => {
+    navigate('/accounting/tevkifat-centers');
   };
 
   const monthNames = [
@@ -397,8 +352,6 @@ const TevkifatCenterDetailPage: React.FC = () => {
                         color="warning"
                         startIcon={<BlockIcon />}
                         onClick={() => {
-                          setDeleteActionType('REMOVE_TEVKIFAT_CENTER');
-                          setDeleteTargetTevkifatCenterId('');
                           setDeleteDialogOpen(true);
                         }}
                         sx={{
@@ -899,6 +852,22 @@ const TevkifatCenterDetailPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Tevkifat Merkezi Kaldırma Dialog */}
+      {center && (
+        <DeleteTevkifatCenterDialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          center={{
+            id: center.id,
+            name: center.name,
+            memberCount: center._count.members,
+          }}
+          availableCenters={availableCenters}
+          loadingCenters={false}
+          onSuccess={handleDeleteSuccess}
+        />
+      )}
     </Box>
   );
 };
