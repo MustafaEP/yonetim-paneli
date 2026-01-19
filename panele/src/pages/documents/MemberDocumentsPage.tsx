@@ -241,6 +241,11 @@ const MemberDocumentsPage: React.FC = () => {
       }
     }
 
+    // Üye kartı fotoğraf alanı: DB'de eski template olsa bile kullanıcıdan fotoğraf al
+    if (template.type === 'MEMBER_CARD') {
+      foundVars.add('photoDataUrl');
+    }
+
     return Array.from(foundVars);
   };
 
@@ -1100,22 +1105,24 @@ const MemberDocumentsPage: React.FC = () => {
                 </Alert>
 
                 {/* Şablonda olup otomatik dolmayan alanlar */}
-                {Object.keys(extraVariables).length > 0 && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                      label="PDF Dosya Adı"
-                      value={pdfFileName}
-                      onChange={(e) => setPdfFileName(e.target.value)}
-                      fullWidth
-                      size="small"
-                      disabled={generating}
-                      placeholder="Örn: DavetMektubu_ZeynepUnal"
-                      helperText="Uzantı (.pdf) otomatik eklenir"
-                      sx={{ borderRadius: 2 }}
-                    />
-                    <Typography variant="body2" fontWeight={600} color="text.secondary">
-                      Lütfen aşağıdaki bilgileri doldurun:
-                    </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <TextField
+                    label="PDF Dosya Adı"
+                    value={pdfFileName}
+                    onChange={(e) => setPdfFileName(e.target.value)}
+                    fullWidth
+                    size="small"
+                    disabled={generating}
+                    placeholder="Örn: DavetMektubu_ZeynepUnal"
+                    helperText="Uzantı (.pdf) otomatik eklenir"
+                    sx={{ borderRadius: 2 }}
+                  />
+
+                  {Object.keys(extraVariables).length > 0 && (
+                    <>
+                      <Typography variant="body2" fontWeight={600} color="text.secondary">
+                        Lütfen aşağıdaki bilgileri doldurun:
+                      </Typography>
                     {Object.keys(extraVariables).map((varName) => {
                       const isMulti =
                         varName.toLowerCase().includes('reason') ||
@@ -1201,8 +1208,9 @@ const MemberDocumentsPage: React.FC = () => {
                         />
                       );
                     })}
-                  </Box>
-                )}
+                    </>
+                  )}
+                </Box>
               </>
             )}
           </Box>
