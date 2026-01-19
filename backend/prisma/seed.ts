@@ -1350,8 +1350,8 @@ async function main() {
         <div><span style="color:#444;">Şube</span>: {{branch}}</div>
       </div>
       <div style="display:flex;gap:10px;margin-top:12px;align-items:flex-end;">
-        <div style="width:26mm;height:34mm;border:1px dashed #999;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#777;">
-          Fotoğraf
+        <div style="width:26mm;height:34mm;border:1px dashed #999;border-radius:6px;overflow:hidden;background:#f6f6f6;display:flex;align-items:center;justify-content:center;">
+          <img src="{{photoDataUrl}}" alt="Fotoğraf" style="width:100%;height:100%;object-fit:cover;display:block;" />
         </div>
         <div style="font-size:8.5pt;color:#555;flex:1;">
           <div>Üyelik Tarihi: <b>{{joinDate}}</b></div>

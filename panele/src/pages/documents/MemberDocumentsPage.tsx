@@ -66,6 +66,8 @@ const MemberDocumentsPage: React.FC = () => {
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
   const [extraVariables, setExtraVariables] = useState<Record<string, string>>({});
+  const [pdfFileName, setPdfFileName] = useState<string>('');
+  const [photoPreview, setPhotoPreview] = useState<string>('');
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -181,8 +183,18 @@ const MemberDocumentsPage: React.FC = () => {
     setGenerateDialogOpen(true);
     setSelectedTemplate(null);
     setExtraVariables({});
+    setPdfFileName('');
+    setPhotoPreview('');
     loadTemplates();
   };
+
+  const toDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
 
   // Template'den ekstra değişkenleri çıkar (şablonda var ama backend'in otomatik doldurmadıkları)
   const getExtraVariablesFromTemplate = (template: DocumentTemplate): string[] => {
@@ -239,6 +251,7 @@ const MemberDocumentsPage: React.FC = () => {
       oldInstitution: 'Eski Kurum',
       oldBranch: 'Eski Şube',
       transferReason: 'Nakil Nedeni',
+      photoDataUrl: 'Fotoğraf',
 
       eventName: 'Etkinlik Adı',
       eventDate: 'Etkinlik Tarihi',
@@ -261,7 +274,10 @@ const MemberDocumentsPage: React.FC = () => {
     if (!selectedMember || !selectedTemplate) return;
 
     // Boş değişkenleri kontrol et (şablondan gelen ekstra alanlar)
-    const emptyVars = Object.entries(extraVariables).filter(([_, value]) => !value || value.trim() === '');
+    const emptyVars = Object.entries(extraVariables).filter(([key, value]) => {
+      if (key === 'photoDataUrl') return !value; // foto base64 (trim anlamlı değil)
+      return !value || value.trim() === '';
+    });
     if (emptyVars.length > 0) {
       toast.showError(`Lütfen tüm alanları doldurun: ${emptyVars.map(([k]) => getVariableLabel(k)).join(', ')}`);
       return;
@@ -273,12 +289,15 @@ const MemberDocumentsPage: React.FC = () => {
         memberId: selectedMember.id,
         templateId: selectedTemplate.id,
         variables: Object.keys(extraVariables).length > 0 ? extraVariables : undefined,
+        fileName: pdfFileName || undefined,
       };
       await generateDocument(payload);
       toast.showSuccess('PDF doküman başarıyla oluşturuldu');
       setGenerateDialogOpen(false);
       setSelectedTemplate(null);
       setExtraVariables({});
+      setPdfFileName('');
+      setPhotoPreview('');
       loadDocuments();
     } catch (e: any) {
       console.error('PDF oluşturulurken hata:', e);
@@ -993,6 +1012,25 @@ const MemberDocumentsPage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 3 }}>
+            {selectedMember && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+                  bgcolor: alpha(theme.palette.info.main, 0.04),
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  Üye Bilgileri
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedMember.firstName} {selectedMember.lastName}
+                  {selectedMember.registrationNumber ? ` • Üye No: ${selectedMember.registrationNumber}` : ''}
+                </Typography>
+              </Paper>
+            )}
             {loadingTemplates ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
                 <CircularProgress />
@@ -1013,8 +1051,13 @@ const MemberDocumentsPage: React.FC = () => {
                         newExtraVariables[varName] = '';
                       });
                       setExtraVariables(newExtraVariables);
+                      setPhotoPreview('');
+                      // varsayılan dosya adı önerisi
+                      setPdfFileName(`${template.name}_${selectedMember?.firstName || ''}_${selectedMember?.lastName || ''}`.trim());
                     } else {
                       setExtraVariables({});
+                      setPhotoPreview('');
+                      setPdfFileName('');
                     }
                   }}
                   label="Şablon Seç"
@@ -1059,6 +1102,17 @@ const MemberDocumentsPage: React.FC = () => {
                 {/* Şablonda olup otomatik dolmayan alanlar */}
                 {Object.keys(extraVariables).length > 0 && (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <TextField
+                      label="PDF Dosya Adı"
+                      value={pdfFileName}
+                      onChange={(e) => setPdfFileName(e.target.value)}
+                      fullWidth
+                      size="small"
+                      disabled={generating}
+                      placeholder="Örn: DavetMektubu_ZeynepUnal"
+                      helperText="Uzantı (.pdf) otomatik eklenir"
+                      sx={{ borderRadius: 2 }}
+                    />
                     <Typography variant="body2" fontWeight={600} color="text.secondary">
                       Lütfen aşağıdaki bilgileri doldurun:
                     </Typography>
@@ -1069,6 +1123,59 @@ const MemberDocumentsPage: React.FC = () => {
 
                       const value = extraVariables[varName] || '';
                       const isEmpty = value.trim() === '';
+
+                      // Fotoğraf alanı
+                      if (varName === 'photoDataUrl') {
+                        return (
+                          <Box key={varName} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>
+                              {getVariableLabel(varName)}
+                            </Typography>
+                            <Button
+                              component="label"
+                              variant="outlined"
+                              disabled={generating}
+                              sx={{ borderRadius: 2, alignSelf: 'flex-start' }}
+                            >
+                              Fotoğraf Seç
+                              <input
+                                hidden
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const dataUrl = await toDataUrl(file);
+                                  setExtraVariables((prev) => ({ ...prev, photoDataUrl: dataUrl }));
+                                  setPhotoPreview(dataUrl);
+                                }}
+                              />
+                            </Button>
+                            {photoPreview && (
+                              <Box
+                                sx={{
+                                  width: 96,
+                                  height: 128,
+                                  borderRadius: 2,
+                                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <img
+                                  src={photoPreview}
+                                  alt="Fotoğraf Önizleme"
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                />
+                              </Box>
+                            )}
+                            {!photoPreview && (
+                              <Typography variant="caption" color="text.secondary">
+                                Bu alan zorunludur
+                              </Typography>
+                            )}
+                          </Box>
+                        );
+                      }
 
                       return (
                         <TextField

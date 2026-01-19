@@ -581,17 +581,31 @@ const MemberDetailPage = () => {
   const handleOpenGenerateDialog = () => {
     setGenerateDialogOpen(true);
     setSelectedTemplate(null);
+    setExtraVariables({});
     loadTemplates();
   };
 
   // Ekstra değişkenler için state
   const [extraVariables, setExtraVariables] = useState<Record<string, string>>({});
+  const [pdfFileName, setPdfFileName] = useState<string>('');
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+
+  const toDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
 
   const handleGenerate = async () => {
     if (!id || !selectedTemplate) return;
 
     // Boş değişkenleri kontrol et
-    const emptyVars = Object.entries(extraVariables).filter(([_, value]) => !value || value.trim() === '');
+    const emptyVars = Object.entries(extraVariables).filter(([key, value]) => {
+      if (key === 'photoDataUrl') return !value;
+      return !value || value.trim() === '';
+    });
     if (emptyVars.length > 0) {
       const emptyVarNames = emptyVars.map(([key]) => key).join(', ');
       toast.showError(`Lütfen tüm alanları doldurun: ${emptyVarNames}`);
@@ -604,12 +618,15 @@ const MemberDetailPage = () => {
         memberId: id,
         templateId: selectedTemplate.id,
         variables: Object.keys(extraVariables).length > 0 ? extraVariables : undefined,
+        fileName: pdfFileName || undefined,
       };
       await generateDocument(payload);
       toast.showSuccess('PDF evrak başarıyla oluşturuldu');
       setGenerateDialogOpen(false);
       setSelectedTemplate(null);
       setExtraVariables({});
+      setPdfFileName('');
+      setPhotoPreview('');
       // Evrakları yeniden yükle
       const data = await getMemberDocuments(id);
       setDocuments(data);
@@ -656,6 +673,7 @@ const MemberDetailPage = () => {
       'oldInstitution': 'Eski Kurum',
       'oldBranch': 'Eski Şube',
       'transferReason': 'Nakil Nedeni',
+      'photoDataUrl': 'Fotoğraf',
       'eventDate': 'Etkinlik Tarihi',
       'eventPlace': 'Etkinlik Yeri',
       'eventName': 'Etkinlik Adı',
@@ -3027,6 +3045,26 @@ const MemberDetailPage = () => {
           </DialogTitle>
           <DialogContent sx={{ pt: 3, px: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+              {member && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+                    bgcolor: alpha(theme.palette.info.main, 0.04),
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    Üye Bilgileri
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {member.firstName} {member.lastName}
+                    {member.registrationNumber ? ` • Üye No: ${member.registrationNumber}` : ''}
+                    {member.nationalId ? ` • T.C.: ${member.nationalId}` : ''}
+                  </Typography>
+                </Paper>
+              )}
               {loadingTemplates ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
                   <CircularProgress />
@@ -3047,8 +3085,12 @@ const MemberDetailPage = () => {
                           newExtraVariables[varName] = '';
                         });
                         setExtraVariables(newExtraVariables);
+                        setPhotoPreview('');
+                        setPdfFileName(`${template.name}_${member?.firstName || ''}_${member?.lastName || ''}`.trim());
                       } else {
                         setExtraVariables({});
+                        setPhotoPreview('');
+                        setPdfFileName('');
                       }
                     }}
                     label="Şablon Seç"
@@ -3089,30 +3131,101 @@ const MemberDetailPage = () => {
                   {/* Ekstra değişkenler varsa input alanları göster */}
                   {Object.keys(extraVariables).length > 0 && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <TextField
+                        label="PDF Dosya Adı"
+                        value={pdfFileName}
+                        onChange={(e) => setPdfFileName(e.target.value)}
+                        fullWidth
+                        size="small"
+                        disabled={generating}
+                        placeholder="Örn: DavetMektubu_ZeynepUnal"
+                        helperText="Uzantı (.pdf) otomatik eklenir"
+                        sx={{ borderRadius: 2 }}
+                      />
                       <Typography variant="body2" fontWeight={600} color="text.secondary">
                         Lütfen aşağıdaki bilgileri doldurun:
                       </Typography>
-                      {Object.keys(extraVariables).map((varName) => (
-                        <TextField
-                          key={varName}
-                          label={getVariableLabel(varName)}
-                          value={extraVariables[varName]}
-                          onChange={(e) => setExtraVariables(prev => ({
-                            ...prev,
-                            [varName]: e.target.value
-                          }))}
-                          fullWidth
-                          size="small"
-                          required
-                          disabled={generating}
-                          placeholder={`${getVariableLabel(varName)} girin`}
-                          error={!extraVariables[varName] || extraVariables[varName].trim() === ''}
-                          helperText={(!extraVariables[varName] || extraVariables[varName].trim() === '') ? 'Bu alan zorunludur' : ''}
-                          multiline={varName.toLowerCase().includes('reason') || varName.toLowerCase().includes('description')}
-                          rows={varName.toLowerCase().includes('reason') || varName.toLowerCase().includes('description') ? 3 : 1}
-                          sx={{ borderRadius: 2 }}
-                        />
-                      ))}
+                      {Object.keys(extraVariables).map((varName) => {
+                        if (varName === 'photoDataUrl') {
+                          return (
+                            <Box key={varName} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>
+                                {getVariableLabel(varName)}
+                              </Typography>
+                              <Button
+                                component="label"
+                                variant="outlined"
+                                disabled={generating}
+                                sx={{ borderRadius: 2, alignSelf: 'flex-start' }}
+                              >
+                                Fotoğraf Seç
+                                <input
+                                  hidden
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const dataUrl = await toDataUrl(file);
+                                    setExtraVariables((prev) => ({ ...prev, photoDataUrl: dataUrl }));
+                                    setPhotoPreview(dataUrl);
+                                  }}
+                                />
+                              </Button>
+                              {photoPreview && (
+                                <Box
+                                  sx={{
+                                    width: 96,
+                                    height: 128,
+                                    borderRadius: 2,
+                                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  <img
+                                    src={photoPreview}
+                                    alt="Fotoğraf Önizleme"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                  />
+                                </Box>
+                              )}
+                              {!photoPreview && (
+                                <Typography variant="caption" color="text.secondary">
+                                  Bu alan zorunludur
+                                </Typography>
+                              )}
+                            </Box>
+                          );
+                        }
+
+                        return (
+                          <TextField
+                            key={varName}
+                            label={getVariableLabel(varName)}
+                            value={extraVariables[varName]}
+                            onChange={(e) =>
+                              setExtraVariables((prev) => ({
+                                ...prev,
+                                [varName]: e.target.value,
+                              }))
+                            }
+                            fullWidth
+                            size="small"
+                            required
+                            disabled={generating}
+                            placeholder={`${getVariableLabel(varName)} girin`}
+                            error={!extraVariables[varName] || extraVariables[varName].trim() === ''}
+                            helperText={
+                              !extraVariables[varName] || extraVariables[varName].trim() === ''
+                                ? 'Bu alan zorunludur'
+                                : ''
+                            }
+                            multiline={varName.toLowerCase().includes('reason') || varName.toLowerCase().includes('description')}
+                            rows={varName.toLowerCase().includes('reason') || varName.toLowerCase().includes('description') ? 3 : 1}
+                            sx={{ borderRadius: 2 }}
+                          />
+                        );
+                      })}
                     </Box>
                   )}
                 </>

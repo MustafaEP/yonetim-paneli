@@ -54,6 +54,7 @@ export interface GenerateDocumentDto {
   memberId: string;
   templateId: string;
   variables?: Record<string, string>;
+  fileName?: string;
 }
 
 // Doküman şablonları
