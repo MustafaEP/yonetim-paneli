@@ -1397,411 +1397,343 @@ async function main() {
     },
     {
       name: 'İstifa Belgesi',
-      description: 'Üye istifa belgesi şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    İSTİFA BELGESİ
-═══════════════════════════════════════════════════════════
+      description: 'İstifa belgesi (minimal, resmî format)',
+      template: `
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:10.5pt;color:#444;">
+  <div>İstifa Belgesi</div>
+  <div>Tarih: <b>{{date}}</b></div>
+</div>
+<div style="border-top:1px solid #ddd;margin:10px 0 14px;"></div>
 
-Sayın Sendika Yönetimi,
+<div style="font-size:11pt;">
+  <div style="font-weight:700;">Sayın Sendika Yönetimi,</div>
+  <div style="margin-top:10px;">
+    <b>{{firstName}} {{lastName}}</b> (Üye No: <b>{{memberNumber}}</b>, T.C.: <b>{{nationalId}}</b>) adlı üyemiz, <b>{{date}}</b> tarihinde sendikamızdan istifa etmiştir.
+  </div>
+</div>
 
-{{firstName}} {{lastName}} (Üye No: {{memberNumber}}, TC: {{nationalId}})
-adlı üyemiz, {{date}} tarihinde sendikamızdan istifa etmiştir.
+<div style="margin-top:14px;">
+  <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>İstifa Nedeni</b></div>
+  <div style="white-space:pre-wrap;font-size:11pt;">{{resignationReason}}</div>
+</div>
 
-═══════════════════════════════════════════════════════════
-                    ÜYE BİLGİLERİ
-═══════════════════════════════════════════════════════════
-
-Ad Soyad          : {{firstName}} {{lastName}}
-Üye Numarası      : {{memberNumber}}
-TC Kimlik No      : {{nationalId}}
-Üyelik Tarihi     : {{joinDate}}
-İstifa Tarihi     : {{date}}
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-
-═══════════════════════════════════════════════════════════
-
-İstifa nedeni: {{resignationReason}}
-
-Bu belge {{date}} tarihinde düzenlenmiştir.
-
-Saygılarımızla,
-Sendika Yönetimi
-
-[İmza Alanı]
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:14px;border-top:1px solid #eee;padding-top:10px;">
+  <table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+    <tr>
+      <td style="width:50%;color:#555;">
+        İl/İlçe: <b>{{province}}</b> / <b>{{district}}</b><br/>
+        Kurum: <b>{{institution}}</b><br/>
+        Şube: <b>{{branch}}</b>
+      </td>
+      <td style="width:50%;text-align:right;">
+        <div style="font-weight:700;">Sendika Yönetimi</div>
+        <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+      </td>
+    </tr>
+  </table>
+</div>`,
       type: DocumentTemplateType.RESIGNATION_LETTER,
       isActive: true,
     },
     {
       name: 'İhraç Belgesi',
-      description: 'Üye ihraç belgesi şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    İHRAÇ BELGESİ
-═══════════════════════════════════════════════════════════
+      description: 'İhraç belgesi (minimal, resmî format)',
+      template: `
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:10.5pt;color:#444;">
+  <div>İhraç Bildirimi</div>
+  <div>Tarih: <b>{{date}}</b></div>
+</div>
+<div style="border-top:1px solid #ddd;margin:10px 0 14px;"></div>
 
-Sayın {{firstName}} {{lastName}},
+<div style="font-size:11pt;">
+  <div style="font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
+  <div style="margin-top:10px;">
+    Sendika tüzüğü ve ilgili mevzuata aykırı davranışlarınız nedeniyle, Sendika Yönetim Kurulu kararı ile sendikamızdan ihraç edilmiş bulunmaktasınız.
+  </div>
+</div>
 
-Sendika tüzüğü ve yönetmeliklerine aykırı davranışlarınız nedeniyle,
-sendika yönetim kurulu kararı ile sendikamızdan ihraç edilmiş bulunmaktasınız.
+<div style="margin-top:14px;">
+  <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>İhraç Nedeni</b></div>
+  <div style="white-space:pre-wrap;font-size:11pt;">{{expulsionReason}}</div>
+</div>
 
-═══════════════════════════════════════════════════════════
-                    ÜYE BİLGİLERİ
-═══════════════════════════════════════════════════════════
+<div style="margin-top:14px;font-size:10.5pt;color:#555;">
+  Bu karar <b>{{date}}</b> tarihinde alınmış olup, itiraz hakkınız saklıdır.
+</div>
 
-Ad Soyad          : {{firstName}} {{lastName}}
-Üye Numarası      : {{memberNumber}}
-TC Kimlik No      : {{nationalId}}
-Üyelik Tarihi     : {{joinDate}}
-İhraç Tarihi      : {{date}}
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-
-═══════════════════════════════════════════════════════════
-                    İHRAÇ NEDENİ
-═══════════════════════════════════════════════════════════
-
-{{expulsionReason}}
-
-═══════════════════════════════════════════════════════════
-
-Bu karar {{date}} tarihinde alınmış olup, itiraz hakkınız saklıdır.
-
-Saygılarımızla,
-Sendika Yönetim Kurulu
-{{date}}
-
-[İmza Alanı]
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:16px;border-top:1px solid #eee;padding-top:10px;">
+  <table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+    <tr>
+      <td style="width:60%;color:#555;">
+        Üye No: <b>{{memberNumber}}</b> &nbsp;•&nbsp; T.C.: <b>{{nationalId}}</b><br/>
+        Kurum/Şube: <b>{{institution}}</b> / <b>{{branch}}</b><br/>
+        İl/İlçe: <b>{{province}}</b> / <b>{{district}}</b>
+      </td>
+      <td style="width:40%;text-align:right;">
+        <div style="font-weight:700;">Sendika Yönetim Kurulu</div>
+        <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+      </td>
+    </tr>
+  </table>
+</div>`,
       type: DocumentTemplateType.EXPULSION_LETTER,
       isActive: true,
     },
     {
       name: 'Onay Belgesi',
-      description: 'Üyelik onay belgesi şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    ÜYELİK ONAY BELGESİ
-═══════════════════════════════════════════════════════════
+      description: 'Üyelik onay belgesi (minimal, resmî format)',
+      template: `
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:10.5pt;color:#444;">
+  <div>Üyelik Onayı</div>
+  <div>Tarih: <b>{{date}}</b></div>
+</div>
+<div style="border-top:1px solid #ddd;margin:10px 0 14px;"></div>
 
-Sayın {{firstName}} {{lastName}},
+<div style="font-size:11pt;">
+  <div style="font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
+  <div style="margin-top:10px;">
+    Üyelik başvurunuz değerlendirilmiş ve Sendika Yönetim Kurulu tarafından <b>onaylanmıştır</b>. Sendikamıza hoş geldiniz.
+  </div>
+</div>
 
-Üyelik başvurunuz incelenmiş ve sendika yönetim kurulu tarafından 
-onaylanmıştır. Sendikamıza hoş geldiniz.
+<div style="margin-top:14px;">
+  <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>Başvuru Bilgileri</b></div>
+  <table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+    <tr><td style="width:34%;padding:4px 0;color:#333;">Başvuru Tarihi</td><td style="padding:4px 0;">: {{applicationDate}}</td></tr>
+    <tr><td style="padding:4px 0;color:#333;">Y.K. Karar Tarihi</td><td style="padding:4px 0;">: {{boardDecisionDate}}</td></tr>
+    <tr><td style="padding:4px 0;color:#333;">Y.K. Defter No</td><td style="padding:4px 0;">: {{boardDecisionBookNo}}</td></tr>
+  </table>
+</div>
 
-═══════════════════════════════════════════════════════════
-                    ÜYE BİLGİLERİ
-═══════════════════════════════════════════════════════════
-
-Ad Soyad          : {{firstName}} {{lastName}}
-Üye Numarası      : {{memberNumber}}
-TC Kimlik No      : {{nationalId}}
-Başvuru Tarihi    : {{applicationDate}}
-Onay Tarihi       : {{date}}
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-Telefon           : {{phone}}
-E-posta           : {{email}}
-
-═══════════════════════════════════════════════════════════
-
-Üyelik hak ve yükümlülükleriniz hakkında bilgi almak için 
-sendika merkezimizle iletişime geçebilirsiniz.
-
-Bu belge {{date}} tarihinde düzenlenmiştir.
-
-Saygılarımızla,
-Sendika Yönetim Kurulu
-{{date}}
-
-[İmza Alanı]
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:14px;border-top:1px solid #eee;padding-top:10px;">
+  <table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+    <tr>
+      <td style="width:60%;color:#555;">
+        Üye No: <b>{{memberNumber}}</b> &nbsp;•&nbsp; T.C.: <b>{{nationalId}}</b><br/>
+        Kurum/Şube: <b>{{institution}}</b> / <b>{{branch}}</b><br/>
+        İl/İlçe: <b>{{province}}</b> / <b>{{district}}</b>
+      </td>
+      <td style="width:40%;text-align:right;">
+        <div style="font-weight:700;">Sendika Yönetim Kurulu</div>
+        <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+      </td>
+    </tr>
+  </table>
+</div>`,
       type: DocumentTemplateType.APPROVAL_CERTIFICATE,
       isActive: true,
     },
     {
       name: 'Davet Mektubu',
-      description: 'Etkinlik ve toplantı davet mektubu şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    DAVET MEKTUBU
-═══════════════════════════════════════════════════════════
+      description: 'Etkinlik / toplantı davet mektubu (minimal)',
+      template: `
+<div style="text-align:right;font-size:10.5pt;color:#444;">Tarih: <b>{{date}}</b></div>
+<div style="margin-top:10px;font-size:11pt;font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
 
-Sayın {{firstName}} {{lastName}},
+<div style="margin-top:10px;font-size:11pt;color:#111;">
+  Sendikamız tarafından düzenlenecek etkinliğimize katılımınızı rica ederiz.
+</div>
 
-Sendikamız tarafından düzenlenecek olan etkinliğimize katılımınızı 
-rica ederiz.
+<div style="margin-top:14px;">
+  <table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+    <tr><td style="width:34%;padding:6px 0;color:#333;">Etkinlik</td><td style="padding:6px 0;">: <b>{{eventName}}</b></td></tr>
+    <tr><td style="padding:6px 0;color:#333;">Tarih / Saat</td><td style="padding:6px 0;">: {{eventDate}} {{eventTime}}</td></tr>
+    <tr><td style="padding:6px 0;color:#333;">Yer</td><td style="padding:6px 0;">: {{eventLocation}}</td></tr>
+    <tr><td style="padding:6px 0;color:#333;">Adres</td><td style="padding:6px 0;">: {{eventAddress}}</td></tr>
+  </table>
+</div>
 
-═══════════════════════════════════════════════════════════
-                    ETKİNLİK BİLGİLERİ
-═══════════════════════════════════════════════════════════
+<div style="margin-top:10px;font-size:11pt;white-space:pre-wrap;color:#111;">{{eventDescription}}</div>
 
-Etkinlik Adı      : {{eventName}}
-Tarih             : {{eventDate}}
-Saat              : {{eventTime}}
-Yer               : {{eventLocation}}
-Adres             : {{eventAddress}}
+<div style="margin-top:14px;font-size:11pt;color:#111;">
+  Katılımınızı bekler, saygılarımızı sunarız.
+</div>
 
-═══════════════════════════════════════════════════════════
+<div style="margin-top:22px;text-align:right;">
+  <div style="font-weight:700;">Sendika Yönetimi</div>
+  <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+</div>
 
-{{eventDescription}}
-
-Katılımınızı bekler, saygılarımızı sunarız.
-
-Saygılarımızla,
-Sendika Yönetimi
-{{date}}
-
-Not: Katılım durumunuzu {{confirmationDate}} tarihine kadar 
-bildirmenizi rica ederiz.
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:10px;font-size:10pt;color:#555;">
+  Not: Katılım durumunuzu <b>{{confirmationDate}}</b> tarihine kadar bildirmenizi rica ederiz.
+</div>`,
       type: DocumentTemplateType.INVITATION_LETTER,
       isActive: true,
     },
     {
       name: 'Tebrik Mektubu',
-      description: 'Başarı ve özel günler için tebrik mektubu şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    TEBRİK MEKTUBU
-═══════════════════════════════════════════════════════════
+      description: 'Tebrik mektubu (minimal)',
+      template: `
+<div style="text-align:right;font-size:10.5pt;color:#444;">Tarih: <b>{{date}}</b></div>
+<div style="margin-top:10px;font-size:11pt;font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
 
-Sayın {{firstName}} {{lastName}},
+<div style="margin-top:10px;font-size:11pt;white-space:pre-wrap;color:#111;">{{congratulationReason}}</div>
 
-{{congratulationReason}}
+<div style="margin-top:10px;font-size:11pt;color:#111;">
+  Bu vesileyle sizi tebrik eder, başarılarınızın devamını dileriz.
+</div>
 
-Bu başarınızdan dolayı sizi tebrik eder, başarılarınızın devamını dileriz.
-
-═══════════════════════════════════════════════════════════
-                    ÜYE BİLGİLERİ
-═══════════════════════════════════════════════════════════
-
-Ad Soyad          : {{firstName}} {{lastName}}
-Üye Numarası      : {{memberNumber}}
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-
-═══════════════════════════════════════════════════════════
-
-Sendikamız adına sizlere teşekkür eder, çalışmalarınızda başarılar dileriz.
-
-Saygılarımızla,
-Sendika Yönetimi
-{{date}}
-
-[İmza Alanı]
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:22px;text-align:right;">
+  <div style="font-weight:700;">Sendika Yönetimi</div>
+  <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+</div>`,
       type: DocumentTemplateType.CONGRATULATION_LETTER,
       isActive: true,
     },
     {
       name: 'Uyarı Mektubu',
-      description: 'Üye uyarı mektubu şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    UYARI MEKTUBU
-═══════════════════════════════════════════════════════════
+      description: 'Uyarı mektubu (minimal)',
+      template: `
+<div style="text-align:right;font-size:10.5pt;color:#444;">Tarih: <b>{{date}}</b></div>
+<div style="margin-top:10px;font-size:11pt;font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
 
-Sayın {{firstName}} {{lastName}},
+<div style="margin-top:10px;font-size:11pt;color:#111;">
+  Sendika tüzüğü ve yönetmeliklerine uygun davranmanız gerektiği konusunda bu yazı ile uyarılmaktasınız.
+</div>
 
-Sendika tüzüğü ve yönetmeliklerine uygun davranmanız gerektiği 
-konusunda sizi uyarmak zorundayız.
+<div style="margin-top:14px;">
+  <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>Uyarı Nedeni</b></div>
+  <div style="white-space:pre-wrap;font-size:11pt;">{{warningReason}}</div>
+</div>
 
-═══════════════════════════════════════════════════════════
-                    ÜYE BİLGİLERİ
-═══════════════════════════════════════════════════════════
+<div style="margin-top:14px;font-size:11pt;color:#111;">
+  Bu uyarının dikkate alınması ve gerekli düzenlemelerin yapılması beklenmektedir.
+</div>
 
-Ad Soyad          : {{firstName}} {{lastName}}
-Üye Numarası      : {{memberNumber}}
-TC Kimlik No      : {{nationalId}}
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-
-═══════════════════════════════════════════════════════════
-                    UYARI NEDENİ
-═══════════════════════════════════════════════════════════
-
-{{warningReason}}
-
-═══════════════════════════════════════════════════════════
-
-Bu uyarıyı dikkate almanız ve gerekli düzenlemeleri yapmanız 
-beklenmektedir. Aksi takdirde sendika yönetim kurulu gerekli 
-yasal işlemleri başlatacaktır.
-
-Bu uyarı {{date}} tarihinde yapılmıştır.
-
-Saygılarımızla,
-Sendika Yönetim Kurulu
-{{date}}
-
-[İmza Alanı]
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:22px;text-align:right;">
+  <div style="font-weight:700;">Sendika Yönetim Kurulu</div>
+  <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+</div>`,
       type: DocumentTemplateType.WARNING_LETTER,
       isActive: true,
     },
     {
       name: 'Bildirim Mektubu',
-      description: 'Genel bildirim mektubu şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    BİLDİRİM MEKTUBU
-═══════════════════════════════════════════════════════════
+      description: 'Bildirim mektubu (minimal)',
+      template: `
+<div style="text-align:right;font-size:10.5pt;color:#444;">Tarih: <b>{{date}}</b></div>
+<div style="margin-top:10px;font-size:11pt;font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
 
-Sayın {{firstName}} {{lastName}},
+<div style="margin-top:12px;">
+  <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>Konu</b></div>
+  <div style="font-size:12pt;font-weight:800;color:#111;">{{notificationSubject}}</div>
+</div>
 
-Aşağıda belirtilen konu hakkında bilgilerinize sunulur.
+<div style="margin-top:10px;font-size:11pt;white-space:pre-wrap;color:#111;">{{notificationContent}}</div>
 
-═══════════════════════════════════════════════════════════
-                    BİLDİRİM KONUSU
-═══════════════════════════════════════════════════════════
-
-{{notificationSubject}}
-
-═══════════════════════════════════════════════════════════
-                    BİLDİRİM İÇERİĞİ
-═══════════════════════════════════════════════════════════
-
-{{notificationContent}}
-
-═══════════════════════════════════════════════════════════
-                    ÜYE BİLGİLERİ
-═══════════════════════════════════════════════════════════
-
-Ad Soyad          : {{firstName}} {{lastName}}
-Üye Numarası      : {{memberNumber}}
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-
-═══════════════════════════════════════════════════════════
-
-Bu bildirim {{date}} tarihinde yapılmıştır.
-
-Saygılarımızla,
-Sendika Yönetimi
-{{date}}
-
-[İmza Alanı]
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:22px;text-align:right;">
+  <div style="font-weight:700;">Sendika Yönetimi</div>
+  <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+</div>`,
       type: DocumentTemplateType.NOTIFICATION_LETTER,
       isActive: true,
     },
     {
       name: 'Üyelik Başvuru Formu',
-      description: 'Yeni üyelik başvuru formu şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    ÜYELİK BAŞVURU FORMU
-═══════════════════════════════════════════════════════════
+      description: 'Üyelik başvuru formu (minimal, alanlı)',
+      template: `
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:10.5pt;color:#444;">
+  <div>Üyelik Başvuru Formu</div>
+  <div>Tarih: <b>{{date}}</b></div>
+</div>
+<div style="border-top:1px solid #ddd;margin:10px 0 14px;"></div>
 
-Bu form, sendikamıza üyelik başvurusu yapmak isteyen adaylar 
-için doldurulacaktır.
+<div style="font-size:12pt;font-weight:800;margin:6px 0 8px;">Kişisel Bilgiler</div>
+<table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+  <tr><td style="width:34%;padding:4px 0;color:#333;">Ad Soyad</td><td style="padding:4px 0;">: <b>{{firstName}} {{lastName}}</b></td></tr>
+  <tr><td style="padding:4px 0;color:#333;">T.C. Kimlik No</td><td style="padding:4px 0;">: {{nationalId}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Anne / Baba Adı</td><td style="padding:4px 0;">: {{motherName}} / {{fatherName}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Doğum Tarihi / Yeri</td><td style="padding:4px 0;">: {{birthDate}} / {{birthPlace}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Cinsiyet</td><td style="padding:4px 0;">: {{gender}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Telefon</td><td style="padding:4px 0;">: {{phone}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">E-posta</td><td style="padding:4px 0;">: {{email}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Adres</td><td style="padding:4px 0;">: {{address}}</td></tr>
+</table>
 
-═══════════════════════════════════════════════════════════
-                    KİŞİSEL BİLGİLER
-═══════════════════════════════════════════════════════════
+<div style="margin-top:14px;font-size:12pt;font-weight:800;margin-bottom:8px;">Kurum / Görev Bilgileri</div>
+<table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+  <tr><td style="width:34%;padding:4px 0;color:#333;">İl / İlçe</td><td style="padding:4px 0;">: {{province}} / {{district}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Kurum</td><td style="padding:4px 0;">: {{institution}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Görev Birimi</td><td style="padding:4px 0;">: {{dutyUnit}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Kurum Adresi</td><td style="padding:4px 0;">: {{institutionAddress}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Şube</td><td style="padding:4px 0;">: {{branch}}</td></tr>
+</table>
 
-Ad                : {{firstName}}
-Soyad             : {{lastName}}
-TC Kimlik No      : {{nationalId}}
-Doğum Tarihi      : {{birthDate}}
-Doğum Yeri        : {{birthPlace}}
-Cinsiyet          : {{gender}}
-Medeni Durum      : {{maritalStatus}}
-Telefon           : {{phone}}
-E-posta           : {{email}}
-Adres             : {{address}}
+<div style="margin-top:14px;font-size:12pt;font-weight:800;margin-bottom:8px;">Eğitim Bilgileri</div>
+<table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+  <tr><td style="width:34%;padding:4px 0;color:#333;">Eğitim Durumu</td><td style="padding:4px 0;">: {{educationStatus}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Okul</td><td style="padding:4px 0;">: {{schoolName}}</td></tr>
+  <tr><td style="padding:4px 0;color:#333;">Bölüm</td><td style="padding:4px 0;">: {{department}}</td></tr>
+</table>
 
-═══════════════════════════════════════════════════════════
-                    İŞ BİLGİLERİ
-═══════════════════════════════════════════════════════════
+<div style="margin-top:14px;font-size:10.5pt;color:#555;">
+  Başvuru Tarihi: <b>{{applicationDate}}</b> &nbsp;•&nbsp; Durum: <b>{{applicationStatus}}</b>
+</div>
 
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-Pozisyon          : {{position}}
-İşe Başlama Tarihi: {{employmentDate}}
+<div style="margin-top:18px;font-size:10.5pt;color:#555;">
+  Yukarıdaki bilgilerin doğruluğunu taahhüt ederim.
+</div>
 
-═══════════════════════════════════════════════════════════
-                    EĞİTİM BİLGİLERİ
-═══════════════════════════════════════════════════════════
-
-Eğitim Durumu     : {{educationStatus}}
-Mezun Olduğu Okul : {{schoolName}}
-Bölüm             : {{department}}
-
-═══════════════════════════════════════════════════════════
-
-Başvuru Tarihi    : {{applicationDate}}
-Başvuru Durumu    : {{applicationStatus}}
-
-Yukarıdaki bilgilerin doğruluğunu taahhüt ederim.
-
-Başvuranın İmzası: _________________
-
-Tarih: {{date}}
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:18px;display:flex;justify-content:space-between;gap:12px;">
+  <div style="flex:1;">
+    <div style="font-size:10pt;color:#666;">Başvuran İmzası</div>
+    <div style="border-bottom:1px solid #999;margin-top:26px;"></div>
+  </div>
+  <div style="width:45mm;text-align:right;">
+    <div style="font-size:10pt;color:#666;">Tarih</div>
+    <div style="margin-top:26px;font-weight:700;">{{date}}</div>
+  </div>
+</div>`,
       type: DocumentTemplateType.MEMBERSHIP_APPLICATION,
       isActive: true,
     },
     {
       name: 'Nakil Belgesi',
-      description: 'Üye nakil belgesi şablonu',
-      template: `═══════════════════════════════════════════════════════════
-                    ÜYE NAKİL BELGESİ
-═══════════════════════════════════════════════════════════
+      description: 'Nakil belgesi (minimal)',
+      template: `
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:10.5pt;color:#444;">
+  <div>Nakil Belgesi</div>
+  <div>Tarih: <b>{{date}}</b></div>
+</div>
+<div style="border-top:1px solid #ddd;margin:10px 0 14px;"></div>
 
-Sayın {{firstName}} {{lastName}},
+<div style="font-size:11pt;">
+  <div style="font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
+  <div style="margin-top:10px;">
+    Üyemiz <b>{{firstName}} {{lastName}}</b> (Üye No: <b>{{memberNumber}}</b>) için nakil işlemi <b>{{date}}</b> tarihinde gerçekleştirilmiştir.
+  </div>
+</div>
 
-Üyemiz {{firstName}} {{lastName}} (Üye No: {{memberNumber}}) 
-adlı üyemizin nakil işlemi aşağıdaki bilgiler doğrultusunda 
-gerçekleştirilmiştir.
+<div style="margin-top:14px;">
+  <table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
+    <tr>
+      <td style="width:50%;vertical-align:top;padding-right:10px;">
+        <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>Eski Bilgiler</b></div>
+        <div>İl: <b>{{oldProvince}}</b></div>
+        <div>İlçe: <b>{{oldDistrict}}</b></div>
+        <div>Kurum: <b>{{oldInstitution}}</b></div>
+        <div>Şube: <b>{{oldBranch}}</b></div>
+      </td>
+      <td style="width:50%;vertical-align:top;padding-left:10px;border-left:1px solid #eee;">
+        <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>Yeni Bilgiler</b></div>
+        <div>İl: <b>{{province}}</b></div>
+        <div>İlçe: <b>{{district}}</b></div>
+        <div>Kurum: <b>{{institution}}</b></div>
+        <div>Şube: <b>{{branch}}</b></div>
+      </td>
+    </tr>
+  </table>
+</div>
 
-═══════════════════════════════════════════════════════════
-                    ÜYE BİLGİLERİ
-═══════════════════════════════════════════════════════════
+<div style="margin-top:12px;">
+  <div style="font-size:10pt;color:#555;margin-bottom:6px;"><b>Nakil Nedeni</b></div>
+  <div style="white-space:pre-wrap;font-size:11pt;">{{transferReason}}</div>
+</div>
 
-Ad Soyad          : {{firstName}} {{lastName}}
-Üye Numarası      : {{memberNumber}}
-TC Kimlik No      : {{nationalId}}
-Üyelik Tarihi     : {{joinDate}}
-Nakil Tarihi      : {{date}}
-
-═══════════════════════════════════════════════════════════
-                    NAKİL BİLGİLERİ
-═══════════════════════════════════════════════════════════
-
-ESKİ BİLGİLER:
-İl                : {{oldProvince}}
-İlçe              : {{oldDistrict}}
-Kurum             : {{oldInstitution}}
-Şube              : {{oldBranch}}
-
-YENİ BİLGİLER:
-İl                : {{province}}
-İlçe              : {{district}}
-Kurum             : {{institution}}
-Şube              : {{branch}}
-
-Nakil Nedeni      : {{transferReason}}
-
-═══════════════════════════════════════════════════════════
-
-Bu nakil işlemi {{date}} tarihinde gerçekleştirilmiştir.
-
-Saygılarımızla,
-Sendika Yönetimi
-{{date}}
-
-[İmza Alanı]
-═══════════════════════════════════════════════════════════`,
+<div style="margin-top:18px;text-align:right;">
+  <div style="font-weight:700;">Sendika Yönetimi</div>
+  <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+</div>`,
       type: DocumentTemplateType.TRANSFER_CERTIFICATE,
       isActive: true,
     },
