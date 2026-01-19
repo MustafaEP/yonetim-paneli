@@ -27,6 +27,7 @@ import SecuritySettings from './components/SecuritySettings';
 import AuditSettings from './components/AuditSettings';
 import IntegrationSettings from './components/IntegrationSettings';
 import MaintenanceSettings from './components/MaintenanceSettings';
+import PageHeader from '../../components/layout/PageHeader';
 
 const categoryLabels: Record<SettingsCategory, string> = {
   GENERAL: 'Genel Ayarlar',
@@ -168,49 +169,15 @@ const SystemSettingsPage: React.FC = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Başlık ve Breadcrumb */}
+      <PageHeader
+        icon={<SettingsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Sistem Ayarları"
+        description="Sistem genel ayarlarını yönetin ve yapılandırın"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
       <Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <SettingsIcon sx={{ color: '#fff', fontSize: 28 }} />
-          </Box>
-          <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              Sistem Ayarları
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: '0.875rem',
-                mt: 0.5,
-              }}
-            >
-              Sistem genelindeki ayarları yönetin ve yapılandırın
-            </Typography>
-          </Box>
-        </Box>
-
         <Breadcrumbs
           separator={<NavigateNextIcon fontSize="small" sx={{ color: alpha(theme.palette.text.secondary, 0.4) }} />}
           sx={{ mb: 2 }}

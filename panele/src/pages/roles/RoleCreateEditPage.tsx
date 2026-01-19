@@ -257,7 +257,7 @@ const RoleCreateEditPage: React.FC = () => {
   return (
     <Box>
       {/* Başlık Bölümü */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 2 }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/roles')}
@@ -275,53 +275,23 @@ const RoleCreateEditPage: React.FC = () => {
         >
           Rollere Geri Dön
         </Button>
-
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            {isEditMode ? (
-              <EditIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-            ) : (
-              <AddCircleIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-            )}
-          </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              {isEditMode ? 'Rol Düzenle' : 'Yeni Rol Oluştur'}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              {isEditMode
-                ? 'Rol bilgilerini ve izinlerini güncelleyin'
-                : 'Yeni bir rol oluşturun ve izinlerini belirleyin'}
-            </Typography>
-          </Box>
-        </Box>
       </Box>
+      <PageHeader
+        icon={
+          isEditMode ? (
+            <EditIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
+          ) : (
+            <AddCircleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
+          )
+        }
+        title={isEditMode ? 'Rol Düzenle' : 'Yeni Rol Oluştur'}
+        description={isEditMode
+          ? 'Rol bilgilerini ve izinlerini güncelleyin'
+          : 'Yeni bir rol oluşturun ve izinlerini belirleyin'}
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
 
       {error && (
         <Alert

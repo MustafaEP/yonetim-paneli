@@ -43,6 +43,7 @@ import {
 } from '../../api/contentApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
+import PageHeader from '../../components/layout/PageHeader';
 
 const ContentListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -312,63 +313,32 @@ const ContentListPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <ArticleIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-          </Box>
-          <Box>
-            <Typography
-              variant="h4"
+      <PageHeader
+        icon={<ArticleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="İçerik Yönetimi"
+        description="Haber, duyuru ve etkinlik içeriklerini yönetin"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+        rightContent={
+          canManage ? (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenDialog()}
               sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
               }}
             >
-              İçerik Yönetimi
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Haber, duyuru ve etkinlik içeriklerini yönetin
-            </Typography>
-          </Box>
-        </Box>
-        {canManage && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 3,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            Yeni İçerik
-          </Button>
-        )}
-      </Box>
+              Yeni İçerik
+            </Button>
+          ) : undefined
+        }
+      />
 
       <Card
         elevation={0}

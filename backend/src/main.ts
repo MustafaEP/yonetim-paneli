@@ -7,6 +7,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -25,6 +26,11 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization',
   });
+
+  // 🔹 JSON body limit (base64 image gibi büyük payload'lar için)
+  // Default limit (~100kb) üye kartı fotoğrafı gibi alanlarda 413/500 hatasına sebep olabiliyor.
+  app.use(bodyParser.json({ limit: '20mb' }));
+  app.use(bodyParser.urlencoded({ extended: true, limit: '20mb' }));
 
   // 🔹 Global Validation Pipe
   app.useGlobalPipes(

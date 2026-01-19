@@ -43,6 +43,7 @@ import { useToast } from '../../hooks/useToast';
 import type { MemberListItem } from '../../types/member';
 import { DOCUMENT_TYPES, getDocumentTypeLabel } from '../../utils/documentTypes';
 import httpClient from '../../api/httpClient';
+import PageHeader from '../../components/layout/PageHeader';
 
 const MemberDocumentsPage: React.FC = () => {
   const { memberId: paramMemberId } = useParams<{ memberId?: string }>();
@@ -469,50 +470,19 @@ const MemberDocumentsPage: React.FC = () => {
 
   return (
     <Box>
+      <PageHeader
+        icon={<DescriptionIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title={selectedMember 
+          ? `${selectedMember.firstName} ${selectedMember.lastName} - Dokümanlar`
+          : 'Üye Doküman Geçmişi'}
+        description={selectedMember 
+          ? `${selectedMember.firstName} ${selectedMember.lastName} adlı üyenin doküman geçmişi`
+          : 'Üyelerin doküman geçmişini görüntüleyin - Üye seçin'}
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
       <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <DescriptionIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-          </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
-              }}
-            >
-              {selectedMember 
-                ? `${selectedMember.firstName} ${selectedMember.lastName} - Dokümanlar`
-                : 'Üye Doküman Geçmişi'}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              {selectedMember 
-                ? `${selectedMember.firstName} ${selectedMember.lastName} adlı üyenin doküman geçmişi`
-                : 'Üyelerin doküman geçmişini görüntüleyin - Üye seçin'}
-            </Typography>
-          </Box>
-        </Box>
 
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <Autocomplete
@@ -685,6 +655,51 @@ const MemberDocumentsPage: React.FC = () => {
               }}
               localeText={{
                 noRowsLabel: 'Doküman bulunamadı',
+                noResultsOverlayLabel: 'Sonuç bulunamadı',
+                errorOverlayDefaultLabel: 'Bir hata oluştu',
+                toolbarExportLabel: 'Dışa Aktar',
+                toolbarExportCSV: 'CSV olarak indir',
+                toolbarExportPrint: 'Yazdır',
+                toolbarColumnsLabel: 'Sütunlar',
+                toolbarFiltersLabel: 'Filtreler',
+                toolbarDensityLabel: 'Yoğunluk',
+                toolbarDensityCompact: 'Kompakt',
+                toolbarDensityStandard: 'Standart',
+                toolbarDensityComfortable: 'Rahat',
+                filterPanelOperators: 'Operatörler',
+                filterPanelColumns: 'Sütunlar',
+                filterPanelInputLabel: 'Değer',
+                filterPanelInputPlaceholder: 'Filtre değeri',
+                columnMenuLabel: 'Menü',
+                columnMenuShowColumns: 'Sütunları göster',
+                columnMenuFilter: 'Filtrele',
+                columnMenuHideColumn: 'Gizle',
+                columnMenuUnsort: 'Sıralamayı kaldır',
+                columnMenuSortAsc: 'Artan sırala',
+                columnMenuSortDesc: 'Azalan sırala',
+                columnsPanelTextFieldLabel: 'Sütun bul',
+                columnsPanelTextFieldPlaceholder: 'Sütun başlığı',
+                columnsPanelDeleteIconLabel: 'Sil',
+                columnsPanelShowAllButton: 'Tümünü göster',
+                columnsPanelHideAllButton: 'Tümünü gizle',
+                filterPanelDeleteIconLabel: 'Sil',
+                filterPanelLogicOperator: 'Mantık operatörü',
+                filterPanelOperator: 'Operatör',
+                filterOperatorContains: 'İçerir',
+                filterOperatorEquals: 'Eşittir',
+                filterOperatorStartsWith: 'İle başlar',
+                filterOperatorEndsWith: 'İle biter',
+                filterOperatorIs: 'Eşittir',
+                filterOperatorNot: 'Eşit değildir',
+                filterOperatorAfter: 'Sonrası',
+                filterOperatorOnOrAfter: 'Sonrası veya eşit',
+                filterOperatorBefore: 'Öncesi',
+                filterOperatorOnOrBefore: 'Öncesi veya eşit',
+                filterOperatorIsEmpty: 'Boş',
+                filterOperatorIsNotEmpty: 'Boş değil',
+                filterOperatorIsAnyOf: 'Herhangi biri',
+                filterValueInputLabel: 'Değer',
+                filterValueInputPlaceholder: 'Filtre değeri',
                 MuiTablePagination: {
                   labelRowsPerPage: 'Sayfa başına satır:',
                   labelDisplayedRows: ({ from, to, count }) =>

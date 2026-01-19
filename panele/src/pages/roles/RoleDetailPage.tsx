@@ -34,6 +34,7 @@ import { getRoleById } from '../../api/rolesApi';
 import { PERMISSION_GROUPS, PERMISSION_LABELS } from '../../types/role';
 import { getUserById } from '../../api/usersApi';
 import { useToast } from '../../hooks/useToast';
+import PageHeader from '../../components/layout/PageHeader';
 
 const RoleDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -138,7 +139,7 @@ const RoleDetailPage: React.FC = () => {
   return (
     <Box>
       {/* Başlık Bölümü */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 2 }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/roles')}
@@ -156,55 +157,29 @@ const RoleDetailPage: React.FC = () => {
         >
           Rollere Geri Dön
         </Button>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
+      </Box>
+      <PageHeader
+        icon={<AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {role.name}
+            {role.name === 'ADMIN' && (
+              <Chip
+                label="Sistem Rolü"
+                size="small"
+                color="warning"
+                icon={<VerifiedIcon />}
+                sx={{ fontWeight: 600 }}
+              />
+            )}
           </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                  color: theme.palette.text.primary,
-                }}
-              >
-                {role.name}
-              </Typography>
-              {role.name === 'ADMIN' && (
-                <Chip
-                  label="Sistem Rolü"
-                  size="small"
-                  color="warning"
-                  icon={<VerifiedIcon />}
-                  sx={{ fontWeight: 600 }}
-                />
-              )}
-            </Box>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Rol detaylarını ve izinlerini görüntüleyin
-            </Typography>
-          </Box>
-          {role.name !== 'ADMIN' && (
+        }
+        description="Rol detaylarını ve izinlerini görüntüleyin"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+        rightContent={
+          role.name !== 'ADMIN' ? (
             <Button
               variant="contained"
               startIcon={<EditIcon />}
@@ -222,9 +197,9 @@ const RoleDetailPage: React.FC = () => {
             >
               Düzenle
             </Button>
-          )}
-        </Box>
-      </Box>
+          ) : undefined
+        }
+      />
 
       {/* İstatistik Kartları */}
       <Grid container spacing={2} sx={{ mb: 3 }}>

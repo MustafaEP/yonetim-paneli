@@ -28,6 +28,7 @@ import {
   alpha,
   Fade,
   Zoom,
+  useTheme,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -61,8 +62,10 @@ import {
   type Branch 
 } from '../../api/branchesApi';
 import { useAuth } from '../../context/AuthContext';
+import PageHeader from '../../components/layout/PageHeader';
 
 const RegionsPage: React.FC = () => {
+  const theme = useTheme();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const canSeeRegions = hasPermission('REGION_LIST') || hasPermission('MEMBER_LIST_BY_PROVINCE');
@@ -498,75 +501,14 @@ const RegionsPage: React.FC = () => {
     }}>
       <Container maxWidth="xl">
         {/* Header Section */}
-        <Box sx={{ 
-          pt: { xs: 3, md: 5 }, 
-          pb: { xs: 3, md: 4 },
-        }}>
-          <Fade in timeout={800}>
-            <Card 
-              elevation={0}
-              sx={{ 
-                borderRadius: 4,
-                background: (theme) => 
-                  theme.palette.mode === 'light'
-                    ? `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`
-                    : `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-                color: 'white',
-                overflow: 'visible',
-                position: 'relative',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  borderRadius: 4,
-                  padding: '2px',
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
-                  WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                  WebkitMaskComposite: 'xor',
-                  maskComposite: 'exclude',
-                }
-              }}
-            >
-              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
-                  <Box
-                    sx={{
-                      width: { xs: 60, md: 80 },
-                      height: { xs: 60, md: 80 },
-                      borderRadius: '20px',
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      backdropFilter: 'blur(10px)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <LocationOnIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'white' }} />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h4" gutterBottom sx={{ 
-                      fontWeight: 700,
-                      fontSize: { xs: '1.5rem', md: '2.125rem' },
-                      mb: 1,
-                    }}>
-                      İl ve İlçeler
-                    </Typography>
-                    <Typography variant="body1" sx={{ 
-                      opacity: 0.95,
-                      fontSize: { xs: '0.875rem', md: '1rem' },
-                    }}>
-                      Detaylarını görmek istediğiniz il ve ilçeyi seçerek bağlı kurumları, şubeleri ve tevkifat merkezlerini görüntüleyin
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Fade>
-        </Box>
+        <PageHeader
+          icon={<LocationOnIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+          title="İl ve İlçeler"
+          description="Detaylarını görmek istediğiniz il ve ilçeyi seçerek bağlı kurumları, şubeleri ve tevkifat merkezlerini görüntüleyin"
+          color={theme.palette.primary.main}
+          darkColor={theme.palette.primary.dark}
+          lightColor={theme.palette.primary.light}
+        />
 
         {/* Filter Section */}
         <Fade in timeout={1000}>

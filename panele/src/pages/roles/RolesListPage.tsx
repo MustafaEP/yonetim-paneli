@@ -31,6 +31,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 import type { RoleListItem, CustomRole } from '../../types/role';
 import { getRoles, deleteRole } from '../../api/rolesApi';
+import PageHeader from '../../components/layout/PageHeader';
 
 const RolesListPage: React.FC = () => {
   const theme = useTheme();
@@ -280,51 +281,19 @@ const RolesListPage: React.FC = () => {
     <>
       <Box>
         {/* Başlık Bölümü */}
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 2,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              <AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: '1.5rem' }} />
-            </Box>
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                  color: theme.palette.text.primary,
-                  mb: 0.5,
-                }}
-              >
-                Roller
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                }}
-              >
-                Sistem rolleri ve özel rolleri görüntüleyin ve yönetin
-              </Typography>
-            </Box>
+        <PageHeader
+          icon={<AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+          title="Roller"
+          description="Sistem rolleri ve özel rolleri görüntüleyin ve yönetin"
+          color={theme.palette.primary.main}
+          darkColor={theme.palette.primary.dark}
+          lightColor={theme.palette.primary.light}
+          rightContent={
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => navigate('/roles/new')}
               sx={{
-                display: { xs: 'none', sm: 'flex' },
                 borderRadius: 2,
                 textTransform: 'none',
                 fontWeight: 600,
@@ -337,27 +306,25 @@ const RolesListPage: React.FC = () => {
             >
               Yeni Rol
             </Button>
-          </Box>
-
-          {/* Mobile New Role Button */}
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            fullWidth
-            onClick={() => navigate('/roles/new')}
-            sx={{
-              display: { xs: 'flex', sm: 'none' },
-              mt: 2,
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              py: 1.5,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            Yeni Rol Ekle
-          </Button>
-        </Box>
+          }
+          mobileContent={
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              fullWidth
+              onClick={() => navigate('/roles/new')}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                py: 1.5,
+                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+              }}
+            >
+              Yeni Rol Ekle
+            </Button>
+          }
+        />
 
         {/* Ana Kart */}
         <Card

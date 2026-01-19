@@ -48,6 +48,7 @@ import { getMembers } from '../../api/membersApi';
 import { createPayment, updatePayment, getPayments, type PaymentType, type CreateMemberPaymentDto, type UpdateMemberPaymentDto } from '../../api/paymentsApi';
 import type { MemberListItem } from '../../types/member';
 import type { Institution } from '../../api/institutionsApi';
+import PageHeader from '../../components/layout/PageHeader';
 
 interface PaymentRow {
   id: string;
@@ -722,71 +723,14 @@ const QuickPaymentEntryPage: React.FC = () => {
       }}
     >
       {/* Modern Başlık Bölümü */}
-      <Box
-        sx={{
-          mb: 4,
-          p: { xs: 3, sm: 4, md: 5 },
-          borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            width: '300px',
-            height: '300px',
-            background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
-            borderRadius: '50%',
-            transform: 'translate(30%, -30%)',
-          },
-        }}
-      >
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box
-              sx={{
-                width: { xs: 56, sm: 64 },
-                height: { xs: 56, sm: 64 },
-                borderRadius: 3,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
-              }}
-            >
-              <PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
-            </Box>
-            <Box>
-              <Typography
-                variant="h3"
-                sx={{
-                  fontWeight: 800,
-                  fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
-                  color: theme.palette.text.primary,
-                  mb: 0.5,
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                Hızlı Ödeme Girişi
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontSize: { xs: '0.9rem', sm: '1rem' },
-                  fontWeight: 500,
-                }}
-              >
-                Toplu ödeme girişi ve yönetimi • {rows.length} satır ({draftRows.length} taslak, {savedRows.length} kaydedildi)
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-      </Box>
+      <PageHeader
+        icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Hızlı Ödeme Girişi"
+        description={`Toplu ödeme girişi ve yönetimi • ${rows.length} satır (${draftRows.length} taslak, ${savedRows.length} kaydedildi)`}
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
 
       {/* Kullanım İpuçları kaldırıldı */}
 

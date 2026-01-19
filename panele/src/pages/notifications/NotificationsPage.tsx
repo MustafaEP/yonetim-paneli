@@ -35,6 +35,7 @@ import { useSystemSettings } from '../../context/SystemSettingsContext';
 import { useToast } from '../../hooks/useToast';
 import type { Province } from '../../types/region';
 import type { UserListItem } from '../../types/user';
+import PageHeader from '../../components/layout/PageHeader';
 
 const NotificationsPage: React.FC = () => {
   const theme = useTheme();
@@ -378,63 +379,32 @@ const NotificationsPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            <NotificationsIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-          </Box>
-          <Box>
-            <Typography
-              variant="h4"
+      <PageHeader
+        icon={<NotificationsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Bildirim Gönder"
+        description="Panel kullanıcılarına ve üyelere bildirim gönderin"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+        rightContent={
+          canSend ? (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenDialog}
               sx={{
-                fontWeight: 700,
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                color: theme.palette.text.primary,
-                mb: 0.5,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
               }}
             >
-              Bildirim Gönder
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: theme.palette.text.secondary,
-                fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              }}
-            >
-              Panel kullanıcılarına ve üyelere bildirim gönderin
-            </Typography>
-          </Box>
-        </Box>
-        {canSend && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenDialog}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 3,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            Yeni Bildirim
-          </Button>
-        )}
-      </Box>
+              Yeni Bildirim
+            </Button>
+          ) : undefined
+        }
+      />
 
       <Card
         elevation={0}

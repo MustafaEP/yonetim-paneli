@@ -28,6 +28,7 @@ import type { SystemLog } from '../../api/systemApi';
 import { getSystemLogs, getSystemLogById } from '../../api/systemApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
+import PageHeader from '../../components/layout/PageHeader';
 
 const SystemLogsPage: React.FC = () => {
   const theme = useTheme();
@@ -173,49 +174,16 @@ const SystemLogsPage: React.FC = () => {
 
   return (
     <Box>
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 2,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              <ListAltIcon sx={{ color: '#fff', fontSize: '1.75rem' }} />
-            </Box>
-            <Box>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                  color: theme.palette.text.primary,
-                  mb: 0.5,
-                }}
-              >
-                Sistem Logları
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                }}
-              >
-                Sistem loglarını görüntüleyin
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
+      <PageHeader
+        icon={<ListAltIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Sistem Logları"
+        description="Sistem işlem kayıtlarını görüntüleyin ve takip edin"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
 
-        <Card
+      <Card
           elevation={0}
           sx={{
             borderRadius: 3,
@@ -321,10 +289,10 @@ const SystemLogsPage: React.FC = () => {
               },
             }}
           />
-        </Card>
+      </Card>
 
-        {/* View Dialog */}
-        <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+      {/* View Dialog */}
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
           <DialogTitle>Log Detayı</DialogTitle>
           <DialogContent>
             {viewingLog && (
@@ -376,10 +344,10 @@ const SystemLogsPage: React.FC = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setViewDialogOpen(false)}>Kapat</Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
+        <Button onClick={() => setViewDialogOpen(false)}>Kapat</Button>
+      </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 

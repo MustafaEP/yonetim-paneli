@@ -34,6 +34,7 @@ import {
   type TevkifatCenter,
 } from '../../api/accountingApi';
 import { getProvinces, getDistricts, type Province, type District } from '../../api/regionsApi';
+import PageHeader from '../../components/layout/PageHeader';
 
 const TevkifatCenterCreatePage: React.FC = () => {
   const theme = useTheme();
@@ -230,76 +231,16 @@ const TevkifatCenterCreatePage: React.FC = () => {
         </Button>
 
         {/* Modern Header Card */}
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 4,
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            color: 'white',
-            overflow: 'visible',
-            position: 'relative',
-            boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderRadius: 4,
-              padding: '2px',
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)',
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor',
-              maskComposite: 'exclude',
-            }
-          }}
-        >
-          <Box sx={{ p: { xs: 3, md: 4 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, md: 3 } }}>
-              <Box
-                sx={{
-                  width: { xs: 60, md: 80 },
-                  height: { xs: 60, md: 80 },
-                  borderRadius: '20px',
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  backdropFilter: 'blur(10px)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                }}
-              >
-                <BusinessIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'white' }} />
-              </Box>
-              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
-                    mb: 1,
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {isEditMode ? 'Tevkifat Merkezi Düzenle' : 'Yeni Tevkifat Merkezi Oluştur'}
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    opacity: 0.95,
-                    fontSize: { xs: '0.875rem', md: '1rem' },
-                  }}
-                >
-                  {isEditMode
-                    ? 'Tevkifat merkezi bilgilerini güncelleyin'
-                    : 'Yeni bir tevkifat merkezi kaydı oluşturun'}
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        </Card>
+        <PageHeader
+          icon={<BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+          title={isEditMode ? 'Tevkifat Merkezi Düzenle' : 'Yeni Tevkifat Merkezi Oluştur'}
+          description={isEditMode
+            ? 'Tevkifat merkezi bilgilerini güncelleyin'
+            : 'Yeni bir tevkifat merkezi kaydı oluşturun'}
+          color={theme.palette.primary.main}
+          darkColor={theme.palette.primary.dark}
+          lightColor={theme.palette.primary.light}
+        />
       </Box>
 
       {/* Ana Kart */}

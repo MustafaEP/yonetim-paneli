@@ -85,6 +85,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { getProvinces } from '../../api/regionsApi';
 import type { Province } from '../../types/region';
+import PageHeader from '../../components/layout/PageHeader';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -548,86 +549,27 @@ const ReportsPage: React.FC = () => {
       }}
     >
       {/* Header / Hero */}
-      <Box
-        sx={{
-          mb: { xs: 2, sm: 2.5, md: 3 },
-          p: { xs: 2, sm: 2.5, md: 3 },
-          borderRadius: { xs: 3, md: 4 },
-          border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
-          background: `radial-gradient(${isMobile ? '600px' : '900px'} circle at 10% 0%, ${alpha(
-            theme.palette.primary.main,
-            0.18
-          )} 0%, transparent 55%),
-                       radial-gradient(${isMobile ? '500px' : '800px'} circle at 90% 10%, ${alpha(
-                         theme.palette.success.main,
-                         0.14
-                       )} 0%, transparent 55%)`,
-          transition: 'all 300ms ease',
-        }}
-      >
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          justifyContent="space-between"
-        >
-          <Stack direction="row" spacing={{ xs: 1.5, sm: 2 }} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
-            <Box
-              sx={{
-                width: { xs: 44, sm: 48, md: 52 },
-                height: { xs: 44, sm: 48, md: 52 },
-                borderRadius: { xs: 2.5, md: 3 },
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                display: 'grid',
-                placeItems: 'center',
-                boxShadow: `0 10px 26px ${alpha(theme.palette.primary.main, 0.28)}`,
-                flexShrink: 0,
-              }}
-            >
-              <AssessmentIcon sx={{ color: '#fff', fontSize: { xs: 24, sm: 26, md: 28 } }} />
-            </Box>
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 900,
-                  letterSpacing: -0.6,
-                  fontSize: { xs: 20, sm: 24, md: 28, lg: 30 },
-                  lineHeight: 1.15,
-                }}
-              >
-                Raporlar
-              </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  color: 'text.secondary', 
-                  mt: { xs: 0.25, sm: 0.5 },
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  display: { xs: 'none', sm: 'block' }
-                }}
-              >
-                Genel durum, bölgesel dağılım, üye durumları ve aidat analizleri.
-              </Typography>
-            </Box>
-          </Stack>
-
-          {/* Sağ üst küçük bilgi chip */}
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Chip
-              size="small"
-              icon={<BarChartIcon />}
-              label="Dashboard"
-              sx={{
-                borderRadius: 999,
-                bgcolor: alpha(theme.palette.primary.main, 0.10),
-                color: theme.palette.primary.main,
-                fontWeight: 700,
-              }}
-            />
-          </Stack>
-        </Stack>
-      </Box>
+      <PageHeader
+        icon={<AssessmentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Raporlar"
+        description="Genel durum, bölgesel dağılım, üye durumları ve aidat analizleri"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+        rightContent={
+          <Chip
+            size="small"
+            icon={<BarChartIcon />}
+            label="Dashboard"
+            sx={{
+              borderRadius: 999,
+              bgcolor: alpha(theme.palette.primary.main, 0.10),
+              color: theme.palette.primary.main,
+              fontWeight: 700,
+            }}
+          />
+        }
+      />
 
       <Card elevation={0} sx={cardShellSx}>
         {/* Tabs */}
