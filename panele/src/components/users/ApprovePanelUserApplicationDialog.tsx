@@ -213,6 +213,10 @@ const ApprovePanelUserApplicationDialog: React.FC<ApprovePanelUserApplicationDia
       };
       await approvePanelUserApplication(applicationId, submitData);
       toast.showSuccess('Başvuru başarıyla onaylandı ve kullanıcı oluşturuldu');
+      
+      // Panel kullanıcıları listesini güncellemek için custom event tetikle
+      window.dispatchEvent(new CustomEvent('panelUserApproved'));
+      
       onSuccess?.();
       onClose();
       // Formu sıfırla
