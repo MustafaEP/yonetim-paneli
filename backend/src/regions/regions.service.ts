@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateProvinceDto,
   CreateDistrictDto,
+} from './application/dto';
+import {
   AssignUserScopeDto,
   UpdateUserScopeDto,
   CreateBranchDto,
@@ -14,10 +16,16 @@ import {
   UpdateInstitutionDto,
 } from './dto';
 import { Prisma } from '@prisma/client';
+import { ProvinceApplicationService } from './application/services/province-application.service';
+import { DistrictApplicationService } from './application/services/district-application.service';
 
 @Injectable()
 export class RegionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private provinceService: ProvinceApplicationService,
+    private districtService: DistrictApplicationService,
+  ) {}
 
   // ---------- PROVINCE ----------
   async listProvinces() {
@@ -84,22 +92,13 @@ export class RegionsService {
   }
 
   async createDistrict(dto: CreateDistrictDto) {
-    return this.prisma.district.create({
-      data: {
-        name: dto.name,
-        provinceId: dto.provinceId,
-      },
-    });
+    const district = await this.districtService.createDistrict({ dto });
+    return await this.prisma.district.findUnique({ where: { id: district.id } });
   }
 
   async updateDistrict(id: string, dto: CreateDistrictDto) {
-    return this.prisma.district.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        provinceId: dto.provinceId,
-      },
-    });
+    const district = await this.districtService.updateDistrict({ districtId: id, dto });
+    return await this.prisma.district.findUnique({ where: { id: district.id } });
   }
 
   async getDistrictById(id: string) {

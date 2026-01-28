@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateContentDto, UpdateContentDto } from './dto';
+import { CreateContentDto } from './application/dto/create-content.dto';
+import { UpdateContentDto } from './application/dto/update-content.dto';
 import { ContentType, ContentStatus } from '@prisma/client';
+import { ContentApplicationService } from './application/services/content-application.service';
 
 @Injectable()
 export class ContentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private contentApplicationService: ContentApplicationService,
+  ) {}
 
   async findAll(params?: { type?: ContentType; status?: ContentStatus }) {
     return this.prisma.content.findMany({
@@ -50,12 +55,9 @@ export class ContentService {
   }
 
   async create(dto: CreateContentDto, authorId: string) {
-    return this.prisma.content.create({
-      data: {
-        ...dto,
-        authorId,
-        status: dto.status || ContentStatus.DRAFT,
-      },
+    const content = await this.contentApplicationService.createContent({ dto, authorId });
+    return await this.prisma.content.findUnique({
+      where: { id: content.id },
       include: {
         author: {
           select: {
@@ -70,11 +72,9 @@ export class ContentService {
   }
 
   async update(id: string, dto: UpdateContentDto) {
-    const content = await this.findOne(id);
-
-    return this.prisma.content.update({
-      where: { id },
-      data: dto,
+    const content = await this.contentApplicationService.updateContent({ contentId: id, dto });
+    return await this.prisma.content.findUnique({
+      where: { id: content.id },
       include: {
         author: {
           select: {
@@ -89,19 +89,14 @@ export class ContentService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.content.delete({ where: { id } });
+    await this.contentApplicationService.deleteContent({ contentId: id });
+    return await this.prisma.content.findUnique({ where: { id } });
   }
 
   async publish(id: string) {
-    const content = await this.findOne(id);
-
-    return this.prisma.content.update({
-      where: { id },
-      data: {
-        status: ContentStatus.PUBLISHED,
-        publishedAt: new Date(),
-      },
+    const content = await this.contentApplicationService.publishContent({ contentId: id });
+    return await this.prisma.content.findUnique({
+      where: { id: content.id },
       include: {
         author: {
           select: {

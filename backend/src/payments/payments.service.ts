@@ -211,7 +211,9 @@ export class PaymentsService {
       );
 
       // Bildirimi gönder
-      await this.notificationsService.send(notification.id);
+      if (notification) {
+        await this.notificationsService.send(notification.id);
+      }
 
       this.logger.log(
         `Beklemedeki üye (${member.registrationNumber}) için ödeme bildirimi ${adminUsers.length} admin kullanıcıya gönderildi`,

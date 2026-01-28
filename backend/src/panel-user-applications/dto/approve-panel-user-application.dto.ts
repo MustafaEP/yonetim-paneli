@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsEmail, IsOptional, MinLength, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { RoleScopeDto } from '../../roles/dto/create-role.dto';
+import { RoleScopeDto } from '../../roles/application/dto/role-scope.dto';
 
 export class ApprovePanelUserApplicationDto {
   @ApiProperty({ description: 'Kullanıcı email adresi', example: 'user@example.com' })

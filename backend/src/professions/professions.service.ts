@@ -4,12 +4,16 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateProfessionDto } from './dto/create-profession.dto';
-import { UpdateProfessionDto } from './dto/update-profession.dto';
+import { CreateProfessionDto } from './application/dto/create-profession.dto';
+import { UpdateProfessionDto } from './application/dto/update-profession.dto';
+import { ProfessionApplicationService } from './application/services/profession-application.service';
 
 @Injectable()
 export class ProfessionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private professionApplicationService: ProfessionApplicationService,
+  ) {}
 
   /**
    * Meslek/Unvan listesini getir
@@ -51,84 +55,21 @@ export class ProfessionsService {
    * Meslek/Unvan oluştur
    */
   async createProfession(dto: CreateProfessionDto) {
-    // İsim benzersizlik kontrolü
-    const existing = await this.prisma.profession.findUnique({
-      where: { name: dto.name },
-    });
-
-    if (existing) {
-      throw new BadRequestException('Bu meslek/unvan zaten mevcut');
-    }
-
-    return this.prisma.profession.create({
-      data: {
-        name: dto.name,
-      },
-    });
+    const profession = await this.professionApplicationService.createProfession({ dto });
+    return await this.prisma.profession.findUnique({ where: { id: profession.id } });
   }
 
-  /**
-   * Meslek/Unvan güncelle
-   */
   async updateProfession(id: string, dto: UpdateProfessionDto) {
-    const profession = await this.prisma.profession.findUnique({
-      where: { id },
+    const profession = await this.professionApplicationService.updateProfession({
+      professionId: id,
+      dto,
     });
-
-    if (!profession) {
-      throw new NotFoundException('Meslek/Unvan bulunamadı');
-    }
-
-    // İsim benzersizlik kontrolü
-    if (dto.name && dto.name !== profession.name) {
-      const existing = await this.prisma.profession.findUnique({
-        where: { name: dto.name },
-      });
-      if (existing) {
-        throw new BadRequestException('Bu meslek/unvan zaten mevcut');
-      }
-    }
-
-    return this.prisma.profession.update({
-      where: { id },
-      data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-      },
-    });
+    return await this.prisma.profession.findUnique({ where: { id: profession.id } });
   }
 
-  /**
-   * Meslek/Unvan sil (soft delete - isActive: false)
-   */
   async deleteProfession(id: string) {
-    const profession = await this.prisma.profession.findUnique({
-      where: { id },
-    });
-
-    if (!profession) {
-      throw new NotFoundException('Meslek/Unvan bulunamadı');
-    }
-
-    // Kullanımda olup olmadığını kontrol et
-    const memberCount = await this.prisma.member.count({
-      where: {
-        professionId: id,
-      },
-    });
-
-    if (memberCount > 0) {
-      // Kullanımda ise soft delete
-      return this.prisma.profession.update({
-        where: { id },
-        data: { isActive: false },
-      });
-    }
-
-    // Kullanımda değilse hard delete
-    return this.prisma.profession.delete({
-      where: { id },
-    });
+    await this.professionApplicationService.deleteProfession({ professionId: id });
+    return await this.prisma.profession.findUnique({ where: { id } });
   }
 }
 
