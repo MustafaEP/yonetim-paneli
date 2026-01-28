@@ -1,13 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '../config/config.service';
-import { CreateDocumentTemplateDto, UpdateDocumentTemplateDto, GenerateDocumentDto } from './dto';
+import { CreateDocumentTemplateDto } from './application/dto/create-document-template.dto';
+import { UpdateDocumentTemplateDto } from './application/dto/update-document-template.dto';
+import { GenerateDocumentDto } from './dto';
 import { DocumentTemplateType, DocumentUploadStatus } from '@prisma/client';
 import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PdfService } from './services/pdf.service';
 import { FileStorageService } from './services/file-storage.service';
+import { DocumentTemplateApplicationService } from './application/services/document-template-application.service';
 
 @Injectable()
 export class DocumentsService {
@@ -18,6 +21,7 @@ export class DocumentsService {
     private pdfService: PdfService,
     private fileStorageService: FileStorageService,
     private configService: ConfigService,
+    private documentTemplateApplicationService: DocumentTemplateApplicationService,
   ) {}
 
   // Şablonlar
@@ -45,40 +49,21 @@ export class DocumentsService {
   }
 
   async createTemplate(dto: CreateDocumentTemplateDto) {
-    return this.prisma.documentTemplate.create({
-      data: {
-        name: dto.name,
-        description: dto.description,
-        template: dto.template,
-        type: dto.type,
-        isActive: dto.isActive ?? true,
-      },
-    });
+    const template = await this.documentTemplateApplicationService.createTemplate({ dto });
+    return await this.prisma.documentTemplate.findUnique({ where: { id: template.id } });
   }
 
   async updateTemplate(id: string, dto: UpdateDocumentTemplateDto) {
-    await this.findTemplateById(id);
-
-    return this.prisma.documentTemplate.update({
-      where: { id },
-      data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.template && { template: dto.template }),
-        ...(dto.type && { type: dto.type }),
-        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-      },
+    const template = await this.documentTemplateApplicationService.updateTemplate({
+      templateId: id,
+      dto,
     });
+    return await this.prisma.documentTemplate.findUnique({ where: { id: template.id } });
   }
 
   async deleteTemplate(id: string) {
-    await this.findTemplateById(id);
-
-    // Soft delete - isActive false yap
-    return this.prisma.documentTemplate.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    await this.documentTemplateApplicationService.deleteTemplate({ templateId: id });
+    return await this.prisma.documentTemplate.findUnique({ where: { id } });
   }
 
   // Üye dokümanları

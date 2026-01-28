@@ -401,6 +401,10 @@ export class PanelUserApplicationsService {
       scopes: scopesToUse,
     }, application.memberId); // memberId'yi geçir
 
+    if (!newUser) {
+      throw new Error('User creation failed');
+    }
+
     // Başvuruyu güncelle ve Member'a bağla
     // Eğer admin scope değiştirdiyse, başvurudaki scope'ları güncelle
     if (dto.scopes && dto.scopes.length > 0 && application.requestedRole.hasScopeRestriction) {

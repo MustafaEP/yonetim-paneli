@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationsService } from './notifications.service';
-import { NotificationsController } from './notifications.controller';
+import { NotificationsController } from './presentation/controllers/notifications.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ConfigModule } from '../config/config.module';
 import { MembersModule } from '../members/members.module';
@@ -10,6 +10,11 @@ import { NotificationQueue, NOTIFICATION_QUEUE_NAME } from './queues/notificatio
 import { EmailService } from './services/email.service';
 import { SmsService } from './services/sms.service';
 import { ConfigService } from '../config/config.service';
+import { NotificationApplicationService } from './application/services/notification-application.service';
+import { PrismaNotificationRepository } from './infrastructure/persistence/prisma-notification.repository';
+import { NotificationRepository } from './domain/repositories/notification.repository.interface';
+import { NotificationExceptionFilter } from './presentation/filters/notification-exception.filter';
+import { NotificationValidationPipe } from './presentation/pipes/notification-validation.pipe';
 
 @Module({
   imports: [
@@ -45,6 +50,14 @@ import { ConfigService } from '../config/config.service';
     NotificationQueue,
     EmailService,
     SmsService,
+    NotificationApplicationService,
+    {
+      provide: 'NotificationRepository',
+      useClass: PrismaNotificationRepository,
+    },
+    PrismaNotificationRepository,
+    NotificationExceptionFilter,
+    NotificationValidationPipe,
   ],
   exports: [
     NotificationsService,

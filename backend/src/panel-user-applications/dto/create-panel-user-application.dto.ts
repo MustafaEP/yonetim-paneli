@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { RoleScopeDto } from '../../roles/dto/create-role.dto';
+import { RoleScopeDto } from '../../roles/application/dto/role-scope.dto';
 
 export class CreatePanelUserApplicationDto {
   @ApiProperty({ description: 'İstenen rol ID', example: 'role-id-123' })

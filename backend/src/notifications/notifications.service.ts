@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateNotificationDto } from './dto';
+import { CreateNotificationDto } from './application/dto/create-notification.dto';
 import { NotificationStatus, NotificationTargetType, NotificationType, MemberStatus } from '@prisma/client';
 import { NotificationQueue } from './queues/notification.queue';
 import { NotificationJobData } from './processors/notification.processor';
@@ -9,6 +9,7 @@ import { SmsService } from './services/sms.service';
 import { ConfigService } from '../config/config.service';
 import { MemberScopeService } from '../members/member-scope.service';
 import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
+import { NotificationApplicationService } from './application/services/notification-application.service';
 
 @Injectable()
 export class NotificationsService {
@@ -21,6 +22,7 @@ export class NotificationsService {
     private smsService: SmsService,
     private configService: ConfigService,
     private memberScopeService: MemberScopeService,
+    private notificationApplicationService: NotificationApplicationService,
   ) {}
 
   async findAll(params?: {
@@ -86,7 +88,7 @@ export class NotificationsService {
   }
 
   async create(dto: CreateNotificationDto, userId: string, user?: CurrentUserData) {
-    let finalDto = { ...dto };
+    let finalMetadata = dto.metadata;
 
     // NOTIFY_OWN_SCOPE izni varsa ve targetType belirtilmemişse veya SCOPE ise, kullanıcının scope'unu kullan
     const hasNotifyOwnScope = user?.permissions?.includes('NOTIFY_OWN_SCOPE' as any);
@@ -94,18 +96,12 @@ export class NotificationsService {
     const hasNotifyRegion = user?.permissions?.includes('NOTIFY_REGION' as any);
 
     if (hasNotifyOwnScope && !hasNotifyAll && !hasNotifyRegion) {
-      // Sadece NOTIFY_OWN_SCOPE izni varsa, otomatik olarak SCOPE target type'ına çevir
-      if (finalDto.targetType !== NotificationTargetType.SCOPE) {
-        finalDto.targetType = NotificationTargetType.SCOPE;
-      }
-
       // Kullanıcının scope'unu al ve metadata'ya ekle
       if (user) {
         const scopeIds = await this.memberScopeService.getUserScopeIds(user);
         if (scopeIds.provinceId || scopeIds.districtId) {
-          // Scope bilgisini metadata'ya ekle (getRecipients'da kullanılacak)
-          finalDto.metadata = {
-            ...(finalDto.metadata || {}),
+          finalMetadata = {
+            ...(finalMetadata || {}),
             scopeProvinceId: scopeIds.provinceId,
             scopeDistrictId: scopeIds.districtId,
           };
@@ -113,27 +109,19 @@ export class NotificationsService {
       }
     }
 
-    // Hedef tip kontrolü
-    if (
-      (finalDto.targetType === NotificationTargetType.REGION || finalDto.targetType === NotificationTargetType.SCOPE) &&
-      !finalDto.targetId &&
-      !finalDto.metadata?.scopeProvinceId &&
-      !finalDto.metadata?.scopeDistrictId
-    ) {
-      throw new Error(`${finalDto.targetType} için targetId veya scope bilgisi zorunludur`);
-    }
-
-    // ALL_MEMBERS için targetId olmamalı
-    if (finalDto.targetType === NotificationTargetType.ALL_MEMBERS && finalDto.targetId) {
-      throw new Error('ALL_MEMBERS için targetId belirtilmemelidir');
-    }
-
-    return this.prisma.notification.create({
-      data: {
-        ...finalDto,
-        sentBy: userId,
-        status: NotificationStatus.PENDING,
+    const notification = await this.notificationApplicationService.createNotification({
+      dto: {
+        ...dto,
+        targetType: hasNotifyOwnScope && !hasNotifyAll && !hasNotifyRegion
+          ? NotificationTargetType.SCOPE
+          : dto.targetType,
       },
+      userId,
+      metadata: finalMetadata,
+    });
+
+    return await this.prisma.notification.findUnique({
+      where: { id: notification.id },
       include: {
         sentByUser: {
           select: {
@@ -697,8 +685,8 @@ export class NotificationsService {
   }
 
   async delete(id: string) {
-    await this.findOne(id);
-    return this.prisma.notification.delete({ where: { id } });
+    await this.notificationApplicationService.deleteNotification({ notificationId: id });
+    return await this.prisma.notification.findUnique({ where: { id } });
   }
 }
 

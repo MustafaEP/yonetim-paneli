@@ -1,5 +1,5 @@
-export * from './create-province.dto';
-export * from './create-district.dto';
+export * from '../application/dto/create-province.dto';
+export * from '../application/dto/create-district.dto';
 export * from './assign-user-scope.dto';
 export * from './update-user-scope.dto';
 export * from './create-branch.dto';

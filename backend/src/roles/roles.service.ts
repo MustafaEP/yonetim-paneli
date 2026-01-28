@@ -5,17 +5,29 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
-import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
+import { CreateRoleDto } from './application/dto/create-role.dto';
+import { UpdateRoleDto } from './application/dto/update-role.dto';
+import { UpdateRolePermissionsDto } from './application/dto/update-role-permissions.dto';
 import { RoleResponseDto, RoleScopeResponseDto } from './dto/role-response.dto';
-// Role enum artık kullanılmıyor, CustomRole kullanılıyor
 import { Permission } from '../auth/permission.enum';
 import { ALL_PERMISSIONS } from '../auth/role-permissions.map';
+import { RoleCreationApplicationService } from './application/services/role-creation-application.service';
+import { RoleUpdateApplicationService } from './application/services/role-update-application.service';
+import { RolePermissionsUpdateApplicationService } from './application/services/role-permissions-update-application.service';
+import { RoleDeletionApplicationService } from './application/services/role-deletion-application.service';
+import { RoleQueryApplicationService } from './application/services/role-query-application.service';
+import { RoleMapper } from './application/mappers/role.mapper';
 
 @Injectable()
 export class RolesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private roleCreationService: RoleCreationApplicationService,
+    private roleUpdateService: RoleUpdateApplicationService,
+    private rolePermissionsUpdateService: RolePermissionsUpdateApplicationService,
+    private roleDeletionService: RoleDeletionApplicationService,
+    private roleQueryService: RoleQueryApplicationService,
+  ) {}
 
   async listRoles(): Promise<Array<RoleResponseDto | { name: string; permissions: Permission[]; isSystemRole: boolean }>> {
     // Custom rolleri getir (veritabanından gelen tüm roller)
@@ -59,11 +71,10 @@ export class RolesService {
   }
 
   async getRoleById(id: string): Promise<RoleResponseDto & { users?: Array<{ id: string; email: string; firstName: string; lastName: string }> }> {
-    const role = await this.prisma.customRole.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
+    const role = await this.roleQueryService.findById(id);
+
+    const prismaRole = await this.prisma.customRole.findUnique({
+      where: { id: role.id },
       include: {
         permissions: true,
         users: {
@@ -81,32 +92,11 @@ export class RolesService {
       },
     });
 
-    if (!role) {
+    if (!prismaRole) {
       throw new NotFoundException('Rol bulunamadı');
     }
 
-    // ADMIN rolü için tüm izinleri göster (veritabanında saklanmasa bile)
-    const permissions = role.name === 'ADMIN' 
-      ? ALL_PERMISSIONS 
-      : role.permissions.map((p) => p.permission as Permission);
-
-    return {
-      id: role.id,
-      name: role.name,
-      description: role.description ?? undefined,
-      isActive: role.isActive,
-      permissions,
-      hasScopeRestriction: role.hasScopeRestriction,
-      // Scope'ları burada döndürmüyoruz - scope'lar rol seviyesinde değil, kullanıcıya rol atanırken belirlenir
-      createdAt: role.createdAt,
-      updatedAt: role.updatedAt,
-      users: role.users.map(u => ({
-        id: u.id,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-      })),
-    };
+    return RoleMapper.toResponseDto(role, prismaRole.users);
   }
 
   async createRole(dto: CreateRoleDto): Promise<RoleResponseDto> {
@@ -165,112 +155,15 @@ export class RolesService {
   }
 
   async updateRole(id: string, dto: UpdateRoleDto): Promise<RoleResponseDto> {
-    const role = await this.prisma.customRole.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
+    const role = await this.roleUpdateService.updateRole({
+      roleId: id,
+      updateData: dto,
     });
-
-    if (!role) {
-      throw new NotFoundException('Rol bulunamadı');
-    }
-
-    // ADMIN rolü düzenlenemez
-    if (role.name === 'ADMIN') {
-      throw new BadRequestException('ADMIN rolü düzenlenemez. Bu bir sistem rolüdür.');
-    }
-
-    // İsim değişiyorsa unique kontrolü
-    if (dto.name && dto.name !== role.name) {
-      // ADMIN adına değiştirilemez
-      if (dto.name === 'ADMIN') {
-        throw new BadRequestException('ADMIN rolü oluşturulamaz. Bu bir sistem rolüdür.');
-      }
-
-      const existingRole = await this.prisma.customRole.findFirst({
-        where: {
-          name: dto.name,
-          deletedAt: null,
-          id: { not: id },
-        },
-      });
-
-      if (existingRole) {
-        throw new ConflictException('Bu isimde bir rol zaten mevcut');
-      }
-    }
-
-    // Yetki alanı güncellemesi - sadece flag'i güncelliyoruz
-    const hasScopeRestriction = dto.hasScopeRestriction !== undefined 
-      ? dto.hasScopeRestriction 
-      : role.hasScopeRestriction;
-
-    // Scope validasyonu ve güncellemesi kaldırıldı - scope'lar rol oluşturulurken değil,
-    // kullanıcıya rol atanırken belirlenir
-
-    const updatedRole = await this.prisma.customRole.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        isActive: dto.isActive,
-        hasScopeRestriction: hasScopeRestriction,
-      },
-      include: {
-        permissions: true,
-      },
-    });
-
-    return {
-      id: updatedRole.id,
-      name: updatedRole.name,
-      description: updatedRole.description ?? undefined,
-      isActive: updatedRole.isActive,
-      permissions: updatedRole.permissions.map((p) => p.permission as Permission),
-      hasScopeRestriction: updatedRole.hasScopeRestriction,
-      // Scope'ları burada döndürmüyoruz - scope'lar rol seviyesinde değil, kullanıcıya rol atanırken belirlenir
-      createdAt: updatedRole.createdAt,
-      updatedAt: updatedRole.updatedAt,
-    };
+    return RoleMapper.toResponseDto(role);
   }
 
   async deleteRole(id: string): Promise<void> {
-    const role = await this.prisma.customRole.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      include: {
-        users: true,
-      },
-    });
-
-    if (!role) {
-      throw new NotFoundException('Rol bulunamadı');
-    }
-
-    // ADMIN rolü silinemez
-    if (role.name === 'ADMIN') {
-      throw new BadRequestException(
-        'ADMIN rolü silinemez. Bu bir sistem rolüdür.',
-      );
-    }
-
-    // Rol kullanıcılara atanmışsa silme
-    if (role.users.length > 0) {
-      throw new BadRequestException(
-        'Bu rol kullanıcılara atanmış. Önce kullanıcılardan kaldırın.',
-      );
-    }
-
-    // Soft delete
-    await this.prisma.customRole.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+    await this.roleDeletionService.deleteRole({ roleId: id });
   }
 
   async updateRolePermissions(

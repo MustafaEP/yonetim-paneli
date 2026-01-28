@@ -1,2 +1,2 @@
-export * from './create-notification.dto';
+export * from '../application/dto/create-notification.dto';
 
