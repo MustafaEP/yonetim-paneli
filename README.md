@@ -1,292 +1,402 @@
-# Sendika Yönetim Sistemi - RBAC Dokümantasyonu
+# Sendika Yönetim Paneli
 
-## 🚀 Kurulum / VPS Deploy
+Modern, ölçeklenebilir ve güvenli bir sendika yönetim sistemi. Hiyerarşik rol yapısı ile üye yönetimi, mali işler, içerik yönetimi ve raporlama özellikleri sunar.
 
-- **Docker Compose ile VPS kurulumu**: `DEPLOYMENT.md`
+## 📋 İçindekiler
 
-## 🏗️ Teknoloji Stack
-- **Frontend:** React + TypeScript + Material-UI (MUI)
-- **Backend:** Node.js + NestJS + TypeScript
-- **Database:** Prisma ORM
+- [Özellikler](#-özellikler)
+- [Teknoloji Stack](#-teknoloji-stack)
+- [Proje Yapısı](#-proje-yapısı)
+- [Kurulum](#-kurulum)
+- [Geliştirme](#-geliştirme)
+- [Deployment](#-deployment)
+- [Rol Yapısı](#-rol-yapısı)
+- [Modüller](#-modüller)
+- [API Dokümantasyonu](#-api-dokümantasyonu)
+- [Katkıda Bulunma](#-katkıda-bulunma)
+- [Lisans](#-lisans)
 
----
+## ✨ Özellikler
 
-## 👥 Roller (Hierarchical Structure)
+- 🔐 **Güvenli Kimlik Doğrulama**: JWT tabanlı authentication sistemi
+- 👥 **Hiyerarşik Rol Yönetimi**: 9 farklı rol seviyesi ile esnek yetkilendirme
+- 📊 **Kapsamlı Üye Yönetimi**: Kayıt, onay, güncelleme ve durum takibi
+- 💰 **Mali İşler Modülü**: Aidat yönetimi, ödeme takibi ve raporlama
+- 📄 **Doküman Yönetimi**: PDF şablonları ve otomatik doküman üretimi
+- 📢 **İçerik Yönetimi**: Haber, duyuru ve etkinlik yönetimi
+- 🔔 **Bildirim Sistemi**: Email, SMS ve WhatsApp entegrasyonu
+- 📈 **Raporlama**: Detaylı istatistikler ve Excel/PDF export
+- 🌍 **Bölgesel Yönetim**: İl, ilçe ve şube bazlı organizasyon
+- 🔍 **Audit Log**: Tüm işlemlerin kayıt altına alınması
+
+## 🛠️ Teknoloji Stack
+
+### Backend
+- **Framework**: NestJS 11.x
+- **Language**: TypeScript 5.x
+- **ORM**: Prisma 6.x
+- **Database**: PostgreSQL 16
+- **Cache**: Redis 7
+- **Queue**: BullMQ
+- **Authentication**: JWT (Passport)
+- **Documentation**: Swagger/OpenAPI
+- **PDF Generation**: Puppeteer
+- **Email**: AWS SES
+
+### Frontend
+- **Framework**: React 19.x
+- **Language**: TypeScript 5.x
+- **Build Tool**: Vite 7.x
+- **UI Library**: Material-UI (MUI) 7.x
+- **State Management**: React Query (TanStack Query)
+- **Routing**: React Router 7.x
+- **HTTP Client**: Axios
+- **Charts**: Recharts
+- **Excel Export**: xlsx
+
+### Infrastructure
+- **Containerization**: Docker & Docker Compose
+- **Web Server**: Nginx
+- **Reverse Proxy**: Nginx Proxy Manager
+
+## 📁 Proje Yapısı
 
 ```
-ADMIN
-├── MODERATOR
-├── GENEL_BASKAN
-│   └── GENEL_BASKAN_YRD
-│       └── GENEL_SEKRETER
-│           └── IL_BASKANI
-│               └── ILCE_TEMSILCISI
-│                   └── ISYERI_TEMSILCISI
+yonetim-paneli/
+├── backend/                 # NestJS backend uygulaması
+│   ├── src/
+│   │   ├── accounting/     # Mali işler modülü
+│   │   ├── approvals/      # Onay süreçleri
+│   │   ├── auth/           # Kimlik doğrulama
+│   │   ├── content/        # İçerik yönetimi
+│   │   ├── documents/      # Doküman yönetimi
+│   │   ├── members/        # Üye yönetimi
+│   │   ├── notifications/  # Bildirim sistemi
+│   │   ├── payments/       # Ödeme yönetimi
+│   │   ├── regions/        # Bölgesel yönetim
+│   │   ├── roles/          # Rol ve yetki yönetimi
+│   │   └── users/          # Kullanıcı yönetimi
+│   ├── prisma/             # Prisma schema ve migrations
+│   └── scripts/            # Yardımcı scriptler
+│
+├── panele/                 # React frontend uygulaması
+│   ├── src/
+│   │   ├── api/           # API client'ları
+│   │   ├── components/    # React bileşenleri
+│   │   ├── pages/         # Sayfa bileşenleri
+│   │   ├── context/       # Context API
+│   │   ├── hooks/         # Custom hooks
+│   │   └── utils/         # Yardımcı fonksiyonlar
+│   └── public/            # Statik dosyalar
+│
+├── nginx-proxy-config/    # Nginx konfigürasyonları
+├── scripts/               # Deployment scriptleri
+└── docker-compose.yml     # Docker Compose konfigürasyonu
+```
+
+## 🚀 Kurulum
+
+### Gereksinimler
+
+- Node.js 18+ ve npm/yarn
+- Docker ve Docker Compose
+- PostgreSQL 16+ (veya Docker ile)
+- Redis 7+ (veya Docker ile)
+
+### Yerel Geliştirme Ortamı
+
+1. **Repository'yi klonlayın**
+   ```bash
+   git clone <repository-url>
+   cd yonetim-paneli
+   ```
+
+2. **Environment değişkenlerini ayarlayın**
+   ```bash
+   cp env.example .env
+   # .env dosyasını düzenleyin
+   ```
+
+3. **Docker container'ları başlatın**
+   ```bash
+   docker-compose up -d postgres redis
+   ```
+
+4. **Backend bağımlılıklarını yükleyin**
+   ```bash
+   cd backend
+   npm install
+   ```
+
+5. **Database migration'ları çalıştırın**
+   ```bash
+   npx prisma migrate dev
+   npx prisma generate
+   ```
+
+6. **Backend'i başlatın**
+   ```bash
+   npm run start:dev
+   ```
+
+7. **Frontend bağımlılıklarını yükleyin** (yeni terminal)
+   ```bash
+   cd panele
+   npm install
+   ```
+
+8. **Frontend'i başlatın**
+   ```bash
+   npm run dev
+   ```
+
+Backend: `http://localhost:3000`  
+Frontend: `http://localhost:5173`  
+API Docs: `http://localhost:3000/api`
+
+## 💻 Geliştirme
+
+### Backend Komutları
+
+```bash
+# Development modunda çalıştır
+npm run start:dev
+
+# Production build
+npm run build
+npm run start:prod
+
+# Test çalıştır
+npm run test
+npm run test:e2e
+
+# Linting ve formatlama
+npm run lint
+npm run format
+
+# Prisma işlemleri
+npx prisma studio          # Prisma Studio'yu açar
+npx prisma migrate dev     # Yeni migration oluşturur
+npx prisma generate        # Prisma Client'ı yeniden oluşturur
+```
+
+### Frontend Komutları
+
+```bash
+# Development modunda çalıştır
+npm run dev
+
+# Production build
+npm run build
+
+# Preview production build
+npm run preview
+
+# Linting
+npm run lint
+```
+
+### Kod Standartları
+
+- TypeScript strict mode aktif
+- ESLint ve Prettier kullanılıyor
+- Commit mesajları için conventional commits önerilir
+- Pull request'ler için code review gereklidir
+
+## 🚢 Deployment
+
+### VPS Deployment
+
+1. **Sunucuya bağlanın ve projeyi klonlayın**
+   ```bash
+   cd /opt
+   git clone <repository-url> yonetim
+   cd yonetim
+   ```
+
+2. **Environment dosyasını oluşturun**
+   ```bash
+   cp env.example .env
+   # .env dosyasını production değerleriyle düzenleyin
+   ```
+
+3. **Docker network'ü oluşturun**
+   ```bash
+   docker network create edge
+   ```
+
+4. **Deploy scriptini çalıştırın**
+   ```bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+
+   Veya manuel olarak:
+   ```bash
+   docker-compose build
+   docker-compose up -d
+   docker-compose exec backend npx prisma migrate deploy
+   ```
+
+5. **Nginx reverse proxy ayarlarını yapın**
+   - `nginx-proxy-config/yonetim.conf` dosyasını reverse proxy'nize ekleyin
+
+### Environment Değişkenleri
+
+Önemli environment değişkenleri:
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
+# JWT
+JWT_SECRET=your-secret-key-min-32-chars
+JWT_EXPIRES_IN=7d
+
+# AWS SES (Email)
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_SES_FROM_EMAIL=
+
+# Frontend
+VITE_API_BASE_URL=/api
+```
+
+## 👑 Rol Yapısı
+
+Sistem hiyerarşik bir rol yapısı kullanır:
+
+```
+ADMIN (Süper Kullanıcı)
+├── MODERATOR (Operasyon Yöneticisi)
+├── GENEL_BASKAN (Genel Başkan)
+│   └── GENEL_BASKAN_YRD (Genel Başkan Yardımcısı)
+│       └── GENEL_SEKRETER (Genel Sekreter)
+│           └── IL_BASKANI (İl Başkanı)
+│               └── ILCE_TEMSILCISI (İlçe Temsilcisi)
+│                   └── ISYERI_TEMSILCISI (İş Yeri Temsilcisi)
 ├── ANLASMALI_KURUM_YETKILISI
-└── UYE
+└── UYE (Üye)
 ```
 
----
+### Rol Yetkileri Özeti
 
-## 🔧 Sistem Modülleri
+| Rol | Kapsam | Ana Yetkiler |
+|-----|--------|--------------|
+| **ADMIN** | Sistem geneli | Tüm modüllerde sınırsız erişim |
+| **MODERATOR** | Sistem geneli | Kullanıcı ve üye yönetimi, içerik yönetimi |
+| **GENEL_BASKAN** | Ülke geneli | Üye onayları, il başkanı atama, raporlar |
+| **GENEL_BASKAN_YRD** | Alan bazlı | Üye görüntüleme, raporlar, içerik |
+| **GENEL_SEKRETER** | Evrak işleri | Doküman üretimi, içerik taslakları |
+| **IL_BASKANI** | İl bazlı | İl bazlı üye yönetimi, temsilci atama |
+| **ILCE_TEMSILCISI** | İlçe bazlı | İlçe üye listesi, başvuru oluşturma |
+| **ISYERI_TEMSILCISI** | İş yeri bazlı | İş yeri üyeleri, başvuru formu |
+| **UYE** | Kişisel | Profil görüntüleme, aidat geçmişi |
 
-### 1. Kullanıcı Yönetimi (User Management)
+Detaylı yetki matrisi için [RBAC Dokümantasyonu](README.md#-rol-bazlı-yetki-matrisi) bölümüne bakın.
+
+## 📦 Modüller
+
+### 1. Kullanıcı Yönetimi
 - Kullanıcı CRUD operasyonları
-- Kullanıcı detay görüntüleme
-- Kullanıcı pasifleştirme/aktifleştirme
 - Rol atama ve yönetimi
+- Kullanıcı pasifleştirme/aktifleştirme
 
-### 2. Rol & Yetki Yönetimi (Role & Permission Management)
-- Rol tanımlama ve düzenleme
-- İzin seti yönetimi
-- Rol silme ve güncelleme
-
-### 3. Üye Yönetimi (Member Management)
+### 2. Üye Yönetimi
 - Üye kayıt başvurusu
 - Başvuru onay/red süreçleri
 - Üye bilgi güncelleme
 - İstifa/ihraç/pasifleştirme işlemleri
 
-### 4. Aidat & Mali İşler (Dues & Finance)
+### 3. Mali İşler
 - Aidat planı tanımlama
 - Ödeme kayıt yönetimi
 - Borç/gecikme raporları
 - Excel/PDF raporlama
 
-### 5. Şube/İl/İlçe Yönetimi (Branch & Region Management)
-- Bölgesel yapı yönetimi
-- Şube CRUD operasyonları
-- Başkan/temsilci atama
-
-### 6. İş Yeri Yönetimi (Workplace Management)
-- İş yeri kayıt ve güncelleme
+### 4. Bölgesel Yönetim
+- İl, ilçe ve şube yönetimi
 - Temsilci atama
-- İş yeri üye listesi
+- Bölgesel raporlar
 
-### 7. İçerik Yönetimi (Content Management)
+### 5. İçerik Yönetimi
 - Haber/duyuru/etkinlik yönetimi
 - Yayın durumu kontrolü
 - Taslak sistemi
 
-### 8. Evrak & Doküman (Document Management)
-- Şablon oluşturma
+### 6. Doküman Yönetimi
+- PDF şablonları
+- Otomatik doküman üretimi
 - Evrak geçmişi
-- PDF üretimi
 
-### 9. Raporlar & Dashboard
-- Genel istatistikler
-- Bölgesel raporlar
-- Grafiksel analizler
-
-### 10. Bildirim & İletişim (Notifications)
+### 7. Bildirim Sistemi
 - Toplu bildirim (Email/SMS/WhatsApp)
 - Bölgesel bildirim
 - Hedefli mesajlaşma
 
-### 11. Sistem Ayarları & Loglar
-- Genel konfigürasyon
-- Entegrasyon ayarları
-- Audit log görüntüleme
+### 8. Raporlama
+- Genel istatistikler
+- Bölgesel raporlar
+- Grafiksel analizler
+- Excel/PDF export
+
+## 📚 API Dokümantasyonu
+
+Backend çalışırken Swagger dokümantasyonuna erişebilirsiniz:
+
+- **Swagger UI**: `http://localhost:3000/api`
+- **JSON**: `http://localhost:3000/api-json`
+
+API endpoint'leri JWT authentication gerektirir. Login endpoint'i ile token alabilirsiniz.
+
+## 🔒 Güvenlik
+
+- JWT tabanlı authentication
+- Role-based access control (RBAC)
+- Password hashing (bcrypt)
+- SQL injection koruması (Prisma ORM)
+- CORS yapılandırması
+- Rate limiting (gelecek versiyon)
+- Audit logging
+
+## 🧪 Test
+
+```bash
+# Backend unit testleri
+cd backend
+npm run test
+
+# Backend e2e testleri
+npm run test:e2e
+
+# Test coverage
+npm run test:cov
+```
+
+## 📝 Katkıda Bulunma
+
+1. Fork edin
+2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Değişikliklerinizi commit edin (`git commit -m 'Add amazing feature'`)
+4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
+5. Pull Request oluşturun
+
+## 📄 Lisans
+
+Bu proje özel bir projedir. Tüm hakları saklıdır.
+
+## 📞 İletişim
+
+Sorularınız için issue açabilir veya proje yöneticisi ile iletişime geçebilirsiniz.
 
 ---
 
-## 👑 Rol Bazlı Yetki Matrisi
-
-### 🔴 ADMIN (Süper Kullanıcı)
-**Kapsam:** Sistem geneli - Sınırsız erişim
-
-**Yetkiler:**
-- ✅ Tüm modüllerde CREATE, READ, UPDATE, DELETE, APPROVE
-- ✅ Sınırsız kullanıcı ve rol yönetimi
-- ✅ Yeni rol tanımlama ve izin seti düzenleme
-- ✅ Sistem ayarları (SMTP, SMS, Logo, Entegrasyonlar)
-- ✅ Tam audit log erişimi
-- ⚠️ Silinemez ve rolü değiştirilemez
-
----
-
-### 🟠 MODERATOR (Operasyon Yöneticisi)
-**Kapsam:** Sistem geneli - Yönetimsel yetkiler
-
-**Kullanıcı Yönetimi:**
-- ✅ Kullanıcı listeleme, oluşturma, pasifleştirme
-- ✅ Rol atama (ADMIN hariç tüm roller)
-- ❌ ADMIN rolü atayamaz
-- ❌ Kullanıcı silme
-
-**Üye & Organizasyon:**
-- ✅ Tüm üyeleri yönetme
-- ✅ Üye onay/red işlemleri
-- ✅ Aidat planı ve ödeme yönetimi
-- ✅ Şube/il/ilçe yönetimi
-
-**İçerik & İletişim:**
-- ✅ Haber/duyuru CRUD
-- ✅ Sistem geneli bildirim gönderme
-- ✅ Tüm raporlara erişim
-
-**Sınırlamalar:**
-- 👁️ Rol izinlerini görür, değiştiremez
-- 👁️ Sistem ayarlarını görür, sınırlı değiştirir
-
----
-
-### 🟡 GENEL_BASKAN (Genel Başkan)
-**Kapsam:** Politik üst yönetim - Onay mercii
-
-**Yetkiler:**
-- ✅ Tüm üye ve bölge verilerini görüntüleme
-- ✅ Üye kayıt onay/reddi (ülke geneli)
-- ✅ İhraç/istifa süreçlerini onaylama
-- ✅ İl başkanı atama onayı
-- ✅ Haber/duyuru yayınlama
-- ✅ Tüm raporlar ve istatistikler
-
-**Sınırlamalar:**
-- 👁️ Teknik sistem ayarlarına erişim yok
-- 👁️ Log görüntüleme (sadece okuma)
-
----
-
-### 🟢 GENEL_BASKAN_YRD (Genel Başkan Yardımcısı)
-**Kapsam:** Alan bazlı yönetim (Mali, Eğitim vb.)
-
-**Yetkiler:**
-- ✅ Tüm üye ve şube görüntüleme
-- ✅ Üye onay/red (opsiyonel alan kısıtı)
-- ✅ Aidat raporları görüntüleme
-- ✅ Haber/duyuru oluşturma
-
-**Sınırlamalar:**
-- ⚠️ Aidat planı değiştirme (opsiyonel)
-- ❌ Rol atama yetkisi sınırlı
-- ❌ Sistem ayarlarına erişim yok
-
----
-
-### 🔵 GENEL_SEKRETER (Genel Sekreter)
-**Kapsam:** Evrak, yazışma ve kayıt işlemleri
-
-**Yetkiler:**
-- ✅ Evrak şablonu oluşturma
-- ✅ Doküman üretimi (PDF)
-- ✅ Haber/duyuru taslağı hazırlama
-- ✅ Üye ve temsilci temel bilgilerini görme
-- ✅ İstatistik raporları görüntüleme
-
-**Sınırlamalar:**
-- ⚠️ Üye onayında sadece öneri hakkı
-- ❌ Mali işlem yetkisi yok
-
----
-
-### 🟣 IL_BASKANI (İl Başkanı)
-**Kapsam:** İl bazlı tam yetki
-
-**Yetkiler:**
-- ✅ İl bazlı üye yönetimi (onay/red/güncelleme)
-- ✅ İlçe temsilcisi atama
-- ✅ İş yeri temsilcisi atama
-- ✅ İl bazlı aidat yönetimi ve raporlama
-- ✅ İl bazlı haber/etkinlik yayınlama
-- ✅ İl geneli toplu bildirim
-
-**Sınırlamalar:**
-- 🔒 Sadece kendi ili kapsamında yetki
-- ❌ Sistem geneli işlemlere erişim yok
-
----
-
-### 🟤 ILCE_TEMSILCISI (İlçe Temsilcisi)
-**Kapsam:** İlçe bazlı operasyonel yetki
-
-**Yetkiler:**
-- ✅ İlçe bazlı üye listeleme ve görüntüleme
-- ✅ Üye başvuru formu oluşturma
-- ✅ Üye bilgi güncelleme talebi
-- ✅ İş yeri temsilcisi atama önerisi
-- ✅ İlçe istatistikleri
-- ✅ İlçe geneli bildirim
-
-**Sınırlamalar:**
-- 🔒 Sadece kendi ilçesi
-- ⚠️ Onay yetkisi üst kademede
-
----
-
-### ⚫ ISYERI_TEMSILCISI (İş Yeri Temsilcisi)
-**Kapsam:** Tek iş yeri bazlı
-
-**Yetkiler:**
-- ✅ İş yeri üyelerini listeleme
-- ✅ Yeni üye başvuru formu oluşturma
-- ✅ İstifa/sorun bildirimi
-- ✅ İş yeri raporu görüntüleme
-- ✅ İş yeri bazlı bildirim
-
-**Sınırlamalar:**
-- 🔒 Sadece kendi iş yeri
-- ❌ Rol/sistem/bölge yetkisi yok
-
----
-
-### ⚪ UYE (Üye)
-**Kapsam:** Kişisel hesap yönetimi
-
-**Yetkiler:**
-- ✅ Kendi profil görüntüleme ve düzenleme
-- ✅ Kendi aidat geçmişi
-- ✅ Evrak talebi oluşturma
-- ✅ İstifa talebi açma
-- ✅ Şikayet/öneri bildirimi
-
-**Sınırlamalar:**
-- 🔒 Sadece kendi verileri
-- ❌ Başka üyelere erişim yok
-
----
-
-## 📊 Yetki Matrisi Özeti
-
-| Modül | ADMIN | MOD | GB | GBY | GS | ILB | IT | IYT | BY | UYE |
-|-------|-------|-----|----|----|----|----|----|----|----|----|
-| Kullanıcı Yönetimi | ✅ | ✅¹ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Rol Yönetimi | ✅ | 👁️ | 👁️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Üye Yönetimi | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ✅⁵ | 👁️⁵ |
-| Aidat Yönetimi | ✅ | ✅ | 👁️ | 👁️ | ❌ | ✅² | 👁️³ | 👁️⁴ | ⚠️⁵ | 👁️⁵ |
-| Bölge Yönetimi | ✅ | ✅ | ✅ | ✅ | 👁️ | ✅² | ⚠️³ | ❌ | ❌ | ❌ |
-| İş Yeri Yönetimi | ✅ | ✅ | ✅ | ✅ | 👁️ | ✅² | ✅³ | ✅⁴ | ❌ | ❌ |
-| İçerik Yönetimi | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ⚠️⁵ | ❌ |
-| Evrak Yönetimi | ✅ | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| Raporlar | ✅ | ✅ | ✅ | ✅ | ✅ | ✅² | ✅³ | ✅⁴ | ✅⁵ | ❌ |
-| Bildirim | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅² | ✅³ | ✅⁴ | ✅⁵ | ❌ |
-| Sistem Ayarları | ✅ | ⚠️ | 👁️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Loglar | ✅ | ✅ | 👁️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
-**Semboller:**
-- ✅ Tam yetki (CRUD + Onay)
-- ⚠️ Kısıtlı yetki (Oluşturma/Görüntüleme, Onay yok)
-- 👁️ Sadece görüntüleme
-- ❌ Erişim yok
-
-**Notlar:**
-1. ADMIN rolü atayamaz
-2. Sadece kendi ili
-3. Sadece kendi ilçesi
-4. Sadece kendi iş yeri
-5. Sadece kendi verileri
-
-## 📚 Referanslar
-
-- [NestJS RBAC](https://docs.nestjs.com/security/authorization)
-- [Prisma Best Practices](https://www.prisma.io/docs/guides/performance-and-optimization)
-- [React Authorization](https://blog.logrocket.com/authentication-react-router-v6/)
-- [Material-UI](https://mui.com/material-ui/getting-started/)
-
----
-
-**📌 Not:** Bu dokümantasyon dinamik bir yapıdır. Sistem gereksinimleri değiştikçe güncellenmelidir.
-
-**Versiyon:** 1.0.0  
-**Son Güncelleme:** Aralık 2024  
-**Hazırlayan:** MEP
+**Versiyon**: 1.0.0  
+**Son Güncelleme**: Ocak 2026  
+**Geliştirici**: MEP
