@@ -52,20 +52,57 @@ Thumbs.db
 .next/
 next-env.d.ts
 
-# NestJS
+# NestJS - Upload klasörleri
 /uploads
+backend/uploads/
+backend/uploads/**
+!backend/uploads/.gitkeep
 
-# Misc
-.cache
-.temp
-.tmp
+# Staging ve test dosyaları
+**/staging/
+**/staging/**
+*.staging.*
+
+# PDF dosyaları (sadece upload ve staging klasörlerindeki PDF'ler ignore edilir)
+backend/uploads/**/*.pdf
+backend/uploads/staging/**/*.pdf
+**/staging/**/*.pdf
+
+# Prisma klasöründeki PDF şablonları tutulur (ignore edilmez)
+
+# Geçici ve not dosyaları
+eklenecekler.txt
+*.todo
+*.notes
+*.tmp.txt
+# Not: JSON ve seed dosyaları tutulur
+
+# Backup dosyaları
+*.bak
+*.backup
+*~
+*.orig
+
+# Database dumps (migration dosyaları tutulur)
+*.sql
+!backend/prisma/migrations/**/*.sql
+*.dump
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker volumes ve data
+**/data/
+**/volumes/
 
 # Lock files (birini seçin ve diğerini ekleyin)
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
 
-# Markdown files (README.md hariç)
+# Markdown files (README.md hariç - sadece modül README'leri tutulur)
 *.md
 !README.md
 !**/README.md
+!backend/**/README.md
+!panele/README.md
