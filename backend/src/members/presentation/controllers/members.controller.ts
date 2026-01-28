@@ -1,3 +1,14 @@
+/**
+ * Members Controller
+ * 
+ * Presentation Layer: HTTP request/response handling
+ * 
+ * Sorumluluklar:
+ * - HTTP endpoint'leri tanımlama
+ * - Request validation (DTO)
+ * - Response mapping (Mapper kullanarak)
+ * - Error handling (Exception Filter)
+ */
 import {
   Body,
   Controller,
@@ -8,24 +19,30 @@ import {
   Patch,
   Query,
   Res,
+  UseFilters,
+  UsePipes,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-import { MembersService } from './members.service';
-import { CreateMemberApplicationDto } from './dto/create-member-application.dto';
-import { CancelMemberDto } from './dto/cancel-member.dto';
-import { UpdateMemberDto } from './dto/update-member.dto';
-import { ApproveMemberDto } from './dto/approve-member.dto';
-import { DeleteMemberDto } from './dto/delete-member.dto';
-import { Permissions } from '../auth/decorators/permissions.decorator';
-import { Permission } from '../auth/permission.enum';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
-import { PdfService } from '../documents/services/pdf.service';
+import { MembersService } from '../../members.service';
+import { CreateMemberApplicationDto } from '../../application/dto/create-member-application.dto';
+import { CancelMemberDto } from '../../application/dto/cancel-member.dto';
+import { UpdateMemberDto } from '../../application/dto/update-member.dto';
+import { ApproveMemberDto } from '../../application/dto/approve-member.dto';
+import { DeleteMemberDto } from '../../application/dto/delete-member.dto';
+import { Permissions } from '../../../auth/decorators/permissions.decorator';
+import { Permission } from '../../../auth/permission.enum';
+import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
+import type { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
+import { PdfService } from '../../../documents/services/pdf.service';
+import { MemberMapper } from '../../application/mappers/member.mapper';
+import { MemberExceptionFilter } from '../filters/member-exception.filter';
+import { MemberValidationPipe } from '../pipes/member-validation.pipe';
 
 @ApiTags('Members')
 @ApiBearerAuth('JWT-auth')
 @Controller('members')
+// @UseFilters(MemberExceptionFilter) // Global filter olarak kullanılabilir, şimdilik kapalı
 export class MembersController {
   constructor(
     private readonly membersService: MembersService,
@@ -56,10 +73,13 @@ export class MembersController {
     status: 201,
     description: 'Başvuru başarıyla oluşturuldu',
   })
+  @UsePipes(MemberValidationPipe)
   async createApplication(
     @Body() dto: CreateMemberApplicationDto & { previousCancelledMemberId?: string },
     @CurrentUser() user: CurrentUserData,
   ) {
+    // Service Prisma model dönüyor, şimdilik direkt döndürüyoruz
+    // İleride Domain Entity döndüğünde mapper kullanılacak
     const member = await this.membersService.createApplication(
       dto,
       user.userId,
@@ -78,7 +98,9 @@ export class MembersController {
     type: 'array',
   })
   async listApplications(@CurrentUser() user: CurrentUserData) {
-    return this.membersService.listApplicationsForUser(user);
+    const applications = await this.membersService.listApplicationsForUser(user);
+    // Prisma model'leri için mapper kullanılabilir, şimdilik direkt dönüyoruz
+    return applications;
   }
 
   @Get('membership-info-options')
@@ -105,7 +127,9 @@ export class MembersController {
     @CurrentUser() user: CurrentUserData,
     @Query('status') status?: string,
   ) {
-    return this.membersService.listMembersForUser(user, status as any);
+    const members = await this.membersService.listMembersForUser(user, status as any);
+    // Prisma model'leri için mapper kullanılabilir, şimdilik direkt dönüyoruz
+    return members;
   }
 
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
@@ -150,7 +174,9 @@ export class MembersController {
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
   async getById(@Param('id') id: string) {
-    return this.membersService.getById(id);
+    const member = await this.membersService.getById(id);
+    // Prisma model dönüyor, mapper kullanılabilir ama şimdilik direkt dönüyoruz
+    return member;
   }
 
   @Permissions(Permission.MEMBER_APPROVE)
@@ -163,12 +189,15 @@ export class MembersController {
     description: 'Başvuru onaylandı ve üye APPROVED durumuna geçirildi (bekleyen üyeler listesine eklendi)',
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
+  @UsePipes(MemberValidationPipe)
   async approve(
     @Param('id') id: string,
     @Body() dto: ApproveMemberDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    return this.membersService.approve(id, user.userId, dto);
+    const member = await this.membersService.approve(id, user.userId, dto);
+    // Prisma model dönüyor, mapper kullanılabilir ama şimdilik direkt dönüyoruz
+    return member;
   }
 
   @Permissions(Permission.MEMBER_REJECT)
@@ -184,7 +213,8 @@ export class MembersController {
     @Param('id') id: string,
     @CurrentUser() user: CurrentUserData,
   ) {
-    return this.membersService.reject(id, user.userId);
+    const member = await this.membersService.reject(id, user.userId);
+    return member;
   }
 
   @Permissions(Permission.MEMBER_APPROVE)
@@ -201,7 +231,8 @@ export class MembersController {
     @Param('id') id: string,
     @CurrentUser() user: CurrentUserData,
   ) {
-    return this.membersService.activate(id, user.userId);
+    const member = await this.membersService.activate(id, user.userId);
+    return member;
   }
 
   @Permissions(Permission.MEMBER_STATUS_CHANGE)
@@ -214,6 +245,7 @@ export class MembersController {
     description: 'Üye silindi',
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
+  @UsePipes(MemberValidationPipe)
   async softDelete(
     @Param('id') id: string,
     @Body() dto?: DeleteMemberDto,
@@ -229,12 +261,14 @@ export class MembersController {
   @ApiResponse({ status: 200, description: 'Üyelik başarıyla iptal edildi' })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
   @ApiResponse({ status: 400, description: 'Geçersiz işlem' })
+  @UsePipes(MemberValidationPipe)
   async cancelMembership(
     @Param('id') id: string,
     @Body() dto: CancelMemberDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    return this.membersService.cancelMembership(id, dto, user.userId);
+    const member = await this.membersService.cancelMembership(id, dto, user.userId);
+    return member;
   }
 
   @Permissions(Permission.MEMBER_UPDATE)
@@ -244,13 +278,15 @@ export class MembersController {
   @ApiBody({ type: UpdateMemberDto })
   @ApiResponse({ status: 200, description: 'Üye bilgileri güncellendi' })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
+  @UsePipes(MemberValidationPipe)
   async updateMember(
     @Param('id') id: string,
     @Body() dto: UpdateMemberDto,
     @CurrentUser() user: CurrentUserData,
   ) {
     // TODO: IP adresi ve user agent bilgisini request'ten al
-    return this.membersService.updateMember(id, dto, user.userId);
+    const member = await this.membersService.updateMember(id, dto, user.userId);
+    return member;
   }
 
   @Permissions(Permission.MEMBER_VIEW)
