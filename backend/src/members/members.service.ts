@@ -5,18 +5,25 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateMemberApplicationDto } from './dto/create-member-application.dto';
-import { CancelMemberDto } from './dto/cancel-member.dto';
-import { ApproveMemberDto } from './dto/approve-member.dto';
+import { CreateMemberApplicationDto } from './application/dto/create-member-application.dto';
+import { CancelMemberDto } from './application/dto/cancel-member.dto';
+import { ApproveMemberDto } from './application/dto/approve-member.dto';
 import { MemberStatus, MemberSource, Prisma } from '@prisma/client';
 import { MemberScopeService } from './member-scope.service';
 import { MemberHistoryService } from './member-history.service';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
-import { UpdateMemberDto } from './dto/update-member.dto';
-import { DeleteMemberDto } from './dto/delete-member.dto';
+import { UpdateMemberDto } from './application/dto/update-member.dto';
+import { DeleteMemberDto } from './application/dto/delete-member.dto';
 import { ConfigService } from '../config/config.service';
 import { DocumentsService } from '../documents/documents.service';
 import { forwardRef, Inject } from '@nestjs/common';
+// 🆕 Yeni mimari: Domain-driven yapı
+import { MemberApprovalApplicationService } from './application/services/member-approval-application.service';
+import { MemberActivationApplicationService } from './application/services/member-activation-application.service';
+import { MemberRejectionApplicationService } from './application/services/member-rejection-application.service';
+import { MemberCancellationApplicationService } from './application/services/member-cancellation-application.service';
+import { MemberUpdateApplicationService } from './application/services/member-update-application.service';
+import { MemberCreationApplicationService } from './application/services/member-creation-application.service';
 
 @Injectable()
 export class MembersService {
@@ -29,6 +36,13 @@ export class MembersService {
     private configService: ConfigService,
     @Inject(forwardRef(() => DocumentsService))
     private documentsService: DocumentsService,
+    // 🆕 Yeni mimari: Application Service inject et
+    private memberApprovalApplicationService: MemberApprovalApplicationService,
+    private memberActivationApplicationService: MemberActivationApplicationService,
+    private memberRejectionApplicationService: MemberRejectionApplicationService,
+    private memberCancellationApplicationService: MemberCancellationApplicationService,
+    private memberUpdateApplicationService: MemberUpdateApplicationService,
+    private memberCreationApplicationService: MemberCreationApplicationService,
   ) {}
 
   /**
@@ -49,145 +63,6 @@ export class MembersService {
         description: true,
       },
     });
-  }
-
-  private validateNationalIdOrThrow(nationalId: string) {
-    const cleaned = nationalId?.trim() || '';
-    if (!cleaned) {
-      throw new BadRequestException('TC Kimlik Numarası zorunludur');
-    }
-    if (!/^\d{11}$/.test(cleaned)) {
-      throw new BadRequestException('TC Kimlik Numarası 11 haneli ve sadece rakam olmalıdır');
-    }
-  }
-
-  /**
-   * Sistem ayarlarına göre zorunlu alanları kontrol et
-   */
-  private validateRequiredFields(dto: CreateMemberApplicationDto, provinceId?: string, districtId?: string) {
-    // Not: motherName, fatherName, birthplace, gender, educationStatus, phone, provinceId, districtId
-    // artık her zaman zorunlu olduğu için burada kontrol edilmiyor.
-
-    const requiredFields = [
-      { key: 'MEMBERSHIP_REQUIRE_EMAIL', field: 'email', label: 'E-posta' },
-      { key: 'MEMBERSHIP_REQUIRE_INSTITUTION_REG_NO', field: 'institutionRegNo', label: 'Kurum sicil no' },
-      // Not: DTO ve DB alanı "dutyUnit". Eskiden "workUnit" adıyla kontrol edildiği için
-      // MEMBERSHIP_REQUIRE_WORK_UNIT=true olduğunda tüm başvurular 400 veriyordu.
-      { key: 'MEMBERSHIP_REQUIRE_WORK_UNIT', field: 'dutyUnit', label: 'Görev yaptığı birim' },
-    ];
-
-    for (const { key, field, label } of requiredFields) {
-      const isRequired = this.configService.getSystemSettingBoolean(key, false);
-      if (isRequired) {
-        const value = dto[field as keyof CreateMemberApplicationDto];
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
-          throw new BadRequestException(`${label} alanı zorunludur`);
-        }
-      }
-    }
-  }
-
-  /**
-   * Sistem ayarlarına göre kayıt numarası oluştur
-   */
-  private async generateRegistrationNumber(): Promise<string> {
-    const autoGenerate = this.configService.getSystemSettingBoolean('MEMBERSHIP_AUTO_GENERATE_REG_NUMBER', false);
-    if (!autoGenerate) {
-      // Otomatik oluşturma kapalıysa geçici bir değer döndür
-      return `TEMP-${Date.now()}`;
-    }
-
-    const format = this.configService.getSystemSetting('MEMBERSHIP_REG_NUMBER_FORMAT', 'SEQUENTIAL');
-    const prefix = (this.configService.getSystemSetting('MEMBERSHIP_REG_NUMBER_PREFIX', '') ?? '').trim();
-    const startNumber = this.configService.getSystemSettingNumber('MEMBERSHIP_REG_NUMBER_START', 1);
-    const currentYear = new Date().getFullYear();
-
-    // Format'a göre expected pattern oluştur
-    let expectedPattern: string;
-    switch (format) {
-      case 'SEQUENTIAL':
-        expectedPattern = '^\\d+$';
-        break;
-      case 'YEAR_SEQUENTIAL':
-        expectedPattern = `^${currentYear}-\\d+$`;
-        break;
-      case 'PREFIX_SEQUENTIAL':
-        expectedPattern = prefix ? `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+$` : '^\\d+$';
-        break;
-      case 'PREFIX_YEAR_SEQUENTIAL':
-        expectedPattern = prefix
-          ? `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-${currentYear}-\\d+$`
-          : `^${currentYear}-\\d+$`;
-        break;
-      default:
-        expectedPattern = '^\\d+$';
-    }
-
-    // En son kayıt numarasını bul (geçici numaralar hariç, format'a uygun olanlar)
-    const allMembers = await this.prisma.member.findMany({
-      where: {
-        registrationNumber: {
-          not: {
-            startsWith: 'TEMP-',
-          },
-        },
-      },
-      select: {
-        registrationNumber: true,
-      },
-    });
-
-    const regex = new RegExp(expectedPattern);
-    let maxNumber = startNumber - 1;
-
-    for (const member of allMembers) {
-      if (member.registrationNumber && regex.test(member.registrationNumber)) {
-        // Son numarayı çıkar
-        const numberMatch = member.registrationNumber.match(/(\d+)$/);
-        if (numberMatch) {
-          const num = parseInt(numberMatch[1], 10);
-          if (num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      }
-    }
-
-    const nextNumber = maxNumber + 1;
-
-    switch (format) {
-      case 'SEQUENTIAL':
-        return `${nextNumber}`;
-      case 'YEAR_SEQUENTIAL':
-        return `${currentYear}-${String(nextNumber).padStart(3, '0')}`;
-      case 'PREFIX_SEQUENTIAL':
-        return prefix ? `${prefix}-${String(nextNumber).padStart(3, '0')}` : `${nextNumber}`;
-      case 'PREFIX_YEAR_SEQUENTIAL':
-        return prefix
-          ? `${prefix}-${currentYear}-${String(nextNumber).padStart(3, '0')}`
-          : `${currentYear}-${String(nextNumber).padStart(3, '0')}`;
-      default:
-        return `${nextNumber}`;
-    }
-  }
-
-  /**
-   * Başvuru kaynağının izinli olup olmadığını kontrol et
-   */
-  private validateAllowedSource(source: MemberSource) {
-    const allowedSourcesStr = this.configService.getSystemSetting('MEMBERSHIP_ALLOWED_SOURCES', '');
-    const allowedSources = allowedSourcesStr
-      ? allowedSourcesStr.split(',').map((s) => s.trim()).filter((s) => s !== '')
-      : [];
-
-    // Eğer hiçbir kaynak belirtilmemişse, tüm kaynaklar izinlidir
-    if (allowedSources.length === 0) {
-      return;
-    }
-
-    if (!allowedSources.includes(source)) {
-      throw new BadRequestException(`Başvuru kaynağı "${source}" izinli değil`);
-    }
   }
 
   // TC kimlik numarasına göre iptal edilmiş üye kontrolü
@@ -232,218 +107,28 @@ export class MembersService {
     return cancelledMember;
   }
 
+  /**
+   * Create Member Application
+   * 
+   * ✅ Yeni mimari: MemberCreationApplicationService kullanıyor
+   */
   async createApplication(
     dto: CreateMemberApplicationDto,
     createdByUserId?: string,
     previousCancelledMemberId?: string,
     user?: CurrentUserData,
   ) {
-    // Başvuru kaynağını kontrol et
-    const source = dto.source || MemberSource.DIRECT;
-    this.validateAllowedSource(source);
+    const member = await this.memberCreationApplicationService.createApplication({
+      dto,
+      createdByUserId,
+      previousCancelledMemberId,
+      user,
+    });
 
-    // Yeniden kayıt kontrolü - eğer iptal edilmiş bir üye varsa ve yeniden kayda izin yoksa reddet
-    const allowReRegistration = this.configService.getSystemSettingBoolean('MEMBERSHIP_ALLOW_RE_REGISTRATION', true);
-    if (!allowReRegistration && previousCancelledMemberId) {
-      throw new BadRequestException('Yeniden kayıt şu anda devre dışı bırakılmıştır');
-    }
-    
-    // Eğer yeniden kayıt kapalıysa ve iptal edilmiş üye varsa kontrol et
-    if (!allowReRegistration && user) {
-      const cancelledMember = await this.checkCancelledMemberByNationalId(dto.nationalId, user);
-      if (cancelledMember) {
-        throw new BadRequestException('Bu TC kimlik numarasına sahip iptal edilmiş bir üye bulunmaktadır ve yeniden kayıt şu anda devre dışı bırakılmıştır');
-      }
-    }
-
-    // Kullanıcının scope'una göre provinceId ve districtId'yi al
-    let provinceId: string | undefined = undefined;
-    let districtId: string | undefined = undefined;
-
-    if (user) {
-      const scopeIds = await this.scopeService.getUserScopeIds(user);
-      
-      // Eğer kullanıcının scope'u varsa, scope'dakini kullan
-      if (scopeIds.provinceId) {
-        provinceId = scopeIds.provinceId;
-      } else if (dto.provinceId) {
-        // Scope'da yoksa DTO'dan al
-        provinceId = dto.provinceId;
-      }
-
-      if (scopeIds.districtId) {
-        districtId = scopeIds.districtId;
-      } else if (dto.districtId) {
-        // Scope'da yoksa DTO'dan al
-        districtId = dto.districtId;
-      }
-
-      // Eğer kullanıcının scope'u varsa, DTO'dan gelen provinceId/districtId'yi kontrol et
-      if (scopeIds.provinceId && dto.provinceId && dto.provinceId !== scopeIds.provinceId) {
-        throw new BadRequestException('Seçilen il, yetkiniz dahilinde değil');
-      }
-      if (scopeIds.districtId && dto.districtId && dto.districtId !== scopeIds.districtId) {
-        throw new BadRequestException('Seçilen ilçe, yetkiniz dahilinde değil');
-      }
-    } else {
-      // Eğer user yoksa DTO'dan al
-      provinceId = dto.provinceId;
-      districtId = dto.districtId;
-    }
-
-    // Zorunlu alan kontrolleri (her zaman zorunlu olanlar)
-    // Not: branchId artık opsiyonel. Branch seçimi yapılmazsa NULL kaydedilir
-    // ve daha sonra admin tarafından güncellenebilir.
-    this.validateNationalIdOrThrow(dto.nationalId);
-    if (!dto.institutionId) {
-      throw new BadRequestException('Kurum seçimi zorunludur');
-    }
-
-    // Her zaman zorunlu olan alanlar
-    if (!dto.motherName || dto.motherName.trim() === '') {
-      throw new BadRequestException('Anne adı zorunludur');
-    }
-    if (!dto.fatherName || dto.fatherName.trim() === '') {
-      throw new BadRequestException('Baba adı zorunludur');
-    }
-    if (!dto.birthDate) {
-      throw new BadRequestException('Doğum tarihi zorunludur');
-    }
-    if (!dto.birthplace || dto.birthplace.trim() === '') {
-      throw new BadRequestException('Doğum yeri zorunludur');
-    }
-    if (!dto.gender) {
-      throw new BadRequestException('Cinsiyet seçimi zorunludur');
-    }
-    if (!dto.educationStatus) {
-      throw new BadRequestException('Öğrenim durumu zorunludur');
-    }
-    if (!dto.phone || dto.phone.trim() === '') {
-      throw new BadRequestException('Telefon numarası zorunludur');
-    }
-    
-    // İl ve İlçe kontrolü (scope'dan veya DTO'dan gelebilir)
-    const finalProvinceId = provinceId || dto.provinceId;
-    const finalDistrictId = districtId || dto.districtId;
-    if (!finalProvinceId) {
-      throw new BadRequestException('İl seçimi zorunludur');
-    }
-    if (!finalDistrictId) {
-      throw new BadRequestException('İlçe seçimi zorunludur');
-    }
-
-    // Sistem ayarlarına göre ek zorunlu alanları kontrol et
-    this.validateRequiredFields(dto, finalProvinceId, finalDistrictId);
-
-    // Yönetim kurulu kararı kontrolü
-    const requireBoardDecision = this.configService.getSystemSettingBoolean('MEMBERSHIP_REQUIRE_BOARD_DECISION', false);
-    if (requireBoardDecision && (!dto.boardDecisionDate || !dto.boardDecisionBookNo)) {
-      throw new BadRequestException('Yönetim kurulu karar tarihi ve defter no zorunludur');
-    }
-
-    // Kayıt numarası oluşturma - sadece onay sırasında atanacak
-    // Başvuru aşamasında null bırakılıyor, onay sırasında admin tarafından atanacak
-    const registrationNumber = dto.registrationNumber || null;
-
-    // Varsayılan durum ve otomatik onay kontrolü
-    const defaultStatus = this.configService.getSystemSetting('MEMBERSHIP_DEFAULT_STATUS', 'PENDING') as MemberStatus;
-    const autoApprove = this.configService.getSystemSettingBoolean('MEMBERSHIP_AUTO_APPROVE', false);
-    
-    let initialStatus = defaultStatus;
-    let approvedByUserId: string | undefined = undefined;
-    let approvedAt: Date | undefined = undefined;
-
-    if (autoApprove && defaultStatus === MemberStatus.PENDING) {
-      // Otomatik onay aktifse ve varsayılan durum PENDING ise, ACTIVE yap
-      initialStatus = MemberStatus.ACTIVE;
-      approvedByUserId = createdByUserId;
-      approvedAt = new Date();
-    } else if (autoApprove) {
-      // Otomatik onay aktifse varsayılan durumu kullan ama onay bilgilerini ekle
-      approvedByUserId = createdByUserId;
-      approvedAt = new Date();
-    }
-
-    const data: Prisma.MemberCreateInput = {
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      nationalId: dto.nationalId,
-      phone: dto.phone,
-      email: dto.email,
-      source: source,
-      status: initialStatus,
-      approvedAt,
-
-      createdBy: createdByUserId ? { connect: { id: createdByUserId } } : undefined,
-      approvedBy: approvedByUserId ? { connect: { id: approvedByUserId } } : undefined,
-      previousCancelledMember: previousCancelledMemberId
-        ? { connect: { id: previousCancelledMemberId } }
-        : undefined,
-
-      province: { connect: { id: dto.provinceId } },
-      district: { connect: { id: dto.districtId } },
-
-      // Kurum Detay Bilgileri
-      dutyUnit: dto.dutyUnit,
-      institutionAddress: dto.institutionAddress,
-      institutionProvince: dto.institutionProvinceId
-        ? { connect: { id: dto.institutionProvinceId } }
-        : undefined,
-      institutionDistrict: dto.institutionDistrictId
-        ? { connect: { id: dto.institutionDistrictId } }
-        : undefined,
-      profession: dto.professionId ? { connect: { id: dto.professionId } } : undefined,
-      institutionRegNo: dto.institutionRegNo,
-      staffTitleCode: dto.staffTitleCode,
-
-      // 🔹 Üyelik & Yönetim Kurulu Bilgileri
-      membershipInfoOption: dto.membershipInfoOptionId
-        ? { connect: { id: dto.membershipInfoOptionId } }
-        : undefined,
-      memberGroup: dto.memberGroupId ? { connect: { id: dto.memberGroupId } } : undefined,
-      registrationNumber: registrationNumber,
-      boardDecisionDate: dto.boardDecisionDate ? new Date(dto.boardDecisionDate) : null,
-      boardDecisionBookNo: dto.boardDecisionBookNo,
-
-      // 🔹 Kimlik & Kişisel Bilgiler
-      motherName: dto.motherName,
-      fatherName: dto.fatherName,
-      birthDate: new Date(dto.birthDate),
-      birthplace: dto.birthplace,
-      gender: dto.gender,
-
-      // 🔹 Eğitim & İletişim Bilgileri
-      educationStatus: dto.educationStatus,
-
-      // 🔹 Kurum Bilgileri (zorunlu)
-      institution: { connect: { id: dto.institutionId } },
-      tevkifatCenter: dto.tevkifatCenterId
-        ? { connect: { id: dto.tevkifatCenterId } }
-        : undefined,
-      tevkifatTitle: dto.tevkifatTitleId ? { connect: { id: dto.tevkifatTitleId } } : undefined,
-      branch: dto.branchId ? { connect: { id: dto.branchId } } : undefined,
-    };
-
-    const member = await this.prisma.member.create({ data });
-
-    // History kaydet
-    const memberData: Record<string, any> = {
-      firstName: member.firstName,
-      lastName: member.lastName,
-      nationalId: member.nationalId,
-      status: member.status,
-      createdByUserId: member.createdByUserId,
-      approvedByUserId: member.approvedByUserId,
-      approvedAt: member.approvedAt,
-    };
-    await this.historyService.logMemberCreate(
-      member.id,
-      createdByUserId || '',
-      memberData,
-    );
-
-    return member;
+    // Domain Entity → Prisma model'e dönüştür
+    return await this.getById(member.id);
   }
+
 
   // PENDING başvurular: scope'a göre
   async listApplicationsForUser(user: CurrentUserData) {
@@ -702,6 +387,11 @@ export class MembersService {
     return member;
   }
 
+  /**
+   * Update Member
+   * 
+   * ✅ Yeni mimari: MemberUpdateApplicationService kullanıyor
+   */
   async updateMember(
     id: string,
     dto: UpdateMemberDto,
@@ -709,135 +399,17 @@ export class MembersService {
     ipAddress?: string,
     userAgent?: string,
   ) {
-    const oldMember = await this.getById(id);
-
-    // Eski veriyi hazırla (history için)
-    const oldData: Record<string, any> = {
-      firstName: oldMember.firstName,
-      lastName: oldMember.lastName,
-      phone: oldMember.phone,
-      email: oldMember.email,
-      status: oldMember.status,
-      approvedByUserId: oldMember.approvedByUserId,
-      approvedAt: oldMember.approvedAt,
-      membershipInfoOptionId: oldMember.membershipInfoOptionId,
-      memberGroupId: oldMember.memberGroupId,
-      registrationNumber: oldMember.registrationNumber,
-      boardDecisionDate: oldMember.boardDecisionDate,
-      boardDecisionBookNo: oldMember.boardDecisionBookNo,
-      motherName: oldMember.motherName,
-      fatherName: oldMember.fatherName,
-      birthplace: oldMember.birthplace,
-      gender: oldMember.gender,
-      educationStatus: oldMember.educationStatus,
-      institutionId: oldMember.institutionId,
-      tevkifatCenterId: oldMember.tevkifatCenterId,
-      tevkifatTitleId: oldMember.tevkifatTitleId,
-      branchId: oldMember.branchId,
-      // Kurum Detay Bilgileri
-      dutyUnit: oldMember.dutyUnit,
-      institutionAddress: oldMember.institutionAddress,
-      institutionProvinceId: oldMember.institutionProvinceId,
-      institutionDistrictId: oldMember.institutionDistrictId,
-      professionId: oldMember.professionId,
-      institutionRegNo: oldMember.institutionRegNo,
-      staffTitleCode: oldMember.staffTitleCode,
-    };
-
-    // Yeni veriyi hazırla
-    const updateData: Record<string, any> = {};
-    Object.keys(dto).forEach((key) => {
-      if (dto[key as keyof UpdateMemberDto] !== undefined) {
-        if (key === 'boardDecisionDate' && dto.boardDecisionDate) {
-          updateData[key] = new Date(dto.boardDecisionDate);
-        } else {
-          updateData[key] = dto[key as keyof UpdateMemberDto];
-        }
-      }
-    });
-
-    // RESIGNED veya EXPELLED durumları için cancelledAt ve cancelledByUserId set et
-    if (dto.status === MemberStatus.RESIGNED || dto.status === MemberStatus.EXPELLED) {
-      updateData.cancelledAt = new Date();
-      updateData.cancelledByUserId = updatedByUserId;
-      if (dto.cancellationReason) {
-        updateData.cancellationReason = dto.cancellationReason;
-      }
-    } else if (dto.status) {
-      // Eğer durum RESIGNED veya EXPELLED değilse, cancellation alanlarını temizle
-      updateData.cancelledAt = null;
-      updateData.cancelledByUserId = null;
-      updateData.cancellationReason = null;
-    }
-
-    // Status değişikliği yapılıyorsa ve APPROVED veya ACTIVE'e geçiyorsa zorunlu alanları kontrol et
-    if (dto.status && (dto.status === MemberStatus.APPROVED || dto.status === MemberStatus.ACTIVE)) {
-      // Güncellenmiş değerleri al (DTO'dan gelen veya mevcut değerler)
-      const registrationNumber = dto.registrationNumber !== undefined ? dto.registrationNumber : oldMember.registrationNumber;
-      const boardDecisionDate = dto.boardDecisionDate !== undefined ? (dto.boardDecisionDate ? new Date(dto.boardDecisionDate) : null) : oldMember.boardDecisionDate;
-      const boardDecisionBookNo = dto.boardDecisionBookNo !== undefined ? dto.boardDecisionBookNo : oldMember.boardDecisionBookNo;
-      const tevkifatCenterId = dto.tevkifatCenterId !== undefined ? dto.tevkifatCenterId : oldMember.tevkifatCenterId;
-      const tevkifatTitleId = dto.tevkifatTitleId !== undefined ? dto.tevkifatTitleId : oldMember.tevkifatTitleId;
-      const branchId = dto.branchId !== undefined ? dto.branchId : oldMember.branchId;
-
-      const missingFields: string[] = [];
-
-      if (!registrationNumber || registrationNumber.trim() === '') {
-        missingFields.push('Üye Numarası');
-      }
-      if (!boardDecisionDate) {
-        missingFields.push('Yönetim Kurulu Karar Tarihi');
-      }
-      if (!boardDecisionBookNo || boardDecisionBookNo.trim() === '') {
-        missingFields.push('Yönetim Karar Defteri No');
-      }
-      if (!tevkifatCenterId) {
-        missingFields.push('Tevkifat Kurumu');
-      }
-      if (!tevkifatTitleId) {
-        missingFields.push('Tevkifat Ünvanı');
-      }
-      if (!branchId) {
-        missingFields.push('Şube');
-      }
-
-      if (missingFields.length > 0) {
-        const statusLabel = dto.status === MemberStatus.APPROVED ? 'bekleme (APPROVED)' : 'aktif (ACTIVE)';
-        throw new BadRequestException(
-          `Üye ${statusLabel} durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`
-        );
-      }
-    }
-
-    // Güncelle
-    const updatedMember = await this.prisma.member.update({
-      where: { id },
-      data: updateData,
-      include: {
-        province: { select: { id: true, name: true } },
-        district: { select: { id: true, name: true } },
-        institutionProvince: { select: { id: true, name: true } },
-        institutionDistrict: { select: { id: true, name: true } },
-        profession: { select: { id: true, name: true } },
-        institution: { select: { id: true, name: true } },
-        tevkifatCenter: { select: { id: true, name: true } },
-        tevkifatTitle: { select: { id: true, name: true } },
-        branch: { select: { id: true, name: true } },
-      },
-    });
-
-    // History kaydet
-    const newData = { ...oldData, ...updateData };
-    await this.historyService.logMemberUpdate(
-      id,
+    // 🆕 Yeni mimari: Application Service kullan
+    const member = await this.memberUpdateApplicationService.updateMember({
+      memberId: id,
       updatedByUserId,
-      oldData,
-      newData,
+      updateData: dto,
       ipAddress,
       userAgent,
-    );
+    });
 
-    return updatedMember;
+    // Domain Entity → Prisma model'e dönüştür
+    return await this.getById(member.id);
   }
 
   async getMemberHistory(id: string) {
@@ -845,232 +417,75 @@ export class MembersService {
     return this.historyService.getMemberHistory(id);
   }
 
+  /**
+   * Approve Member
+   * 
+   * ✅ Yeni mimari: MemberApprovalApplicationService kullanıyor
+   */
   async approve(
     id: string,
     approvedByUserId?: string,
     dto?: ApproveMemberDto,
   ) {
-    const member = await this.getById(id);
-
-    if (member.status !== MemberStatus.PENDING) {
-      throw new BadRequestException(`Sadece bekleyen (PENDING) durumundaki başvurular onaylanabilir. Mevcut durum: ${member.status}`);
+    // 🆕 Yeni mimari: Application Service kullan
+    if (!approvedByUserId) {
+      throw new BadRequestException('Onaylayan kullanıcı ID zorunludur');
     }
 
-    // Two-step approval process:
-    // 1. PENDING → (approve) → APPROVED (waiting list)
-    // 2. APPROVED → (activate) → ACTIVE (main member list)
-    // Therefore, approve sets status to APPROVED (not ACTIVE)
-    
-    // Zorunlu alanları kontrol et (APPROVED status'una geçerken)
-    const missingFields: string[] = [];
-    
-    // DTO'dan gelen değerleri kontrol et, yoksa mevcut üye verilerini kontrol et
-    const registrationNumber = dto?.registrationNumber || member.registrationNumber;
-    const boardDecisionDate = dto?.boardDecisionDate || member.boardDecisionDate;
-    const boardDecisionBookNo = dto?.boardDecisionBookNo || member.boardDecisionBookNo;
-    const tevkifatCenterId = dto?.tevkifatCenterId || member.tevkifatCenterId;
-    const tevkifatTitleId = dto?.tevkifatTitleId || member.tevkifatTitleId;
-    const branchId = dto?.branchId || member.branchId;
-
-    if (!registrationNumber || registrationNumber.trim() === '') {
-      missingFields.push('Üye Numarası');
-    }
-    if (!boardDecisionDate) {
-      missingFields.push('Yönetim Kurulu Karar Tarihi');
-    }
-    if (!boardDecisionBookNo || boardDecisionBookNo.trim() === '') {
-      missingFields.push('Yönetim Karar Defteri No');
-    }
-    if (!tevkifatCenterId) {
-      missingFields.push('Tevkifat Kurumu');
-    }
-    if (!tevkifatTitleId) {
-      missingFields.push('Tevkifat Ünvanı');
-    }
-    if (!branchId) {
-      missingFields.push('Şube');
-    }
-
-    if (missingFields.length > 0) {
-      throw new BadRequestException(
-        `Üye bekleme (APPROVED) durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`
-      );
-    }
-
-    const updateData: any = {
-      status: MemberStatus.APPROVED,
+    const member = await this.memberApprovalApplicationService.approveMember({
+      memberId: id,
       approvedByUserId,
-      approvedAt: new Date(),
-    };
-
-    if (dto?.registrationNumber) {
-      updateData.registrationNumber = dto.registrationNumber;
-    }
-
-    if (dto?.boardDecisionDate) {
-      updateData.boardDecisionDate = new Date(dto.boardDecisionDate);
-    }
-
-    if (dto?.boardDecisionBookNo) {
-      updateData.boardDecisionBookNo = dto.boardDecisionBookNo;
-    }
-
-    if (dto?.tevkifatCenterId) {
-      updateData.tevkifatCenterId = dto.tevkifatCenterId;
-    }
-
-    if (dto?.tevkifatTitleId) {
-      updateData.tevkifatTitleId = dto.tevkifatTitleId;
-    }
-
-    if (dto?.branchId) {
-      updateData.branchId = dto.branchId;
-    }
-
-    if (dto?.memberGroupId) {
-      updateData.memberGroupId = dto.memberGroupId;
-    }
-
-    const oldMember = await this.getById(id);
-    const oldData: Record<string, any> = {
-      status: oldMember.status,
-      approvedByUserId: oldMember.approvedByUserId,
-      approvedAt: oldMember.approvedAt,
-      registrationNumber: oldMember.registrationNumber,
-      boardDecisionDate: oldMember.boardDecisionDate,
-      boardDecisionBookNo: oldMember.boardDecisionBookNo,
-      tevkifatCenterId: oldMember.tevkifatCenterId,
-      tevkifatTitleId: oldMember.tevkifatTitleId,
-      branchId: oldMember.branchId,
-      memberGroupId: oldMember.memberGroupId,
-    };
-
-    const updatedMember = await this.prisma.member.update({
-      where: { id },
-      data: updateData,
+      registrationNumber: dto?.registrationNumber,
+      boardDecisionDate: dto?.boardDecisionDate,
+      boardDecisionBookNo: dto?.boardDecisionBookNo,
+      tevkifatCenterId: dto?.tevkifatCenterId,
+      tevkifatTitleId: dto?.tevkifatTitleId,
+      branchId: dto?.branchId,
+      memberGroupId: dto?.memberGroupId,
     });
 
-    // History kaydet
-    const newData = { ...oldData, ...updateData };
-    await this.historyService.logMemberUpdate(
-      id,
-      approvedByUserId || '',
-      oldData,
-      newData,
-    );
-
-    // Eğer kayıt numarası atandıysa, evrak dosya isimlerini güncelle
-    if (dto?.registrationNumber) {
-      try {
-        await this.documentsService.updateMemberDocumentFileNames(id, dto.registrationNumber);
-      } catch (error) {
-        // Evrak güncelleme hatası olsa bile üye onayı devam etsin
-        this.logger.warn(`Üye ${id} için evrak dosya isimleri güncellenirken hata: ${error.message}`);
-      }
-    }
-
-    return updatedMember;
+    // Domain Entity → Prisma model'e dönüştür
+    return await this.getById(member.id);
   }
 
+  /**
+   * Reject Member
+   * 
+   * ✅ Yeni mimari: MemberRejectionApplicationService kullanıyor
+   */
   async reject(id: string, approvedByUserId?: string) {
-    const member = await this.getById(id);
-
-    // PENDING veya APPROVED durumundaki üyeler reddedilebilir
-    if (member.status !== MemberStatus.PENDING && member.status !== MemberStatus.APPROVED) {
-      throw new BadRequestException('Sadece bekleyen (PENDING) veya onaylanmış (APPROVED) durumundaki başvurular reddedilebilir');
+    // 🆕 Yeni mimari: Application Service kullan
+    if (!approvedByUserId) {
+      throw new BadRequestException('Reddeden kullanıcı ID zorunludur');
     }
 
-    const oldData: Record<string, any> = {
-      status: member.status,
-      approvedByUserId: member.approvedByUserId,
-      approvedAt: member.approvedAt,
-    };
-
-    const updatedMember = await this.prisma.member.update({
-      where: { id },
-      data: {
-        status: MemberStatus.REJECTED,
-        approvedByUserId,
-        approvedAt: new Date(),
-      },
+    const member = await this.memberRejectionApplicationService.rejectMember({
+      memberId: id,
+      rejectedByUserId: approvedByUserId,
     });
 
-    // History kaydet
-    const newData = {
-      ...oldData,
-      status: MemberStatus.REJECTED,
-      approvedByUserId,
-      approvedAt: new Date(),
-    };
-    await this.historyService.logMemberUpdate(
-      id,
-      approvedByUserId || '',
-      oldData,
-      newData,
-    );
-
-    return updatedMember;
+    // Domain Entity → Prisma model'e dönüştür
+    return await this.getById(member.id);
   }
 
+  /**
+   * Activate Member
+   * 
+   * ✅ Yeni mimari: MemberActivationApplicationService kullanıyor
+   */
   async activate(id: string, activatedByUserId?: string) {
-    const member = await this.getById(id);
-
-    if (member.status !== MemberStatus.APPROVED) {
-      throw new BadRequestException('Sadece onaylanmış (APPROVED) durumundaki üyeler aktifleştirilebilir');
+    // 🆕 Yeni mimari: Application Service kullan
+    if (!activatedByUserId) {
+      throw new BadRequestException('Aktifleştiren kullanıcı ID zorunludur');
     }
 
-    // Zorunlu alanları kontrol et (ACTIVE status'una geçerken)
-    const missingFields: string[] = [];
-
-    if (!member.registrationNumber || member.registrationNumber.trim() === '') {
-      missingFields.push('Üye Numarası');
-    }
-    if (!member.boardDecisionDate) {
-      missingFields.push('Yönetim Kurulu Karar Tarihi');
-    }
-    if (!member.boardDecisionBookNo || member.boardDecisionBookNo.trim() === '') {
-      missingFields.push('Yönetim Karar Defteri No');
-    }
-    if (!member.tevkifatCenterId) {
-      missingFields.push('Tevkifat Kurumu');
-    }
-    if (!member.tevkifatTitleId) {
-      missingFields.push('Tevkifat Ünvanı');
-    }
-    if (!member.branchId) {
-      missingFields.push('Şube');
-    }
-
-    if (missingFields.length > 0) {
-      throw new BadRequestException(
-        `Üye aktif (ACTIVE) durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`
-      );
-    }
-
-    const oldData: Record<string, any> = {
-      status: member.status,
-    };
-
-    const updatedMember = await this.prisma.member.update({
-      where: { id },
-      data: {
-        status: MemberStatus.ACTIVE,
-      },
+    const member = await this.memberActivationApplicationService.activateMember({
+      memberId: id,
+      activatedByUserId,
     });
 
-    // History kaydet
-    const newData = {
-      ...oldData,
-      status: MemberStatus.ACTIVE,
-    };
-    await this.historyService.logMemberUpdate(
-      id,
-      activatedByUserId || '',
-      oldData,
-      newData,
-    );
-
-    return updatedMember;
+    // Domain Entity → Prisma model'e dönüştür
+    return await this.getById(member.id);
   }
 
   // APPROVED başvurular: scope'a göre
@@ -1208,42 +623,27 @@ export class MembersService {
     return members;
   }
 
+  /**
+   * Cancel Membership
+   * 
+   * ✅ Yeni mimari: MemberCancellationApplicationService kullanıyor
+   */
   async cancelMembership(id: string, dto: CancelMemberDto, cancelledByUserId: string) {
-    const member = await this.getById(id);
-
-    // Üyelik iptaline izin kontrolü
+    // Üyelik iptaline izin kontrolü (config check - bu Application Service'te olabilir ama şimdilik burada)
     const allowCancellation = this.configService.getSystemSettingBoolean('MEMBERSHIP_ALLOW_CANCELLATION', true);
     if (!allowCancellation) {
       throw new BadRequestException('Üyelik iptali şu anda devre dışı bırakılmıştır');
     }
 
-    // Sadece aktif üyelerin üyeliği iptal edilebilir
-    if (member.status !== MemberStatus.ACTIVE) {
-      throw new BadRequestException('Sadece aktif üyelerin üyeliği iptal edilebilir');
-    }
-
-    return this.prisma.member.update({
-      where: { id },
-      data: {
-        status: dto.status as MemberStatus,
-        cancellationReason: dto.cancellationReason,
-        cancelledByUserId,
-        cancelledAt: new Date(),
-      },
-      include: {
-        province: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        district: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    // 🆕 Yeni mimari: Application Service kullan
+    const member = await this.memberCancellationApplicationService.cancelMembership({
+      memberId: id,
+      cancelledByUserId,
+      status: dto.status as any,
+      cancellationReason: dto.cancellationReason,
     });
+
+    // Domain Entity → Prisma model'e dönüştür
+    return await this.getById(member.id);
   }
 }
