@@ -556,19 +556,6 @@ const ReportsPage: React.FC = () => {
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
-        rightContent={
-          <Chip
-            size="small"
-            icon={<BarChartIcon />}
-            label="Dashboard"
-            sx={{
-              borderRadius: 999,
-              bgcolor: alpha(theme.palette.primary.main, 0.10),
-              color: theme.palette.primary.main,
-              fontWeight: 700,
-            }}
-          />
-        }
       />
 
       <Card elevation={0} sx={cardShellSx}>

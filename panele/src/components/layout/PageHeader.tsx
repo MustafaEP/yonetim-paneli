@@ -181,6 +181,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
               sx={{ 
                 display: { xs: 'none', sm: 'flex' },
                 alignItems: 'center',
+                justifyContent: 'center',
                 flexShrink: 0,
                 gap: 1,
               }}

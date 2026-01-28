@@ -1211,110 +1211,55 @@ const MemberDetailPage = () => {
         color={statusConfig.headerShadow}
         darkColor={statusConfig.headerShadow}
         lightColor={alpha(statusConfig.headerShadow, 0.1)}
-        backgroundGradient={statusConfig.headerGradient}
         rightContent={
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Stack 
-              direction={{ xs: 'column', sm: 'row' }} 
-              spacing={1.5}
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="contained"
+              startIcon={<EditIcon />}
+              onClick={() => navigate(`/members/${id}/edit`)}
+              sx={{
+                borderRadius: 2.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                py: 1.25,
+                fontSize: '0.95rem',
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.45)}`,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                },
+              }}
             >
+              Düzenle
+            </Button>
+            {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
               <Button
                 variant="contained"
-                startIcon={<EditIcon />}
-                onClick={() => navigate(`/members/${id}/edit`)}
+                startIcon={<SettingsIcon />}
+                onClick={() => setStatusDialogOpen(true)}
                 sx={{
-                  bgcolor: alpha('#fff', 0.2),
-                  color: '#fff',
+                  borderRadius: 2.5,
+                  textTransform: 'none',
                   fontWeight: 600,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${alpha('#fff', 0.3)}`,
-                  fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                  py: { xs: 1, sm: 1.5 },
-                  '&:hover': {
-                    bgcolor: alpha('#fff', 0.3),
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
-                  },
+                  px: 3,
+                  py: 1.25,
+                  fontSize: '0.95rem',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
                   transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.45)}`,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  },
                 }}
               >
-                Düzenle
+                Durum Değiştir
               </Button>
-              {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
-                <Button
-                  variant="contained"
-                  startIcon={<SettingsIcon />}
-                  onClick={() => setStatusDialogOpen(true)}
-                  sx={{
-                    bgcolor: alpha('#fff', 0.2),
-                    color: '#fff',
-                    fontWeight: 600,
-                    backdropFilter: 'blur(10px)',
-                    border: `1px solid ${alpha('#fff', 0.3)}`,
-                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                    py: { xs: 1, sm: 1.5 },
-                    '&:hover': {
-                      bgcolor: alpha('#fff', 0.3),
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
-                    },
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  Durum Değiştir
-                </Button>
-              )}
-            </Stack>
-            {member?.status === 'PENDING' && canChangeStatus && (
-              <Stack 
-                direction={{ xs: 'column', sm: 'row' }} 
-                spacing={1.5}
-              >
-                <Button
-                  variant="contained"
-                  startIcon={<CheckIcon />}
-                  onClick={handleOpenApproveDialog}
-                  sx={{
-                    bgcolor: alpha('#fff', 0.2),
-                    color: '#fff',
-                    fontWeight: 600,
-                    backdropFilter: 'blur(10px)',
-                    border: `1px solid ${alpha('#fff', 0.3)}`,
-                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                    py: { xs: 1, sm: 1.5 },
-                    '&:hover': {
-                      bgcolor: alpha('#fff', 0.3),
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
-                    },
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  Onayla
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<CloseIcon />}
-                  onClick={handleOpenRejectDialog}
-                  sx={{
-                    bgcolor: alpha('#fff', 0.1),
-                    color: '#fff',
-                    fontWeight: 600,
-                    backdropFilter: 'blur(10px)',
-                    border: `1px solid ${alpha('#fff', 0.3)}`,
-                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                    py: { xs: 1, sm: 1.5 },
-                    '&:hover': {
-                      bgcolor: alpha('#fff', 0.2),
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
-                    },
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  Reddet
-                </Button>
-              </Stack>
             )}
             {(member?.status === 'ACTIVE' || member?.status === 'APPROVED') && canUploadDocument && (
               <Button
@@ -1322,25 +1267,85 @@ const MemberDetailPage = () => {
                 startIcon={<PictureAsPdfIcon />}
                 onClick={handleExportPdf}
                 sx={{
-                  bgcolor: alpha('#fff', 0.2),
-                  color: '#fff',
+                  borderRadius: 2.5,
+                  textTransform: 'none',
                   fontWeight: 600,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${alpha('#fff', 0.3)}`,
-                  fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                  py: { xs: 1, sm: 1.5 },
-                  '&:hover': {
-                    bgcolor: alpha('#fff', 0.3),
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 8px 16px ${alpha('#000', 0.3)}`,
-                  },
+                  px: 3,
+                  py: 1.25,
+                  fontSize: '0.95rem',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
                   transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.45)}`,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  },
                 }}
               >
                 PDF İndir
               </Button>
             )}
-          </Box>
+          </Stack>
+        }
+        mobileContent={
+          <Stack spacing={1.5}>
+            <Button
+              variant="contained"
+              startIcon={<EditIcon />}
+              fullWidth
+              onClick={() => navigate(`/members/${id}/edit`)}
+              sx={{
+                borderRadius: 2.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                py: 1.5,
+                fontSize: '0.95rem',
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+              }}
+            >
+              Düzenle
+            </Button>
+            {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
+              <Button
+                variant="contained"
+                startIcon={<SettingsIcon />}
+                fullWidth
+                onClick={() => setStatusDialogOpen(true)}
+                sx={{
+                  borderRadius: 2.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  py: 1.5,
+                  fontSize: '0.95rem',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                }}
+              >
+                Durum Değiştir
+              </Button>
+            )}
+            {(member?.status === 'ACTIVE' || member?.status === 'APPROVED') && canUploadDocument && (
+              <Button
+                variant="contained"
+                startIcon={<PictureAsPdfIcon />}
+                fullWidth
+                onClick={handleExportPdf}
+                sx={{
+                  borderRadius: 2.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  py: 1.5,
+                  fontSize: '0.95rem',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                }}
+              >
+                PDF İndir
+              </Button>
+            )}
+          </Stack>
         }
       />
 
