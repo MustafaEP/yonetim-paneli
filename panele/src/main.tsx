@@ -4,9 +4,9 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import App from './App';
-import { AuthProvider } from './context/AuthContext';
-import { SystemSettingsProvider } from './context/SystemSettingsContext';
-import muiTheme from './theme/muiTheme';
+import { AuthProvider } from './app/providers/AuthContext';
+import { SystemSettingsProvider } from './app/providers/SystemSettingsContext';
+import muiTheme from './app/theme/muiTheme';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
