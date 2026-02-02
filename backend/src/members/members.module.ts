@@ -13,6 +13,7 @@ import { MemberCancellationApplicationService } from './application/services/mem
 import { MemberUpdateApplicationService } from './application/services/member-update-application.service';
 import { MemberCreationApplicationService } from './application/services/member-creation-application.service';
 import { PrismaMemberRepository } from './infrastructure/persistence/prisma-member.repository';
+import { PrismaMemberMembershipPeriodRepository } from './infrastructure/persistence/prisma-member-membership-period.repository';
 import { MemberRepository } from './domain/repositories/member.repository.interface';
 import { MemberRegistrationDomainService, MembershipConfigAdapter } from './domain/services/member-registration-domain.service';
 import { PrismaMembershipConfigAdapter } from './infrastructure/config/membership-config.adapter';
@@ -35,6 +36,10 @@ import { PrismaMembershipConfigAdapter } from './infrastructure/config/membershi
     {
       provide: 'MemberRepository',
       useClass: PrismaMemberRepository,
+    },
+    {
+      provide: 'MemberMembershipPeriodRepository',
+      useClass: PrismaMemberMembershipPeriodRepository,
     },
     {
       provide: 'MembershipConfigAdapter',

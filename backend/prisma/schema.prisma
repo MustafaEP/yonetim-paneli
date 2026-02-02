@@ -204,6 +204,9 @@ model Member {
   // 🔹 Doküman ilişkileri
   documents MemberDocument[]
 
+  // 🔹 Üyelik dönemleri (istifa/ihraç geçmişi, yeniden üyelik)
+  membershipPeriods MemberMembershipPeriod[]
+
   // 🔹 Üye güncelleme geçmişi
   history MemberHistory[]
 
@@ -232,6 +235,24 @@ model Member {
   @@index([institutionProvinceId])
   @@index([institutionDistrictId])
   @@index([memberGroupId])
+}
+
+// 🔹 Üyelik Dönemleri (aynı TC ile yeniden üye olma, istifa/ihraç geçmişi)
+model MemberMembershipPeriod {
+  id                 String       @id @default(cuid())
+  memberId           String
+  member             Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  registrationNumber String // O dönemdeki üye numarası
+  periodStart        DateTime // Üyeliğin başladığı tarih (onay tarihi)
+  periodEnd          DateTime? // Üyeliğin bittiği tarih (istifa/ihraç); null = hâlâ aktif
+  status             MemberStatus // O dönemin son durumu
+  cancellationReason String?
+  cancelledAt        DateTime?
+  approvedAt         DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
 }
 
 model Province {

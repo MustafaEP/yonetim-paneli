@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '../config/config.service';
 import { CreateDocumentTemplateDto } from './application/dto/create-document-template.dto';
@@ -49,20 +55,28 @@ export class DocumentsService {
   }
 
   async createTemplate(dto: CreateDocumentTemplateDto) {
-    const template = await this.documentTemplateApplicationService.createTemplate({ dto });
-    return await this.prisma.documentTemplate.findUnique({ where: { id: template.id } });
+    const template =
+      await this.documentTemplateApplicationService.createTemplate({ dto });
+    return await this.prisma.documentTemplate.findUnique({
+      where: { id: template.id },
+    });
   }
 
   async updateTemplate(id: string, dto: UpdateDocumentTemplateDto) {
-    const template = await this.documentTemplateApplicationService.updateTemplate({
-      templateId: id,
-      dto,
+    const template =
+      await this.documentTemplateApplicationService.updateTemplate({
+        templateId: id,
+        dto,
+      });
+    return await this.prisma.documentTemplate.findUnique({
+      where: { id: template.id },
     });
-    return await this.prisma.documentTemplate.findUnique({ where: { id: template.id } });
   }
 
   async deleteTemplate(id: string) {
-    await this.documentTemplateApplicationService.deleteTemplate({ templateId: id });
+    await this.documentTemplateApplicationService.deleteTemplate({
+      templateId: id,
+    });
     return await this.prisma.documentTemplate.findUnique({ where: { id } });
   }
 
@@ -137,14 +151,18 @@ export class DocumentsService {
 
     // Tarih formatları
     const now = new Date();
-    const joinDate = member.approvedAt 
+    const joinDate = member.approvedAt
       ? new Date(member.approvedAt).toLocaleDateString('tr-TR')
-      : member.createdAt 
+      : member.createdAt
         ? new Date(member.createdAt).toLocaleDateString('tr-TR')
         : '';
-    const birthDate = member.birthDate ? new Date(member.birthDate).toLocaleDateString('tr-TR') : '';
-    const boardDecisionDate = member.boardDecisionDate ? new Date(member.boardDecisionDate).toLocaleDateString('tr-TR') : '';
-    
+    const birthDate = member.birthDate
+      ? new Date(member.birthDate).toLocaleDateString('tr-TR')
+      : '';
+    const boardDecisionDate = member.boardDecisionDate
+      ? new Date(member.boardDecisionDate).toLocaleDateString('tr-TR')
+      : '';
+
     // Varsayılan değişkenler
     const variables: Record<string, string> = {
       firstName: member.firstName || '',
@@ -160,20 +178,33 @@ export class DocumentsService {
       branch: member.branch?.name || '',
       date: now.toLocaleDateString('tr-TR'),
       joinDate: joinDate,
-      applicationDate: member.createdAt 
+      applicationDate: member.createdAt
         ? new Date(member.createdAt).toLocaleDateString('tr-TR')
         : '',
-      validUntil: new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()).toLocaleDateString('tr-TR'),
+      validUntil: new Date(
+        now.getFullYear() + 1,
+        now.getMonth(),
+        now.getDate(),
+      ).toLocaleDateString('tr-TR'),
       birthPlace: member.birthplace || '',
       birthDate: birthDate,
       motherName: member.motherName || '',
       fatherName: member.fatherName || '',
-      gender: member.gender ? (member.gender === 'MALE' ? 'Erkek' : member.gender === 'FEMALE' ? 'Kadın' : 'Diğer') : '',
-      educationStatus: member.educationStatus 
-        ? (member.educationStatus === 'PRIMARY' ? 'İlkokul' 
-           : member.educationStatus === 'HIGH_SCHOOL' ? 'Lise' 
-           : member.educationStatus === 'COLLEGE' ? 'Üniversite' 
-           : member.educationStatus)
+      gender: member.gender
+        ? member.gender === 'MALE'
+          ? 'Erkek'
+          : member.gender === 'FEMALE'
+            ? 'Kadın'
+            : 'Diğer'
+        : '',
+      educationStatus: member.educationStatus
+        ? member.educationStatus === 'PRIMARY'
+          ? 'İlkokul'
+          : member.educationStatus === 'HIGH_SCHOOL'
+            ? 'Lise'
+            : member.educationStatus === 'COLLEGE'
+              ? 'Üniversite'
+              : member.educationStatus
         : '',
       position: '',
       workUnitAddress: '',
@@ -184,7 +215,8 @@ export class DocumentsService {
       membershipInfoOption: member.membershipInfoOption?.label || '',
       memberGroup: member.memberGroup?.name || '',
       // Varsayılan foto (boşsa kırık ikon olmasın diye 1x1 transparan)
-      photoDataUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
+      photoDataUrl:
+        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
       // Nakil belgesi için ekstra değişkenler (DTO'dan gelmeli)
       oldProvince: '',
       oldDistrict: '',
@@ -196,8 +228,11 @@ export class DocumentsService {
     };
 
     // Şablon içindeki değişkenleri değiştir
-    let htmlContent = this.pdfService.replaceTemplateVariables(template.template, variables);
-    
+    let htmlContent = this.pdfService.replaceTemplateVariables(
+      template.template,
+      variables,
+    );
+
     // HTML wrapper ekle (eğer yoksa)
     htmlContent = this.pdfService.wrapTemplateWithHtml(htmlContent);
 
@@ -209,9 +244,11 @@ export class DocumentsService {
         .trim()
         .slice(0, 120);
 
-    const suggestedBase = dto.fileName ? sanitizeBaseName(dto.fileName.replace(/\.pdf$/i, '')) : '';
+    const suggestedBase = dto.fileName
+      ? sanitizeBaseName(dto.fileName.replace(/\.pdf$/i, ''))
+      : '';
     const defaultBase = `${template.type}_${member.registrationNumber || member.id}_${Date.now()}`;
-    let baseName = suggestedBase || defaultBase;
+    const baseName = suggestedBase || defaultBase;
 
     let fileName = `${baseName}.pdf`;
     const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
@@ -231,10 +268,16 @@ export class DocumentsService {
 
     try {
       // Antetli kağıt yolunu veritabanından çek
-      const headerPaperPath = this.configService.getSystemSetting('DOCUMENT_HEADER_PAPER_PATH');
+      const headerPaperPath = this.configService.getSystemSetting(
+        'DOCUMENT_HEADER_PAPER_PATH',
+      );
       let finalHeaderPaperPath: string | undefined;
 
-      if (headerPaperPath) {
+      // Üye kartı gibi bazı dokümanlar antetli kağıtla üretilmemeli (layout bozuluyor)
+      const shouldUseHeaderPaper =
+        template.type !== DocumentTemplateType.MEMBER_CARD;
+
+      if (shouldUseHeaderPaper && headerPaperPath) {
         // Eğer yol relative ise (uploads ile başlıyorsa), process.cwd() ile birleştir
         if (headerPaperPath.startsWith('/uploads/')) {
           finalHeaderPaperPath = path.join(process.cwd(), headerPaperPath);
@@ -246,7 +289,9 @@ export class DocumentsService {
 
         // Dosya var mı kontrol et
         if (!fs.existsSync(finalHeaderPaperPath)) {
-          this.logger.warn(`Antetli kağıt dosyası bulunamadı: ${finalHeaderPaperPath}`);
+          this.logger.warn(
+            `Antetli kağıt dosyası bulunamadı: ${finalHeaderPaperPath}`,
+          );
           finalHeaderPaperPath = undefined;
         }
       }
@@ -260,7 +305,10 @@ export class DocumentsService {
 
       this.logger.log(`PDF document generated: ${filePath}`);
     } catch (error) {
-      this.logger.error(`Failed to generate PDF: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate PDF: ${error.message}`,
+        error.stack,
+      );
       throw new BadRequestException(`PDF oluşturma hatası: ${error.message}`);
     }
 
@@ -323,7 +371,8 @@ export class DocumentsService {
     this.fileStorageService.validateFile(file);
 
     // Güvenli dosya adı oluştur
-    const originalFileName = customFileName?.trim() || file.originalname || 'document.pdf';
+    const originalFileName =
+      customFileName?.trim() || file.originalname || 'document.pdf';
     const secureFileName = this.fileStorageService.generateSecureFileName(
       originalFileName,
       file.buffer,
@@ -376,6 +425,33 @@ export class DocumentsService {
     );
 
     return document;
+  }
+
+  /**
+   * Üye dokümanını sil (soft delete + dosyayı diskten kaldır)
+   */
+  async deleteMemberDocument(documentId: string): Promise<void> {
+    const document = await this.prisma.memberDocument.findFirst({
+      where: { id: documentId, deletedAt: null },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Doküman bulunamadı: ${documentId}`);
+    }
+
+    if (document.stagingPath) {
+      this.fileStorageService.deleteFromStaging(document.stagingPath);
+    }
+    if (document.permanentPath) {
+      this.fileStorageService.deleteFromPermanent(document.permanentPath);
+    }
+
+    await this.prisma.memberDocument.update({
+      where: { id: documentId },
+      data: { deletedAt: new Date() },
+    });
+
+    this.logger.log(`Member document deleted (soft): ${documentId}`);
   }
 
   // Admin: Dokümanı onayla (staging'den permanent'e taşı)
@@ -460,9 +536,7 @@ export class DocumentsService {
       },
     });
 
-    this.logger.log(
-      `Document approved: ${documentId}, admin: ${adminId}`,
-    );
+    this.logger.log(`Document approved: ${documentId}, admin: ${adminId}`);
 
     return updatedDocument;
   }
@@ -612,7 +686,10 @@ export class DocumentsService {
   }
 
   // Üye onaylandığında evrak dosya isimlerini güncelle (kayıt numarası ekle)
-  async updateMemberDocumentFileNames(memberId: string, registrationNumber: string) {
+  async updateMemberDocumentFileNames(
+    memberId: string,
+    registrationNumber: string,
+  ) {
     // Üyeyi kontrol et
     const member = await this.prisma.member.findUnique({
       where: { id: memberId },
@@ -714,26 +791,39 @@ export class DocumentsService {
 
     // Dosya yolunu belirle (staging veya permanent)
     let filePath: string;
-    
-    if (document.uploadStatus === DocumentUploadStatus.APPROVED && document.permanentPath) {
+
+    if (
+      document.uploadStatus === DocumentUploadStatus.APPROVED &&
+      document.permanentPath
+    ) {
       // Onaylanmış dosya - permanent storage'dan
       filePath = document.permanentPath;
-    } else if (document.uploadStatus === DocumentUploadStatus.STAGING && document.stagingPath) {
+    } else if (
+      document.uploadStatus === DocumentUploadStatus.STAGING &&
+      document.stagingPath
+    ) {
       // Staging'deki dosya - sadece admin görebilir (controller'da kontrol edilecek)
       filePath = document.stagingPath;
     } else {
       // Eski sistem uyumluluğu - fileName kullan
-      filePath = path.join(process.cwd(), 'uploads', 'documents', document.fileName);
+      filePath = path.join(
+        process.cwd(),
+        'uploads',
+        'documents',
+        document.fileName,
+      );
     }
 
     // Dosyanın var olup olmadığını kontrol et
     if (!fs.existsSync(filePath)) {
-      throw new NotFoundException(`Dosya bulunamadı: ${document.fileName || document.secureFileName}`);
+      throw new NotFoundException(
+        `Dosya bulunamadı: ${document.fileName || document.secureFileName}`,
+      );
     }
 
     // Content-Type header'ını ayarla (inline olarak göster)
     res.setHeader('Content-Type', 'application/pdf');
-    
+
     // HTTP header'larında sadece ASCII karakterler kullanılabilir
     // Türkçe karakterler için ASCII-safe dosya adı oluştur
     const asciiFileName = document.fileName
@@ -751,15 +841,20 @@ export class DocumentsService {
       .replace(/Ç/g, 'C')
       .replace(/[^\x00-\x7F]/g, '_') // Kalan ASCII olmayan karakterleri _ ile değiştir
       .replace(/[^a-zA-Z0-9._-]/g, '_'); // Özel karakterleri de temizle
-    
+
     // Inline için basit bir header kullan (görüntüleme için dosya adı çok kritik değil)
-    const safeAsciiFileName = asciiFileName.replace(/"/g, '').replace(/;/g, '_');
-    res.setHeader('Content-Disposition', `inline; filename="${safeAsciiFileName}"`);
+    const safeAsciiFileName = asciiFileName
+      .replace(/"/g, '')
+      .replace(/;/g, '_');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${safeAsciiFileName}"`,
+    );
 
     // Dosyayı gönder
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
-    
+
     // Promise döndür - stream tamamlanana kadar bekle
     return new Promise<void>((resolve, reject) => {
       fileStream.on('end', () => resolve());
@@ -795,22 +890,29 @@ export class DocumentsService {
 
     // Dosya yolunu belirle
     let filePath: string;
-    
+
     if (document.permanentPath) {
       filePath = document.permanentPath;
     } else {
       // Eski sistem uyumluluğu
-      filePath = path.join(process.cwd(), 'uploads', 'documents', document.fileName);
+      filePath = path.join(
+        process.cwd(),
+        'uploads',
+        'documents',
+        document.fileName,
+      );
     }
 
     // Dosyanın var olup olmadığını kontrol et
     if (!fs.existsSync(filePath)) {
-      throw new NotFoundException(`Dosya bulunamadı: ${document.fileName || document.secureFileName}`);
+      throw new NotFoundException(
+        `Dosya bulunamadı: ${document.fileName || document.secureFileName}`,
+      );
     }
 
     // Content-Type ve Content-Disposition header'larını ayarla
     res.setHeader('Content-Type', 'application/pdf');
-    
+
     // HTTP header'larında sadece ASCII karakterler kullanılabilir
     // Türkçe karakterler için RFC 5987 formatını kullanıyoruz
     // filename: ASCII-only fallback (Türkçe karakterleri temizle)
@@ -829,26 +931,28 @@ export class DocumentsService {
       .replace(/Ç/g, 'C')
       .replace(/[^\x00-\x7F]/g, '_') // Kalan ASCII olmayan karakterleri _ ile değiştir
       .replace(/[^a-zA-Z0-9._-]/g, '_'); // Özel karakterleri de temizle
-    
+
     // filename* için RFC 5987 formatında encode et
     // UTF-8'' prefix'i ile başlamalı ve encodeURIComponent kullanılmalı
     const encodedFileName = encodeURIComponent(document.fileName);
-    
+
     // Content-Disposition header'ını oluştur
     // Sadece ASCII-safe karakterler kullanarak oluştur
     // filename: ASCII-only fallback (eski tarayıcılar için)
     // filename*: UTF-8 encoded (modern tarayıcılar için)
     // Header'da tırnak ve özel karakterler sorun çıkarabilir, bu yüzden dikkatli oluşturuyoruz
-    const safeAsciiFileName = asciiFileName.replace(/"/g, '').replace(/;/g, '_');
+    const safeAsciiFileName = asciiFileName
+      .replace(/"/g, '')
+      .replace(/;/g, '_');
     const contentDisposition = `attachment; filename="${safeAsciiFileName}"; filename*=UTF-8''${encodedFileName}`;
-    
+
     // Header'ı set et
     res.setHeader('Content-Disposition', contentDisposition);
 
     // Dosyayı gönder
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
-    
+
     // Promise döndür - stream tamamlanana kadar bekle
     return new Promise<void>((resolve, reject) => {
       fileStream.on('end', () => resolve());

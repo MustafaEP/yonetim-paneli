@@ -12,6 +12,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
+import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import {
   MemberNotFoundException,
@@ -34,6 +35,8 @@ export class MemberCancellationApplicationService {
   constructor(
     @Inject('MemberRepository')
     private readonly memberRepository: MemberRepository,
+    @Inject('MemberMembershipPeriodRepository')
+    private readonly membershipPeriodRepository: MemberMembershipPeriodRepository,
     private readonly memberHistoryService: MemberHistoryService,
   ) {}
 
@@ -56,6 +59,10 @@ export class MemberCancellationApplicationService {
     // 2. History için veriyi sakla
     const oldData = this.prepareHistoryData(member);
 
+    // 2b. Üyelik dönemi kaydı için mevcut bilgileri sakla (cancelMembership öncesi)
+    const regNo = member.registrationNumber?.getValue();
+    const approvedAt = member.approvedAt;
+
     try {
       // 3. Domain Entity'de cancelMembership method'unu çağır
       // Business rule'lar burada çalışır (status check, validation)
@@ -63,6 +70,22 @@ export class MemberCancellationApplicationService {
         status: command.status,
         cancellationReason: command.cancellationReason,
       });
+
+      const cancelledAt = member.cancelledAt!;
+
+      // 3b. Mevcut dönemi MemberMembershipPeriod'a yaz (üye numarası, onay tarihi, iptal bilgileri)
+      if (regNo && approvedAt) {
+        await this.membershipPeriodRepository.create({
+          memberId: member.id,
+          registrationNumber: regNo,
+          periodStart: approvedAt,
+          periodEnd: cancelledAt,
+          status: command.status,
+          cancellationReason: command.cancellationReason,
+          cancelledAt,
+          approvedAt,
+        });
+      }
 
       // 4. Repository'ye kaydet
       await this.memberRepository.save(member);

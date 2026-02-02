@@ -93,6 +93,8 @@ export interface UpdateMemberData {
   branchId?: string;
   status?: MemberStatusEnum;
   cancellationReason?: string;
+  approvedAt?: Date | null;
+  approvedByUserId?: string | null;
 }
 
 /**
@@ -592,6 +594,8 @@ export class Member {
     this._cancelledByUserId = cancelledByUserId;
     this._cancellationReason = cancellationData.cancellationReason.trim();
     this._cancelledAt = new Date();
+    // İptal edildiğinde üye numarası null yapılır (liste sadece güncel numarayı gösterir)
+    this._registrationNumber = null;
     this._updatedAt = new Date();
   }
 
@@ -691,6 +695,12 @@ export class Member {
     }
     if (updateData.branchId !== undefined) {
       this._branchId = updateData.branchId || null;
+    }
+    if (updateData.approvedAt !== undefined) {
+      this._approvedAt = updateData.approvedAt ?? null;
+    }
+    if (updateData.approvedByUserId !== undefined) {
+      this._approvedByUserId = updateData.approvedByUserId ?? null;
     }
 
     // Status update (business rules ile)

@@ -113,6 +113,21 @@ export interface MemberDetail extends MemberListItem {
     lastName: string;
     isActive: boolean;
   } | null;
+  membershipPeriods?: MemberMembershipPeriod[];
+}
+
+/** Üyelik dönemi (istifa/ihraç geçmişi, yeniden üyelik) */
+export interface MemberMembershipPeriod {
+  id: string;
+  memberId: string;
+  registrationNumber: string;
+  periodStart: string;
+  periodEnd: string | null;
+  status: MemberStatus;
+  cancellationReason: string | null;
+  cancelledAt: string | null;
+  approvedAt: string | null;
+  createdAt: string;
 }
 
 export interface MemberHistory {

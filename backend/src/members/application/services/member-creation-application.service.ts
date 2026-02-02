@@ -8,10 +8,12 @@
  * - Domain Service çağırma
  * - Cross-cutting concerns (history)
  * - Repository koordinasyonu
+ * - Re-registration (aynı TC ile yeniden üyelik) akışı
  */
-import { Injectable, BadRequestException, Logger, Inject } from '@nestjs/common';
-import { Member, CreateMemberData, MemberSourceEnum, GenderEnum, EducationStatusEnum } from '../../domain/entities/member.entity';
+import { Injectable, BadRequestException, Logger, Inject, NotFoundException } from '@nestjs/common';
+import { Member, CreateMemberData, MemberSourceEnum, GenderEnum, EducationStatusEnum, UpdateMemberData } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
+import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import { MemberRegistrationDomainService } from '../../domain/services/member-registration-domain.service';
 import { CreateMemberApplicationDto } from '../dto/create-member-application.dto';
@@ -19,7 +21,7 @@ import { MemberScopeService } from '../../member-scope.service';
 import { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
 import { MemberSource } from '@prisma/client';
 import { NationalId } from '../../domain/value-objects/national-id.vo';
-import { MemberStatus } from '../../domain/value-objects/member-status.vo';
+import { MemberStatus, MemberStatusEnum } from '../../domain/value-objects/member-status.vo';
 
 export interface CreateMemberCommand {
   dto: CreateMemberApplicationDto;
@@ -35,6 +37,8 @@ export class MemberCreationApplicationService {
   constructor(
     @Inject('MemberRepository')
     private readonly memberRepository: MemberRepository,
+    @Inject('MemberMembershipPeriodRepository')
+    private readonly membershipPeriodRepository: MemberMembershipPeriodRepository,
     private readonly memberHistoryService: MemberHistoryService,
     private readonly registrationDomainService: MemberRegistrationDomainService,
     private readonly scopeService: MemberScopeService,
@@ -181,12 +185,33 @@ export class MemberCreationApplicationService {
       createData.registrationNumber = await this.registrationDomainService.generateRegistrationNumber() || undefined;
     }
 
-    // 7. Initial status determination (Domain Service)
+    // 6b. Aynı TC ile mevcut üye kontrolü – re-registration veya hata
+    const existingMember = await this.memberRepository.findByNationalId(nationalId);
+    if (existingMember) {
+      const existingStatus = existingMember.status.toString();
+      const cancelledStatuses = ['RESIGNED', 'EXPELLED', 'INACTIVE'];
+      if (cancelledStatuses.includes(existingStatus) && allowReRegistration) {
+        // Re-registration: iptal edilmiş üyeyi güncelle (previousCancelledMemberId frontend'den gelmemiş olabilir)
+        const targetId = previousCancelledMemberId || existingMember.id;
+        createData.previousCancelledMemberId = targetId;
+        return this.reRegisterMember(createData, createdByUserId);
+      }
+      throw new BadRequestException(
+        'Bu TC kimlik numarasına ait üye kaydı mevcuttur. Yeniden üyelik için önceki üyeliğin iptal edilmiş olması gerekir.',
+      );
+    }
+
+    // 7. Re-registration: previousCancelledMemberId ile doğrudan güncelleme
+    if (previousCancelledMemberId && allowReRegistration) {
+      return this.reRegisterMember(createData, createdByUserId);
+    }
+
+    // 8. Initial status determination (Domain Service)
     const defaultStatus = await this.registrationDomainService.configAdapter.getDefaultStatus();
     const autoApprove = await this.registrationDomainService.configAdapter.getAutoApprove();
     const statusInfo = await this.registrationDomainService.determineInitialStatus(defaultStatus, autoApprove);
 
-    // 8. Entity oluştur (Member.create() PENDING oluşturur, status'ü sonra set edeceğiz)
+    // 9. Entity oluştur (Member.create() PENDING oluşturur, status'ü sonra set edeceğiz)
     const member = Member.create(createData);
 
     // Status ve approval bilgilerini set et (private field'lara erişim için)
@@ -198,10 +223,10 @@ export class MemberCreationApplicationService {
       (member as any)._approvedAt = new Date();
     }
 
-    // 9. Repository'ye kaydet
+    // 10. Repository'ye kaydet
     const savedMember = await this.memberRepository.create(member);
 
-    // 10. History log
+    // 11. History log
     const memberData: Record<string, any> = {
       firstName: savedMember.firstName,
       lastName: savedMember.lastName,
@@ -218,5 +243,81 @@ export class MemberCreationApplicationService {
     );
 
     return savedMember;
+  }
+
+  /**
+   * Yeniden üyelik: iptal edilmiş üyeyi güncelle, yeni üye numarası ve dönem kaydı ekle
+   */
+  private async reRegisterMember(createData: CreateMemberData, createdByUserId?: string): Promise<Member> {
+    const memberId = createData.previousCancelledMemberId!;
+    const member = await this.memberRepository.findById(memberId);
+    if (!member) {
+      throw new NotFoundException(`İptal edilmiş üye kaydı bulunamadı: ${memberId}`);
+    }
+
+    const regNo = createData.registrationNumber!;
+    const approvedAt = new Date();
+
+    const updateData: UpdateMemberData = {
+      firstName: createData.firstName,
+      lastName: createData.lastName,
+      phone: createData.phone,
+      email: createData.email ?? undefined,
+      motherName: createData.motherName,
+      fatherName: createData.fatherName,
+      birthplace: createData.birthplace,
+      gender: createData.gender,
+      educationStatus: createData.educationStatus,
+      institutionId: createData.institutionId,
+      provinceId: createData.provinceId,
+      districtId: createData.districtId,
+      dutyUnit: createData.dutyUnit ?? undefined,
+      institutionAddress: createData.institutionAddress ?? undefined,
+      institutionProvinceId: createData.institutionProvinceId ?? undefined,
+      institutionDistrictId: createData.institutionDistrictId ?? undefined,
+      professionId: createData.professionId ?? undefined,
+      institutionRegNo: createData.institutionRegNo ?? undefined,
+      staffTitleCode: createData.staffTitleCode ?? undefined,
+      membershipInfoOptionId: createData.membershipInfoOptionId ?? undefined,
+      memberGroupId: createData.memberGroupId ?? undefined,
+      registrationNumber: regNo,
+      boardDecisionDate: createData.boardDecisionDate ?? member.boardDecisionDate ?? undefined,
+      boardDecisionBookNo: createData.boardDecisionBookNo ?? member.boardDecisionBookNo ?? undefined,
+      tevkifatCenterId: createData.tevkifatCenterId ?? member.tevkifatCenterId ?? undefined,
+      tevkifatTitleId: createData.tevkifatTitleId ?? member.tevkifatTitleId ?? undefined,
+      branchId: createData.branchId ?? member.branchId ?? undefined,
+      status: MemberStatusEnum.ACTIVE,
+      approvedAt,
+      approvedByUserId: createdByUserId ?? undefined,
+    };
+
+    member.update(updateData);
+
+    await this.membershipPeriodRepository.create({
+      memberId: member.id,
+      registrationNumber: regNo,
+      periodStart: approvedAt,
+      periodEnd: undefined,
+      status: 'ACTIVE',
+      approvedAt,
+    });
+
+    await this.memberRepository.save(member);
+
+    await this.memberHistoryService.logMemberUpdate(
+      member.id,
+      createdByUserId || '',
+      { status: 'RESIGNED', previousReg: 're-registered' },
+      {
+        firstName: member.firstName,
+        lastName: member.lastName,
+        nationalId: member.nationalId.getValue(),
+        status: member.status.toString(),
+        approvedByUserId: member.approvedByUserId,
+        approvedAt: member.approvedAt,
+      },
+    );
+
+    return member;
   }
 }

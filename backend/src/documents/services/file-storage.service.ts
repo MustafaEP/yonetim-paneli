@@ -179,6 +179,33 @@ export class FileStorageService {
   }
 
   /**
+   * Delete file from permanent storage (path must be within permanent dir)
+   */
+  deleteFromPermanent(permanentPath: string): void {
+    if (!permanentPath) {
+      return;
+    }
+
+    const permanentDir = this.getPermanentDir();
+    const resolvedPath = path.resolve(permanentPath);
+    const resolvedDir = path.resolve(permanentDir);
+    if (!resolvedPath.startsWith(resolvedDir)) {
+      this.logger.warn(`Rejected delete outside permanent dir: ${permanentPath}`);
+      return;
+    }
+
+    try {
+      if (fs.existsSync(resolvedPath)) {
+        fs.unlinkSync(resolvedPath);
+        this.logger.log(`File deleted from permanent: ${resolvedPath}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error deleting permanent file: ${resolvedPath}`, error);
+      // Don't throw - file might already be deleted
+    }
+  }
+
+  /**
    * Get file URL for serving
    * Returns relative URL path
    */

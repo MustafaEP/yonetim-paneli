@@ -500,6 +500,38 @@ const MemberApplicationCreatePage: React.FC = () => {
         setCancelledMember(cancelled);
         setPreviousCancelledMemberId(cancelled.id);
         setCancelledMemberDialogOpen(true);
+        // Mevcut bilgilerle formu doldur (yeniden üyelik için karşılama)
+        const birthDateStr = cancelled.birthDate
+          ? new Date(cancelled.birthDate).toISOString().slice(0, 10)
+          : '';
+        setForm((prev) => ({
+          ...prev,
+          firstName: cancelled.firstName?.trim() ?? prev.firstName,
+          lastName: cancelled.lastName?.trim() ?? prev.lastName,
+          nationalId: cancelled.nationalId?.trim() ?? prev.nationalId,
+          phone: cancelled.phone?.trim() ?? prev.phone,
+          email: cancelled.email?.trim() ?? prev.email,
+          motherName: cancelled.motherName?.trim() ?? prev.motherName,
+          fatherName: cancelled.fatherName?.trim() ?? prev.fatherName,
+          birthDate: birthDateStr || prev.birthDate,
+          birthplace: cancelled.birthplace?.trim() ?? prev.birthplace,
+          gender: (cancelled.gender as 'MALE' | 'FEMALE' | 'OTHER') || prev.gender,
+          educationStatus: (cancelled.educationStatus as 'PRIMARY' | 'HIGH_SCHOOL' | 'COLLEGE') || prev.educationStatus,
+          provinceId: cancelled.provinceId ?? prev.provinceId,
+          districtId: cancelled.districtId ?? prev.districtId,
+          institutionId: cancelled.institutionId ?? prev.institutionId,
+          branchId: cancelled.branchId ?? prev.branchId,
+          tevkifatCenterId: cancelled.tevkifatCenterId ?? prev.tevkifatCenterId,
+          tevkifatTitle: cancelled.tevkifatTitleId ?? prev.tevkifatTitle,
+          memberGroupId: cancelled.memberGroupId ?? prev.memberGroupId,
+          dutyUnit: cancelled.dutyUnit?.trim() ?? prev.dutyUnit,
+          institutionAddress: cancelled.institutionAddress?.trim() ?? prev.institutionAddress,
+          institutionProvinceId: cancelled.institutionProvinceId ?? prev.institutionProvinceId,
+          institutionDistrictId: cancelled.institutionDistrictId ?? prev.institutionDistrictId,
+          professionId: cancelled.professionId ?? prev.professionId,
+          institutionRegNo: cancelled.institutionRegNo?.trim() ?? prev.institutionRegNo,
+          staffTitleCode: cancelled.staffTitleCode?.trim() ?? prev.staffTitleCode,
+        }));
       } else {
         setCancelledMember(null);
         setPreviousCancelledMemberId(undefined);

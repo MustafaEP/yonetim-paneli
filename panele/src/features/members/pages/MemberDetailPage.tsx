@@ -97,6 +97,7 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import BookIcon from '@mui/icons-material/Book';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 
 const MemberDetailPage = () => {
@@ -2370,6 +2371,129 @@ const MemberDetailPage = () => {
             </SectionCard>
           </Box>
         </Box>
+
+        {/* Üyelik Geçmişi / Hareketler */}
+        <SectionCard title="Üyelik Geçmişi / Hareketler" icon={<TimelineIcon />}>
+          {(() => {
+            const periods = member?.membershipPeriods ?? [];
+            const isActive = member?.status === 'ACTIVE' || member?.status === 'APPROVED' || member?.status === 'PENDING';
+            const currentRegNo = member?.registrationNumber;
+            const currentApprovedAt = member?.approvedAt;
+
+            // Güncel dönem (aktif üye, henüz membershipPeriods'a yazılmamış olabilir)
+            const currentRegInPeriods = periods.some(
+              (p) => p.registrationNumber === currentRegNo && !p.periodEnd
+            );
+
+            const items: Array<{ type: 'join' | 'leave'; date: string; text: string }> = [];
+
+            periods.forEach((p) => {
+              const startDate = p.periodStart
+                ? new Date(p.periodStart).toLocaleDateString('tr-TR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : '';
+              items.push({
+                type: 'join',
+                date: p.periodStart,
+                text: `${startDate}'de üye oldu, ${p.registrationNumber} numarası verildi.`,
+              });
+              if (p.periodEnd && p.cancelledAt) {
+                const endDate = new Date(p.cancelledAt).toLocaleDateString('tr-TR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                });
+                const reason = p.cancellationReason ? ` (${p.cancellationReason})` : '';
+                const statusLabel =
+                  p.status === 'RESIGNED' ? 'istifa etti' : p.status === 'EXPELLED' ? 'ihraç edildi' : p.status === 'INACTIVE' ? 'pasif edildi' : 'üyelik sona erdi';
+                items.push({
+                  type: 'leave',
+                  date: p.cancelledAt,
+                  text: `${endDate}'de${reason} üyelikten ${statusLabel}.`,
+                });
+              }
+            });
+
+            if (isActive && currentRegNo && !currentRegInPeriods) {
+              const approvedOrCreated = currentApprovedAt || member?.createdAt;
+              const startDate = approvedOrCreated
+                ? new Date(approvedOrCreated).toLocaleDateString('tr-TR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : '';
+              items.unshift({
+                type: 'join',
+                date: approvedOrCreated || new Date().toISOString(),
+                text: periods.length > 0
+                  ? `${startDate}'de tekrar üye oldu, ${currentRegNo} numarası verildi. (Aktif)`
+                  : `${startDate}'de üye oldu, ${currentRegNo} numarası verildi. (Aktif)`,
+              });
+            }
+
+            items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+            if (items.length === 0) {
+              return (
+                <Alert
+                  severity="info"
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                    bgcolor: alpha(theme.palette.info.main, 0.05),
+                  }}
+                >
+                  Henüz üyelik hareketi kaydı bulunmuyor.
+                </Alert>
+              );
+            }
+
+            return (
+              <Box component="ul" sx={{ m: 0, pl: 2.5, listStyle: 'none' }}>
+                {items.map((item, idx) => (
+                  <Box
+                    component="li"
+                    key={idx}
+                    sx={{
+                      position: 'relative',
+                      pb: 1.5,
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        left: -20,
+                        top: 8,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        bgcolor:
+                          item.type === 'join'
+                            ? theme.palette.success.main
+                            : theme.palette.error.main,
+                      },
+                      '&:not(:last-child)::after': {
+                        content: '""',
+                        position: 'absolute',
+                        left: -17,
+                        top: 18,
+                        bottom: 0,
+                        width: 2,
+                        bgcolor: alpha(theme.palette.divider, 0.5),
+                      },
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                      {item.text}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            );
+          })()}
+        </SectionCard>
 
         {/* Üyelik Evrakları */}
         <SectionCard 

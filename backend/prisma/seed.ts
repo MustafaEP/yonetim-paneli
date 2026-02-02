@@ -1332,35 +1332,119 @@ async function main() {
     },
     {
       name: 'Üye Kartı',
-      description: 'Üye kartı (A4 üzerinde kart formatı)',
+      description: 'Üye kartı (modern kart tasarımı, A4 üzerinde ortalanmış)',
       template: `
-<div style="display:flex;justify-content:center;">
-  <div style="width:90mm;border:1px solid #111;border-radius:10px;overflow:hidden;">
-    <div style="padding:10px 12px;background:#0b3a7a;color:#fff;">
-      <div style="font-size:10pt;font-weight:800;letter-spacing:.6px;">SENDİKA ÜYE KARTI</div>
-      <div style="font-size:8.5pt;opacity:.9;margin-top:2px;">Resmî Üyelik Kimliği</div>
-    </div>
-    <div style="padding:12px;">
-      <div style="font-size:12pt;font-weight:800;">{{firstName}} {{lastName}}</div>
-      <div style="margin-top:8px;font-size:9.5pt;">
-        <div><span style="color:#444;">Üye No</span>: <b>{{memberNumber}}</b></div>
-        <div><span style="color:#444;">T.C.</span>: {{nationalId}}</div>
-        <div><span style="color:#444;">İl/İlçe</span>: {{province}} / {{district}}</div>
-        <div><span style="color:#444;">Kurum</span>: {{institution}}</div>
-        <div><span style="color:#444;">Şube</span>: {{branch}}</div>
+<style>
+  .card-doc { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", sans-serif; color: #0f172a; }
+  .card-page { display:flex; align-items:center; justify-content:center; min-height: 297mm; padding: 18mm 16mm; box-sizing: border-box; }
+  body[data-header-paper="true"] .card-page { padding: 0 !important; min-height: auto !important; }
+
+  .member-card {
+    width: 88mm;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(2, 6, 23, .14);
+    border: 1px solid rgba(15, 23, 42, .10);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .member-card__top {
+    position: relative;
+    padding: 12px 14px 10px 14px;
+    background: linear-gradient(135deg, #0b3a7a 0%, #1556b6 55%, #0ea5e9 120%);
+    color: #fff;
+  }
+  .member-card__top:after {
+    content:"";
+    position:absolute;
+    inset: 0;
+    background:
+      radial-gradient(600px 180px at 20% -30%, rgba(255,255,255,.22), transparent 60%),
+      radial-gradient(420px 220px at 110% 10%, rgba(255,255,255,.18), transparent 60%),
+      linear-gradient(180deg, rgba(2,6,23,.06), transparent 40%);
+    pointer-events:none;
+  }
+  .brand-title { position: relative; z-index:1; letter-spacing: .9px; font-weight: 800; font-size: 10.2pt; }
+  .brand-sub  { position: relative; z-index:1; margin-top: 2px; font-size: 8.5pt; opacity: .92; }
+  .member-card__body { padding: 12px 14px 10px; }
+
+  .identity-row { display:flex; gap: 10px; align-items: flex-start; }
+  .photo {
+    width: 26mm; height: 32mm;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f1f5f9;
+    border: 1px solid rgba(15, 23, 42, .12);
+    flex: 0 0 auto;
+  }
+  .photo img { width:100%; height:100%; object-fit: cover; display:block; }
+  .name { font-size: 12.2pt; font-weight: 900; letter-spacing: .2px; margin: 2px 0 6px; }
+  .meta { font-size: 8.9pt; color: #334155; line-height: 1.45; }
+  .meta b { color:#0f172a; }
+
+  .grid { margin-top: 10px; display:grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .kv { border: 1px solid rgba(15, 23, 42, .08); background: rgba(241,245,249,.65); border-radius: 10px; padding: 7px 9px; }
+  .k { font-size: 7.7pt; letter-spacing:.35px; text-transform: uppercase; color:#64748b; }
+  .v { margin-top: 2px; font-size: 9.1pt; font-weight: 700; color:#0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .member-card__footer {
+    display:flex; justify-content: space-between; gap: 10px;
+    padding: 9px 14px;
+    border-top: 1px solid rgba(15, 23, 42, .08);
+    font-size: 8.2pt; color:#475569;
+    background: #fff;
+  }
+  .chip { display:inline-block; padding: 3px 8px; border-radius: 999px; background: rgba(14,165,233,.12); color:#075985; font-weight: 700; }
+</style>
+
+<div class="card-doc">
+  <div class="card-page">
+    <div class="member-card">
+      <div class="member-card__top">
+        <div class="brand-title">SENDİKA ÜYE KARTI</div>
+        <div class="brand-sub">Resmî üyelik kimliği</div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:12px;align-items:flex-end;">
-        <div style="width:26mm;height:34mm;border:1px dashed #999;border-radius:6px;overflow:hidden;background:#f6f6f6;display:flex;align-items:center;justify-content:center;">
-          <img src="{{photoDataUrl}}" alt="Fotoğraf" style="width:100%;height:100%;object-fit:cover;display:block;" />
+
+      <div class="member-card__body">
+        <div class="identity-row">
+          <div class="photo">
+            <img src="{{photoDataUrl}}" alt="Fotoğraf" />
+          </div>
+          <div style="flex:1; min-width: 0;">
+            <div class="name">{{firstName}} {{lastName}}</div>
+            <div class="meta">
+              <div><span style="color:#64748b;">Üye No:</span> <b>{{memberNumber}}</b></div>
+              <div><span style="color:#64748b;">T.C.:</span> <b>{{nationalId}}</b></div>
+              <div><span style="color:#64748b;">İl/İlçe:</span> <b>{{province}}</b> / <b>{{district}}</b></div>
+            </div>
+          </div>
         </div>
-        <div style="font-size:8.5pt;color:#555;flex:1;">
-          <div>Üyelik Tarihi: <b>{{joinDate}}</b></div>
-          <div>Geçerlilik: <b>{{validUntil}}</b></div>
+
+        <div class="grid">
+          <div class="kv">
+            <div class="k">Kurum</div>
+            <div class="v">{{institution}}</div>
+          </div>
+          <div class="kv">
+            <div class="k">Şube</div>
+            <div class="v">{{branch}}</div>
+          </div>
+          <div class="kv">
+            <div class="k">Üyelik Tarihi</div>
+            <div class="v">{{joinDate}}</div>
+          </div>
+          <div class="kv">
+            <div class="k">Geçerlilik</div>
+            <div class="v">{{validUntil}}</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div style="padding:8px 12px;border-top:1px solid #eee;font-size:8.5pt;color:#555;">
-      Bu kart sendika üyeliğini belgeler.
+
+      <div class="member-card__footer">
+        <div>Bu kart sendika üyeliğini belgeler.</div>
+        <div class="chip">AKTİF</div>
+      </div>
     </div>
   </div>
 </div>`,
@@ -1525,57 +1609,156 @@ async function main() {
     },
     {
       name: 'Davet Mektubu',
-      description: 'Etkinlik / toplantı davet mektubu (minimal)',
+      description: 'Etkinlik / toplantı davet mektubu (modern, kurumsal)',
       template: `
-<div style="text-align:right;font-size:10.5pt;color:#444;">Tarih: <b>{{date}}</b></div>
-<div style="margin-top:10px;font-size:11pt;font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
+<style>
+  .doc { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", sans-serif; color:#0f172a; }
+  .doc { padding: 18mm 16mm; box-sizing: border-box; }
+  body[data-header-paper="true"] .doc { padding: 0 !important; }
+  .muted { color:#475569; }
+  .topbar { display:flex; align-items:flex-start; justify-content:space-between; gap: 14px; }
+  .badge { display:inline-block; padding: 4px 10px; border-radius: 999px; font-size: 8.5pt; font-weight: 800; letter-spacing:.55px; background: rgba(14,165,233,.12); color:#075985; }
+  .date { font-size: 10pt; color:#475569; }
+  .title { margin-top: 10px; font-size: 16pt; font-weight: 900; letter-spacing:.4px; }
+  .subtitle { margin-top: 2px; font-size: 10pt; color:#64748b; }
+  .hr { height: 1px; background: rgba(15, 23, 42, .10); margin: 12px 0 14px; }
+  .salute { font-size: 11.5pt; font-weight: 700; }
+  .p { margin-top: 10px; font-size: 11pt; line-height: 1.55; color:#0f172a; }
+  .card { margin-top: 12px; border: 1px solid rgba(15, 23, 42, .10); background: rgba(241,245,249,.60); border-radius: 14px; padding: 12px 14px; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .kv .k { font-size: 8.2pt; letter-spacing:.4px; text-transform: uppercase; color:#64748b; }
+  .kv .v { margin-top: 3px; font-size: 11pt; font-weight: 800; color:#0f172a; }
+  .kv .v.normal { font-weight: 600; }
+  .note { margin-top: 10px; font-size: 9.8pt; color:#475569; }
+  .footer { margin-top: 18px; display:flex; justify-content:space-between; gap: 16px; align-items:flex-end; }
+  .signature { text-align:right; min-width: 60mm; }
+  .signature .org { font-weight: 800; }
+  .signature .line { margin-top: 26px; height: 1px; background: rgba(15, 23, 42, .20); }
+  .signature .hint { margin-top: 6px; font-size: 9pt; color:#64748b; }
+</style>
 
-<div style="margin-top:10px;font-size:11pt;color:#111;">
-  Sendikamız tarafından düzenlenecek etkinliğimize katılımınızı rica ederiz.
-</div>
+<div class="doc">
+  <div class="topbar">
+    <div>
+      <span class="badge">DAVET</span>
+      <div class="title">Etkinlik Daveti</div>
+      <div class="subtitle muted">Katılımınızı rica ederiz</div>
+    </div>
+    <div class="date">Tarih: <b>{{date}}</b></div>
+  </div>
 
-<div style="margin-top:14px;">
-  <table style="width:100%;border-collapse:collapse;font-size:10.5pt;">
-    <tr><td style="width:34%;padding:6px 0;color:#333;">Etkinlik</td><td style="padding:6px 0;">: <b>{{eventName}}</b></td></tr>
-    <tr><td style="padding:6px 0;color:#333;">Tarih / Saat</td><td style="padding:6px 0;">: {{eventDate}} {{eventTime}}</td></tr>
-    <tr><td style="padding:6px 0;color:#333;">Yer</td><td style="padding:6px 0;">: {{eventLocation}}</td></tr>
-    <tr><td style="padding:6px 0;color:#333;">Adres</td><td style="padding:6px 0;">: {{eventAddress}}</td></tr>
-  </table>
-</div>
+  <div class="hr"></div>
 
-<div style="margin-top:10px;font-size:11pt;white-space:pre-wrap;color:#111;">{{eventDescription}}</div>
+  <div class="salute">Sayın {{firstName}} {{lastName}},</div>
+  <div class="p">
+    Sendikamız tarafından düzenlenecek etkinliğimize katılımınızı memnuniyetle bekleriz.
+  </div>
 
-<div style="margin-top:14px;font-size:11pt;color:#111;">
-  Katılımınızı bekler, saygılarımızı sunarız.
-</div>
+  <div class="card">
+    <div class="grid">
+      <div class="kv">
+        <div class="k">Etkinlik</div>
+        <div class="v">{{eventName}}</div>
+      </div>
+      <div class="kv">
+        <div class="k">Tarih / Saat</div>
+        <div class="v normal">{{eventDate}}</div>
+      </div>
+      <div class="kv" style="grid-column: 1 / -1;">
+        <div class="k">Yer</div>
+        <div class="v normal">{{eventPlace}}</div>
+      </div>
+    </div>
+  </div>
 
-<div style="margin-top:22px;text-align:right;">
-  <div style="font-weight:700;">Sendika Yönetimi</div>
-  <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
-</div>
+  <div class="p" style="white-space:pre-wrap;">{{eventDescription}}</div>
 
-<div style="margin-top:10px;font-size:10pt;color:#555;">
-  Not: Katılım durumunuzu <b>{{confirmationDate}}</b> tarihine kadar bildirmenizi rica ederiz.
+  <div class="note">
+    Not: Katılım durumunuzu <b>{{invitationDate}}</b> tarihine kadar bildirmenizi rica ederiz.
+  </div>
+
+  <div class="footer">
+    <div class="muted" style="font-size:10pt;">
+      Saygılarımızla,
+    </div>
+    <div class="signature">
+      <div class="org">Sendika Yönetimi</div>
+      <div class="line"></div>
+      <div class="hint">İmza / Kaşe</div>
+    </div>
+  </div>
 </div>`,
       type: DocumentTemplateType.INVITATION_LETTER,
       isActive: true,
     },
     {
       name: 'Tebrik Mektubu',
-      description: 'Tebrik mektubu (minimal)',
+      description: 'Tebrik mektubu (modern, kurumsal)',
       template: `
-<div style="text-align:right;font-size:10.5pt;color:#444;">Tarih: <b>{{date}}</b></div>
-<div style="margin-top:10px;font-size:11pt;font-weight:700;">Sayın {{firstName}} {{lastName}},</div>
+<style>
+  .doc { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", sans-serif; color:#0f172a; }
+  .doc { padding: 18mm 16mm; box-sizing: border-box; }
+  body[data-header-paper="true"] .doc { padding: 0 !important; }
+  .topbar { display:flex; align-items:flex-start; justify-content:space-between; gap: 14px; }
+  .badge { display:inline-block; padding: 4px 10px; border-radius: 999px; font-size: 8.5pt; font-weight: 800; letter-spacing:.55px; background: rgba(34,197,94,.14); color:#166534; }
+  .date { font-size: 10pt; color:#475569; }
+  .title { margin-top: 10px; font-size: 16pt; font-weight: 900; letter-spacing:.4px; }
+  .subtitle { margin-top: 2px; font-size: 10pt; color:#64748b; }
+  .hr { height: 1px; background: rgba(15, 23, 42, .10); margin: 12px 0 14px; }
+  .salute { font-size: 11.5pt; font-weight: 700; }
+  .highlight {
+    margin-top: 12px;
+    border: 1px solid rgba(15, 23, 42, .10);
+    background: rgba(241,245,249,.60);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+  .highlight .k { font-size: 8.2pt; letter-spacing:.4px; text-transform: uppercase; color:#64748b; }
+  .highlight .v { margin-top: 4px; font-size: 13pt; font-weight: 900; color:#0f172a; }
+  .p { margin-top: 12px; font-size: 11pt; line-height: 1.6; color:#0f172a; }
+  .muted { color:#475569; }
+  .footer { margin-top: 22px; display:flex; justify-content:space-between; gap: 16px; align-items:flex-end; }
+  .signature { text-align:right; min-width: 60mm; }
+  .signature .org { font-weight: 800; }
+  .signature .line { margin-top: 26px; height: 1px; background: rgba(15, 23, 42, .20); }
+  .signature .hint { margin-top: 6px; font-size: 9pt; color:#64748b; }
+</style>
 
-<div style="margin-top:10px;font-size:11pt;white-space:pre-wrap;color:#111;">{{congratulationReason}}</div>
+<div class="doc">
+  <div class="topbar">
+    <div>
+      <span class="badge">TEBRİK</span>
+      <div class="title">Tebrik Mektubu</div>
+      <div class="subtitle">Başarınızı tebrik ederiz</div>
+    </div>
+    <div class="date">Tarih: <b>{{date}}</b></div>
+  </div>
 
-<div style="margin-top:10px;font-size:11pt;color:#111;">
-  Bu vesileyle sizi tebrik eder, başarılarınızın devamını dileriz.
-</div>
+  <div class="hr"></div>
 
-<div style="margin-top:22px;text-align:right;">
-  <div style="font-weight:700;">Sendika Yönetimi</div>
-  <div style="margin-top:34px;color:#666;">İmza / Kaşe</div>
+  <div class="salute">Sayın {{firstName}} {{lastName}},</div>
+
+  <div class="highlight">
+    <div class="k">Tebrik Sebebi</div>
+    <div class="v" style="white-space:pre-wrap;">{{reason}}</div>
+  </div>
+
+  <div class="p" style="white-space:pre-wrap;">{{description}}</div>
+
+  <div class="p">
+    Bu vesileyle sizi tebrik eder, başarılarınızın devamını dileriz.
+  </div>
+
+  <div class="footer">
+    <div class="muted" style="font-size:10pt;">
+      Saygılarımızla,
+    </div>
+    <div class="signature">
+      <div class="org">Sendika Yönetimi</div>
+      <div class="line"></div>
+      <div class="hint">İmza / Kaşe</div>
+    </div>
+  </div>
 </div>`,
       type: DocumentTemplateType.CONGRATULATION_LETTER,
       isActive: true,

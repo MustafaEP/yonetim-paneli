@@ -370,6 +370,9 @@ export class MembersService {
             email: true,
           },
         },
+        membershipPeriods: {
+          orderBy: { periodStart: 'desc' },
+        },
         user: {
           select: {
             id: true,

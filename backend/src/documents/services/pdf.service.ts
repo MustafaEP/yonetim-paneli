@@ -23,14 +23,18 @@ export class PdfService {
 
       // Dosya uzantısını kontrol et
       const ext = path.extname(pdfPath).toLowerCase();
-      
+
       // Eğer PNG veya JPG ise, direkt base64'e çevir (çok daha hızlı!)
       if (ext === '.png' || ext === '.jpg' || ext === '.jpeg') {
-        this.logger.debug(`Image dosyası direkt base64'e çevriliyor: ${pdfPath}`);
+        this.logger.debug(
+          `Image dosyası direkt base64'e çevriliyor: ${pdfPath}`,
+        );
         const imageBuffer = fs.readFileSync(pdfPath);
         const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
         const base64Image = imageBuffer.toString('base64');
-        this.logger.debug(`Image başarıyla base64'e çevrildi (${base64Image.length} karakter)`);
+        this.logger.debug(
+          `Image başarıyla base64'e çevrildi (${base64Image.length} karakter)`,
+        );
         return `data:${mimeType};base64,${base64Image}`;
       }
 
@@ -38,7 +42,9 @@ export class PdfService {
       const pdfBuffer = fs.readFileSync(pdfPath);
       const pdfBase64 = pdfBuffer.toString('base64');
 
-      this.logger.debug(`PDF'i image'e çeviriyor: ${pdfPath} (Bu işlem 15-20 saniye sürebilir)`);
+      this.logger.debug(
+        `PDF'i image'e çeviriyor: ${pdfPath} (Bu işlem 15-20 saniye sürebilir)`,
+      );
 
       browser = await puppeteer.launch({
         headless: true,
@@ -52,7 +58,7 @@ export class PdfService {
       });
 
       const page = await browser.newPage();
-      
+
       // Viewport'u A4 boyutuna ayarla (yüksek DPI için)
       await page.setViewport({
         width: 794, // A4 width in pixels (at 96 DPI)
@@ -133,7 +139,9 @@ export class PdfService {
 
       // PDF render edilmesini bekle
       try {
-        await page.waitForSelector('[data-rendered="true"]', { timeout: 15000 });
+        await page.waitForSelector('[data-rendered="true"]', {
+          timeout: 15000,
+        });
       } catch {
         // Render işareti gelmezse, canvas'ın yüklenmesini bekle
         try {
@@ -142,12 +150,12 @@ export class PdfService {
           this.logger.warn('PDF render timeout - canvas bulunamadı');
         }
       }
-      
+
       // Render'ın tamamlanması için ek bekleme
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       // Canvas'ın screenshot'ını al
-      const screenshot = await page.screenshot({ 
+      const screenshot = await page.screenshot({
         type: 'png',
         fullPage: false, // Canvas'ın boyutuna göre
         clip: {
@@ -161,10 +169,15 @@ export class PdfService {
 
       // Base64'e çevir
       const base64Image = Buffer.from(screenshot as Buffer).toString('base64');
-      this.logger.debug(`PDF başarıyla image'e çevrildi (${base64Image.length} karakter)`);
+      this.logger.debug(
+        `PDF başarıyla image'e çevrildi (${base64Image.length} karakter)`,
+      );
       return `data:image/png;base64,${base64Image}`;
     } catch (error) {
-      this.logger.error(`PDF'i image'e çevirirken hata: ${error.message}`, error.stack);
+      this.logger.error(
+        `PDF'i image'e çevirirken hata: ${error.message}`,
+        error.stack,
+      );
       return '';
     } finally {
       if (browser) {
@@ -176,7 +189,10 @@ export class PdfService {
   /**
    * HTML içeriğini antetli kağıt background'u ile sarmala
    */
-  wrapHtmlWithHeaderPaper(htmlContent: string, backgroundImageBase64: string): string {
+  wrapHtmlWithHeaderPaper(
+    htmlContent: string,
+    backgroundImageBase64: string,
+  ): string {
     if (!backgroundImageBase64) {
       return htmlContent;
     }
@@ -224,7 +240,7 @@ export class PdfService {
     }
   </style>
 </head>
-<body>
+<body data-header-paper="true">
   <div class="content">
     ${htmlContent}
   </div>
@@ -256,13 +272,24 @@ export class PdfService {
       // Antetli kağıt varsa HTML içeriğini sarmala
       let finalHtmlContent = htmlContent;
       if (options?.headerPaperPath) {
-        this.logger.debug(`Antetli kağıt kullanılıyor: ${options.headerPaperPath}`);
-        const backgroundImage = await this.convertPdfToBase64Image(options.headerPaperPath);
+        this.logger.debug(
+          `Antetli kağıt kullanılıyor: ${options.headerPaperPath}`,
+        );
+        const backgroundImage = await this.convertPdfToBase64Image(
+          options.headerPaperPath,
+        );
         if (backgroundImage) {
-          this.logger.debug(`Antetli kağıt başarıyla image'e çevrildi (${backgroundImage.length} karakter)`);
-          finalHtmlContent = this.wrapHtmlWithHeaderPaper(htmlContent, backgroundImage);
+          this.logger.debug(
+            `Antetli kağıt başarıyla image'e çevrildi (${backgroundImage.length} karakter)`,
+          );
+          finalHtmlContent = this.wrapHtmlWithHeaderPaper(
+            htmlContent,
+            backgroundImage,
+          );
         } else {
-          this.logger.warn(`Antetli kağıt image'e çevrilemedi, background olmadan devam ediliyor`);
+          this.logger.warn(
+            `Antetli kağıt image'e çevrilemedi, background olmadan devam ediliyor`,
+          );
         }
       }
 
@@ -312,7 +339,10 @@ export class PdfService {
 
       this.logger.log(`PDF generated successfully: ${outputPath}`);
     } catch (error) {
-      this.logger.error(`Failed to generate PDF: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate PDF: ${error.message}`,
+        error.stack,
+      );
       throw error;
     } finally {
       if (browser) {
@@ -375,7 +405,10 @@ export class PdfService {
       // Puppeteer Uint8Array döndürür, Buffer'a dönüştür
       return Buffer.from(pdfBuffer);
     } catch (error) {
-      this.logger.error(`Failed to generate PDF buffer: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate PDF buffer: ${error.message}`,
+        error.stack,
+      );
       throw error;
     } finally {
       if (browser) {
@@ -387,20 +420,25 @@ export class PdfService {
   /**
    * HTML template'ini değişkenlerle doldur
    */
-  replaceTemplateVariables(template: string, variables: Record<string, string>): string {
+  replaceTemplateVariables(
+    template: string,
+    variables: Record<string, string>,
+  ): string {
     let html = template;
 
     // Önce template'deki tüm değişkenleri bul
     const templateVarRegex = /\{\{\s*(\w+)\s*\}\}/g;
     const foundVariables = new Set<string>();
     let match;
-    
+
     while ((match = templateVarRegex.exec(template)) !== null) {
       foundVariables.add(match[1]);
     }
 
     // Eksik değişkenleri kontrol et ve log'la
-    const missingVars = Array.from(foundVariables).filter(varName => !variables.hasOwnProperty(varName));
+    const missingVars = Array.from(foundVariables).filter(
+      (varName) => !variables.hasOwnProperty(varName),
+    );
     if (missingVars.length > 0) {
       this.logger.warn(`Şablonda eksik değişkenler: ${missingVars.join(', ')}`);
     }
@@ -457,4 +495,3 @@ export class PdfService {
     return text.replace(/[&<>"']/g, (m) => map[m]);
   }
 }
-

@@ -46,7 +46,7 @@ export interface UpdateDocumentTemplateDto {
   name?: string;
   description?: string;
   template?: string;
-  type?: 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'OTHER';
+  type?: 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'OTHER';
   isActive?: boolean;
 }
 
@@ -167,6 +167,11 @@ export const viewDocument = async (documentId: string): Promise<void> => {
   newWindow.addEventListener('beforeunload', () => {
     window.URL.revokeObjectURL(blobUrl);
   });
+};
+
+// Üye dokümanını sil
+export const deleteMemberDocument = async (documentId: string): Promise<void> => {
+  await httpClient.delete(`/documents/${documentId}`);
 };
 
 // PDF oluştur

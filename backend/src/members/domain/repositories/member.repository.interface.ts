@@ -19,6 +19,11 @@ export interface MemberRepository {
   save(member: Member): Promise<void>;
 
   /**
+   * TC Kimlik numarasına göre üye bul (herhangi bir durumda)
+   */
+  findByNationalId(nationalId: NationalId): Promise<Member | null>;
+
+  /**
    * TC Kimlik numarasına göre iptal edilmiş üye bul
    */
   findCancelledByNationalId(nationalId: NationalId): Promise<Member | null>;

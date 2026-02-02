@@ -370,8 +370,9 @@ const RecentPaymentsPage: React.FC = () => {
       sortable: false,
       align: 'center',
       headerAlign: 'center',
+      cellClassName: 'recent-payments-actions-cell',
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
           {params.row.documentUrl && (
             <Tooltip title="PDF Görüntüle">
               <IconButton
@@ -494,6 +495,10 @@ const RecentPaymentsPage: React.FC = () => {
               border: 'none',
               '& .MuiDataGrid-cell': {
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              },
+              '& .recent-payments-actions-cell': {
+                display: 'flex',
+                alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
                 backgroundColor: alpha(theme.palette.primary.main, 0.04),
