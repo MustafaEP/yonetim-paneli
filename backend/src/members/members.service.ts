@@ -372,6 +372,14 @@ export class MembersService {
         },
         membershipPeriods: {
           orderBy: { periodStart: 'desc' },
+          include: {
+            approvedBy: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+            cancelledBy: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
         },
         user: {
           select: {

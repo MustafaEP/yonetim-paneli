@@ -29,6 +29,8 @@ export class PrismaMemberMembershipPeriodRepository implements MemberMembershipP
         cancellationReason: data.cancellationReason ?? null,
         cancelledAt: data.cancelledAt ?? null,
         approvedAt: data.approvedAt ?? null,
+        approvedByUserId: data.approvedByUserId ?? null,
+        cancelledByUserId: data.cancelledByUserId ?? null,
       },
     });
     return this.toRecord(row);

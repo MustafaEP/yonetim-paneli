@@ -25,6 +25,8 @@ export interface CreateMembershipPeriodData {
   cancellationReason?: string | null;
   cancelledAt?: Date | null;
   approvedAt?: Date | null;
+  approvedByUserId?: string | null;
+  cancelledByUserId?: string | null;
 }
 
 export interface MemberMembershipPeriodRepository {

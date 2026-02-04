@@ -12,6 +12,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
+import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import {
   MemberNotFoundException,
@@ -36,6 +37,8 @@ export class MemberUpdateApplicationService {
   constructor(
     @Inject('MemberRepository')
     private readonly memberRepository: MemberRepository,
+    @Inject('MemberMembershipPeriodRepository')
+    private readonly membershipPeriodRepository: MemberMembershipPeriodRepository,
     private readonly memberHistoryService: MemberHistoryService,
   ) {}
 
@@ -59,13 +62,42 @@ export class MemberUpdateApplicationService {
     // 2. Eski veriyi history için sakla
     const oldData = this.prepareHistoryData(member);
 
+    // 2b. İstifa/ihraç/pasif: dönem kaydı için mevcut bilgileri sakla (update öncesi)
+    const isCancellationStatus =
+      command.updateData.status === 'RESIGNED' ||
+      command.updateData.status === 'EXPELLED' ||
+      command.updateData.status === 'INACTIVE';
+    const regNo = isCancellationStatus ? member.registrationNumber?.getValue() : null;
+    const approvedAt = isCancellationStatus ? member.approvedAt : null;
+
     try {
       // 3. DTO'yu Domain Entity update data formatına çevir
       const updateData = this.mapDtoToUpdateData(command.updateData);
+      if (isCancellationStatus) {
+        updateData.registrationNumber = null;
+      }
 
       // 4. Domain Entity'de update method'unu çağır
-      // Business rule'lar burada çalışır (status transition, validation)
       member.update(updateData);
+
+      // 4b. İstifa/ihraç/pasif: Üyelik Geçmişi için MemberMembershipPeriod kaydı oluştur (veritabanına yaz)
+      if (isCancellationStatus && (regNo || member.id)) {
+        const cancelledAt = member.cancelledAt ?? new Date();
+        const periodStart = approvedAt ?? cancelledAt;
+        const regNoForPeriod = regNo ?? `Üye-${member.id.slice(-6)}`;
+        await this.membershipPeriodRepository.create({
+          memberId: member.id,
+          registrationNumber: regNoForPeriod,
+          periodStart,
+          periodEnd: cancelledAt,
+          status: command.updateData.status as string,
+          cancellationReason: command.updateData.cancellationReason ?? null,
+          cancelledAt,
+          approvedAt: approvedAt ?? null,
+          approvedByUserId: member.approvedByUserId ?? null,
+          cancelledByUserId: command.updatedByUserId,
+        });
+      }
 
       // 5. Repository'ye kaydet
       await this.memberRepository.save(member);

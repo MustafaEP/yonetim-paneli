@@ -73,19 +73,21 @@ export class MemberCancellationApplicationService {
 
       const cancelledAt = member.cancelledAt!;
 
-      // 3b. Mevcut dönemi MemberMembershipPeriod'a yaz (üye numarası, onay tarihi, iptal bilgileri)
-      if (regNo && approvedAt) {
-        await this.membershipPeriodRepository.create({
+      // 3b. Mevcut dönemi MemberMembershipPeriod'a yaz (üye numarası, onay tarihi, iptal bilgileri) – approvedAt yoksa iptal tarihi kullan
+      const periodStart = approvedAt ?? cancelledAt;
+      const regNoForPeriod = regNo ?? `Üye-${member.id.slice(-6)}`;
+      await this.membershipPeriodRepository.create({
           memberId: member.id,
-          registrationNumber: regNo,
-          periodStart: approvedAt,
+          registrationNumber: regNoForPeriod,
+          periodStart,
           periodEnd: cancelledAt,
           status: command.status,
           cancellationReason: command.cancellationReason,
           cancelledAt,
-          approvedAt,
+          approvedAt: approvedAt ?? null,
+          approvedByUserId: member.approvedByUserId ?? null,
+          cancelledByUserId: command.cancelledByUserId,
         });
-      }
 
       // 4. Repository'ye kaydet
       await this.memberRepository.save(member);

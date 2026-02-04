@@ -128,6 +128,8 @@ export interface MemberMembershipPeriod {
   cancelledAt: string | null;
   approvedAt: string | null;
   createdAt: string;
+  approvedBy?: { id: string; firstName: string; lastName: string } | null;
+  cancelledBy?: { id: string; firstName: string; lastName: string } | null;
 }
 
 export interface MemberHistory {

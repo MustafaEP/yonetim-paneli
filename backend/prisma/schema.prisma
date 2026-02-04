@@ -82,6 +82,10 @@ model User {
   member                    Member?                @relation("MemberUser")
   reviewedPanelApplications PanelUserApplication[] @relation("PanelUserApplicationReviewedBy")
   createdPanelApplication   PanelUserApplication?  @relation("PanelUserApplicationCreatedUser")
+
+  // 🔹 Üyelik dönemi ilişkileri (onaylayan / iptal eden)
+  approvedMembershipPeriods   MemberMembershipPeriod[] @relation("PeriodApprovedBy")
+  cancelledMembershipPeriods  MemberMembershipPeriod[] @relation("PeriodCancelledBy")
 }
 
 enum MemberStatus {
@@ -249,6 +253,11 @@ model MemberMembershipPeriod {
   cancellationReason String?
   cancelledAt        DateTime?
   approvedAt         DateTime?
+
+  approvedByUserId  String? // Başvuruyu onaylayan / üye numarası veren
+  approvedBy        User?   @relation("PeriodApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  cancelledByUserId String? // İstifa/ihraç işlemini yapan
+  cancelledBy       User?   @relation("PeriodCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 

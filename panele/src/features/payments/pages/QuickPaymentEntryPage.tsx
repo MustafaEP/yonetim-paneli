@@ -45,9 +45,11 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getInstitutions } from '../../regions/services/institutionsApi';
 import { getMembers } from '../../members/services/membersApi';
-import { createPayment, updatePayment, getPayments, type PaymentType, type CreateMemberPaymentDto, type UpdateMemberPaymentDto } from '../services/paymentsApi';
+import { createPayment, updatePayment, getPayments, type PaymentType, type CreateMemberPaymentDto, type UpdateMemberPaymentDto, type MemberPayment } from '../services/paymentsApi';
 import type { MemberListItem } from '../../../types/member';
 import type { Institution } from '../../regions/services/institutionsApi';
+import { getTevkifatCenters } from '../../accounting/services/accountingApi';
+import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 
 interface PaymentRow {
@@ -111,12 +113,13 @@ const QuickPaymentEntryPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50); // Sayfa başına 50 satır
   
-  // Uyarı dialog state
+  // Aynı ay ödeme mevcut: mevcut ödemeyi göster ve güncelle
   const [duplicatePaymentDialog, setDuplicatePaymentDialog] = useState<{
     open: boolean;
     memberName: string;
     memberId: string;
     rowId: string;
+    existingPayment: MemberPayment | null;
     onConfirm?: () => void;
     onCancel?: () => void;
   }>({
@@ -124,8 +127,31 @@ const QuickPaymentEntryPage: React.FC = () => {
     memberName: '',
     memberId: '',
     rowId: '',
+    existingPayment: null,
   });
+  const [duplicateDialogEditForm, setDuplicateDialogEditForm] = useState<{
+    amount: string;
+    paymentType: PaymentType;
+    tevkifatCenterId: string;
+    description: string;
+  }>({ amount: '', paymentType: 'TEVKIFAT', tevkifatCenterId: '', description: '' });
+  const [duplicateDialogTevkifatCenters, setDuplicateDialogTevkifatCenters] = useState<Array<{ id: string; name: string }>>([]);
+  const [duplicateDialogSaving, setDuplicateDialogSaving] = useState(false);
 
+  // Aynı ay ödeme dialog'u açıldığında formu doldur ve tevkifat merkezlerini yükle
+  useEffect(() => {
+    if (!duplicatePaymentDialog.open || !duplicatePaymentDialog.existingPayment) return;
+    const p = duplicatePaymentDialog.existingPayment;
+    setDuplicateDialogEditForm({
+      amount: p.amount || '',
+      paymentType: (p.paymentType as PaymentType) || 'TEVKIFAT',
+      tevkifatCenterId: p.tevkifatCenterId || p.tevkifatCenter?.id || '',
+      description: p.description || '',
+    });
+    getTevkifatCenters()
+      .then((data) => setDuplicateDialogTevkifatCenters(data))
+      .catch(() => setDuplicateDialogTevkifatCenters([]));
+  }, [duplicatePaymentDialog.open, duplicatePaymentDialog.existingPayment]);
 
   const canView = hasPermission('MEMBER_PAYMENT_LIST');
 
@@ -133,6 +159,11 @@ const QuickPaymentEntryPage: React.FC = () => {
     'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
     'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
   ];
+  const paymentTypeLabels: Record<PaymentType, string> = {
+    TEVKIFAT: 'Tevkifat',
+    ELDEN: 'Elden',
+    HAVALE: 'Havale',
+  };
 
   useEffect(() => {
     if (canView) {
@@ -432,63 +463,57 @@ const QuickPaymentEntryPage: React.FC = () => {
         return;
       }
 
-      // Yeni ödemeler için aynı ay/yıl kontrolü yap ve uyarı göster
+      // Yeni ödemeler için aynı ay/yıl kontrolü yap; mevcut ödemeyi göster/güncelle dialog'u aç
       const newPaymentRows = rowsToSave.filter((r) => !r.paymentId);
-      const rowsWithExistingPayments: PaymentRow[] = [];
+      const rowsWithExistingPayments: Array<{ row: PaymentRow; existingPayment: MemberPayment }> = [];
       
       if (newPaymentRows.length > 0) {
         try {
-          // Bu ay/yıl için ödemeleri getir
           const existingPayments = await getPayments({
             year: filters.year,
             month: filters.month,
             isApproved: true,
           });
 
-          // Her yeni ödeme için kontrol et
           for (const row of newPaymentRows) {
             const existingPayment = existingPayments.find(
               (p) => p.memberId === row.memberId
             );
-
             if (existingPayment) {
-              rowsWithExistingPayments.push(row);
+              rowsWithExistingPayments.push({ row, existingPayment });
             }
           }
         } catch (e) {
           console.error('Ödemeler kontrol edilirken hata:', e);
-          // Hata durumunda devam et
         }
       }
 
-      // Eğer aynı ayda ödeme yapmış üyeler varsa, her biri için uyarı göster
       const rowsToSkip: Set<string> = new Set();
       
       if (rowsWithExistingPayments.length > 0) {
-        for (const row of rowsWithExistingPayments) {
+        for (const { row, existingPayment } of rowsWithExistingPayments) {
           const member = row.member || members.find((m) => m.id === row.memberId);
           const memberName = member ? `${member.firstName} ${member.lastName}` : 'Bilinmeyen Üye';
           
-          // Promise ile dialog'u beklet
           const shouldContinue = await new Promise<boolean>((resolve) => {
             setDuplicatePaymentDialog({
               open: true,
               memberName,
               memberId: row.memberId!,
               rowId: row.id,
+              existingPayment,
               onConfirm: () => {
-                setDuplicatePaymentDialog((prev) => ({ ...prev, open: false }));
+                setDuplicatePaymentDialog((prev) => ({ ...prev, open: false, existingPayment: null }));
                 resolve(true);
               },
               onCancel: () => {
-                setDuplicatePaymentDialog((prev) => ({ ...prev, open: false }));
+                setDuplicatePaymentDialog((prev) => ({ ...prev, open: false, existingPayment: null }));
                 resolve(false);
               },
             });
           });
 
           if (!shouldContinue) {
-            // Kullanıcı iptal etti, bu satırı atla
             rowsToSkip.add(row.id);
           }
         }
@@ -1393,7 +1418,7 @@ const QuickPaymentEntryPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Aynı Ay Ödeme Uyarı Dialog */}
+      {/* Aynı Ay Ödeme Mevcut: Ödeme bilgilerini göster ve güncelle */}
       <Dialog
         open={duplicatePaymentDialog.open}
         onClose={() => {
@@ -1414,34 +1439,90 @@ const QuickPaymentEntryPage: React.FC = () => {
                 width: 48,
                 height: 48,
                 borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
+                background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <WarningIcon sx={{ fontSize: '1.5rem', color: '#fff' }} />
+              <PaymentIcon sx={{ fontSize: '1.5rem', color: '#fff' }} />
             </Box>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                Aynı Ayda Ödeme Mevcut
+                Mevcut Ödeme Bilgisi
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8125rem' }}>
-                Bu işleme devam etmek istediğinizden emin misiniz?
+                <strong>{duplicatePaymentDialog.memberName}</strong> — {filters.year} yılı {monthNames[filters.month - 1]} ayı
               </Typography>
             </Box>
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ fontSize: '0.875rem', mb: 1 }}>
-              <strong>{duplicatePaymentDialog.memberName}</strong> için{' '}
-              <strong>{filters.year} yılı {monthNames[filters.month - 1]} ayı</strong> döneminde zaten bir ödeme kaydı bulunmaktadır.
-            </Typography>
-            <Typography variant="body2" sx={{ fontSize: '0.8125rem', color: 'text.secondary' }}>
-              Bu üye için aynı ayda birden fazla ödeme kaydedebilirsiniz, ancak bu durumun doğru olduğundan emin olun.
-            </Typography>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Bu dönem için kayıtlı ödeme aşağıdadır. Bilgileri güncelleyip kaydedebilir veya iptal edebilirsiniz.
           </Alert>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Tutar"
+              type="number"
+              value={duplicateDialogEditForm.amount}
+              onChange={(e) =>
+                setDuplicateDialogEditForm((prev) => ({ ...prev, amount: e.target.value }))
+              }
+              inputProps={{ min: 0, step: '0.01' }}
+              fullWidth
+              size="small"
+            />
+            <FormControl fullWidth size="small">
+              <InputLabel>Ödeme Türü</InputLabel>
+              <Select
+                value={duplicateDialogEditForm.paymentType}
+                label="Ödeme Türü"
+                onChange={(e) =>
+                  setDuplicateDialogEditForm((prev) => ({
+                    ...prev,
+                    paymentType: e.target.value as PaymentType,
+                  }))
+                }
+              >
+                {(Object.entries(paymentTypeLabels) as Array<[PaymentType, string]>).map(([value, label]) => (
+                  <MenuItem key={value} value={value}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth size="small">
+              <InputLabel>Tevkifat Merkezi</InputLabel>
+              <Select
+                value={duplicateDialogEditForm.tevkifatCenterId}
+                label="Tevkifat Merkezi"
+                onChange={(e) =>
+                  setDuplicateDialogEditForm((prev) => ({
+                    ...prev,
+                    tevkifatCenterId: e.target.value,
+                  }))
+                }
+              >
+                {duplicateDialogTevkifatCenters.map((center) => (
+                  <MenuItem key={center.id} value={center.id}>
+                    {center.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Açıklama"
+              value={duplicateDialogEditForm.description}
+              onChange={(e) =>
+                setDuplicateDialogEditForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+              fullWidth
+              size="small"
+              multiline
+              rows={2}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2.5, gap: 1 }}>
           <Button
@@ -1449,8 +1530,9 @@ const QuickPaymentEntryPage: React.FC = () => {
               duplicatePaymentDialog.onCancel?.();
             }}
             variant="outlined"
-            sx={{ 
-              textTransform: 'none', 
+            disabled={duplicateDialogSaving}
+            sx={{
+              textTransform: 'none',
               fontWeight: 600,
               fontSize: '0.875rem',
             }}
@@ -1458,18 +1540,59 @@ const QuickPaymentEntryPage: React.FC = () => {
             İptal Et
           </Button>
           <Button
-            onClick={() => {
-              duplicatePaymentDialog.onConfirm?.();
+            onClick={async () => {
+              const payment = duplicatePaymentDialog.existingPayment;
+              if (!payment) return;
+              const { amount, paymentType, tevkifatCenterId, description } = duplicateDialogEditForm;
+              if (!amount || parseFloat(amount) <= 0) {
+                toast.showWarning('Lütfen geçerli bir tutar girin.');
+                return;
+              }
+              if (!tevkifatCenterId) {
+                toast.showWarning('Lütfen tevkifat merkezi seçin.');
+                return;
+              }
+              setDuplicateDialogSaving(true);
+              try {
+                await updatePayment(payment.id, {
+                  amount,
+                  paymentType,
+                  tevkifatCenterId: tevkifatCenterId || undefined,
+                  description: description || undefined,
+                });
+                // Satırı kayıtlı yap: Para eklenen üyelerden çıksın, tabloda son değerle kayıtlı görünsün
+                const rowId = duplicatePaymentDialog.rowId;
+                setRows((prev) =>
+                  prev.map((r) =>
+                    r.id === rowId
+                      ? {
+                          ...r,
+                          status: 'SAVED' as const,
+                          paymentId: payment.id,
+                          amount,
+                          paymentType,
+                        }
+                      : r
+                  )
+                );
+                toast.showSuccess('Ödeme bilgisi güncellendi.');
+                duplicatePaymentDialog.onCancel?.();
+              } catch (e: unknown) {
+                toast.showError(getApiErrorMessage(e, 'Ödeme güncellenirken bir hata oluştu'));
+              } finally {
+                setDuplicateDialogSaving(false);
+              }
             }}
             variant="contained"
-            color="warning"
-            sx={{ 
-              textTransform: 'none', 
+            color="primary"
+            disabled={duplicateDialogSaving}
+            sx={{
+              textTransform: 'none',
               fontWeight: 600,
               fontSize: '0.875rem',
             }}
           >
-            Devam Et
+            {duplicateDialogSaving ? 'Güncelleniyor...' : 'Güncelle'}
           </Button>
         </DialogActions>
       </Dialog>

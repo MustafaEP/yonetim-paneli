@@ -57,7 +57,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SecurityIcon from '@mui/icons-material/Security';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { getMemberById, exportMemberDetailToPdf, updateMember, approveMember, rejectMember, getMemberHistory } from '../services/membersApi';
+import { getMemberById, exportMemberDetailToPdf, updateMember, approveMember, rejectMember, getMemberHistory, cancelMember } from '../services/membersApi';
 import httpClient from '../../../shared/services/httpClient';
 import MemberStatusChangeDialog from '../components/MemberStatusChangeDialog';
 import PromoteToPanelUserDialog from '../components/PromoteToPanelUserDialog';
@@ -706,22 +706,26 @@ const MemberDetailPage = () => {
     return labels[varName] || varName.replace(/([A-Z])/g, ' $1').trim();
   };
 
-  // Durum değiştirme handler
+  // Durum değiştirme handler – aktif üye istifa/ihraç/pasif olunca cancel endpoint kullanılır (dönem kaydı backend'de oluşturulur)
   const handleStatusChange = async (status: MemberStatus, reason?: string) => {
     if (!id || !member) return;
 
     setUpdatingStatus(true);
     try {
-      const updateData: any = { status };
-      if (reason && (status === 'RESIGNED' || status === 'EXPELLED')) {
-        updateData.cancellationReason = reason;
+      const isCancelStatus = status === 'RESIGNED' || status === 'EXPELLED' || status === 'INACTIVE';
+      const useCancelEndpoint = member.status === 'ACTIVE' && isCancelStatus;
+      if (useCancelEndpoint) {
+        await cancelMember(id, reason?.trim() || '', status);
+        toast.showSuccess('Üyelik iptali kaydedildi. Üyelik geçmişine eklendi.');
+      } else {
+        await updateMember(id, isCancelStatus ? { status, cancellationReason: reason?.trim() } : { status });
+        toast.showSuccess('Üye durumu başarıyla güncellendi');
       }
-      await updateMember(id, updateData);
-      toast.showSuccess('Üye durumu başarıyla güncellendi');
       setStatusDialogOpen(false);
-      // Üye bilgilerini yeniden yükle
       const updatedMember = await getMemberById(id);
       setMember(updatedMember);
+      const historyData = await getMemberHistory(id);
+      setMemberHistory(Array.isArray(historyData) ? historyData : []);
     } catch (error: unknown) {
       console.error('Durum güncellenirken hata:', error);
       toast.showError(getApiErrorMessage(error, 'Durum güncellenirken bir hata oluştu'));
@@ -2376,17 +2380,25 @@ const MemberDetailPage = () => {
         <SectionCard title="Üyelik Geçmişi / Hareketler" icon={<TimelineIcon />}>
           {(() => {
             const periods = member?.membershipPeriods ?? [];
-            const isActive = member?.status === 'ACTIVE' || member?.status === 'APPROVED' || member?.status === 'PENDING';
             const currentRegNo = member?.registrationNumber;
             const currentApprovedAt = member?.approvedAt;
+            const history = memberHistory ?? [];
 
-            // Güncel dönem (aktif üye, henüz membershipPeriods'a yazılmamış olabilir)
-            const currentRegInPeriods = periods.some(
-              (p) => p.registrationNumber === currentRegNo && !p.periodEnd
-            );
+            // Güncel dönem sadece ACTIVE veya APPROVED iken gösterilir; PENDING (başvuru aşaması) iken "(Aktif)" satırı eklenmez
+            const showCurrentPeriod =
+              (member?.status === 'ACTIVE' || member?.status === 'APPROVED') &&
+              currentRegNo &&
+              !periods.some((p) => p.registrationNumber === currentRegNo && !p.periodEnd);
 
-            const items: Array<{ type: 'join' | 'leave'; date: string; text: string }> = [];
+            type TimelineItem = { type: 'join' | 'leave' | 'status'; date: string; text: string };
+            const items: TimelineItem[] = [];
 
+            // Dönem satırında "X tarafından" metni
+            const periodByStr = (user: { firstName?: string; lastName?: string } | null | undefined) => {
+              if (!user?.firstName && !user?.lastName) return '';
+              return `${[user.firstName, user.lastName].filter(Boolean).join(' ').trim()} tarafından `;
+            };
+            // 1) Dönem kayıtlarından: üye oldu + istifa/ihraç (onaylayan / iptal eden kişi varsa eklenir)
             periods.forEach((p) => {
               const startDate = p.periodStart
                 ? new Date(p.periodStart).toLocaleDateString('tr-TR', {
@@ -2395,29 +2407,40 @@ const MemberDetailPage = () => {
                     day: 'numeric',
                   })
                 : '';
+              const joinBy = periodByStr(p.approvedBy);
               items.push({
                 type: 'join',
                 date: p.periodStart,
-                text: `${startDate}'de üye oldu, ${p.registrationNumber} numarası verildi.`,
+                text: `${joinBy}${startDate}'de başvuru onaylandı; üye oldu, ${p.registrationNumber} numarası verildi.`,
               });
-              if (p.periodEnd && p.cancelledAt) {
-                const endDate = new Date(p.cancelledAt).toLocaleDateString('tr-TR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                });
-                const reason = p.cancellationReason ? ` (${p.cancellationReason})` : '';
+              const isLeave = p.status === 'RESIGNED' || p.status === 'EXPELLED' || p.status === 'INACTIVE';
+              if (isLeave) {
+                const leaveDate = p.cancelledAt ?? p.periodEnd;
+                const endDateStr = leaveDate
+                  ? new Date(leaveDate).toLocaleDateString('tr-TR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                  : '';
                 const statusLabel =
                   p.status === 'RESIGNED' ? 'istifa etti' : p.status === 'EXPELLED' ? 'ihraç edildi' : p.status === 'INACTIVE' ? 'pasif edildi' : 'üyelik sona erdi';
+                const regNoPart = p.registrationNumber ? ` Üye numarası: ${p.registrationNumber}.` : '';
+                const reasonSuffix = p.cancellationReason?.trim() ? ` İstifa/ihraç sebebi: ${p.cancellationReason.trim()}.` : '';
+                const leaveBy = periodByStr(p.cancelledBy);
+                const mainText = endDateStr
+                  ? `${leaveBy}${endDateStr}'de üyelikten ${statusLabel}.`
+                  : `${leaveBy}Üyelikten ${statusLabel}.`;
                 items.push({
                   type: 'leave',
-                  date: p.cancelledAt,
-                  text: `${endDate}'de${reason} üyelikten ${statusLabel}.`,
+                  date: leaveDate || p.periodStart,
+                  text: mainText + regNoPart + reasonSuffix,
                 });
               }
             });
 
-            if (isActive && currentRegNo && !currentRegInPeriods) {
+            // 2) Güncel dönem (aktif/onaylı, henüz period'a yazılmamış) – onaylayan kişi varsa eklenir
+            if (showCurrentPeriod) {
               const approvedOrCreated = currentApprovedAt || member?.createdAt;
               const startDate = approvedOrCreated
                 ? new Date(approvedOrCreated).toLocaleDateString('tr-TR', {
@@ -2426,14 +2449,67 @@ const MemberDetailPage = () => {
                     day: 'numeric',
                   })
                 : '';
-              items.unshift({
+              const approvedByUser = member?.approvedBy;
+              const byStr =
+                approvedByUser?.firstName || approvedByUser?.lastName
+                  ? `${[approvedByUser.firstName, approvedByUser.lastName].filter(Boolean).join(' ').trim()} tarafından `
+                  : '';
+              const mainText =
+                periods.length > 0
+                  ? `tekrar üye oldu, ${currentRegNo} numarası verildi. (Aktif)`
+                  : `üye oldu, ${currentRegNo} numarası verildi. (Aktif)`;
+              items.push({
                 type: 'join',
                 date: approvedOrCreated || new Date().toISOString(),
-                text: periods.length > 0
-                  ? `${startDate}'de tekrar üye oldu, ${currentRegNo} numarası verildi. (Aktif)`
-                  : `${startDate}'de üye oldu, ${currentRegNo} numarası verildi. (Aktif)`,
+                text: `${byStr}${startDate}'de başvuru onaylandı; ${mainText}`,
               });
             }
+
+            // 3) Geçmiş kayıtlarından status değişikliklerini ekle (işlemi yapan kişi + tarih + işlem)
+            const byUserStr = (user: { firstName?: string; lastName?: string } | null | undefined) => {
+              if (!user?.firstName && !user?.lastName) return '';
+              const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+              return name ? `${name} tarafından ` : '';
+            };
+            history.forEach((h) => {
+              const dateStr = h.createdAt
+                ? new Date(h.createdAt).toLocaleDateString('tr-TR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : '';
+              const by = byUserStr(h.changedByUser);
+              const prefix = by ? `${by}${dateStr}'de ` : `${dateStr}'de `;
+              if (h.action === 'CREATE') {
+                items.push({
+                  type: 'status',
+                  date: h.createdAt,
+                  text: `${prefix}üye başvurusu oluşturuldu.`,
+                });
+                return;
+              }
+              if (h.action !== 'UPDATE' || !h.updatedFields) return;
+              const statusChange = h.updatedFields.status as { old?: string; new?: string } | undefined;
+              if (!statusChange?.old || !statusChange?.new || statusChange.old === statusChange.new) return;
+              const oldS = statusChange.old;
+              const newS = statusChange.new;
+              const reason = (h.updatedFields.cancellationReason as { new?: string } | undefined)?.new;
+              const reasonSuffix = reason?.trim() ? ` Sebep: ${reason.trim()}.` : '';
+
+              // İstifa/ihraç/pasif zaten dönem kaydından (leave) gösteriliyor; history'den tekrar ekleme
+              if (oldS === 'ACTIVE' && (newS === 'RESIGNED' || newS === 'EXPELLED' || newS === 'INACTIVE')) return;
+
+              let text = '';
+              if (oldS === 'PENDING' && newS === 'APPROVED') text = `${prefix}üye başvurusu onaylandı.`;
+              else if (oldS === 'PENDING' && newS === 'REJECTED') text = `${prefix}üye başvurusu reddedildi.`;
+              else if (oldS === 'APPROVED' && newS === 'ACTIVE') text = `${prefix}onaylanmış üye aktifleştirildi.`;
+              else if ((oldS === 'RESIGNED' || oldS === 'EXPELLED' || oldS === 'INACTIVE') && newS === 'PENDING')
+                text = `${prefix}üye istifa/ihraç sonrası tekrar üye başvurusu yaptı.`;
+              else text = `${prefix}üyelik durumu ${oldS} → ${newS} olarak güncellendi.`;
+
+              if (text) items.push({ type: 'status', date: h.createdAt, text: text + reasonSuffix });
+            });
 
             items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -2452,6 +2528,9 @@ const MemberDetailPage = () => {
               );
             }
 
+            const bulletColor = (type: TimelineItem['type']) =>
+              type === 'join' ? theme.palette.success.main : type === 'leave' ? theme.palette.error.main : theme.palette.info.main;
+
             return (
               <Box component="ul" sx={{ m: 0, pl: 2.5, listStyle: 'none' }}>
                 {items.map((item, idx) => (
@@ -2469,10 +2548,7 @@ const MemberDetailPage = () => {
                         width: 8,
                         height: 8,
                         borderRadius: '50%',
-                        bgcolor:
-                          item.type === 'join'
-                            ? theme.palette.success.main
-                            : theme.palette.error.main,
+                        bgcolor: bulletColor(item.type),
                       },
                       '&:not(:last-child)::after': {
                         content: '""',

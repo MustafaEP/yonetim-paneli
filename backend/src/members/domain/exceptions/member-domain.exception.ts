@@ -18,7 +18,7 @@ export class MemberApprovalMissingFieldsException extends Error {
     public readonly missingFields: string[],
   ) {
     super(
-      `Üye bekleme (APPROVED) durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`
+      `Başvuru onaylanamaz: Aşağıdaki alanlar eksik veya doldurulmamış. Lütfen üye bilgilerini ve onay bilgilerini tamamlayıp tekrar deneyin. Eksik alanlar: ${missingFields.join(', ')}.`
     );
     this.name = 'MemberApprovalMissingFieldsException';
   }

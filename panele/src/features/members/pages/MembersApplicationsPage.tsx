@@ -40,7 +40,8 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import ConfirmDialog from '../../../shared/components/common/ConfirmDialog';
 import MemberApprovalDialog, { type ApproveFormData } from '../components/MemberApprovalDialog';
-  import PageHeader from '../../../shared/components/layout/PageHeader';
+import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
+import PageHeader from '../../../shared/components/layout/PageHeader';
 
 const MembersApplicationsPage: React.FC = () => {
   const theme = useTheme();
@@ -258,7 +259,7 @@ const MembersApplicationsPage: React.FC = () => {
       toast.showSuccess('Başvuru başarıyla onaylandı. Üye bekleyen üyeler listesine eklendi.');
     } catch (e) {
       console.error('Başvuru onaylanırken hata:', e);
-      toast.showError('Başvuru onaylanırken bir hata oluştu.');
+      toast.showError(getApiErrorMessage(e, 'Başvuru onaylanırken bir hata oluştu. Eksik bilgileri tamamlayıp tekrar deneyin.'));
       throw e; // Re-throw so the dialog can handle it
     } finally {
       setProcessingId(null);

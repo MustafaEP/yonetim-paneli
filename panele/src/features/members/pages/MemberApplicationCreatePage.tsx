@@ -83,6 +83,8 @@ const MemberApplicationCreatePage: React.FC = () => {
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [checkingNationalId, setCheckingNationalId] = useState(false);
   const [cancelledMemberDialogOpen, setCancelledMemberDialogOpen] = useState(false);
+  /** 'info' = TC girildiğinde sadece bilgi (Tamam), 'confirm_submit' = Kaydet tıklandığında onay (Vazgeç + Başvuruyu Gönder) */
+  const [cancelledMemberDialogMode, setCancelledMemberDialogMode] = useState<'info' | 'confirm_submit'>('info');
   const [cancelledMember, setCancelledMember] = useState<MemberDetail | null>(null);
   const [previousCancelledMemberId, setPreviousCancelledMemberId] = useState<string | undefined>(undefined);
 
@@ -499,6 +501,7 @@ const MemberApplicationCreatePage: React.FC = () => {
       if (cancelled) {
         setCancelledMember(cancelled);
         setPreviousCancelledMemberId(cancelled.id);
+        setCancelledMemberDialogMode('info');
         setCancelledMemberDialogOpen(true);
         // Mevcut bilgilerle formu doldur (yeniden üyelik için karşılama)
         const birthDateStr = cancelled.birthDate
@@ -821,8 +824,9 @@ const MemberApplicationCreatePage: React.FC = () => {
 
     if (!validate()) return;
 
-    // Eğer iptal edilmiş üye varsa ve dialog açık değilse, dialog'u aç
-    if (cancelledMember && !skipDialog && !cancelledMemberDialogOpen) {
+    // En son Kaydet tıklandığında: iptal edilmiş üye (yeniden başvuru) ise aynı uyarıyı tekrar göster
+    if (cancelledMember && previousCancelledMemberId && !skipDialog) {
+      setCancelledMemberDialogMode('confirm_submit');
       setCancelledMemberDialogOpen(true);
       return;
     }
@@ -2129,12 +2133,6 @@ const MemberApplicationCreatePage: React.FC = () => {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">İptal Nedeni</Typography>
-                    <Typography variant="body1" fontWeight={500}>
-                      {cancelledMember.cancellationReason || '-'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
                     <Typography variant="body2" color="text.secondary">Durum</Typography>
                     <Chip
                       label={cancelledMember.status}
@@ -2158,19 +2156,27 @@ const MemberApplicationCreatePage: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2, pt: 1 }}>
-          <Button onClick={() => setCancelledMemberDialogOpen(false)} color="inherit">
-            İptal
-          </Button>
-          <Button
-            onClick={() => {
-              setCancelledMemberDialogOpen(false);
-              handleSubmit(true);
-            }}
-            variant="contained"
-            disabled={saving}
-          >
-            Devam Et ve Kaydet
-          </Button>
+          {cancelledMemberDialogMode === 'info' ? (
+            <Button onClick={() => setCancelledMemberDialogOpen(false)} variant="contained">
+              Tamam
+            </Button>
+          ) : (
+            <>
+              <Button onClick={() => setCancelledMemberDialogOpen(false)} color="inherit">
+                Vazgeç
+              </Button>
+              <Button
+                onClick={() => {
+                  setCancelledMemberDialogOpen(false);
+                  handleSubmit(true);
+                }}
+                variant="contained"
+                disabled={saving}
+              >
+                Başvuruyu Gönder
+              </Button>
+            </>
+          )}
         </DialogActions>
       </Dialog>
 

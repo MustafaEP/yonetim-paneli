@@ -246,7 +246,8 @@ export class MemberCreationApplicationService {
   }
 
   /**
-   * Yeniden üyelik: iptal edilmiş üyeyi güncelle, yeni üye numarası ve dönem kaydı ekle
+   * Yeniden üyelik: iptal edilmiş üyeyi başvuru (PENDING) olarak güncelle.
+   * Üye numarası ve onay alanları başvuruyu onaylayan kişi tarafından doldurulacak; dönem kaydı onay sırasında oluşturulur.
    */
   private async reRegisterMember(createData: CreateMemberData, createdByUserId?: string): Promise<Member> {
     const memberId = createData.previousCancelledMemberId!;
@@ -254,9 +255,6 @@ export class MemberCreationApplicationService {
     if (!member) {
       throw new NotFoundException(`İptal edilmiş üye kaydı bulunamadı: ${memberId}`);
     }
-
-    const regNo = createData.registrationNumber!;
-    const approvedAt = new Date();
 
     const updateData: UpdateMemberData = {
       firstName: createData.firstName,
@@ -280,41 +278,26 @@ export class MemberCreationApplicationService {
       staffTitleCode: createData.staffTitleCode ?? undefined,
       membershipInfoOptionId: createData.membershipInfoOptionId ?? undefined,
       memberGroupId: createData.memberGroupId ?? undefined,
-      registrationNumber: regNo,
-      boardDecisionDate: createData.boardDecisionDate ?? member.boardDecisionDate ?? undefined,
-      boardDecisionBookNo: createData.boardDecisionBookNo ?? member.boardDecisionBookNo ?? undefined,
-      tevkifatCenterId: createData.tevkifatCenterId ?? member.tevkifatCenterId ?? undefined,
-      tevkifatTitleId: createData.tevkifatTitleId ?? member.tevkifatTitleId ?? undefined,
-      branchId: createData.branchId ?? member.branchId ?? undefined,
-      status: MemberStatusEnum.ACTIVE,
-      approvedAt,
-      approvedByUserId: createdByUserId ?? undefined,
+      branchId: createData.branchId ?? undefined,
+      status: MemberStatusEnum.PENDING,
+      approvedAt: null,
+      approvedByUserId: null,
     };
 
+    const oldStatus = member.status.toString();
     member.update(updateData);
-
-    await this.membershipPeriodRepository.create({
-      memberId: member.id,
-      registrationNumber: regNo,
-      periodStart: approvedAt,
-      periodEnd: undefined,
-      status: 'ACTIVE',
-      approvedAt,
-    });
 
     await this.memberRepository.save(member);
 
     await this.memberHistoryService.logMemberUpdate(
       member.id,
       createdByUserId || '',
-      { status: 'RESIGNED', previousReg: 're-registered' },
+      { status: oldStatus, note: 'yeniden üyelik başvurusu' },
       {
         firstName: member.firstName,
         lastName: member.lastName,
         nationalId: member.nationalId.getValue(),
         status: member.status.toString(),
-        approvedByUserId: member.approvedByUserId,
-        approvedAt: member.approvedAt,
       },
     );
 

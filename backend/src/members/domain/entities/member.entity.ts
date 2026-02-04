@@ -484,7 +484,10 @@ export class Member {
       throw new MemberCannotBeApprovedException(this._status.toString());
     }
 
-    const missingFields = this.validateRequiredFieldsForApproval(approvalData);
+    // Başvuru aşamasındaki (PENDING) üyenin başvuru formu bilgileri zorunludur
+    const missingApplicationFields = this.validateApplicationDataBeforeApproval();
+    const missingApprovalFields = this.validateRequiredFieldsForApproval(approvalData);
+    const missingFields = [...missingApplicationFields, ...missingApprovalFields];
     if (missingFields.length > 0) {
       throw new MemberApprovalMissingFieldsException(missingFields);
     }
@@ -742,6 +745,56 @@ export class Member {
   }
 
   // ========== Private Validation Methods ==========
+
+  /**
+   * Başvuru aşamasındaki (PENDING) üyenin onaylanmasından önce
+   * başvuru formunda girilmesi zorunlu alanları kontrol eder.
+   */
+  private validateApplicationDataBeforeApproval(): string[] {
+    const missingFields: string[] = [];
+
+    if (!this._firstName || this._firstName.trim() === '') {
+      missingFields.push('Ad');
+    }
+    if (!this._lastName || this._lastName.trim() === '') {
+      missingFields.push('Soyad');
+    }
+    if (!this._nationalId || !this._nationalId.getValue() || this._nationalId.getValue().trim() === '') {
+      missingFields.push('TC Kimlik No');
+    }
+    if (!this._phone || this._phone.trim() === '') {
+      missingFields.push('Telefon');
+    }
+    if (!this._motherName || this._motherName.trim() === '') {
+      missingFields.push('Anne Adı');
+    }
+    if (!this._fatherName || this._fatherName.trim() === '') {
+      missingFields.push('Baba Adı');
+    }
+    if (!this._birthDate) {
+      missingFields.push('Doğum Tarihi');
+    }
+    if (!this._birthplace || this._birthplace.trim() === '') {
+      missingFields.push('Doğum Yeri');
+    }
+    if (!this._gender) {
+      missingFields.push('Cinsiyet');
+    }
+    if (!this._educationStatus) {
+      missingFields.push('Eğitim Durumu');
+    }
+    if (!this._institutionId) {
+      missingFields.push('Kurum');
+    }
+    if (!this._provinceId) {
+      missingFields.push('İl');
+    }
+    if (!this._districtId) {
+      missingFields.push('İlçe');
+    }
+
+    return missingFields;
+  }
 
   private validateRequiredFieldsForApproval(approvalData: ApprovalData): string[] {
     const missingFields: string[] = [];

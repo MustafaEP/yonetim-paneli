@@ -13,6 +13,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
+import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import { DocumentsService } from '../../../documents/documents.service';
 import { MemberNotFoundException, MemberCannotBeApprovedException, MemberApprovalMissingFieldsException } from '../../domain/exceptions/member-domain.exception';
@@ -39,6 +40,8 @@ export class MemberApprovalApplicationService {
   constructor(
     @Inject('MemberRepository')
     private readonly memberRepository: MemberRepository,
+    @Inject('MemberMembershipPeriodRepository')
+    private readonly membershipPeriodRepository: MemberMembershipPeriodRepository,
     private readonly memberHistoryService: MemberHistoryService,
     private readonly documentsService: DocumentsService,
   ) {}
@@ -78,6 +81,21 @@ export class MemberApprovalApplicationService {
 
       // 4. Repository'ye kaydet
       await this.memberRepository.save(member);
+
+      // 4b. Yeniden üyelik onayı: PENDING iken onaylandıysa ve geçmişte dönem kaydı varsa (iptal sonrası başvuru) yeni dönem kaydı oluştur
+      const existingPeriods = await this.membershipPeriodRepository.findByMemberId(member.id);
+      const isReRegistrationApproval = oldData.status === 'PENDING' && existingPeriods.length > 0;
+      if (isReRegistrationApproval && member.registrationNumber?.getValue() && member.approvedAt) {
+        await this.membershipPeriodRepository.create({
+          memberId: member.id,
+          registrationNumber: member.registrationNumber.getValue(),
+          periodStart: member.approvedAt,
+          periodEnd: undefined,
+          status: 'ACTIVE',
+          approvedAt: member.approvedAt,
+          approvedByUserId: command.approvedByUserId,
+        });
+      }
 
       // 5. History log
       const newData = this.prepareHistoryData(member);
