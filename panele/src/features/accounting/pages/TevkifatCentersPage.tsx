@@ -54,6 +54,7 @@ import {
 } from '../services/accountingApi';
 import DeleteTevkifatCenterDialog from '../components/DeleteTevkifatCenterDialog';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const TevkifatCentersPage: React.FC = () => {
   const theme = useTheme();
@@ -325,8 +326,7 @@ const TevkifatCentersPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ pb: 4 }}>
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Tevkifat Merkezleri"
@@ -1006,7 +1006,7 @@ const TevkifatCentersPage: React.FC = () => {
         onSuccess={handleDeleteSuccess}
       />
 
-    </Box>
+    </PageLayout>
   );
 };
 

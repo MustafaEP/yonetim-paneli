@@ -1,6 +1,6 @@
 /**
  * Approval Domain Entity
- * 
+ *
  * Domain rules:
  * - Can only approve/reject pending approvals
  * - Entity update happens on approval

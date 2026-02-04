@@ -1,8 +1,8 @@
 /**
  * Members Controller
- * 
+ *
  * Presentation Layer: HTTP request/response handling
- * 
+ *
  * Sorumluluklar:
  * - HTTP endpoint'leri tanımlama
  * - Request validation (DTO)
@@ -23,7 +23,15 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { MembersService } from '../../members.service';
 import { CreateMemberApplicationDto } from '../../application/dto/create-member-application.dto';
 import { CancelMemberDto } from '../../application/dto/cancel-member.dto';
@@ -51,7 +59,11 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_CREATE_APPLICATION)
   @Get('check-national-id/:nationalId')
-  @ApiOperation({ summary: 'TC kimlik numarasına göre iptal edilmiş üye kontrolü', description: 'Belirtilen TC kimlik numarasına sahip iptal edilmiş üye var mı kontrol eder' })
+  @ApiOperation({
+    summary: 'TC kimlik numarasına göre iptal edilmiş üye kontrolü',
+    description:
+      'Belirtilen TC kimlik numarasına sahip iptal edilmiş üye var mı kontrol eder',
+  })
   @ApiParam({ name: 'nationalId', description: 'TC Kimlik Numarası' })
   @ApiResponse({
     status: 200,
@@ -61,13 +73,20 @@ export class MembersController {
     @Param('nationalId') nationalId: string,
     @CurrentUser() user: CurrentUserData,
   ) {
-    const cancelledMember = await this.membersService.checkCancelledMemberByNationalId(nationalId, user);
+    const cancelledMember =
+      await this.membersService.checkCancelledMemberByNationalId(
+        nationalId,
+        user,
+      );
     return cancelledMember;
   }
 
   @Permissions(Permission.MEMBER_CREATE_APPLICATION)
   @Post('applications')
-  @ApiOperation({ summary: 'Yeni üyelik başvurusu oluştur', description: 'Yeni bir üyelik başvurusu kaydı oluşturur' })
+  @ApiOperation({
+    summary: 'Yeni üyelik başvurusu oluştur',
+    description: 'Yeni bir üyelik başvurusu kaydı oluşturur',
+  })
   @ApiBody({ type: CreateMemberApplicationDto })
   @ApiResponse({
     status: 201,
@@ -75,7 +94,8 @@ export class MembersController {
   })
   @UsePipes(MemberValidationPipe)
   async createApplication(
-    @Body() dto: CreateMemberApplicationDto & { previousCancelledMemberId?: string },
+    @Body()
+    dto: CreateMemberApplicationDto & { previousCancelledMemberId?: string },
     @CurrentUser() user: CurrentUserData,
   ) {
     // Service Prisma model dönüyor, şimdilik direkt döndürüyoruz
@@ -89,22 +109,34 @@ export class MembersController {
     return member;
   }
 
-  @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_APPROVE, Permission.MEMBER_LIST_BY_PROVINCE)
+  @Permissions(
+    Permission.MEMBER_LIST,
+    Permission.MEMBER_APPROVE,
+    Permission.MEMBER_LIST_BY_PROVINCE,
+  )
   @Get('applications')
-  @ApiOperation({ summary: 'Bekleyen üyelik başvurularını listele', description: 'Kullanıcının yetkisi dahilindeki PENDING durumundaki başvuruları listeler. MEMBER_LIST_BY_PROVINCE izni varsa sadece role\'deki il/ilçe bazlı başvuruları gösterir' })
+  @ApiOperation({
+    summary: 'Bekleyen üyelik başvurularını listele',
+    description:
+      "Kullanıcının yetkisi dahilindeki PENDING durumundaki başvuruları listeler. MEMBER_LIST_BY_PROVINCE izni varsa sadece role'deki il/ilçe bazlı başvuruları gösterir",
+  })
   @ApiResponse({
     status: 200,
     description: 'Başvuru listesi',
     type: 'array',
   })
   async listApplications(@CurrentUser() user: CurrentUserData) {
-    const applications = await this.membersService.listApplicationsForUser(user);
+    const applications =
+      await this.membersService.listApplicationsForUser(user);
     // Prisma model'leri için mapper kullanılabilir, şimdilik direkt dönüyoruz
     return applications;
   }
 
   @Get('membership-info-options')
-  @ApiOperation({ summary: 'Üyelik bilgisi seçeneklerini listele', description: 'Aktif üyelik bilgisi seçeneklerini getirir' })
+  @ApiOperation({
+    summary: 'Üyelik bilgisi seçeneklerini listele',
+    description: 'Aktif üyelik bilgisi seçeneklerini getirir',
+  })
   @ApiResponse({
     status: 200,
     description: 'Üyelik bilgisi seçenekleri listesi',
@@ -116,8 +148,25 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get()
-  @ApiOperation({ summary: 'Üye listesi', description: 'Kullanıcının yetkisi dahilindeki üyeleri listeler. Status parametresi ile filtreleme yapılabilir. Varsayılan olarak ACTIVE üyeler gösterilir. MEMBER_LIST_BY_PROVINCE izni varsa sadece role\'deki il/ilçe bazlı üyeleri gösterir' })
-  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'APPROVED', 'ACTIVE', 'INACTIVE', 'RESIGNED', 'EXPELLED', 'REJECTED'], description: 'Üye durumu filtresi. Belirtilmezse ACTIVE üyeler gösterilir.' })
+  @ApiOperation({
+    summary: 'Üye listesi',
+    description:
+      "Kullanıcının yetkisi dahilindeki üyeleri listeler. Status parametresi ile filtreleme yapılabilir. Varsayılan olarak ACTIVE üyeler gösterilir. MEMBER_LIST_BY_PROVINCE izni varsa sadece role'deki il/ilçe bazlı üyeleri gösterir",
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: [
+      'PENDING',
+      'APPROVED',
+      'ACTIVE',
+      'INACTIVE',
+      'RESIGNED',
+      'EXPELLED',
+      'REJECTED',
+    ],
+    description: 'Üye durumu filtresi. Belirtilmezse ACTIVE üyeler gösterilir.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Üye listesi',
@@ -127,14 +176,21 @@ export class MembersController {
     @CurrentUser() user: CurrentUserData,
     @Query('status') status?: string,
   ) {
-    const members = await this.membersService.listMembersForUser(user, status as any);
+    const members = await this.membersService.listMembersForUser(
+      user,
+      status as any,
+    );
     // Prisma model'leri için mapper kullanılabilir, şimdilik direkt dönüyoruz
     return members;
   }
 
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get('rejected')
-  @ApiOperation({ summary: 'Reddedilen üyeleri listele', description: 'Kullanıcının yetkisi dahilindeki reddedilen üyeleri listeler. MEMBER_LIST_BY_PROVINCE izni varsa sadece role\'deki il/ilçe bazlı reddedilen üyeleri gösterir' })
+  @ApiOperation({
+    summary: 'Reddedilen üyeleri listele',
+    description:
+      "Kullanıcının yetkisi dahilindeki reddedilen üyeleri listeler. MEMBER_LIST_BY_PROVINCE izni varsa sadece role'deki il/ilçe bazlı reddedilen üyeleri gösterir",
+  })
   @ApiResponse({
     status: 200,
     description: 'Reddedilen üye listesi',
@@ -146,15 +202,27 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get('cancelled')
-  @ApiOperation({ summary: 'İptal edilen üyeleri listele', description: 'Üyeliği iptal edilmiş üyeleri listeler. MEMBER_LIST_BY_PROVINCE izni varsa sadece role\'deki il/ilçe bazlı iptal edilen üyeleri gösterir' })
+  @ApiOperation({
+    summary: 'İptal edilen üyeleri listele',
+    description:
+      "Üyeliği iptal edilmiş üyeleri listeler. MEMBER_LIST_BY_PROVINCE izni varsa sadece role'deki il/ilçe bazlı iptal edilen üyeleri gösterir",
+  })
   @ApiResponse({ status: 200, description: 'İptal edilen üyeler listesi' })
   async listCancelledMembers(@CurrentUser() user: CurrentUserData) {
     return this.membersService.listCancelledMembersForUser(user);
   }
 
-  @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_APPROVE, Permission.MEMBER_LIST_BY_PROVINCE)
+  @Permissions(
+    Permission.MEMBER_LIST,
+    Permission.MEMBER_APPROVE,
+    Permission.MEMBER_LIST_BY_PROVINCE,
+  )
   @Get('approved')
-  @ApiOperation({ summary: 'Onaylanmış (beklemede) üyeleri listele', description: 'Kullanıcının yetkisi dahilindeki APPROVED durumundaki üyeleri listeler' })
+  @ApiOperation({
+    summary: 'Onaylanmış (beklemede) üyeleri listele',
+    description:
+      'Kullanıcının yetkisi dahilindeki APPROVED durumundaki üyeleri listeler',
+  })
   @ApiResponse({
     status: 200,
     description: 'Onaylanmış üye listesi',
@@ -166,7 +234,10 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_VIEW)
   @Get(':id')
-  @ApiOperation({ summary: 'Üye detayını getir', description: 'ID ile üye bilgilerini getirir' })
+  @ApiOperation({
+    summary: 'Üye detayını getir',
+    description: 'ID ile üye bilgilerini getirir',
+  })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
   @ApiResponse({
     status: 200,
@@ -181,12 +252,17 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_APPROVE)
   @Post(':id/approve')
-  @ApiOperation({ summary: 'Üyelik başvurusunu onayla', description: 'PENDING durumundaki başvuruyu onaylar ve APPROVED durumuna geçirir. Üye bekleyen üyeler listesine eklenir.' })
+  @ApiOperation({
+    summary: 'Üyelik başvurusunu onayla',
+    description:
+      'PENDING durumundaki başvuruyu onaylar ve APPROVED durumuna geçirir. Üye bekleyen üyeler listesine eklenir.',
+  })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
   @ApiBody({ type: ApproveMemberDto, required: false })
   @ApiResponse({
     status: 200,
-    description: 'Başvuru onaylandı ve üye APPROVED durumuna geçirildi (bekleyen üyeler listesine eklendi)',
+    description:
+      'Başvuru onaylandı ve üye APPROVED durumuna geçirildi (bekleyen üyeler listesine eklendi)',
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
   @UsePipes(MemberValidationPipe)
@@ -202,31 +278,37 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_REJECT)
   @Post(':id/reject')
-  @ApiOperation({ summary: 'Üyelik başvurusunu reddet', description: 'PENDING durumundaki başvuruyu REJECTED yapar' })
+  @ApiOperation({
+    summary: 'Üyelik başvurusunu reddet',
+    description: 'PENDING durumundaki başvuruyu REJECTED yapar',
+  })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
   @ApiResponse({
     status: 200,
     description: 'Başvuru reddedildi',
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
-  async reject(
-    @Param('id') id: string,
-    @CurrentUser() user: CurrentUserData,
-  ) {
+  async reject(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
     const member = await this.membersService.reject(id, user.userId);
     return member;
   }
 
   @Permissions(Permission.MEMBER_APPROVE)
   @Post(':id/activate')
-  @ApiOperation({ summary: 'Onaylanmış üyeyi aktifleştir', description: 'APPROVED durumundaki üyeyi ACTIVE yapar' })
+  @ApiOperation({
+    summary: 'Onaylanmış üyeyi aktifleştir',
+    description: 'APPROVED durumundaki üyeyi ACTIVE yapar',
+  })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
   @ApiResponse({
     status: 200,
     description: 'Üye aktifleştirildi',
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
-  @ApiResponse({ status: 400, description: 'Üye onaylanmış (APPROVED) durumunda değil' })
+  @ApiResponse({
+    status: 400,
+    description: 'Üye onaylanmış (APPROVED) durumunda değil',
+  })
   async activate(
     @Param('id') id: string,
     @CurrentUser() user: CurrentUserData,
@@ -237,7 +319,10 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_STATUS_CHANGE)
   @Delete(':id')
-  @ApiOperation({ summary: 'Üyeyi sil', description: 'Üyeyi soft delete yapar' })
+  @ApiOperation({
+    summary: 'Üyeyi sil',
+    description: 'Üyeyi soft delete yapar',
+  })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
   @ApiBody({ type: DeleteMemberDto, required: false })
   @ApiResponse({
@@ -246,16 +331,16 @@ export class MembersController {
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
   @UsePipes(MemberValidationPipe)
-  async softDelete(
-    @Param('id') id: string,
-    @Body() dto?: DeleteMemberDto,
-  ) {
+  async softDelete(@Param('id') id: string, @Body() dto?: DeleteMemberDto) {
     return this.membersService.softDelete(id, dto);
   }
 
   @Permissions(Permission.MEMBER_STATUS_CHANGE)
   @Patch(':id/cancel')
-  @ApiOperation({ summary: 'Üyeliği iptal et', description: 'Aktif bir üyenin üyeliğini iptal eder' })
+  @ApiOperation({
+    summary: 'Üyeliği iptal et',
+    description: 'Aktif bir üyenin üyeliğini iptal eder',
+  })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
   @ApiBody({ type: CancelMemberDto })
   @ApiResponse({ status: 200, description: 'Üyelik başarıyla iptal edildi' })
@@ -267,13 +352,20 @@ export class MembersController {
     @Body() dto: CancelMemberDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    const member = await this.membersService.cancelMembership(id, dto, user.userId);
+    const member = await this.membersService.cancelMembership(
+      id,
+      dto,
+      user.userId,
+    );
     return member;
   }
 
   @Permissions(Permission.MEMBER_UPDATE)
   @Patch(':id')
-  @ApiOperation({ summary: 'Üye bilgilerini güncelle', description: 'Üye bilgilerini günceller ve geçmişe kaydeder' })
+  @ApiOperation({
+    summary: 'Üye bilgilerini güncelle',
+    description: 'Üye bilgilerini günceller ve geçmişe kaydeder',
+  })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })
   @ApiBody({ type: UpdateMemberDto })
   @ApiResponse({ status: 200, description: 'Üye bilgileri güncellendi' })
@@ -307,15 +399,19 @@ export class MembersController {
     @CurrentUser() user: CurrentUserData,
   ) {
     const members = await this.membersService.listMembersForUser(user);
-    
+
     // HTML içeriği oluştur
     const htmlContent = this.generateMembersHtml(members);
-    
+
     // PDF oluştur
-    const pdfBuffer = await this.pdfService.generatePdfBufferFromHtml(htmlContent);
-    
+    const pdfBuffer =
+      await this.pdfService.generatePdfBufferFromHtml(htmlContent);
+
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=uyeler_${new Date().toISOString().split('T')[0]}.pdf`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=uyeler_${new Date().toISOString().split('T')[0]}.pdf`,
+    );
     res.send(pdfBuffer);
   }
 
@@ -324,18 +420,16 @@ export class MembersController {
   @ApiOperation({ summary: 'Üye detayını PDF olarak export et' })
   @ApiParam({ name: 'id', description: 'Üye ID' })
   @ApiResponse({ status: 200, description: 'PDF dosyası indiriliyor' })
-  async exportMemberDetailToPdf(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
+  async exportMemberDetailToPdf(@Param('id') id: string, @Res() res: Response) {
     const member = await this.membersService.getById(id);
-    
+
     // HTML içeriği oluştur
     const htmlContent = this.generateMemberDetailHtml(member);
-    
+
     // PDF oluştur
-    const pdfBuffer = await this.pdfService.generatePdfBufferFromHtml(htmlContent);
-    
+    const pdfBuffer =
+      await this.pdfService.generatePdfBufferFromHtml(htmlContent);
+
     const fileName = `uye_${member.firstName}_${member.lastName}_${member.id.substring(0, 8)}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
@@ -362,19 +456,20 @@ export class MembersController {
       return statusMap[status] || status;
     };
 
-    const rows = members.map((member) => {
-      const firstName = member.firstName || '';
-      const lastName = member.lastName || '';
-      const phone = member.phone || '-';
-      const email = member.email || '-';
-      const nationalId = member.nationalId || '-';
-      const registrationNumber = member.registrationNumber || '-';
-      const province = member.province?.name || '-';
-      const district = member.district?.name || '-';
-      const status = getStatusLabel(member.status);
-      const positionTitle = '-';
+    const rows = members
+      .map((member) => {
+        const firstName = member.firstName || '';
+        const lastName = member.lastName || '';
+        const phone = member.phone || '-';
+        const email = member.email || '-';
+        const nationalId = member.nationalId || '-';
+        const registrationNumber = member.registrationNumber || '-';
+        const province = member.province?.name || '-';
+        const district = member.district?.name || '-';
+        const status = getStatusLabel(member.status);
+        const positionTitle = '-';
 
-      return `
+        return `
         <tr>
           <td>${firstName}</td>
           <td>${lastName}</td>
@@ -388,7 +483,8 @@ export class MembersController {
           <td>${positionTitle}</td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     return `
       <!DOCTYPE html>

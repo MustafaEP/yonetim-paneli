@@ -1,9 +1,17 @@
 /**
  * User Exception Filter
- * 
+ *
  * Maps domain exceptions to HTTP responses.
  */
-import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpStatus,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { Response } from 'express';
 import {
   UserNotFoundException,

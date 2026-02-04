@@ -1,22 +1,32 @@
 /**
  * Member Approval Application Service
- * 
+ *
  * Use case: Member approval işlemini orchestrate eder.
- * 
+ *
  * Sorumluluklar:
  * - Transaction yönetimi
  * - Domain Service çağırma
  * - Cross-cutting concerns (history, events, documents)
  * - Repository koordinasyonu
- * 
+ *
  */
-import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import { DocumentsService } from '../../../documents/documents.service';
-import { MemberNotFoundException, MemberCannotBeApprovedException, MemberApprovalMissingFieldsException } from '../../domain/exceptions/member-domain.exception';
+import {
+  MemberNotFoundException,
+  MemberCannotBeApprovedException,
+  MemberApprovalMissingFieldsException,
+} from '../../domain/exceptions/member-domain.exception';
 
 /**
  * Approval için DTO (mevcut ApproveMemberDto'dan map edilecek)
@@ -48,7 +58,7 @@ export class MemberApprovalApplicationService {
 
   /**
    * Use case: Member'ı approve et
-   * 
+   *
    * Orchestration:
    * 1. Member'ı repository'den al
    * 2. Domain Entity'de approve method'unu çağır (business rule'lar burada)
@@ -83,9 +93,15 @@ export class MemberApprovalApplicationService {
       await this.memberRepository.save(member);
 
       // 4b. Yeniden üyelik onayı: PENDING iken onaylandıysa ve geçmişte dönem kaydı varsa (iptal sonrası başvuru) yeni dönem kaydı oluştur
-      const existingPeriods = await this.membershipPeriodRepository.findByMemberId(member.id);
-      const isReRegistrationApproval = oldData.status === 'PENDING' && existingPeriods.length > 0;
-      if (isReRegistrationApproval && member.registrationNumber?.getValue() && member.approvedAt) {
+      const existingPeriods =
+        await this.membershipPeriodRepository.findByMemberId(member.id);
+      const isReRegistrationApproval =
+        oldData.status === 'PENDING' && existingPeriods.length > 0;
+      if (
+        isReRegistrationApproval &&
+        member.registrationNumber?.getValue() &&
+        member.approvedAt
+      ) {
         await this.membershipPeriodRepository.create({
           memberId: member.id,
           registrationNumber: member.registrationNumber.getValue(),

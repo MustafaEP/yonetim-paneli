@@ -64,6 +64,7 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import {
   getProfessions,
   getAllProfessions,
@@ -451,7 +452,7 @@ const InstitutionsPage: React.FC = () => {
       minWidth: 100,
       align: 'left',
       headerAlign: 'left',
-      valueGetter: (params: { row?: Institution }) => params?.row?.memberCount ?? 0,
+      valueGetter: (_value: unknown, row: Institution) => row?.memberCount ?? 0,
     },
     {
       field: 'actions',
@@ -509,9 +510,10 @@ const InstitutionsPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          background: '#fff',
         }}
       >
         <Box sx={{ p: 3 }}>
@@ -527,15 +529,7 @@ const InstitutionsPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.success.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Modern Header */}
+    <PageLayout>
       <PageHeader
         icon={<BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Kurumlar"
@@ -786,7 +780,7 @@ const InstitutionsPage: React.FC = () => {
             ) : (
               <Box
                 sx={{
-                  borderRadius: 3,
+                  borderRadius: 4,
                   overflow: 'hidden',
                   border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 }}
@@ -1543,7 +1537,7 @@ const InstitutionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

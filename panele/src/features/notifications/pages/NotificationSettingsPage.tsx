@@ -30,6 +30,7 @@ import {
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const NotificationSettingsPage: React.FC = () => {
   const theme = useTheme();
@@ -89,7 +90,7 @@ const NotificationSettingsPage: React.FC = () => {
   }
 
   return (
-    <Box>
+    <PageLayout>
       <PageHeader
         icon={<SettingsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Bildirim Ayarları"
@@ -115,9 +116,11 @@ const NotificationSettingsPage: React.FC = () => {
           <Card
             elevation={0}
             sx={{
-              p: 3,
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              p: { xs: 3, sm: 4 },
+              borderRadius: 4,
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+              background: '#fff',
             }}
           >
             <Typography variant="h6" gutterBottom fontWeight={600}>
@@ -173,9 +176,11 @@ const NotificationSettingsPage: React.FC = () => {
           <Card
             elevation={0}
             sx={{
-              p: 3,
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              p: { xs: 3, sm: 4 },
+              borderRadius: 4,
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+              background: '#fff',
             }}
           >
             <Typography variant="h6" gutterBottom fontWeight={600}>
@@ -226,9 +231,11 @@ const NotificationSettingsPage: React.FC = () => {
           <Card
             elevation={0}
             sx={{
-              p: 3,
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              p: { xs: 3, sm: 4 },
+              borderRadius: 4,
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+              background: '#fff',
             }}
           >
             <Typography variant="h6" gutterBottom fontWeight={600}>
@@ -287,7 +294,7 @@ const NotificationSettingsPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
-    </Box>
+    </PageLayout>
   );
 };
 

@@ -21,4 +21,3 @@ import { PrismaPanelUserApplicationRepository } from './infrastructure/persisten
   exports: [PanelUserApplicationsService],
 })
 export class PanelUserApplicationsModule {}
-

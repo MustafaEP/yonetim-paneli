@@ -63,6 +63,7 @@ import {
 } from '../services/branchesApi';
 import { useAuth } from '../../../app/providers/AuthContext';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 
@@ -489,9 +490,10 @@ const RegionsPage: React.FC = () => {
         <Card 
           elevation={0}
           sx={{ 
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: 'divider',
+            borderRadius: 4,
+            border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+            background: '#fff',
           }}
         >
           <CardContent sx={{ textAlign: 'center', py: 8 }}>
@@ -504,40 +506,27 @@ const RegionsPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      <Container maxWidth="xl">
-        {/* Header Section */}
-        <PageHeader
-          icon={<LocationOnIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
-          title="İl ve İlçeler"
-          description="Detaylarını görmek istediğiniz il ve ilçeyi seçerek bağlı kurumları, şubeleri ve tevkifat merkezlerini görüntüleyin"
-          color={theme.palette.primary.main}
-          darkColor={theme.palette.primary.dark}
-          lightColor={theme.palette.primary.light}
-        />
+    <PageLayout>
+      {/* Header Section */}
+      <PageHeader
+        icon={<LocationOnIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="İl ve İlçeler"
+        description="Detaylarını görmek istediğiniz il ve ilçeyi seçerek bağlı kurumları, şubeleri ve tevkifat merkezlerini görüntüleyin"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
 
-        {/* Filter Section */}
-        <Fade in timeout={1000}>
+      {/* Filter Section */}
+      <Fade in timeout={1000}>
           <Card 
             elevation={0}
             sx={{ 
               mb: 4,
-              borderRadius: 3,
-              border: '1px solid',
-              borderColor: 'divider',
-              background: (theme) => theme.palette.background.paper,
-              transition: 'all 0.3s ease-in-out',
-              '&:hover': {
-                boxShadow: (theme) => `0 8px 24px ${alpha(theme.palette.primary.main, 0.12)}`,
-                transform: 'translateY(-2px)',
-              }
+              borderRadius: 4,
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+              background: '#fff',
             }}
           >
             <CardContent sx={{ p: { xs: 2, md: 3 } }}>
@@ -1155,7 +1144,6 @@ const RegionsPage: React.FC = () => {
             </Box>
           </Zoom>
         )}
-      </Container>
 
       {/* Kurum Ekleme Dialog */}
       <Dialog 
@@ -1675,7 +1663,7 @@ const RegionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

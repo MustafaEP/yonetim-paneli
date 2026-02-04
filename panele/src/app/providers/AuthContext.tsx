@@ -33,7 +33,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const storedUser = localStorage.getItem('user');
     if (storedToken && storedUser) {
       setAccessToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
     }
     setIsLoading(false);
   }, []);
@@ -42,30 +48,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const data: LoginResponse = await loginApi(credentials);
     setAccessToken(data.accessToken);
     setUser(data.user);
-
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('user', JSON.stringify(data.user));
+    if (data.refreshToken) {
+      localStorage.setItem('refreshToken', data.refreshToken);
+    }
   };
 
   const logout = async () => {
     try {
-      // Backend'e logout isteği gönder (log kaydı için)
       const token = localStorage.getItem('accessToken');
       if (token) {
         try {
           await logoutApi();
         } catch (error) {
-          // Logout API hatası olsa bile local logout yap
           console.error('Logout API hatası:', error);
         }
       }
     } catch (error) {
       console.error('Logout hatası:', error);
     } finally {
-      // Her durumda local state'i temizle
       setAccessToken(null);
       setUser(null);
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
     }
   };

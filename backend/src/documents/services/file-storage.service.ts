@@ -190,7 +190,9 @@ export class FileStorageService {
     const resolvedPath = path.resolve(permanentPath);
     const resolvedDir = path.resolve(permanentDir);
     if (!resolvedPath.startsWith(resolvedDir)) {
-      this.logger.warn(`Rejected delete outside permanent dir: ${permanentPath}`);
+      this.logger.warn(
+        `Rejected delete outside permanent dir: ${permanentPath}`,
+      );
       return;
     }
 
@@ -200,7 +202,10 @@ export class FileStorageService {
         this.logger.log(`File deleted from permanent: ${resolvedPath}`);
       }
     } catch (error) {
-      this.logger.error(`Error deleting permanent file: ${resolvedPath}`, error);
+      this.logger.error(
+        `Error deleting permanent file: ${resolvedPath}`,
+        error,
+      );
       // Don't throw - file might already be deleted
     }
   }
@@ -244,4 +249,3 @@ export class FileStorageService {
     return stats.size;
   }
 }
-

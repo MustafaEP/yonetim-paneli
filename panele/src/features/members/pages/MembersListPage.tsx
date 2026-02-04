@@ -58,6 +58,7 @@ import {
   getDistricts,
 } from '../../regions/services/regionsApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const MembersListPage: React.FC = () => {
   const theme = useTheme();
@@ -623,11 +624,7 @@ const MembersListPage: React.FC = () => {
   }, [statusFilter]);
 
   return (
-    <Box
-      sx={{
-        pb: 4,
-      }}
-    >
+    <PageLayout>
       {/* Modern Başlık Bölümü - Status'a göre dinamik renk */}
       <PageHeader
         icon={<GroupsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
@@ -1887,7 +1884,7 @@ const MembersListPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

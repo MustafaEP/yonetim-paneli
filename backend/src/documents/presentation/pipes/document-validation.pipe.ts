@@ -1,7 +1,12 @@
 /**
  * Document Validation Pipe
  */
-import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+import {
+  PipeTransform,
+  Injectable,
+  ArgumentMetadata,
+  BadRequestException,
+} from '@nestjs/common';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 
@@ -16,7 +21,9 @@ export class DocumentValidationPipe implements PipeTransform<any> {
     const errors = await validate(object);
 
     if (errors.length > 0) {
-      const messages = errors.map((error) => Object.values(error.constraints || {}).join(', ')).join('; ');
+      const messages = errors
+        .map((error) => Object.values(error.constraints || {}).join(', '))
+        .join('; ');
       throw new BadRequestException(`Validation failed: ${messages}`);
     }
 

@@ -1,8 +1,8 @@
 /**
  * Member Domain Entity - FULL VERSION
- * 
+ *
  * ✅ Tam Member Entity - Tüm alanlar dahil
- * 
+ *
  * Domain rule'ları bu entity içinde encapsulate ediyoruz.
  */
 import { MemberStatus } from '../value-objects/member-status.vo';
@@ -107,7 +107,7 @@ export interface CreateMemberData {
   phone: string;
   email?: string;
   source?: MemberSourceEnum;
-  
+
   // Kişisel bilgiler
   motherName: string;
   fatherName: string;
@@ -115,12 +115,12 @@ export interface CreateMemberData {
   birthplace: string;
   gender: GenderEnum;
   educationStatus: EducationStatusEnum;
-  
+
   // Kurum bilgileri
   institutionId: string;
   provinceId: string;
   districtId: string;
-  
+
   // Kurum detay bilgileri (opsiyonel)
   dutyUnit?: string;
   institutionAddress?: string;
@@ -129,19 +129,19 @@ export interface CreateMemberData {
   professionId?: string;
   institutionRegNo?: string;
   staffTitleCode?: string;
-  
+
   // Üyelik bilgileri (opsiyonel)
   membershipInfoOptionId?: string;
   memberGroupId?: string;
   registrationNumber?: string;
   boardDecisionDate?: Date | string;
   boardDecisionBookNo?: string;
-  
+
   // Tevkifat bilgileri (opsiyonel)
   tevkifatCenterId?: string;
   tevkifatTitleId?: string;
   branchId?: string;
-  
+
   // Metadata
   createdByUserId?: string;
   previousCancelledMemberId?: string;
@@ -149,13 +149,13 @@ export interface CreateMemberData {
 
 /**
  * Full Member Domain Entity
- * 
+ *
  * Tüm member alanlarını içerir.
  */
 export class Member {
   // Identity
   public readonly id: string;
-  
+
   // Basic Info
   private _firstName: string;
   private _lastName: string;
@@ -164,7 +164,7 @@ export class Member {
   private _email: string | null;
   private _status: MemberStatus;
   private _source: MemberSourceEnum;
-  
+
   // Kişisel Bilgiler
   private _motherName: string;
   private _fatherName: string;
@@ -172,12 +172,12 @@ export class Member {
   private _birthplace: string;
   private _gender: GenderEnum;
   private _educationStatus: EducationStatusEnum;
-  
+
   // Kurum Bilgileri
   private _institutionId: string;
   private _provinceId: string;
   private _districtId: string;
-  
+
   // Kurum Detay Bilgileri
   private _dutyUnit: string | null;
   private _institutionAddress: string | null;
@@ -186,19 +186,19 @@ export class Member {
   private _professionId: string | null;
   private _institutionRegNo: string | null;
   private _staffTitleCode: string | null;
-  
+
   // Üyelik & Yönetim Kurulu Bilgileri
   private _membershipInfoOptionId: string | null;
   private _memberGroupId: string | null;
   private _registrationNumber: RegistrationNumber | null;
   private _boardDecisionDate: Date | null;
   private _boardDecisionBookNo: string | null;
-  
+
   // Tevkifat Bilgileri
   private _tevkifatCenterId: string | null;
   private _tevkifatTitleId: string | null;
   private _branchId: string | null;
-  
+
   // Metadata
   private _createdByUserId: string | null;
   private _approvedByUserId: string | null;
@@ -208,7 +208,7 @@ export class Member {
   private _cancelledAt: Date | null;
   private _previousCancelledMemberId: string | null;
   private _userId: string | null;
-  
+
   // Audit
   private _isActive: boolean;
   private _deletedAt: Date | null;
@@ -318,14 +318,15 @@ export class Member {
       ? RegistrationNumber.create(data.registrationNumber)
       : null;
 
-    const birthDate = data.birthDate instanceof Date
-      ? data.birthDate
-      : new Date(data.birthDate);
+    const birthDate =
+      data.birthDate instanceof Date
+        ? data.birthDate
+        : new Date(data.birthDate);
 
     const boardDecisionDate = data.boardDecisionDate
-      ? (data.boardDecisionDate instanceof Date
-          ? data.boardDecisionDate
-          : new Date(data.boardDecisionDate))
+      ? data.boardDecisionDate instanceof Date
+        ? data.boardDecisionDate
+        : new Date(data.boardDecisionDate)
       : null;
 
     return new Member({
@@ -391,7 +392,10 @@ export class Member {
       source: data.source as MemberSourceEnum,
       motherName: data.motherName,
       fatherName: data.fatherName,
-      birthDate: data.birthDate instanceof Date ? data.birthDate : new Date(data.birthDate),
+      birthDate:
+        data.birthDate instanceof Date
+          ? data.birthDate
+          : new Date(data.birthDate),
       birthplace: data.birthplace,
       gender: data.gender as GenderEnum,
       educationStatus: data.educationStatus as EducationStatusEnum,
@@ -407,7 +411,9 @@ export class Member {
       staffTitleCode: data.staffTitleCode || null,
       membershipInfoOptionId: data.membershipInfoOptionId || null,
       memberGroupId: data.memberGroupId || null,
-      registrationNumber: data.registrationNumber ? RegistrationNumber.create(data.registrationNumber) : null,
+      registrationNumber: data.registrationNumber
+        ? RegistrationNumber.create(data.registrationNumber)
+        : null,
       boardDecisionDate: data.boardDecisionDate || null,
       boardDecisionBookNo: data.boardDecisionBookNo || null,
       tevkifatCenterId: data.tevkifatCenterId || null,
@@ -423,56 +429,148 @@ export class Member {
       userId: data.userId || null,
       isActive: data.isActive ?? true,
       deletedAt: data.deletedAt || null,
-      createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt),
-      updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt),
+      createdAt:
+        data.createdAt instanceof Date
+          ? data.createdAt
+          : new Date(data.createdAt),
+      updatedAt:
+        data.updatedAt instanceof Date
+          ? data.updatedAt
+          : new Date(data.updatedAt),
     });
   }
 
   // ========== Getters ==========
-  
-  get firstName(): string { return this._firstName; }
-  get lastName(): string { return this._lastName; }
-  get nationalId(): NationalId { return this._nationalId; }
-  get phone(): string { return this._phone; }
-  get email(): string | null { return this._email; }
-  get status(): MemberStatus { return this._status; }
-  get source(): MemberSourceEnum { return this._source; }
-  get motherName(): string { return this._motherName; }
-  get fatherName(): string { return this._fatherName; }
-  get birthDate(): Date { return this._birthDate; }
-  get birthplace(): string { return this._birthplace; }
-  get gender(): GenderEnum { return this._gender; }
-  get educationStatus(): EducationStatusEnum { return this._educationStatus; }
-  get institutionId(): string { return this._institutionId; }
-  get provinceId(): string { return this._provinceId; }
-  get districtId(): string { return this._districtId; }
-  get dutyUnit(): string | null { return this._dutyUnit; }
-  get institutionAddress(): string | null { return this._institutionAddress; }
-  get institutionProvinceId(): string | null { return this._institutionProvinceId; }
-  get institutionDistrictId(): string | null { return this._institutionDistrictId; }
-  get professionId(): string | null { return this._professionId; }
-  get institutionRegNo(): string | null { return this._institutionRegNo; }
-  get staffTitleCode(): string | null { return this._staffTitleCode; }
-  get membershipInfoOptionId(): string | null { return this._membershipInfoOptionId; }
-  get memberGroupId(): string | null { return this._memberGroupId; }
-  get registrationNumber(): RegistrationNumber | null { return this._registrationNumber; }
-  get boardDecisionDate(): Date | null { return this._boardDecisionDate; }
-  get boardDecisionBookNo(): string | null { return this._boardDecisionBookNo; }
-  get tevkifatCenterId(): string | null { return this._tevkifatCenterId; }
-  get tevkifatTitleId(): string | null { return this._tevkifatTitleId; }
-  get branchId(): string | null { return this._branchId; }
-  get createdByUserId(): string | null { return this._createdByUserId; }
-  get approvedByUserId(): string | null { return this._approvedByUserId; }
-  get approvedAt(): Date | null { return this._approvedAt; }
-  get cancelledByUserId(): string | null { return this._cancelledByUserId; }
-  get cancellationReason(): string | null { return this._cancellationReason; }
-  get cancelledAt(): Date | null { return this._cancelledAt; }
-  get previousCancelledMemberId(): string | null { return this._previousCancelledMemberId; }
-  get userId(): string | null { return this._userId; }
-  get isActive(): boolean { return this._isActive; }
-  get deletedAt(): Date | null { return this._deletedAt; }
-  get createdAt(): Date { return this._createdAt; }
-  get updatedAt(): Date { return this._updatedAt; }
+
+  get firstName(): string {
+    return this._firstName;
+  }
+  get lastName(): string {
+    return this._lastName;
+  }
+  get nationalId(): NationalId {
+    return this._nationalId;
+  }
+  get phone(): string {
+    return this._phone;
+  }
+  get email(): string | null {
+    return this._email;
+  }
+  get status(): MemberStatus {
+    return this._status;
+  }
+  get source(): MemberSourceEnum {
+    return this._source;
+  }
+  get motherName(): string {
+    return this._motherName;
+  }
+  get fatherName(): string {
+    return this._fatherName;
+  }
+  get birthDate(): Date {
+    return this._birthDate;
+  }
+  get birthplace(): string {
+    return this._birthplace;
+  }
+  get gender(): GenderEnum {
+    return this._gender;
+  }
+  get educationStatus(): EducationStatusEnum {
+    return this._educationStatus;
+  }
+  get institutionId(): string {
+    return this._institutionId;
+  }
+  get provinceId(): string {
+    return this._provinceId;
+  }
+  get districtId(): string {
+    return this._districtId;
+  }
+  get dutyUnit(): string | null {
+    return this._dutyUnit;
+  }
+  get institutionAddress(): string | null {
+    return this._institutionAddress;
+  }
+  get institutionProvinceId(): string | null {
+    return this._institutionProvinceId;
+  }
+  get institutionDistrictId(): string | null {
+    return this._institutionDistrictId;
+  }
+  get professionId(): string | null {
+    return this._professionId;
+  }
+  get institutionRegNo(): string | null {
+    return this._institutionRegNo;
+  }
+  get staffTitleCode(): string | null {
+    return this._staffTitleCode;
+  }
+  get membershipInfoOptionId(): string | null {
+    return this._membershipInfoOptionId;
+  }
+  get memberGroupId(): string | null {
+    return this._memberGroupId;
+  }
+  get registrationNumber(): RegistrationNumber | null {
+    return this._registrationNumber;
+  }
+  get boardDecisionDate(): Date | null {
+    return this._boardDecisionDate;
+  }
+  get boardDecisionBookNo(): string | null {
+    return this._boardDecisionBookNo;
+  }
+  get tevkifatCenterId(): string | null {
+    return this._tevkifatCenterId;
+  }
+  get tevkifatTitleId(): string | null {
+    return this._tevkifatTitleId;
+  }
+  get branchId(): string | null {
+    return this._branchId;
+  }
+  get createdByUserId(): string | null {
+    return this._createdByUserId;
+  }
+  get approvedByUserId(): string | null {
+    return this._approvedByUserId;
+  }
+  get approvedAt(): Date | null {
+    return this._approvedAt;
+  }
+  get cancelledByUserId(): string | null {
+    return this._cancelledByUserId;
+  }
+  get cancellationReason(): string | null {
+    return this._cancellationReason;
+  }
+  get cancelledAt(): Date | null {
+    return this._cancelledAt;
+  }
+  get previousCancelledMemberId(): string | null {
+    return this._previousCancelledMemberId;
+  }
+  get userId(): string | null {
+    return this._userId;
+  }
+  get isActive(): boolean {
+    return this._isActive;
+  }
+  get deletedAt(): Date | null {
+    return this._deletedAt;
+  }
+  get createdAt(): Date {
+    return this._createdAt;
+  }
+  get updatedAt(): Date {
+    return this._updatedAt;
+  }
 
   // ========== Business Methods ==========
 
@@ -485,9 +583,14 @@ export class Member {
     }
 
     // Başvuru aşamasındaki (PENDING) üyenin başvuru formu bilgileri zorunludur
-    const missingApplicationFields = this.validateApplicationDataBeforeApproval();
-    const missingApprovalFields = this.validateRequiredFieldsForApproval(approvalData);
-    const missingFields = [...missingApplicationFields, ...missingApprovalFields];
+    const missingApplicationFields =
+      this.validateApplicationDataBeforeApproval();
+    const missingApprovalFields =
+      this.validateRequiredFieldsForApproval(approvalData);
+    const missingFields = [
+      ...missingApplicationFields,
+      ...missingApprovalFields,
+    ];
     if (missingFields.length > 0) {
       throw new MemberApprovalMissingFieldsException(missingFields);
     }
@@ -495,12 +598,15 @@ export class Member {
     this._status = MemberStatus.approved();
 
     if (approvalData.registrationNumber) {
-      this._registrationNumber = RegistrationNumber.create(approvalData.registrationNumber);
+      this._registrationNumber = RegistrationNumber.create(
+        approvalData.registrationNumber,
+      );
     }
     if (approvalData.boardDecisionDate) {
-      this._boardDecisionDate = approvalData.boardDecisionDate instanceof Date
-        ? approvalData.boardDecisionDate
-        : new Date(approvalData.boardDecisionDate);
+      this._boardDecisionDate =
+        approvalData.boardDecisionDate instanceof Date
+          ? approvalData.boardDecisionDate
+          : new Date(approvalData.boardDecisionDate);
     }
     if (approvalData.boardDecisionBookNo) {
       this._boardDecisionBookNo = approvalData.boardDecisionBookNo;
@@ -535,7 +641,7 @@ export class Member {
     if (missingFields.length > 0) {
       throw new MemberActivationMissingFieldsException(
         `Üye aktif (ACTIVE) durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`,
-        missingFields
+        missingFields,
       );
     }
 
@@ -557,7 +663,7 @@ export class Member {
 
   /**
    * Business method: Üyeliği iptal et
-   * 
+   *
    * Domain rules:
    * 1. Sadece ACTIVE üyelerin üyeliği iptal edilebilir
    * 2. İptal nedeni zorunludur
@@ -574,7 +680,10 @@ export class Member {
     }
 
     // Business rule 2: İptal nedeni zorunlu
-    if (!cancellationData.cancellationReason || cancellationData.cancellationReason.trim() === '') {
+    if (
+      !cancellationData.cancellationReason ||
+      cancellationData.cancellationReason.trim() === ''
+    ) {
       throw new MemberCancellationReasonRequiredException();
     }
 
@@ -604,7 +713,7 @@ export class Member {
 
   /**
    * Business method: Member bilgilerini güncelle
-   * 
+   *
    * Domain rules:
    * 1. Status değişikliği yapılıyorsa business rule'ları kontrol et
    * 2. Partial update desteklenir (sadece gönderilen alanlar güncellenir)
@@ -682,9 +791,9 @@ export class Member {
     }
     if (updateData.boardDecisionDate !== undefined) {
       this._boardDecisionDate = updateData.boardDecisionDate
-        ? (updateData.boardDecisionDate instanceof Date
-            ? updateData.boardDecisionDate
-            : new Date(updateData.boardDecisionDate))
+        ? updateData.boardDecisionDate instanceof Date
+          ? updateData.boardDecisionDate
+          : new Date(updateData.boardDecisionDate)
         : null;
     }
     if (updateData.boardDecisionBookNo !== undefined) {
@@ -709,7 +818,10 @@ export class Member {
     // Status update (business rules ile)
     if (updateData.status !== undefined) {
       // RESIGNED veya EXPELLED durumları için cancellation metadata
-      if (updateData.status === MemberStatusEnum.RESIGNED || updateData.status === MemberStatusEnum.EXPELLED) {
+      if (
+        updateData.status === MemberStatusEnum.RESIGNED ||
+        updateData.status === MemberStatusEnum.EXPELLED
+      ) {
         if (!this._cancelledAt) {
           this._cancelledAt = new Date();
         }
@@ -725,15 +837,18 @@ export class Member {
 
       // Status transition (business rule kontrolü ile)
       const newStatus = MemberStatus.fromString(updateData.status);
-      
+
       // APPROVED veya ACTIVE'e geçerken zorunlu alanları kontrol et
       if (newStatus.isApproved() || newStatus.isActive()) {
-        const missingFields = this.validateRequiredFieldsForStatusTransition(newStatus);
+        const missingFields =
+          this.validateRequiredFieldsForStatusTransition(newStatus);
         if (missingFields.length > 0) {
-          const statusLabel = newStatus.isApproved() ? 'bekleme (APPROVED)' : 'aktif (ACTIVE)';
+          const statusLabel = newStatus.isApproved()
+            ? 'bekleme (APPROVED)'
+            : 'aktif (ACTIVE)';
           throw new MemberActivationMissingFieldsException(
             `Üye ${statusLabel} durumuna geçirilirken aşağıdaki alanlar zorunludur: ${missingFields.join(', ')}. Lütfen eksik bilgileri tamamlayın.`,
-            missingFields
+            missingFields,
           );
         }
       }
@@ -759,7 +874,11 @@ export class Member {
     if (!this._lastName || this._lastName.trim() === '') {
       missingFields.push('Soyad');
     }
-    if (!this._nationalId || !this._nationalId.getValue() || this._nationalId.getValue().trim() === '') {
+    if (
+      !this._nationalId ||
+      !this._nationalId.getValue() ||
+      this._nationalId.getValue().trim() === ''
+    ) {
       missingFields.push('TC Kimlik No');
     }
     if (!this._phone || this._phone.trim() === '') {
@@ -796,18 +915,24 @@ export class Member {
     return missingFields;
   }
 
-  private validateRequiredFieldsForApproval(approvalData: ApprovalData): string[] {
+  private validateRequiredFieldsForApproval(
+    approvalData: ApprovalData,
+  ): string[] {
     const missingFields: string[] = [];
 
-    const registrationNumber = approvalData.registrationNumber || this._registrationNumber?.getValue();
+    const registrationNumber =
+      approvalData.registrationNumber || this._registrationNumber?.getValue();
     const boardDecisionDate = approvalData.boardDecisionDate
-      ? (approvalData.boardDecisionDate instanceof Date
-          ? approvalData.boardDecisionDate
-          : new Date(approvalData.boardDecisionDate))
+      ? approvalData.boardDecisionDate instanceof Date
+        ? approvalData.boardDecisionDate
+        : new Date(approvalData.boardDecisionDate)
       : this._boardDecisionDate;
-    const boardDecisionBookNo = approvalData.boardDecisionBookNo || this._boardDecisionBookNo;
-    const tevkifatCenterId = approvalData.tevkifatCenterId || this._tevkifatCenterId;
-    const tevkifatTitleId = approvalData.tevkifatTitleId || this._tevkifatTitleId;
+    const boardDecisionBookNo =
+      approvalData.boardDecisionBookNo || this._boardDecisionBookNo;
+    const tevkifatCenterId =
+      approvalData.tevkifatCenterId || this._tevkifatCenterId;
+    const tevkifatTitleId =
+      approvalData.tevkifatTitleId || this._tevkifatTitleId;
     const branchId = approvalData.branchId || this._branchId;
 
     if (!registrationNumber || registrationNumber.trim() === '') {
@@ -835,7 +960,10 @@ export class Member {
   private validateRequiredFieldsForActivation(): string[] {
     const missingFields: string[] = [];
 
-    if (!this._registrationNumber || this._registrationNumber.getValue().trim() === '') {
+    if (
+      !this._registrationNumber ||
+      this._registrationNumber.getValue().trim() === ''
+    ) {
       missingFields.push('Üye Numarası');
     }
     if (!this._boardDecisionDate) {
@@ -860,10 +988,15 @@ export class Member {
   /**
    * Status transition için zorunlu alanları kontrol et
    */
-  private validateRequiredFieldsForStatusTransition(newStatus: MemberStatus): string[] {
+  private validateRequiredFieldsForStatusTransition(
+    newStatus: MemberStatus,
+  ): string[] {
     const missingFields: string[] = [];
 
-    if (!this._registrationNumber || this._registrationNumber.getValue().trim() === '') {
+    if (
+      !this._registrationNumber ||
+      this._registrationNumber.getValue().trim() === ''
+    ) {
       missingFields.push('Üye Numarası');
     }
     if (!this._boardDecisionDate) {

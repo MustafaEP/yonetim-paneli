@@ -1,6 +1,6 @@
 /**
  * Role Permissions Update Application Service
- * 
+ *
  * Orchestrates role permissions update use case.
  */
 import { Injectable, Logger, Inject } from '@nestjs/common';
@@ -17,14 +17,18 @@ import { Permission } from '../../../auth/permission.enum';
 
 @Injectable()
 export class RolePermissionsUpdateApplicationService {
-  private readonly logger = new Logger(RolePermissionsUpdateApplicationService.name);
+  private readonly logger = new Logger(
+    RolePermissionsUpdateApplicationService.name,
+  );
 
   constructor(
     @Inject('RoleRepository')
     private readonly roleRepository: RoleRepository,
   ) {}
 
-  async updatePermissions(command: UpdateRolePermissionsCommand): Promise<Role> {
+  async updatePermissions(
+    command: UpdateRolePermissionsCommand,
+  ): Promise<Role> {
     const { roleId, permissions } = command;
 
     const role = await this.roleRepository.findById(roleId);

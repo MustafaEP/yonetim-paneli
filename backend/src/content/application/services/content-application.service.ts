@@ -6,7 +6,10 @@ import { Content } from '../../domain/entities/content.entity';
 import type { ContentRepository } from '../../domain/repositories/content.repository.interface';
 import { CreateContentDto } from '../dto/create-content.dto';
 import { UpdateContentDto } from '../dto/update-content.dto';
-import { ContentNotFoundException, ContentAlreadyPublishedException } from '../../domain/exceptions/content-domain.exception';
+import {
+  ContentNotFoundException,
+  ContentAlreadyPublishedException,
+} from '../../domain/exceptions/content-domain.exception';
 import { ContentType, ContentStatus } from '@prisma/client';
 
 export interface CreateContentCommand {
@@ -38,13 +41,16 @@ export class ContentApplicationService {
 
   async createContent(command: CreateContentCommand): Promise<Content> {
     const { dto, authorId } = command;
-    const content = Content.create({
-      title: dto.title,
-      content: dto.content,
-      type: dto.type,
-      status: dto.status,
-      authorId,
-    }, '');
+    const content = Content.create(
+      {
+        title: dto.title,
+        content: dto.content,
+        type: dto.type,
+        status: dto.status,
+        authorId,
+      },
+      '',
+    );
     const created = await this.contentRepository.create(content);
     this.logger.log(`Content created: ${created.id} (${created.title})`);
     return created;
@@ -62,7 +68,10 @@ export class ContentApplicationService {
     return content;
   }
 
-  async findAll(params?: { type?: ContentType; status?: ContentStatus }): Promise<Content[]> {
+  async findAll(params?: {
+    type?: ContentType;
+    status?: ContentStatus;
+  }): Promise<Content[]> {
     return await this.contentRepository.findAll(params);
   }
 

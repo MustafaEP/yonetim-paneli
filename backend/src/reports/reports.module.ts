@@ -14,4 +14,3 @@ import { DocumentsModule } from '../documents/documents.module';
   exports: [ReportsService, ExcelExportService, PdfReportService],
 })
 export class ReportsModule {}
-

@@ -1,6 +1,6 @@
 /**
  * User Update Roles Application Service
- * 
+ *
  * Orchestrates user roles update use case.
  */
 import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';

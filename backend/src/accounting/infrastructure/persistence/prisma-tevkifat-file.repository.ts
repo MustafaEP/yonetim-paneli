@@ -49,14 +49,10 @@ export class PrismaTevkifatFileRepository implements TevkifatFileRepository {
 
     const data = await this.prisma.tevkifatFile.findMany({
       where,
-      orderBy: [
-        { year: 'desc' },
-        { month: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ year: 'desc' }, { month: 'desc' }, { createdAt: 'desc' }],
     });
 
-    return data.map(item => TevkifatFile.fromPrisma(item));
+    return data.map((item) => TevkifatFile.fromPrisma(item));
   }
 
   async findDuplicate(data: {
@@ -70,7 +66,7 @@ export class PrismaTevkifatFileRepository implements TevkifatFileRepository {
         tevkifatCenterId: data.tevkifatCenterId,
         year: data.year,
         month: data.month,
-        positionTitle: data.positionTitle as any || null,
+        positionTitle: (data.positionTitle as any) || null,
         status: {
           in: [ApprovalStatus.PENDING, ApprovalStatus.APPROVED],
         },

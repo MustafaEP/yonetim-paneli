@@ -1,6 +1,6 @@
 /**
  * TevkifatTitle Domain Entity
- * 
+ *
  * Domain rules:
  * - Name must be unique
  */

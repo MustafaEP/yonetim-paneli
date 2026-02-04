@@ -1,28 +1,44 @@
-// src/shared/hooks/useNotifications.ts
-import { useEffect, useState, useCallback } from 'react';
+/**
+ * Bildirim hook'u: NotificationContext üzerinden merkezi state + opsiyonel Socket.IO (ileride).
+ * Provider içinde kullanılmalıdır.
+ */
+import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../../app/providers/AuthContext';
-import { getUnreadNotificationCount, getMyNotifications, type UserNotification } from '../../features/notifications/services/notificationsApi';
+import {
+  useNotificationContextOptional,
+  type NotificationContextValue,
+} from '../../features/notifications/context/NotificationContext';
 
-const SOCKET_URL = 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')
+  : 'http://localhost:3000';
 
-export const useNotifications = () => {
+/** Backend Socket.IO desteklemediği sürece false kalmalı */
+const SOCKET_ENABLED = false;
+
+export interface UseNotificationsReturn extends NotificationContextValue {
+  socket: Socket | null;
+  connected: boolean;
+  /** Geriye dönük uyumluluk */
+  refreshNotifications: () => Promise<void>;
+  refreshUnreadCount: () => Promise<void>;
+}
+
+export function useNotifications(): UseNotificationsReturn {
   const { accessToken, isAuthenticated } = useAuth();
+  const context = useNotificationContextOptional();
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [recentNotifications, setRecentNotifications] = useState<UserNotification[]>([]);
   const [connected, setConnected] = useState(false);
+  const contextRef = useRef(context);
+  contextRef.current = context;
 
-  // Socket bağlantısı
+  // Socket (ileride SignalR/WebSocket entegrasyonu için)
   useEffect(() => {
-    if (!isAuthenticated || !accessToken) {
-      return;
-    }
+    if (!SOCKET_ENABLED || !isAuthenticated || !accessToken || !context) return;
 
     const newSocket = io(`${SOCKET_URL}/notifications`, {
-      auth: {
-        token: accessToken,
-      },
+      auth: { token: accessToken },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -30,74 +46,36 @@ export const useNotifications = () => {
     });
 
     newSocket.on('connect', () => {
-      console.log('Socket connected');
       setConnected(true);
-      loadUnreadCount();
+      contextRef.current?.loadUnreadCount();
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
-      setConnected(false);
+    newSocket.on('disconnect', () => setConnected(false));
+
+    newSocket.on('notification', () => {
+      contextRef.current?.loadUnreadCount();
+      contextRef.current?.loadRecentNotifications({ isRead: false });
     });
 
-    newSocket.on('connected', (data) => {
-      console.log('Socket authenticated:', data);
-    });
-
-    newSocket.on('notification', (notification) => {
-      console.log('New notification received:', notification);
-      // Yeni bildirim geldiğinde listeyi güncelle
-      loadRecentNotifications();
-      loadUnreadCount();
-    });
-
-    newSocket.on('unread-count-update', ({ count }: { count: number }) => {
-      setUnreadCount(count);
+    newSocket.on('unread-count-update', () => {
+      contextRef.current?.loadUnreadCount();
     });
 
     setSocket(newSocket);
-
     return () => {
       newSocket.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, accessToken]);
+  }, [SOCKET_ENABLED, isAuthenticated, accessToken]);
 
-  const loadUnreadCount = useCallback(async () => {
-    if (!isAuthenticated) return;
-    try {
-      const count = await getUnreadNotificationCount();
-      setUnreadCount(count);
-    } catch (error) {
-      console.error('Failed to load unread count:', error);
-    }
-  }, [isAuthenticated]);
-
-  const loadRecentNotifications = useCallback(async () => {
-    if (!isAuthenticated) return;
-    try {
-      const result = await getMyNotifications({ limit: 10, isRead: false });
-      setRecentNotifications(result.data);
-    } catch (error) {
-      console.error('Failed to load recent notifications:', error);
-    }
-  }, [isAuthenticated]);
-
-  // İlk yükleme
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadUnreadCount();
-      loadRecentNotifications();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  if (!context) {
+    throw new Error('useNotifications must be used within NotificationProvider');
+  }
 
   return {
+    ...context,
     socket,
     connected,
-    unreadCount,
-    recentNotifications,
-    refreshNotifications: loadRecentNotifications,
-    refreshUnreadCount: loadUnreadCount,
+    refreshNotifications: () => context.loadRecentNotifications({ isRead: false }),
+    refreshUnreadCount: context.loadUnreadCount,
   };
-};
+}

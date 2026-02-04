@@ -20,6 +20,15 @@ import {
   useTheme,
   alpha,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -33,6 +42,9 @@ import {
   getTevkifatCenterById,
   getTevkifatFiles,
   getTevkifatCenters,
+  uploadTevkifatCenterDocument,
+  getTevkifatTitles,
+  downloadTevkifatFile,
   type TevkifatCenterDetail,
   type TevkifatFile,
   type TevkifatCenter,
@@ -43,7 +55,22 @@ import { DataGrid } from '@mui/x-data-grid';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PeopleIcon from '@mui/icons-material/People';
 import DescriptionIcon from '@mui/icons-material/Description';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import DownloadIcon from '@mui/icons-material/Download';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 const TevkifatCenterDetailPage: React.FC = () => {
   const theme = useTheme();
@@ -61,6 +88,17 @@ const TevkifatCenterDetailPage: React.FC = () => {
   const membersSectionRef = React.useRef<HTMLDivElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [availableCenters, setAvailableCenters] = useState<TevkifatCenter[]>([]);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [customFileName, setCustomFileName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    tevkifatTitleId: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    description: '',
+  });
+  const [tevkifatTitles, setTevkifatTitles] = useState<any[]>([]);
 
   const canView = hasPermission('ACCOUNTING_VIEW');
   const canManage = hasPermission('ACCOUNTING_VIEW');
@@ -71,8 +109,18 @@ const TevkifatCenterDetailPage: React.FC = () => {
       loadFiles();
       loadMembers();
       loadAvailableCenters();
+      loadTevkifatTitles();
     }
   }, [id, canView]);
+
+  const loadTevkifatTitles = async () => {
+    try {
+      const data = await getTevkifatTitles();
+      setTevkifatTitles(data.filter((t: any) => t.isActive));
+    } catch (e: unknown) {
+      console.error('Tevkifat ünvanları yüklenirken hata:', e);
+    }
+  };
 
   const loadAvailableCenters = async () => {
     try {
@@ -159,6 +207,55 @@ const TevkifatCenterDetailPage: React.FC = () => {
     navigate('/accounting/tevkifat-centers');
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast.showError('Sadece PDF dosyaları yüklenebilir');
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    if (!id || !selectedFile) {
+      toast.showError('Lütfen bir PDF dosyası seçin');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileName = customFileName.trim() || selectedFile.name.replace(/\.pdf$/i, '');
+      await uploadTevkifatCenterDocument(
+        id,
+        selectedFile,
+        fileName,
+        uploadForm.description,
+        uploadForm.tevkifatTitleId || undefined,
+        uploadForm.month,
+        uploadForm.year
+      );
+      toast.showSuccess('Evrak başarıyla yüklendi');
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      setCustomFileName('');
+      setUploadForm({
+        tevkifatTitleId: '',
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        description: '',
+      });
+      loadFiles();
+      loadCenter(); // Refresh statistics
+    } catch (e: unknown) {
+      console.error('Evrak yüklenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Evrak yüklenirken bir hata oluştu'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const monthNames = [
     'Ocak',
     'Şubat',
@@ -224,16 +321,8 @@ const TevkifatCenterDetailPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Back Button */}
-      <Box sx={{ mb: 3, pt: { xs: 2, md: 3 } }}>
+    <PageLayout>
+      <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/accounting/tevkifat-centers')}
@@ -248,7 +337,6 @@ const TevkifatCenterDetailPage: React.FC = () => {
           Geri Dön
         </Button>
 
-        {/* Modern Header Card */}
         <PageHeader
           icon={<BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
           title={center.name}
@@ -558,6 +646,183 @@ const TevkifatCenterDetailPage: React.FC = () => {
           </Grid>
         )}
 
+        {/* Tevkifat Gelir İstatistikleri Grafiği */}
+        {center.monthlySummary && center.monthlySummary.length > 0 && (
+          <Grid size={{ xs: 12 }}>
+            <Card
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                overflow: 'hidden',
+                transition: 'all 0.3s ease-in-out',
+                '&:hover': {
+                  boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.15)}`,
+                  transform: 'translateY(-4px)',
+                  borderColor: 'primary.main',
+                }
+              }}
+            >
+              <Box sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 2,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <ShowChartIcon sx={{ color: theme.palette.primary.main, fontSize: '1.25rem' }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Aylık Tevkifat Gelir Dağılımı
+                  </Typography>
+                </Box>
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Gelen tevkifat ödemesi, şube payı (%40) ve genel merkeze giden tutar
+                </Typography>
+
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart
+                    data={center.monthlySummary.map((summary) => ({
+                      name: `${monthNames[summary.month - 1]} ${summary.year}`,
+                      'Gelen Tevkifat': summary.totalAmount,
+                      'Şube Payı (40%)': summary.totalAmount * 0.4,
+                      'Genel Merkez (60%)': summary.totalAmount * 0.6,
+                    }))}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.divider, 0.3)} />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                      tick={{ fontSize: 12 }}
+                      stroke={theme.palette.text.secondary}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      stroke={theme.palette.text.secondary}
+                      tickFormatter={(value) => 
+                        new Intl.NumberFormat('tr-TR', {
+                          notation: 'compact',
+                          compactDisplay: 'short',
+                        }).format(value)
+                      }
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: theme.palette.background.paper,
+                        border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                        borderRadius: 8,
+                        boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.1)}`,
+                      }}
+                      formatter={(value: any) =>
+                        new Intl.NumberFormat('tr-TR', {
+                          style: 'currency',
+                          currency: 'TRY',
+                        }).format(value)
+                      }
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="rect"
+                    />
+                    <Bar 
+                      dataKey="Gelen Tevkifat" 
+                      fill={theme.palette.primary.main}
+                      radius={[8, 8, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="Şube Payı (40%)" 
+                      fill={theme.palette.success.main}
+                      radius={[8, 8, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="Genel Merkez (60%)" 
+                      fill={theme.palette.warning.main}
+                      radius={[8, 8, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+
+                {/* İstatistik Özeti */}
+                <Box 
+                  sx={{ 
+                    mt: 4, 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: 2,
+                  }}
+                >
+                  <Box 
+                    sx={{ 
+                      p: 2, 
+                      borderRadius: 2, 
+                      bgcolor: alpha(theme.palette.primary.main, 0.05),
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Toplam Gelen Tevkifat
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                      {new Intl.NumberFormat('tr-TR', {
+                        style: 'currency',
+                        currency: 'TRY',
+                      }).format(center.monthlySummary.reduce((acc, s) => acc + s.totalAmount, 0))}
+                    </Typography>
+                  </Box>
+
+                  <Box 
+                    sx={{ 
+                      p: 2, 
+                      borderRadius: 2, 
+                      bgcolor: alpha(theme.palette.success.main, 0.05),
+                      border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`,
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Toplam Şube Payı (40%)
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.success.main }}>
+                      {new Intl.NumberFormat('tr-TR', {
+                        style: 'currency',
+                        currency: 'TRY',
+                      }).format(center.monthlySummary.reduce((acc, s) => acc + s.totalAmount * 0.4, 0))}
+                    </Typography>
+                  </Box>
+
+                  <Box 
+                    sx={{ 
+                      p: 2, 
+                      borderRadius: 2, 
+                      bgcolor: alpha(theme.palette.warning.main, 0.05),
+                      border: `1px solid ${alpha(theme.palette.warning.main, 0.1)}`,
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Toplam Genel Merkez (60%)
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.warning.main }}>
+                      {new Intl.NumberFormat('tr-TR', {
+                        style: 'currency',
+                        currency: 'TRY',
+                      }).format(center.monthlySummary.reduce((acc, s) => acc + s.totalAmount * 0.6, 0))}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </Card>
+          </Grid>
+        )}
+
         {/* Bağlı Üyeler */}
         <Grid size={{ xs: 12 }}>
           <Card
@@ -718,23 +983,44 @@ const TevkifatCenterDetailPage: React.FC = () => {
             }}
           >
             <Box sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.success.main, 0.1),
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <DescriptionIcon sx={{ color: theme.palette.success.main, fontSize: '1.25rem' }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 2,
+                      backgroundColor: alpha(theme.palette.success.main, 0.1),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <DescriptionIcon sx={{ color: theme.palette.success.main, fontSize: '1.25rem' }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Bağlı Dosyalar
+                  </Typography>
                 </Box>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  Bağlı Dosyalar
-                </Typography>
+                {canManage && (
+                  <Button
+                    variant="contained"
+                    startIcon={<CloudUploadIcon />}
+                    onClick={() => setUploadDialogOpen(true)}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                      '&:hover': {
+                        boxShadow: `0 6px 16px ${alpha(theme.palette.success.main, 0.4)}`,
+                      },
+                    }}
+                    color="success"
+                  >
+                    Evrak Yükle
+                  </Button>
+                )}
               </Box>
               {loadingFiles ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -755,24 +1041,35 @@ const TevkifatCenterDetailPage: React.FC = () => {
                   <Table>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: alpha(theme.palette.success.main, 0.06) }}>
+                        <TableCell sx={{ fontWeight: 700 }}>Dosya Adı</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Ay</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Yıl</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>Üye Sayısı</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>Toplam Tutar</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Tevkifat Ünvanı</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Onay Durumu</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>İşlem</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {files.map((file) => (
                         <TableRow key={file.id} sx={{ '&:hover': { backgroundColor: alpha(theme.palette.success.main, 0.02) } }}>
+                          <TableCell sx={{ fontWeight: 600, maxWidth: 220 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                maxWidth: 220,
+                              }}
+                              title={file.fileName}
+                            >
+                              {file.fileName || '-'}
+                            </Typography>
+                          </TableCell>
                           <TableCell sx={{ fontWeight: 600 }}>{monthNames[file.month - 1]}</TableCell>
                           <TableCell>{file.year}</TableCell>
-                          <TableCell align="right">{file.memberCount}</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
-                            {new Intl.NumberFormat('tr-TR', {
-                              style: 'currency',
-                              currency: 'TRY',
-                            }).format(Number(file.totalAmount))}
+                          <TableCell>
+                            {file.tevkifatTitle?.name || '-'}
                           </TableCell>
                           <TableCell>
                             <Chip
@@ -785,6 +1082,25 @@ const TevkifatCenterDetailPage: React.FC = () => {
                                 borderRadius: 1.5,
                               }}
                             />
+                          </TableCell>
+                          <TableCell align="center">
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                downloadTevkifatFile(file.id, file.fileName || undefined)
+                                  .then(() => toast.showSuccess('Dosya indiriliyor'))
+                                  .catch((e) => toast.showError(getApiErrorMessage(e, 'Dosya indirilemedi')));
+                              }}
+                              sx={{
+                                color: theme.palette.primary.main,
+                                '&:hover': {
+                                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                },
+                              }}
+                              title="İndir"
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -812,7 +1128,300 @@ const TevkifatCenterDetailPage: React.FC = () => {
           onSuccess={handleDeleteSuccess}
         />
       )}
-    </Box>
+
+      {/* Evrak Yükleme Dialog */}
+      <Dialog
+        open={uploadDialogOpen}
+        onClose={() => {
+          if (!uploading) {
+            setUploadDialogOpen(false);
+            setSelectedFile(null);
+            setCustomFileName('');
+            setUploadForm({
+              tevkifatTitleId: '',
+              month: new Date().getMonth() + 1,
+              year: new Date().getFullYear(),
+              description: '',
+            });
+          }
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.15)}`,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            pb: 2,
+            pt: 3,
+            px: 3,
+            fontWeight: 700,
+            fontSize: '1.25rem',
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+              }}
+            >
+              <UploadFileIcon sx={{ color: 'white', fontSize: '1.25rem' }} />
+            </Box>
+            PDF Evrak Yükle
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, px: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+            {/* Tevkifat Ünvanı (Opsiyonel) */}
+            <FormControl 
+              fullWidth 
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            >
+              <InputLabel>Tevkifat Ünvanı (Opsiyonel)</InputLabel>
+              <Select
+                value={uploadForm.tevkifatTitleId}
+                label="Tevkifat Ünvanı (Opsiyonel)"
+                onChange={(e) => setUploadForm({ ...uploadForm, tevkifatTitleId: e.target.value })}
+                disabled={uploading}
+              >
+                <MenuItem value="">
+                  <em>Seçiniz</em>
+                </MenuItem>
+                {tevkifatTitles.map((title: any) => (
+                  <MenuItem key={title.id} value={title.id}>
+                    {title.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Yıl ve Ay */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <FormControl 
+                fullWidth 
+                required
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <InputLabel>Yıl *</InputLabel>
+                <Select
+                  value={uploadForm.year}
+                  label="Yıl *"
+                  onChange={(e) => setUploadForm({ ...uploadForm, year: Number(e.target.value) })}
+                  disabled={uploading}
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                    <MenuItem key={year} value={year}>
+                      {year}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl 
+                fullWidth 
+                required
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <InputLabel>Ay *</InputLabel>
+                <Select
+                  value={uploadForm.month}
+                  label="Ay *"
+                  onChange={(e) => setUploadForm({ ...uploadForm, month: Number(e.target.value) })}
+                  disabled={uploading}
+                >
+                  {[
+                    { value: 1, label: 'Ocak' },
+                    { value: 2, label: 'Şubat' },
+                    { value: 3, label: 'Mart' },
+                    { value: 4, label: 'Nisan' },
+                    { value: 5, label: 'Mayıs' },
+                    { value: 6, label: 'Haziran' },
+                    { value: 7, label: 'Temmuz' },
+                    { value: 8, label: 'Ağustos' },
+                    { value: 9, label: 'Eylül' },
+                    { value: 10, label: 'Ekim' },
+                    { value: 11, label: 'Kasım' },
+                    { value: 12, label: 'Aralık' },
+                  ].map((month) => (
+                    <MenuItem key={month.value} value={month.value}>
+                      {month.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Açıklama */}
+            <TextField
+              fullWidth
+              label="Açıklama"
+              value={uploadForm.description}
+              onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+              placeholder="Dosya hakkında açıklama girin"
+              multiline
+              rows={3}
+              disabled={uploading}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            />
+
+            {/* Dosya Seçimi */}
+            <Box
+              sx={{
+                border: `2px dashed ${alpha(theme.palette.success.main, 0.3)}`,
+                borderRadius: 2,
+                p: 3,
+                textAlign: 'center',
+                bgcolor: alpha(theme.palette.success.main, 0.02),
+                transition: 'all 0.3s',
+                '&:hover': {
+                  borderColor: theme.palette.success.main,
+                  bgcolor: alpha(theme.palette.success.main, 0.05),
+                },
+              }}
+            >
+              <input
+                accept="application/pdf"
+                style={{ display: 'none' }}
+                id="tevkifat-file-upload"
+                type="file"
+                onChange={handleFileSelect}
+                disabled={uploading}
+              />
+              <label htmlFor="tevkifat-file-upload">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<UploadFileIcon />}
+                  disabled={uploading}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    py: 1.5,
+                    borderWidth: 2,
+                    borderStyle: 'dashed',
+                    '&:hover': {
+                      borderWidth: 2,
+                      borderStyle: 'dashed',
+                    },
+                  }}
+                >
+                  {selectedFile ? selectedFile.name : 'PDF Dosyası Seç *'}
+                </Button>
+              </label>
+              {selectedFile && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mt: 1.5, display: 'block' }}
+                >
+                  Dosya boyutu: {(selectedFile.size / 1024).toFixed(2)} KB
+                </Typography>
+              )}
+            </Box>
+
+            {selectedFile && (
+              <Alert
+                severity="info"
+                sx={{
+                  borderRadius: 2,
+                  '& .MuiAlert-message': { width: '100%' },
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  Seçilen dosya:
+                </Typography>
+                <Typography variant="body2">{selectedFile.name}</Typography>
+              </Alert>
+            )}
+
+            <TextField
+              fullWidth
+              label="Dosya Adı (Opsiyonel)"
+              value={customFileName}
+              onChange={(e) => setCustomFileName(e.target.value)}
+              placeholder="Özel dosya adı girin"
+              helperText="Boş bırakılırsa orijinal dosya adı kullanılır. PDF uzantısı otomatik eklenir."
+              disabled={uploading}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button
+            onClick={() => {
+              setUploadDialogOpen(false);
+              setSelectedFile(null);
+              setCustomFileName('');
+              setUploadForm({
+                tevkifatTitleId: '',
+                month: new Date().getMonth() + 1,
+                year: new Date().getFullYear(),
+                description: '',
+              });
+            }}
+            disabled={uploading}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            İptal
+          </Button>
+          <Button
+            onClick={handleUploadDocument}
+            variant="contained"
+            color="success"
+            disabled={!selectedFile || uploading}
+            startIcon={uploading ? <CircularProgress size={20} /> : <CloudUploadIcon />}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+              },
+            }}
+          >
+            {uploading ? 'Yükleniyor...' : 'Yükle'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </PageLayout>
   );
 };
 

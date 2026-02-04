@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+} from 'class-validator';
 import { DocumentTemplateType } from '@prisma/client';
 
 export class CreateDocumentTemplateDto {
@@ -13,7 +19,10 @@ export class CreateDocumentTemplateDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ description: 'HTML şablon içeriği', example: '<html>...</html>' })
+  @ApiProperty({
+    description: 'HTML şablon içeriği',
+    example: '<html>...</html>',
+  })
   @IsString()
   @IsNotEmpty()
   template: string;

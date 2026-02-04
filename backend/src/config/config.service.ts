@@ -150,7 +150,9 @@ export class ConfigService implements OnModuleInit {
   }
 
   get netgsmApiUrl(): string {
-    return process.env.NETGSM_API_URL || 'https://api.netgsm.com.tr/sms/send/get';
+    return (
+      process.env.NETGSM_API_URL || 'https://api.netgsm.com.tr/sms/send/get'
+    );
   }
 
   // JWT Configuration
@@ -158,8 +160,20 @@ export class ConfigService implements OnModuleInit {
     return process.env.JWT_SECRET || 'your-secret-key-change-in-production';
   }
 
+  /** Access token süresi (kısa ömürlü; örn. 15m production, 24h development) */
+  get jwtAccessExpiresIn(): string {
+    return (
+      process.env.JWT_ACCESS_EXPIRES_IN || process.env.JWT_EXPIRES_IN || '24h'
+    );
+  }
+
+  /** Refresh token süresi (uzun ömürlü; örn. 7d) */
+  get jwtRefreshExpiresIn(): string {
+    return process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  }
+
+  /** Geriye uyumluluk: access süresi */
   get jwtExpiresIn(): string {
-    return process.env.JWT_EXPIRES_IN || '24h';
+    return this.jwtAccessExpiresIn;
   }
 }
-

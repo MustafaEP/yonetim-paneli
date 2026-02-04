@@ -54,6 +54,7 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import ConfirmDialog from '../../../shared/components/common/ConfirmDialog';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const ApprovedMembersPage: React.FC = () => {
   const theme = useTheme();
@@ -503,12 +504,7 @@ const ApprovedMembersPage: React.FC = () => {
   ];
 
   return (
-    <Box
-      sx={{
-        pb: 4,
-      }}
-    >
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<CheckIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Üyelik Kabul Ekranı"
@@ -935,7 +931,7 @@ const ApprovedMembersPage: React.FC = () => {
           loading={!!processingId && processingId === confirmDialog.memberId}
         />
       )}
-    </Box>
+    </PageLayout>
   );
 };
 

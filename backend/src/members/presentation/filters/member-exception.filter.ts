@@ -1,8 +1,8 @@
 /**
  * Member Exception Filter
- * 
+ *
  * Presentation Layer: Domain exception'ları HTTP exception'a çevirir
- * 
+ *
  * Sorumluluklar:
  * - Domain exception'ları yakalama
  * - HTTP status code mapping

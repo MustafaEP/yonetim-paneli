@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './application/dto/create-user.dto';
 import { UserCreationApplicationService } from './application/services/user-creation-application.service';
@@ -70,7 +75,10 @@ export class UsersService {
       });
     } catch (error: any) {
       // Eğer _UserCustomRoles tablosu yoksa, customRoles olmadan döndür
-      if (error?.message?.includes('_UserCustomRoles') || error?.message?.includes('does not exist')) {
+      if (
+        error?.message?.includes('_UserCustomRoles') ||
+        error?.message?.includes('does not exist')
+      ) {
         return this.prisma.user.findFirst({
           where: { email },
         });
@@ -110,7 +118,10 @@ export class UsersService {
       });
     } catch (error: any) {
       // Eğer _UserCustomRoles tablosu yoksa, customRoles olmadan döndür
-      if (error?.message?.includes('_UserCustomRoles') || error?.message?.includes('does not exist')) {
+      if (
+        error?.message?.includes('_UserCustomRoles') ||
+        error?.message?.includes('does not exist')
+      ) {
         return this.prisma.user.findFirst({
           where: { id },
           include: {
@@ -148,7 +159,7 @@ export class UsersService {
       where: { id: userId },
       data: {
         customRoles: {
-          set: customRoleIds.map(id => ({ id })),
+          set: customRoleIds.map((id) => ({ id })),
         },
       },
       include: {

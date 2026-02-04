@@ -15,7 +15,6 @@ import {
   alpha,
   Fade,
   Zoom,
-  Container,
 } from '@mui/material';
 import BadgeIcon from '@mui/icons-material/Badge';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -31,6 +30,7 @@ import { getUserScopes } from '../../regions/services/regionsApi';
 import type { UserScope } from '../../../types/region';
 import type { Role } from '../../../types/user';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const ProfilePage: React.FC = () => {
   const theme = useTheme();
@@ -60,7 +60,7 @@ const ProfilePage: React.FC = () => {
 
   if (!user) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <PageLayout>
         <Fade in timeout={600}>
           <Paper
             elevation={0}
@@ -90,7 +90,7 @@ const ProfilePage: React.FC = () => {
             </Typography>
           </Paper>
         </Fade>
-      </Container>
+      </PageLayout>
     );
   }
 
@@ -98,10 +98,9 @@ const ProfilePage: React.FC = () => {
   const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase();
 
   return (
-    <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
+    <PageLayout>
       <Fade in={mounted} timeout={800}>
         <Box>
-          {/* Başlık Bölümü */}
           <PageHeader
             icon={<PersonIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
             title="Profilim"
@@ -658,7 +657,7 @@ const ProfilePage: React.FC = () => {
           </Grid>
         </Box>
       </Fade>
-    </Container>
+    </PageLayout>
   );
 };
 

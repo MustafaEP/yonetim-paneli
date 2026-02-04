@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { RoleScopeDto } from './role-scope.dto';
 
@@ -44,7 +50,8 @@ export class UpdateRoleDto {
   hasScopeRestriction?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Yetki alanları (hasScopeRestriction true ise en az bir tane olmalı)',
+    description:
+      'Yetki alanları (hasScopeRestriction true ise en az bir tane olmalı)',
     type: [RoleScopeDto],
     example: [
       { provinceId: 'province-uuid-1' },

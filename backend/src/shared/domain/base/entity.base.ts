@@ -1,6 +1,6 @@
 /**
  * Base Entity
- * 
+ *
  * Shared Domain: Tüm domain entity'ler için base class
  */
 export abstract class BaseEntity {

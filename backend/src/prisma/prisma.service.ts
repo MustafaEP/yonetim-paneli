@@ -12,7 +12,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     try {
       if (typeof (this as any).$use === 'function') {
         (this as any).$use(async (params, next) => {
-          const softDeleteModels = ['User', 'Member', 'CustomRole', 'MemberPayment', 'MemberDocument'];
+          const softDeleteModels = [
+            'User',
+            'Member',
+            'CustomRole',
+            'MemberPayment',
+            'MemberDocument',
+          ];
 
           if (params.model && softDeleteModels.includes(params.model)) {
             // findMany, findFirst, findUnique -> deletedAt null filtrele
@@ -40,7 +46,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
               const modelsWithIsActive = ['User', 'Member', 'CustomRole'];
               params.args['data'] = {
                 deletedAt: new Date(),
-                ...(modelsWithIsActive.includes(params.model || '') && { isActive: false }),
+                ...(modelsWithIsActive.includes(params.model || '') && {
+                  isActive: false,
+                }),
               };
             }
 
@@ -50,7 +58,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
               const modelsWithIsActive = ['User', 'Member', 'CustomRole'];
               params.args['data'] = {
                 deletedAt: new Date(),
-                ...(modelsWithIsActive.includes(params.model || '') && { isActive: false }),
+                ...(modelsWithIsActive.includes(params.model || '') && {
+                  isActive: false,
+                }),
               };
             }
           }
@@ -61,14 +71,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     } catch (error) {
       // Middleware mevcut değilse sessizce atla
       // Soft delete işlevselliği service katmanında handle edilmelidir
-      console.warn('Prisma $use middleware is not available. Soft delete must be handled at service layer.');
+      console.warn(
+        'Prisma $use middleware is not available. Soft delete must be handled at service layer.',
+      );
     }
   }
 
   async enableShutdownHooks(app: INestApplication) {
-  (this as any).$on('beforeExit', async () => {
-    await app.close();
-  });
-}
-
+    (this as any).$on('beforeExit', async () => {
+      await app.close();
+    });
+  }
 }

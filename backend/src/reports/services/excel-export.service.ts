@@ -33,8 +33,14 @@ export class ExcelExportService {
         pattern: 'solid',
         fgColor: { argb: 'FF4472C4' },
       };
-      worksheet.getRow(1).font = { ...worksheet.getRow(1).font, color: { argb: 'FFFFFFFF' } };
-      worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(1).font = {
+        ...worksheet.getRow(1).font,
+        color: { argb: 'FFFFFFFF' },
+      };
+      worksheet.getRow(1).alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+      };
 
       // Verileri ekle
       data.forEach((row) => {
@@ -58,7 +64,10 @@ export class ExcelExportService {
         'Content-Type',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}.xlsx"`,
+      );
 
       // Excel dosyasını stream olarak gönder
       await workbook.xlsx.write(res);
@@ -66,7 +75,10 @@ export class ExcelExportService {
 
       this.logger.log(`Excel file exported: ${filename}.xlsx`);
     } catch (error) {
-      this.logger.error(`Failed to export Excel: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to export Excel: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -74,7 +86,10 @@ export class ExcelExportService {
   /**
    * Rapor verisini Excel formatına dönüştür
    */
-  formatReportDataForExcel(data: any, reportType: 'global' | 'region' | 'dues' | 'member-status'): any[] {
+  formatReportDataForExcel(
+    data: any,
+    reportType: 'global' | 'region' | 'dues' | 'member-status',
+  ): any[] {
     switch (reportType) {
       case 'global':
         return this.formatGlobalReportForExcel(data);
@@ -116,7 +131,14 @@ export class ExcelExportService {
     if (Array.isArray(data)) {
       // Birden fazla bölge
       const rows: any[] = [
-        { A: 'İl', B: 'Üye Sayısı', C: 'Aktif Üye', D: 'İptal Edilmiş', E: 'Toplam Ödeme', F: 'Toplam Borç' },
+        {
+          A: 'İl',
+          B: 'Üye Sayısı',
+          C: 'Aktif Üye',
+          D: 'İptal Edilmiş',
+          E: 'Toplam Ödeme',
+          F: 'Toplam Borç',
+        },
       ];
 
       data.forEach((region: any) => {
@@ -172,9 +194,7 @@ export class ExcelExportService {
   }
 
   private formatMemberStatusReportForExcel(data: any): any[] {
-    const rows: any[] = [
-      { A: 'Durum', B: 'Sayı', C: 'Yüzde' },
-    ];
+    const rows: any[] = [{ A: 'Durum', B: 'Sayı', C: 'Yüzde' }];
 
     if (Array.isArray(data)) {
       data.forEach((item: any) => {
@@ -201,4 +221,3 @@ export class ExcelExportService {
     return translations[status] || status;
   }
 }
-

@@ -13,7 +13,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { SystemService } from './system.service';
 import { CreateSystemSettingDto, UpdateSystemSettingDto } from './dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -145,14 +152,18 @@ export class SystemController {
           cb(null, uploadPath);
         },
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
           cb(null, `logo-${uniqueSuffix}${ext}`);
         },
       }),
       fileFilter: (req, file, cb) => {
         if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|svg|webp)$/)) {
-          return cb(new BadRequestException('Sadece resim dosyaları yüklenebilir'), false);
+          return cb(
+            new BadRequestException('Sadece resim dosyaları yüklenebilir'),
+            false,
+          );
         }
         cb(null, true);
       },
@@ -207,7 +218,12 @@ export class SystemController {
       fileFilter: (req, file, cb) => {
         // PDF, PNG, JPG kabul et
         if (!file.mimetype.match(/\/(pdf|png|jpg|jpeg)$/)) {
-          return cb(new BadRequestException('Sadece PDF, PNG veya JPG dosyaları yüklenebilir'), false);
+          return cb(
+            new BadRequestException(
+              'Sadece PDF, PNG veya JPG dosyaları yüklenebilir',
+            ),
+            false,
+          );
         }
         cb(null, true);
       },
@@ -240,4 +256,3 @@ export class SystemController {
     return { url: headerPaperUrl };
   }
 }
-

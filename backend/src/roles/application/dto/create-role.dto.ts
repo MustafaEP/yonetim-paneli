@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsEnum, IsBoolean, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsArray,
+  IsEnum,
+  IsBoolean,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { Permission } from '../../../auth/permission.enum';
 import { RoleScopeDto } from './role-scope.dto';
@@ -45,7 +53,8 @@ export class CreateRoleDto {
   hasScopeRestriction?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Yetki alanları (hasScopeRestriction true ise en az bir tane olmalı)',
+    description:
+      'Yetki alanları (hasScopeRestriction true ise en az bir tane olmalı)',
     type: [RoleScopeDto],
     example: [
       { provinceId: 'province-uuid-1' },

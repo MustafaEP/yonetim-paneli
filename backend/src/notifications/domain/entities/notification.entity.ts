@@ -1,7 +1,11 @@
 /**
  * Notification Domain Entity
  */
-import { NotificationType, NotificationTargetType, NotificationStatus } from '@prisma/client';
+import {
+  NotificationType,
+  NotificationTargetType,
+  NotificationStatus,
+} from '@prisma/client';
 
 export interface CreateNotificationData {
   title: string;
@@ -99,9 +103,15 @@ export class Notification {
     this._updatedAt = new Date();
   }
 
-  markAsSent(recipientCount: number, successCount: number, failedCount: number): void {
+  markAsSent(
+    recipientCount: number,
+    successCount: number,
+    failedCount: number,
+  ): void {
     if (this._status !== NotificationStatus.PENDING) {
-      throw new Error(`Notification cannot be sent. Current status: ${this._status}`);
+      throw new Error(
+        `Notification cannot be sent. Current status: ${this._status}`,
+      );
     }
     this._status = NotificationStatus.SENT;
     this._sentAt = new Date();
@@ -118,15 +128,21 @@ export class Notification {
 
   validateTarget(): void {
     if (
-      (this._targetType === NotificationTargetType.REGION || this._targetType === NotificationTargetType.SCOPE) &&
+      (this._targetType === NotificationTargetType.REGION ||
+        this._targetType === NotificationTargetType.SCOPE) &&
       !this._targetId &&
       !this._metadata?.scopeProvinceId &&
       !this._metadata?.scopeDistrictId
     ) {
-      throw new Error(`${this._targetType} için targetId veya scope bilgisi zorunludur`);
+      throw new Error(
+        `${this._targetType} için targetId veya scope bilgisi zorunludur`,
+      );
     }
 
-    if (this._targetType === NotificationTargetType.ALL_MEMBERS && this._targetId) {
+    if (
+      this._targetType === NotificationTargetType.ALL_MEMBERS &&
+      this._targetId
+    ) {
       throw new Error('ALL_MEMBERS için targetId belirtilmemelidir');
     }
   }

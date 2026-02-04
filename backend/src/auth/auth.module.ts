@@ -3,15 +3,21 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { UsersModule } from '../users/users.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule } from '../config/config.module';
 import { JwtConfigService } from '../config/jwt.config';
 import { SystemModule } from '../system/system.module';
 import { AuthApplicationService } from './application/services/auth-application.service';
+import { TokenService } from './infrastructure/services/token.service';
+import { PasswordService } from './infrastructure/services/password.service';
+import { AuthBruteForceService } from './infrastructure/services/auth-brute-force.service';
+import { AuthRateLimitGuard } from './guards/auth-rate-limit.guard';
 
 @Module({
   imports: [
-    UsersModule,
+    forwardRef(() => UsersModule),
+    PrismaModule,
     ConfigModule,
     forwardRef(() => SystemModule),
     JwtModule.registerAsync({
@@ -22,11 +28,15 @@ import { AuthApplicationService } from './application/services/auth-application.
     }),
   ],
   providers: [
-    AuthService, // Legacy service for backward compatibility
+    TokenService,
+    PasswordService,
+    AuthBruteForceService,
+    AuthService,
     AuthApplicationService,
     JwtStrategy,
+    AuthRateLimitGuard,
   ],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, TokenService, PasswordService],
 })
 export class AuthModule {}

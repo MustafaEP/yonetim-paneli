@@ -23,18 +23,18 @@ export class SystemLogInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const { method, url, body, params, query, user } = request;
-    
+
     // Public endpoint'leri loglama
     const isPublic = this.reflector.getAllAndOverride<boolean>(Public, [
       context.getHandler(),
       context.getClass(),
     ]);
-    
+
     if (isPublic && method === 'POST' && url.includes('/auth/login')) {
       // Login işlemini özel olarak logla (kullanıcı henüz authenticate olmamış)
       const ipAddress = this.getIpAddress(request);
       const userAgent = request.headers['user-agent'] || 'unknown';
-      
+
       return next.handle().pipe(
         tap({
           next: async (response) => {
@@ -168,7 +168,8 @@ export class SystemLogInterceptor implements NestInterceptor {
             await this.systemService.createLog({
               action,
               entityType,
-              entityId: entityId || (response?.id ? String(response.id) : undefined),
+              entityId:
+                entityId || (response?.id ? String(response.id) : undefined),
               userId: user.userId,
               details: {
                 ...details,
@@ -252,7 +253,7 @@ export class SystemLogInterceptor implements NestInterceptor {
       /\/system\/logs/,
     ];
 
-    return importantPatterns.some(pattern => pattern.test(url));
+    return importantPatterns.some((pattern) => pattern.test(url));
   }
 
   private getIpAddress(request: any): string {
@@ -267,4 +268,3 @@ export class SystemLogInterceptor implements NestInterceptor {
     );
   }
 }
-

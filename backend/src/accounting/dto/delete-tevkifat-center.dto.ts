@@ -25,7 +25,8 @@ export class DeleteTevkifatCenterDto {
   memberActionType: MemberActionOnTevkifatCenterDelete;
 
   @ApiProperty({
-    description: 'TRANSFER_TO_TEVKIFAT_CENTER, TRANSFER_AND_DEACTIVATE veya TRANSFER_AND_CANCEL seçildiğinde üyelerin taşınacağı tevkifat merkezi ID',
+    description:
+      'TRANSFER_TO_TEVKIFAT_CENTER, TRANSFER_AND_DEACTIVATE veya TRANSFER_AND_CANCEL seçildiğinde üyelerin taşınacağı tevkifat merkezi ID',
     example: 'tevkifat-center-uuid-123',
     required: false,
   })
@@ -33,4 +34,3 @@ export class DeleteTevkifatCenterDto {
   @IsOptional()
   targetTevkifatCenterId?: string;
 }
-

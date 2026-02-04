@@ -1,6 +1,6 @@
 /**
  * Role Update Application Service
- * 
+ *
  * Orchestrates role update use case.
  */
 import { Injectable, Logger, Inject } from '@nestjs/common';
@@ -33,7 +33,10 @@ export class RoleUpdateApplicationService {
     }
 
     if (updateData.name && updateData.name !== role.name) {
-      await this.roleManagementDomainService.validateNameUniqueness(updateData.name, roleId);
+      await this.roleManagementDomainService.validateNameUniqueness(
+        updateData.name,
+        roleId,
+      );
     }
 
     role.update(updateData);

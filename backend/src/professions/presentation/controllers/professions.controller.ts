@@ -9,7 +9,14 @@ import {
   UseFilters,
   UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { ProfessionsService } from '../../professions.service';
 import { CreateProfessionDto } from '../../application/dto/create-profession.dto';
 import { UpdateProfessionDto } from '../../application/dto/update-profession.dto';
@@ -33,7 +40,10 @@ export class ProfessionsController {
 
   @Permissions(Permission.MEMBER_CREATE_APPLICATION, Permission.MEMBER_UPDATE)
   @Get()
-  @ApiOperation({ summary: 'Meslek/Unvan listesini getir', description: 'Aktif meslek/unvanları listeler' })
+  @ApiOperation({
+    summary: 'Meslek/Unvan listesini getir',
+    description: 'Aktif meslek/unvanları listeler',
+  })
   @ApiResponse({ status: 200, description: 'Meslek/Unvan listesi' })
   async listProfessions() {
     return this.professionsService.listProfessions();
@@ -41,7 +51,10 @@ export class ProfessionsController {
 
   @Permissions(Permission.MEMBER_UPDATE)
   @Get('all')
-  @ApiOperation({ summary: 'Tüm meslek/unvanları listele', description: 'Aktif ve pasif tüm meslek/unvanları listeler' })
+  @ApiOperation({
+    summary: 'Tüm meslek/unvanları listele',
+    description: 'Aktif ve pasif tüm meslek/unvanları listeler',
+  })
   @ApiResponse({ status: 200, description: 'Tüm meslek/unvan listesi' })
   async listAllProfessions() {
     return this.professionsService.listAllProfessions();
@@ -64,8 +77,12 @@ export class ProfessionsController {
   @ApiBody({ type: CreateProfessionDto })
   @ApiResponse({ status: 201, description: 'Meslek/Unvan oluşturuldu' })
   async createProfession(@Body() dto: CreateProfessionDto) {
-    const profession = await this.professionApplicationService.createProfession({ dto });
-    return await this.prisma.profession.findUnique({ where: { id: profession.id } });
+    const profession = await this.professionApplicationService.createProfession(
+      { dto },
+    );
+    return await this.prisma.profession.findUnique({
+      where: { id: profession.id },
+    });
   }
 
   @Permissions(Permission.MEMBER_UPDATE)
@@ -80,21 +97,33 @@ export class ProfessionsController {
     @Param('id') id: string,
     @Body() dto: UpdateProfessionDto,
   ) {
-    const profession = await this.professionApplicationService.updateProfession({
-      professionId: id,
-      dto,
+    const profession = await this.professionApplicationService.updateProfession(
+      {
+        professionId: id,
+        dto,
+      },
+    );
+    return await this.prisma.profession.findUnique({
+      where: { id: profession.id },
     });
-    return await this.prisma.profession.findUnique({ where: { id: profession.id } });
   }
 
   @Permissions(Permission.MEMBER_UPDATE)
   @Delete(':id')
-  @ApiOperation({ summary: 'Meslek/Unvan sil', description: 'Kullanımda ise pasif yapar, değilse kalıcı olarak siler' })
+  @ApiOperation({
+    summary: 'Meslek/Unvan sil',
+    description: 'Kullanımda ise pasif yapar, değilse kalıcı olarak siler',
+  })
   @ApiParam({ name: 'id', description: 'Meslek/Unvan ID' })
-  @ApiResponse({ status: 200, description: 'Meslek/Unvan silindi veya pasif yapıldı' })
+  @ApiResponse({
+    status: 200,
+    description: 'Meslek/Unvan silindi veya pasif yapıldı',
+  })
   @ApiResponse({ status: 404, description: 'Meslek/Unvan bulunamadı' })
   async deleteProfession(@Param('id') id: string) {
-    await this.professionApplicationService.deleteProfession({ professionId: id });
+    await this.professionApplicationService.deleteProfession({
+      professionId: id,
+    });
     return { message: 'Meslek/Unvan başarıyla silindi veya pasif yapıldı' };
   }
 }

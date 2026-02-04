@@ -35,6 +35,7 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import {
   getTevkifatTitles,
   createTevkifatTitle,
@@ -202,15 +203,7 @@ const TevkifatTitlesPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Modern Header */}
+    <PageLayout>
       <PageHeader
         icon={<BadgeIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Tevkifat Unvanları"
@@ -248,15 +241,11 @@ const TevkifatTitlesPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
-            transform: 'translateY(-2px)',
-          }
+          background: '#fff',
         }}
       >
         {loadingTitles ? (
@@ -598,7 +587,7 @@ const TevkifatTitlesPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

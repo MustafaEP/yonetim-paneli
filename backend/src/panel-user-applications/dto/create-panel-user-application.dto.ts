@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { RoleScopeDto } from '../../roles/application/dto/role-scope.dto';
@@ -9,7 +15,10 @@ export class CreatePanelUserApplicationDto {
   @IsNotEmpty()
   requestedRoleId: string;
 
-  @ApiPropertyOptional({ description: 'Başvuru notu', example: 'Üye panel kullanıcısı olmak istiyor' })
+  @ApiPropertyOptional({
+    description: 'Başvuru notu',
+    example: 'Üye panel kullanıcısı olmak istiyor',
+  })
   @IsString()
   @IsOptional()
   requestNote?: string;
@@ -28,4 +37,3 @@ export class CreatePanelUserApplicationDto {
   @Type(() => RoleScopeDto)
   scopes?: RoleScopeDto[];
 }
-

@@ -1,7 +1,12 @@
 import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './application/dto/create-notification.dto';
-import { NotificationStatus, NotificationTargetType, NotificationType, MemberStatus } from '@prisma/client';
+import {
+  NotificationStatus,
+  NotificationTargetType,
+  NotificationType,
+  MemberStatus,
+} from '@prisma/client';
 import { NotificationQueue } from './queues/notification.queue';
 import { NotificationJobData } from './processors/notification.processor';
 import { EmailService } from './services/email.service';
@@ -87,12 +92,20 @@ export class NotificationsService {
     return notification;
   }
 
-  async create(dto: CreateNotificationDto, userId: string, user?: CurrentUserData) {
+  async create(
+    dto: CreateNotificationDto,
+    userId: string,
+    user?: CurrentUserData,
+  ) {
     let finalMetadata = dto.metadata;
 
     // NOTIFY_OWN_SCOPE izni varsa ve targetType belirtilmemişse veya SCOPE ise, kullanıcının scope'unu kullan
-    const hasNotifyOwnScope = user?.permissions?.includes('NOTIFY_OWN_SCOPE' as any);
-    const hasNotifyAll = user?.permissions?.includes('NOTIFY_ALL_MEMBERS' as any);
+    const hasNotifyOwnScope = user?.permissions?.includes(
+      'NOTIFY_OWN_SCOPE' as any,
+    );
+    const hasNotifyAll = user?.permissions?.includes(
+      'NOTIFY_ALL_MEMBERS' as any,
+    );
     const hasNotifyRegion = user?.permissions?.includes('NOTIFY_REGION' as any);
 
     if (hasNotifyOwnScope && !hasNotifyAll && !hasNotifyRegion) {
@@ -109,16 +122,18 @@ export class NotificationsService {
       }
     }
 
-    const notification = await this.notificationApplicationService.createNotification({
-      dto: {
-        ...dto,
-        targetType: hasNotifyOwnScope && !hasNotifyAll && !hasNotifyRegion
-          ? NotificationTargetType.SCOPE
-          : dto.targetType,
-      },
-      userId,
-      metadata: finalMetadata,
-    });
+    const notification =
+      await this.notificationApplicationService.createNotification({
+        dto: {
+          ...dto,
+          targetType:
+            hasNotifyOwnScope && !hasNotifyAll && !hasNotifyRegion
+              ? NotificationTargetType.SCOPE
+              : dto.targetType,
+        },
+        userId,
+        metadata: finalMetadata,
+      });
 
     return await this.prisma.notification.findUnique({
       where: { id: notification.id },
@@ -146,7 +161,9 @@ export class NotificationsService {
       // Hedef kullanıcıları belirle
       const recipients = await this.getRecipients(notification);
 
-      this.logger.log(`Sending notification ${id} to ${recipients.length} recipients`);
+      this.logger.log(
+        `Sending notification ${id} to ${recipients.length} recipients`,
+      );
 
       // Her alıcı için job oluştur
       const jobs: Promise<any>[] = [];
@@ -162,9 +179,20 @@ export class NotificationsService {
       }
 
       // Bildirim kanal ayarlarını kontrol et
-      const notificationEmailEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_EMAIL_ENABLED', true);
-      const notificationSmsEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_SMS_ENABLED', true);
-      const notificationInAppEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_IN_APP_ENABLED', true);
+      const notificationEmailEnabled =
+        this.configService.getSystemSettingBoolean(
+          'NOTIFICATION_EMAIL_ENABLED',
+          true,
+        );
+      const notificationSmsEnabled = this.configService.getSystemSettingBoolean(
+        'NOTIFICATION_SMS_ENABLED',
+        true,
+      );
+      const notificationInAppEnabled =
+        this.configService.getSystemSettingBoolean(
+          'NOTIFICATION_IN_APP_ENABLED',
+          true,
+        );
 
       // Redis varsa queue kullan, yoksa direkt gönder
       if (useQueue) {
@@ -172,73 +200,107 @@ export class NotificationsService {
         for (const recipient of recipients) {
           try {
             // Bildirim tipine göre job oluştur (kanal ayarlarını kontrol et)
-            if (notification.type === NotificationType.EMAIL && recipient.email && notificationEmailEnabled) {
+            if (
+              notification.type === NotificationType.EMAIL &&
+              recipient.email &&
+              notificationEmailEnabled
+            ) {
               jobs.push(
-                this.notificationQueue.add('email', {
-                  notificationId: id,
-                  type: NotificationType.EMAIL,
-                  recipientId: recipient.id,
-                  recipientEmail: recipient.email,
-                  title: notification.title,
-                  message: notification.message,
-                } as NotificationJobData).catch((error) => {
-                  // Redis bağlantı hatası ise daha açıklayıcı mesaj
-                  if (error.message?.includes('ECONNREFUSED') || error.message?.includes('Redis')) {
-                    this.logger.error(
-                      `Failed to add email job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
-                    );
-                  } else {
-                    this.logger.error(`Failed to add email job for recipient ${recipient.id}: ${error.message}`);
-                  }
-                  failedJobCount++;
-                  return null; // Promise'i reject etmek yerine null döndür
-                }),
+                this.notificationQueue
+                  .add('email', {
+                    notificationId: id,
+                    type: NotificationType.EMAIL,
+                    recipientId: recipient.id,
+                    recipientEmail: recipient.email,
+                    title: notification.title,
+                    message: notification.message,
+                  } as NotificationJobData)
+                  .catch((error) => {
+                    // Redis bağlantı hatası ise daha açıklayıcı mesaj
+                    if (
+                      error.message?.includes('ECONNREFUSED') ||
+                      error.message?.includes('Redis')
+                    ) {
+                      this.logger.error(
+                        `Failed to add email job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
+                      );
+                    } else {
+                      this.logger.error(
+                        `Failed to add email job for recipient ${recipient.id}: ${error.message}`,
+                      );
+                    }
+                    failedJobCount++;
+                    return null; // Promise'i reject etmek yerine null döndür
+                  }),
               );
-            } else if (notification.type === NotificationType.SMS && recipient.phone && notificationSmsEnabled) {
+            } else if (
+              notification.type === NotificationType.SMS &&
+              recipient.phone &&
+              notificationSmsEnabled
+            ) {
               jobs.push(
-                this.notificationQueue.add('sms', {
-                  notificationId: id,
-                  type: NotificationType.SMS,
-                  recipientId: recipient.id,
-                  recipientPhone: recipient.phone,
-                  title: notification.title,
-                  message: notification.message,
-                } as NotificationJobData).catch((error) => {
-                  if (error.message?.includes('ECONNREFUSED') || error.message?.includes('Redis')) {
-                    this.logger.error(
-                      `Failed to add SMS job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
-                    );
-                  } else {
-                    this.logger.error(`Failed to add SMS job for recipient ${recipient.id}: ${error.message}`);
-                  }
-                  failedJobCount++;
-                  return null;
-                }),
+                this.notificationQueue
+                  .add('sms', {
+                    notificationId: id,
+                    type: NotificationType.SMS,
+                    recipientId: recipient.id,
+                    recipientPhone: recipient.phone,
+                    title: notification.title,
+                    message: notification.message,
+                  } as NotificationJobData)
+                  .catch((error) => {
+                    if (
+                      error.message?.includes('ECONNREFUSED') ||
+                      error.message?.includes('Redis')
+                    ) {
+                      this.logger.error(
+                        `Failed to add SMS job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
+                      );
+                    } else {
+                      this.logger.error(
+                        `Failed to add SMS job for recipient ${recipient.id}: ${error.message}`,
+                      );
+                    }
+                    failedJobCount++;
+                    return null;
+                  }),
               );
-            } else if (notification.type === NotificationType.IN_APP && notificationInAppEnabled) {
+            } else if (
+              notification.type === NotificationType.IN_APP &&
+              notificationInAppEnabled
+            ) {
               // Web içi bildirim için UserNotification kaydı oluştur
               jobs.push(
-                this.notificationQueue.add('in-app', {
-                  notificationId: id,
-                  type: NotificationType.IN_APP,
-                  recipientId: recipient.id,
-                  title: notification.title,
-                  message: notification.message,
-                } as NotificationJobData).catch((error) => {
-                  if (error.message?.includes('ECONNREFUSED') || error.message?.includes('Redis')) {
-                    this.logger.error(
-                      `Failed to add in-app job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
-                    );
-                  } else {
-                    this.logger.error(`Failed to add in-app job for recipient ${recipient.id}: ${error.message}`);
-                  }
-                  failedJobCount++;
-                  return null;
-                }),
+                this.notificationQueue
+                  .add('in-app', {
+                    notificationId: id,
+                    type: NotificationType.IN_APP,
+                    recipientId: recipient.id,
+                    title: notification.title,
+                    message: notification.message,
+                  } as NotificationJobData)
+                  .catch((error) => {
+                    if (
+                      error.message?.includes('ECONNREFUSED') ||
+                      error.message?.includes('Redis')
+                    ) {
+                      this.logger.error(
+                        `Failed to add in-app job for recipient ${recipient.id}: Redis connection error. Ensure Redis is running.`,
+                      );
+                    } else {
+                      this.logger.error(
+                        `Failed to add in-app job for recipient ${recipient.id}: ${error.message}`,
+                      );
+                    }
+                    failedJobCount++;
+                    return null;
+                  }),
               );
             }
           } catch (jobError) {
-            this.logger.error(`Failed to create job for recipient ${recipient.id}: ${jobError.message}`);
+            this.logger.error(
+              `Failed to create job for recipient ${recipient.id}: ${jobError.message}`,
+            );
             failedJobCount++;
           }
         }
@@ -249,22 +311,37 @@ export class NotificationsService {
 
         for (const recipient of recipients) {
           try {
-            if (notification.type === NotificationType.EMAIL && recipient.email && notificationEmailEnabled) {
+            if (
+              notification.type === NotificationType.EMAIL &&
+              recipient.email &&
+              notificationEmailEnabled
+            ) {
               await this.emailService.sendEmail({
                 to: recipient.email,
                 subject: notification.title,
                 html: notification.message,
               });
               successCount++;
-              this.logger.log(`Email sent directly to ${recipient.email} (notification ${id})`);
-            } else if (notification.type === NotificationType.SMS && recipient.phone && notificationSmsEnabled) {
+              this.logger.log(
+                `Email sent directly to ${recipient.email} (notification ${id})`,
+              );
+            } else if (
+              notification.type === NotificationType.SMS &&
+              recipient.phone &&
+              notificationSmsEnabled
+            ) {
               await this.smsService.sendSms({
                 to: recipient.phone,
                 message: `${notification.title}\n\n${notification.message}`,
               });
               successCount++;
-              this.logger.log(`SMS sent directly to ${recipient.phone} (notification ${id})`);
-            } else if (notification.type === NotificationType.IN_APP && notificationInAppEnabled) {
+              this.logger.log(
+                `SMS sent directly to ${recipient.phone} (notification ${id})`,
+              );
+            } else if (
+              notification.type === NotificationType.IN_APP &&
+              notificationInAppEnabled
+            ) {
               // Web içi bildirim için UserNotification kaydı oluştur
               await this.prisma.userNotification.upsert({
                 where: {
@@ -283,7 +360,9 @@ export class NotificationsService {
                 },
               });
               successCount++;
-              this.logger.log(`In-app notification created directly for user ${recipient.id} (notification ${id})`);
+              this.logger.log(
+                `In-app notification created directly for user ${recipient.id} (notification ${id})`,
+              );
             } else {
               this.logger.warn(
                 `Skipping recipient ${recipient.id}: missing email/phone for notification type ${notification.type}`,
@@ -330,8 +409,12 @@ export class NotificationsService {
 
       // Queue kullanıldıysa buraya gelir - Job'ları ekle ve sonuçları bekle
       const jobResults = await Promise.allSettled(jobs);
-      const successCount = jobResults.filter((r) => r.status === 'fulfilled').length;
-      const failedCount = failedJobCount + jobResults.filter((r) => r.status === 'rejected').length;
+      const successCount = jobResults.filter(
+        (r) => r.status === 'fulfilled',
+      ).length;
+      const failedCount =
+        failedJobCount +
+        jobResults.filter((r) => r.status === 'rejected').length;
 
       // Durumu güncelle
       const updated = await this.prisma.notification.update({
@@ -361,7 +444,10 @@ export class NotificationsService {
 
       return updated;
     } catch (error) {
-      this.logger.error(`Failed to send notification ${id}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to send notification ${id}: ${error.message}`,
+        error.stack,
+      );
 
       // Hata durumunda status'u FAILED yap
       await this.prisma.notification.update({
@@ -441,7 +527,7 @@ export class NotificationsService {
       case NotificationTargetType.SCOPE:
         // Scope bazlı bildirim (UserScope'a göre)
         // Metadata'dan scope bilgisi al (NOTIFY_OWN_SCOPE için)
-        const metadata = notification.metadata as any;
+        const metadata = notification.metadata;
         const scopeProvinceId = metadata?.scopeProvinceId;
         const scopeDistrictId = metadata?.scopeDistrictId;
 
@@ -461,7 +547,9 @@ export class NotificationsService {
             { districtId: notification.targetId },
           );
         } else {
-          throw new Error('SCOPE target type için targetId veya scope bilgisi (metadata) gerekli');
+          throw new Error(
+            'SCOPE target type için targetId veya scope bilgisi (metadata) gerekli',
+          );
         }
 
         // Scope'a göre üyeleri filtrele (çoklu scope desteği)
@@ -487,9 +575,14 @@ export class NotificationsService {
 
       case NotificationTargetType.USER:
         // Metadata içinde userIds array'i varsa, birden fazla kullanıcıya gönder
-        if (notification.metadata && typeof notification.metadata === 'object' && Array.isArray((notification.metadata as any).userIds) && (notification.metadata as any).userIds.length > 0) {
+        if (
+          notification.metadata &&
+          typeof notification.metadata === 'object' &&
+          Array.isArray(notification.metadata.userIds) &&
+          notification.metadata.userIds.length > 0
+        ) {
           // Birden fazla kullanıcıya bildirim gönder
-          const userIds = (notification.metadata as any).userIds;
+          const userIds = notification.metadata.userIds;
           const users = await this.prisma.user.findMany({
             where: {
               id: { in: userIds },
@@ -599,6 +692,15 @@ export class NotificationsService {
     };
   }
 
+  async findUnreadCount(userId: string): Promise<number> {
+    return this.prisma.userNotification.count({
+      where: {
+        userId,
+        isRead: false,
+      },
+    });
+  }
+
   async markAsRead(userId: string, id: string) {
     // Önce userNotificationId olarak dene
     let userNotification = await this.prisma.userNotification.findFirst({
@@ -685,8 +787,9 @@ export class NotificationsService {
   }
 
   async delete(id: string) {
-    await this.notificationApplicationService.deleteNotification({ notificationId: id });
+    await this.notificationApplicationService.deleteNotification({
+      notificationId: id,
+    });
     return await this.prisma.notification.findUnique({ where: { id } });
   }
 }
-

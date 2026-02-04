@@ -1,84 +1,76 @@
-# Auth Module - Clean Architecture Implementation
+# Auth Module
 
-## 📁 Klasör Yapısı
+Authentication ve authorization katmanı: JWT access/refresh token, rate limit, brute force koruması, logging.
+
+## Klasör Yapısı
 
 ```
 auth/
-├── application/                  # Application Layer
-│   └── services/                 # Application Services (Use Cases)
-│       └── auth-application.service.ts
-│
-├── domain/                       # Domain Layer (Core Business Logic)
-│   └── entities/                 # Domain Entities
-│       └── user-session.entity.ts
-│
-├── presentation/                # Presentation Layer
-│   └── controllers/            # HTTP Controllers
+├── application/
+│   └── services/
+│       └── auth-application.service.ts   # Controller uyum katmanı; AuthService'e delegate
+├── domain/
+│   ├── entities/
+│   │   └── user-session.entity.ts
+│   └── types/
+│       └── token-payload.types.ts        # AccessPayload, RefreshPayload
+├── infrastructure/
+│   └── services/
+│       ├── token.service.ts             # JWT signAccess, signRefresh, verifyRefresh
+│       ├── password.service.ts          # hash, compare (bcrypt)
+│       └── auth-brute-force.service.ts  # IP bazlı başarısız giriş sayacı + kilitleme
+├── presentation/
+│   └── controllers/
 │       └── auth.controller.ts
-│
-├── decorators/                  # Custom Decorators
-├── guards/                      # Auth Guards
-├── strategies/                  # JWT Strategy
-├── auth.module.ts              # NestJS Module (Wiring)
-└── auth.service.ts            # Legacy Service (Backward Compatible)
+├── strategies/
+│   └── jwt.strategy.ts                  # Passport JWT + 1 dk user cache
+├── guards/
+│   ├── jwt-auth.guard.ts                # Global; @Public hariç JWT zorunlu
+│   ├── roles.guard.ts                   # @Roles
+│   ├── permissions.guard.ts             # Global; @Permissions veya ADMIN
+│   └── auth-rate-limit.guard.ts         # login/refresh: 10 req/dk per IP
+├── decorators/
+│   ├── current-user.decorator.ts
+│   ├── public.decorator.ts
+│   ├── roles.decorator.ts
+│   └── permissions.decorator.ts
+├── dto/
+│   ├── login.dto.ts
+│   └── refresh-token.dto.ts
+├── auth.service.ts                      # İş mantığı: login, refresh, logout, createSession
+├── auth.module.ts
+├── permission.enum.ts
+└── role-permissions.map.ts
 ```
 
-## 🏗️ Mimari Katmanlar
+## Akış Özeti
 
-### 1. Domain Layer (Core)
-**Sorumluluklar:**
-- Domain entities (UserSession)
+| Endpoint | Açıklama |
+|----------|----------|
+| `POST /auth/login` | Email + şifre → access + refresh token; rate limit + brute force uygulanır. |
+| `POST /auth/refresh` | Refresh token → yeni access + refresh (token rotation); eski refresh revoke. |
+| `POST /auth/logout` | JWT gerekli; kullanıcının tüm refresh token'ları revoke, audit log. |
 
-**Örnek:**
-```typescript
-// Domain Entity
-const session = UserSession.create({
-  userId: user.id,
-  email: user.email,
-  roles: customRoleNames,
-  permissions: payload.permissions,
-  accessToken,
-});
-```
+- **TokenService:** Access/refresh JWT üretimi ve doğrulama.
+- **PasswordService:** Şifre hash (user oluşturma) ve compare (login); Auth + Users modülü kullanır.
+- **AuthBruteForceService:** 5 başarısız giriş (IP) → 15 dk kilitleme (in-memory).
+- **AuthRateLimitGuard:** login ve refresh için 10 istek/dk per IP; 429 aşımda.
+- **JwtStrategy:** Her istekte token doğrulanır; kullanıcı bilgisi 1 dk TTL cache'ten veya DB'den.
+- **Auth logging:** Başarısız/başarılı login (maskeli email, IP), refresh kullanımı; PII maskeleme.
 
-### 2. Application Layer
-**Sorumluluklar:**
-- Use case orchestration
-- User validation
-- JWT token generation
-- Maintenance mode handling
+## Guard Sırası (Global)
 
-**Örnek:**
-```typescript
-// Application Service
-async login(dto: LoginDto): Promise<UserSession> {
-  const maintenanceMode = this.configService.getSystemSettingBoolean('MAINTENANCE_MODE', false);
-  if (maintenanceMode) {
-    // Check admin access
-  }
-  const validatedUser = await this.validateUser(dto.email, dto.password);
-  const payload = this.buildUserPayload(validatedUserWithRoles);
-  const accessToken = await this.jwtService.signAsync(payload);
-  return UserSession.create({ ... });
-}
-```
+1. **JwtAuthGuard** – @Public hariç JWT zorunlu.
+2. **PermissionsGuard** – @Permissions yoksa geçer; varsa ADMIN veya en az bir permission.
 
-### 3. Presentation Layer
-**Sorumluluklar:**
-- HTTP request/response handling
-- Request validation (DTOs)
-- Exception handling
+Controller'da `@UseGuards(AuthRateLimitGuard)` sadece login ve refresh üzerinde.
 
-## 🔄 Migration Status
+## Bağımlılıklar
 
-### ✅ Completed
-- Domain entity (UserSession)
-- Application service
-- Presentation controller
-- Module wiring
+- **UsersModule** (forwardRef), **PrismaModule**, **ConfigModule**, **SystemModule** (forwardRef), **JwtModule**.
+- **Exports:** AuthService, TokenService, PasswordService (Users modülü user oluşturmada PasswordService kullanır).
 
-## 📝 Notes
+## Production
 
-- **Backward Compatibility**: `AuthService` still exists for legacy code
-- **Migration**: Gradually migrate from legacy service to application service
-- **Special Features**: Maintenance mode, JWT strategy, guards
+- `markdowns/AUTH_MIMARI_PLAN.md` – Mimari plan ve uygulama durumu.
+- `markdowns/AUTH_PRODUCTION_CHECKLIST.md` – Canlıya almadan önce env, migration, HTTPS vb. kontrol listesi.

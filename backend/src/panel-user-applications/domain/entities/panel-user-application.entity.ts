@@ -82,7 +82,11 @@ export class PanelUserApplication {
     });
   }
 
-  approve(reviewedBy: string, reviewNote?: string | null, createdUserId?: string | null): void {
+  approve(
+    reviewedBy: string,
+    reviewNote?: string | null,
+    createdUserId?: string | null,
+  ): void {
     if (this._status !== PanelUserApplicationStatus.PENDING) {
       throw new Error('Sadece bekleyen başvurular onaylanabilir');
     }

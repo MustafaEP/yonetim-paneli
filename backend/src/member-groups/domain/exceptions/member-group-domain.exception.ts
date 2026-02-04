@@ -17,7 +17,9 @@ export class MemberGroupNameAlreadyExistsException extends Error {
 
 export class MemberGroupInUseException extends Error {
   constructor(public readonly memberCount: number) {
-    super(`Member group is used by ${memberCount} member(s). Cannot be deleted.`);
+    super(
+      `Member group is used by ${memberCount} member(s). Cannot be deleted.`,
+    );
     this.name = 'MemberGroupInUseException';
   }
 }

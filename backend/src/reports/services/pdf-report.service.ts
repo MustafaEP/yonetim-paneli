@@ -19,18 +19,27 @@ export class PdfReportService {
   ): Promise<void> {
     try {
       const htmlContent = this.generateReportHtml(data, reportType);
-      const pdfBuffer = await this.pdfService.generatePdfBufferFromHtml(htmlContent, {
-        format: 'A4',
-        printBackground: true,
-      });
+      const pdfBuffer = await this.pdfService.generatePdfBufferFromHtml(
+        htmlContent,
+        {
+          format: 'A4',
+          printBackground: true,
+        },
+      );
 
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}.pdf"`,
+      );
       res.send(pdfBuffer);
 
       this.logger.log(`PDF report exported: ${filename}.pdf`);
     } catch (error) {
-      this.logger.error(`Failed to export PDF report: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to export PDF report: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -38,7 +47,10 @@ export class PdfReportService {
   /**
    * Rapor verisini HTML'e dönüştür
    */
-  private generateReportHtml(data: any, reportType: 'global' | 'region' | 'dues' | 'member-status'): string {
+  private generateReportHtml(
+    data: any,
+    reportType: 'global' | 'region' | 'dues' | 'member-status',
+  ): string {
     const now = new Date();
     const dateStr = now.toLocaleDateString('tr-TR', {
       year: 'numeric',
@@ -196,7 +208,9 @@ export class PdfReportService {
           </div>
         </div>
       </div>
-      ${data.byProvince && data.byProvince.length > 0 ? `
+      ${
+        data.byProvince && data.byProvince.length > 0
+          ? `
         <div class="section">
           <div class="section-title">İl Bazlı Dağılım</div>
           <table>
@@ -207,17 +221,25 @@ export class PdfReportService {
               </tr>
             </thead>
             <tbody>
-              ${data.byProvince.map((item: any) => `
+              ${data.byProvince
+                .map(
+                  (item: any) => `
                 <tr>
                   <td>${item.provinceName}</td>
                   <td>${item.memberCount}</td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join('')}
             </tbody>
           </table>
         </div>
-      ` : ''}
-      ${data.byStatus && data.byStatus.length > 0 ? `
+      `
+          : ''
+      }
+      ${
+        data.byStatus && data.byStatus.length > 0
+          ? `
         <div class="section">
           <div class="section-title">Durum Bazlı Dağılım</div>
           <table>
@@ -228,16 +250,22 @@ export class PdfReportService {
               </tr>
             </thead>
             <tbody>
-              ${data.byStatus.map((item: any) => `
+              ${data.byStatus
+                .map(
+                  (item: any) => `
                 <tr>
                   <td>${this.translateStatus(item.status)}</td>
                   <td>${item.count}</td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join('')}
             </tbody>
           </table>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     `;
   }
 
@@ -259,7 +287,9 @@ export class PdfReportService {
               </tr>
             </thead>
             <tbody>
-              ${data.map((region: any) => `
+              ${data
+                .map(
+                  (region: any) => `
                 <tr>
                   <td>${region.regionName}</td>
                   <td>${region.memberCount}</td>
@@ -268,7 +298,9 @@ export class PdfReportService {
                   <td>${region.totalPayments.toLocaleString('tr-TR')} ₺</td>
                   <td>${region.totalDebt.toLocaleString('tr-TR')} ₺</td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join('')}
             </tbody>
           </table>
         </div>
@@ -328,7 +360,9 @@ export class PdfReportService {
           </div>
         </div>
       </div>
-      ${data.byMonth && data.byMonth.length > 0 ? `
+      ${
+        data.byMonth && data.byMonth.length > 0
+          ? `
         <div class="section">
           <div class="section-title">Aylık Ödemeler</div>
           <table>
@@ -341,18 +375,24 @@ export class PdfReportService {
               </tr>
             </thead>
             <tbody>
-              ${data.byMonth.map((item: any) => `
+              ${data.byMonth
+                .map(
+                  (item: any) => `
                 <tr>
                   <td>${item.year}</td>
                   <td>${item.month}</td>
                   <td>${item.total.toLocaleString('tr-TR')} ₺</td>
                   <td>${item.count}</td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join('')}
             </tbody>
           </table>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     `;
   }
 
@@ -369,13 +409,21 @@ export class PdfReportService {
             </tr>
           </thead>
           <tbody>
-            ${Array.isArray(data) ? data.map((item: any) => `
+            ${
+              Array.isArray(data)
+                ? data
+                    .map(
+                      (item: any) => `
               <tr>
                 <td>${this.translateStatus(item.status)}</td>
                 <td>${item.count}</td>
                 <td>${item.percentage.toFixed(2)}%</td>
               </tr>
-            `).join('') : ''}
+            `,
+                    )
+                    .join('')
+                : ''
+            }
           </tbody>
         </table>
       </div>
@@ -394,4 +442,3 @@ export class PdfReportService {
     return translations[status] || status;
   }
 }
-

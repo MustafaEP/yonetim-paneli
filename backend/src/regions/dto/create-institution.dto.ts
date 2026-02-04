@@ -6,12 +6,20 @@ export class CreateInstitutionDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'İl ID (opsiyonel)', example: 'province-uuid-123', required: false })
+  @ApiProperty({
+    description: 'İl ID (opsiyonel)',
+    example: 'province-uuid-123',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   provinceId?: string;
 
-  @ApiProperty({ description: 'İlçe ID', example: 'district-uuid-456', required: false })
+  @ApiProperty({
+    description: 'İlçe ID',
+    example: 'district-uuid-456',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   districtId?: string;
@@ -23,5 +31,3 @@ export class UpdateInstitutionDto extends CreateInstitutionDto {
   @IsOptional()
   isActive?: boolean;
 }
-
-

@@ -25,4 +25,3 @@ import { ContentValidationPipe } from './presentation/pipes/content-validation.p
   exports: [ContentService],
 })
 export class ContentModule {}
-

@@ -1,8 +1,8 @@
 /**
  * Member Creation Application Service
- * 
+ *
  * Use case: Member creation işlemini orchestrate eder
- * 
+ *
  * Sorumluluklar:
  * - Transaction yönetimi
  * - Domain Service çağırma
@@ -10,8 +10,21 @@
  * - Repository koordinasyonu
  * - Re-registration (aynı TC ile yeniden üyelik) akışı
  */
-import { Injectable, BadRequestException, Logger, Inject, NotFoundException } from '@nestjs/common';
-import { Member, CreateMemberData, MemberSourceEnum, GenderEnum, EducationStatusEnum, UpdateMemberData } from '../../domain/entities/member.entity';
+import {
+  Injectable,
+  BadRequestException,
+  Logger,
+  Inject,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Member,
+  CreateMemberData,
+  MemberSourceEnum,
+  GenderEnum,
+  EducationStatusEnum,
+  UpdateMemberData,
+} from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
@@ -21,7 +34,10 @@ import { MemberScopeService } from '../../member-scope.service';
 import { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
 import { MemberSource } from '@prisma/client';
 import { NationalId } from '../../domain/value-objects/national-id.vo';
-import { MemberStatus, MemberStatusEnum } from '../../domain/value-objects/member-status.vo';
+import {
+  MemberStatus,
+  MemberStatusEnum,
+} from '../../domain/value-objects/member-status.vo';
 
 export interface CreateMemberCommand {
   dto: CreateMemberApplicationDto;
@@ -46,7 +62,7 @@ export class MemberCreationApplicationService {
 
   /**
    * Use case: Member başvurusu oluştur
-   * 
+   *
    * Orchestration:
    * 1. Source validation (Domain Service)
    * 2. Re-registration validation (Domain Service)
@@ -66,14 +82,20 @@ export class MemberCreationApplicationService {
     await this.registrationDomainService.validateSource(source);
 
     // 2. Re-registration validation
-    const allowReRegistration = await this.registrationDomainService.configAdapter.getAllowReRegistration();
+    const allowReRegistration =
+      await this.registrationDomainService.configAdapter.getAllowReRegistration();
     if (!allowReRegistration && previousCancelledMemberId) {
-      throw new BadRequestException('Yeniden kayıt şu anda devre dışı bırakılmıştır');
+      throw new BadRequestException(
+        'Yeniden kayıt şu anda devre dışı bırakılmıştır',
+      );
     }
 
     const nationalId = NationalId.create(dto.nationalId);
     if (!allowReRegistration && user) {
-      await this.registrationDomainService.validateReRegistration(nationalId, allowReRegistration);
+      await this.registrationDomainService.validateReRegistration(
+        nationalId,
+        allowReRegistration,
+      );
     }
 
     // 3. Scope resolution
@@ -82,7 +104,7 @@ export class MemberCreationApplicationService {
 
     if (user) {
       const scopeIds = await this.scopeService.getUserScopeIds(user);
-      
+
       if (scopeIds.provinceId) {
         provinceId = scopeIds.provinceId;
       } else if (dto.provinceId) {
@@ -96,10 +118,18 @@ export class MemberCreationApplicationService {
       }
 
       // Scope validation
-      if (scopeIds.provinceId && dto.provinceId && dto.provinceId !== scopeIds.provinceId) {
+      if (
+        scopeIds.provinceId &&
+        dto.provinceId &&
+        dto.provinceId !== scopeIds.provinceId
+      ) {
         throw new BadRequestException('Seçilen il, yetkiniz dahilinde değil');
       }
-      if (scopeIds.districtId && dto.districtId && dto.districtId !== scopeIds.districtId) {
+      if (
+        scopeIds.districtId &&
+        dto.districtId &&
+        dto.districtId !== scopeIds.districtId
+      ) {
         throw new BadRequestException('Seçilen ilçe, yetkiniz dahilinde değil');
       }
     } else {
@@ -182,11 +212,14 @@ export class MemberCreationApplicationService {
 
     // 6. Registration number generation (Domain Service)
     if (!createData.registrationNumber) {
-      createData.registrationNumber = await this.registrationDomainService.generateRegistrationNumber() || undefined;
+      createData.registrationNumber =
+        (await this.registrationDomainService.generateRegistrationNumber()) ||
+        undefined;
     }
 
     // 6b. Aynı TC ile mevcut üye kontrolü – re-registration veya hata
-    const existingMember = await this.memberRepository.findByNationalId(nationalId);
+    const existingMember =
+      await this.memberRepository.findByNationalId(nationalId);
     if (existingMember) {
       const existingStatus = existingMember.status.toString();
       const cancelledStatuses = ['RESIGNED', 'EXPELLED', 'INACTIVE'];
@@ -207,9 +240,15 @@ export class MemberCreationApplicationService {
     }
 
     // 8. Initial status determination (Domain Service)
-    const defaultStatus = await this.registrationDomainService.configAdapter.getDefaultStatus();
-    const autoApprove = await this.registrationDomainService.configAdapter.getAutoApprove();
-    const statusInfo = await this.registrationDomainService.determineInitialStatus(defaultStatus, autoApprove);
+    const defaultStatus =
+      await this.registrationDomainService.configAdapter.getDefaultStatus();
+    const autoApprove =
+      await this.registrationDomainService.configAdapter.getAutoApprove();
+    const statusInfo =
+      await this.registrationDomainService.determineInitialStatus(
+        defaultStatus,
+        autoApprove,
+      );
 
     // 9. Entity oluştur (Member.create() PENDING oluşturur, status'ü sonra set edeceğiz)
     const member = Member.create(createData);
@@ -249,11 +288,16 @@ export class MemberCreationApplicationService {
    * Yeniden üyelik: iptal edilmiş üyeyi başvuru (PENDING) olarak güncelle.
    * Üye numarası ve onay alanları başvuruyu onaylayan kişi tarafından doldurulacak; dönem kaydı onay sırasında oluşturulur.
    */
-  private async reRegisterMember(createData: CreateMemberData, createdByUserId?: string): Promise<Member> {
+  private async reRegisterMember(
+    createData: CreateMemberData,
+    createdByUserId?: string,
+  ): Promise<Member> {
     const memberId = createData.previousCancelledMemberId!;
     const member = await this.memberRepository.findById(memberId);
     if (!member) {
-      throw new NotFoundException(`İptal edilmiş üye kaydı bulunamadı: ${memberId}`);
+      throw new NotFoundException(
+        `İptal edilmiş üye kaydı bulunamadı: ${memberId}`,
+      );
     }
 
     const updateData: UpdateMemberData = {

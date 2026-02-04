@@ -1,6 +1,6 @@
 /**
  * TevkifatFile Domain Entity
- * 
+ *
  * Domain rules:
  * - Cannot upload duplicate file for same center/month/year/positionTitle
  * - Can only approve/reject pending files

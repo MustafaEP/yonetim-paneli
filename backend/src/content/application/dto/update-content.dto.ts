@@ -13,7 +13,11 @@ export class UpdateContentDto {
   @IsOptional()
   content?: string;
 
-  @ApiProperty({ description: 'İçerik tipi', enum: ContentType, required: false })
+  @ApiProperty({
+    description: 'İçerik tipi',
+    enum: ContentType,
+    required: false,
+  })
   @IsEnum(ContentType)
   @IsOptional()
   type?: ContentType;

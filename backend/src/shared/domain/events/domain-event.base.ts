@@ -1,8 +1,8 @@
 /**
  * Domain Event Base
- * 
+ *
  * Shared Domain: Domain events için base class
- * 
+ *
  * Domain Events: Domain içinde gerçekleşen önemli olayları temsil eder.
  * Örnek: MemberApprovedEvent, MemberActivatedEvent, etc.
  */

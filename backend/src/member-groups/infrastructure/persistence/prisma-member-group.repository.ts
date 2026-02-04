@@ -28,10 +28,7 @@ export class PrismaMemberGroupRepository implements MemberGroupRepository {
     const where = includeInactive ? {} : { isActive: true };
     const data = await this.prisma.memberGroup.findMany({
       where,
-      orderBy: [
-        { order: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
     });
     return data.map((item) => MemberGroup.fromPersistence(item));
   }

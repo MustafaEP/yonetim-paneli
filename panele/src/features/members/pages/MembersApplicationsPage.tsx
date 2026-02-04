@@ -42,6 +42,7 @@ import ConfirmDialog from '../../../shared/components/common/ConfirmDialog';
 import MemberApprovalDialog, { type ApproveFormData } from '../components/MemberApprovalDialog';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const MembersApplicationsPage: React.FC = () => {
   const theme = useTheme();
@@ -519,12 +520,7 @@ const MembersApplicationsPage: React.FC = () => {
   ];
 
   return (
-    <Box
-      sx={{
-        pb: 4,
-      }}
-    >
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<AssignmentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Üye Başvuruları"
@@ -588,9 +584,9 @@ const MembersApplicationsPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
           background: '#fff',
         }}
@@ -1119,7 +1115,7 @@ const MembersApplicationsPage: React.FC = () => {
           loading={!!processingId && processingId === confirmDialog.memberId}
         />
       )}
-    </Box>
+    </PageLayout>
   );
 };
 

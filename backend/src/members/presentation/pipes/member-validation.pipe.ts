@@ -1,13 +1,18 @@
 /**
  * Member Validation Pipe
- * 
+ *
  * Presentation Layer: Request validation
- * 
+ *
  * Sorumluluklar:
  * - DTO validation (class-validator ile)
  * - Custom business rule validation (opsiyonel)
  */
-import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+import {
+  PipeTransform,
+  Injectable,
+  ArgumentMetadata,
+  BadRequestException,
+} from '@nestjs/common';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 
@@ -22,10 +27,10 @@ export class MemberValidationPipe implements PipeTransform<any> {
     const errors = await validate(object);
 
     if (errors.length > 0) {
-      const messages = errors.map(err => 
-        Object.values(err.constraints || {}).join(', ')
-      ).join('; ');
-      
+      const messages = errors
+        .map((err) => Object.values(err.constraints || {}).join(', '))
+        .join('; ');
+
       throw new BadRequestException(`Validation failed: ${messages}`);
     }
 

@@ -1,8 +1,8 @@
 /**
  * Member Registration Domain Service
- * 
+ *
  * Complex business logic that requires multiple entities or external dependencies.
- * 
+ *
  * Sorumluluklar:
  * - Re-registration validation (cancelled member check)
  * - Registration number generation (config-based)
@@ -47,7 +47,7 @@ export class MemberRegistrationDomainService {
 
   /**
    * Business rule: Re-registration validation
-   * 
+   *
    * Domain rule: Eğer yeniden kayıt kapalıysa ve iptal edilmiş üye varsa, yeni kayıt oluşturulamaz
    */
   async validateReRegistration(
@@ -55,10 +55,11 @@ export class MemberRegistrationDomainService {
     allowReRegistration: boolean,
   ): Promise<void> {
     if (!allowReRegistration) {
-      const cancelledMember = await this.memberRepository.findCancelledByNationalId(nationalId);
+      const cancelledMember =
+        await this.memberRepository.findCancelledByNationalId(nationalId);
       if (cancelledMember) {
         throw new BadRequestException(
-          'Bu TC kimlik numarasına sahip iptal edilmiş bir üye bulunmaktadır ve yeniden kayıt şu anda devre dışı bırakılmıştır'
+          'Bu TC kimlik numarasına sahip iptal edilmiş bir üye bulunmaktadır ve yeniden kayıt şu anda devre dışı bırakılmıştır',
         );
       }
     }
@@ -66,12 +67,12 @@ export class MemberRegistrationDomainService {
 
   /**
    * Business rule: Source validation
-   * 
+   *
    * Domain rule: Sistem ayarlarına göre başvuru kaynağı kontrolü
    */
   async validateSource(source: MemberSourceEnum): Promise<void> {
     const allowedSources = await this.configAdapter.getAllowedSources();
-    
+
     // Eğer hiçbir kaynak belirtilmemişse, tüm kaynaklar izinlidir
     if (allowedSources.length === 0) {
       return;
@@ -84,11 +85,12 @@ export class MemberRegistrationDomainService {
 
   /**
    * Business rule: Registration number generation
-   * 
+   *
    * Domain rule: Sistem ayarlarına göre kayıt numarası oluştur
    */
   async generateRegistrationNumber(): Promise<string | null> {
-    const autoGenerate = await this.configAdapter.getAutoGenerateRegistrationNumber();
+    const autoGenerate =
+      await this.configAdapter.getAutoGenerateRegistrationNumber();
     if (!autoGenerate) {
       return null; // Otomatik oluşturma kapalıysa null döndür
     }
@@ -108,7 +110,9 @@ export class MemberRegistrationDomainService {
         expectedPattern = `^${currentYear}-\\d+$`;
         break;
       case 'PREFIX_SEQUENTIAL':
-        expectedPattern = prefix ? `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+$` : '^\\d+$';
+        expectedPattern = prefix
+          ? `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+$`
+          : '^\\d+$';
         break;
       case 'PREFIX_YEAR_SEQUENTIAL':
         expectedPattern = prefix
@@ -146,7 +150,9 @@ export class MemberRegistrationDomainService {
       case 'YEAR_SEQUENTIAL':
         return `${currentYear}-${String(nextNumber).padStart(3, '0')}`;
       case 'PREFIX_SEQUENTIAL':
-        return prefix ? `${prefix}-${String(nextNumber).padStart(3, '0')}` : `${nextNumber}`;
+        return prefix
+          ? `${prefix}-${String(nextNumber).padStart(3, '0')}`
+          : `${nextNumber}`;
       case 'PREFIX_YEAR_SEQUENTIAL':
         return prefix
           ? `${prefix}-${currentYear}-${String(nextNumber).padStart(3, '0')}`
@@ -158,7 +164,7 @@ export class MemberRegistrationDomainService {
 
   /**
    * Business rule: Required fields validation (config-based)
-   * 
+   *
    * Domain rule: Sistem ayarlarına göre zorunlu alanları kontrol et
    */
   async validateRequiredFields(data: CreateMemberData): Promise<void> {
@@ -167,8 +173,12 @@ export class MemberRegistrationDomainService {
       throw new BadRequestException('E-posta alanı zorunludur');
     }
 
-    const requireInstitutionRegNo = await this.configAdapter.getRequireInstitutionRegNo();
-    if (requireInstitutionRegNo && (!data.institutionRegNo || data.institutionRegNo.trim() === '')) {
+    const requireInstitutionRegNo =
+      await this.configAdapter.getRequireInstitutionRegNo();
+    if (
+      requireInstitutionRegNo &&
+      (!data.institutionRegNo || data.institutionRegNo.trim() === '')
+    ) {
       throw new BadRequestException('Kurum sicil no alanı zorunludur');
     }
 
@@ -177,15 +187,21 @@ export class MemberRegistrationDomainService {
       throw new BadRequestException('Görev yaptığı birim alanı zorunludur');
     }
 
-    const requireBoardDecision = await this.configAdapter.getRequireBoardDecision();
-    if (requireBoardDecision && (!data.boardDecisionDate || !data.boardDecisionBookNo)) {
-      throw new BadRequestException('Yönetim kurulu karar tarihi ve defter no zorunludur');
+    const requireBoardDecision =
+      await this.configAdapter.getRequireBoardDecision();
+    if (
+      requireBoardDecision &&
+      (!data.boardDecisionDate || !data.boardDecisionBookNo)
+    ) {
+      throw new BadRequestException(
+        'Yönetim kurulu karar tarihi ve defter no zorunludur',
+      );
     }
   }
 
   /**
    * Business rule: Determine initial status
-   * 
+   *
    * Domain rule: Sistem ayarlarına göre başlangıç durumu belirle
    */
   async determineInitialStatus(
@@ -193,8 +209,8 @@ export class MemberRegistrationDomainService {
     autoApprove: boolean,
   ): Promise<{ status: string; approvedByUserId?: string; approvedAt?: Date }> {
     let initialStatus = defaultStatus;
-    let approvedByUserId: string | undefined = undefined;
-    let approvedAt: Date | undefined = undefined;
+    const approvedByUserId: string | undefined = undefined;
+    const approvedAt: Date | undefined = undefined;
 
     if (autoApprove && defaultStatus === 'PENDING') {
       // Otomatik onay aktifse ve varsayılan durum PENDING ise, ACTIVE yap

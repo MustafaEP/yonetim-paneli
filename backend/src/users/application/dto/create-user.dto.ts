@@ -35,7 +35,7 @@ export class CreateUserDto {
   lastName: string;
 
   @ApiProperty({
-    description: 'Kullanıcı özel rol ID\'leri',
+    description: "Kullanıcı özel rol ID'leri",
     example: ['role-id-1', 'role-id-2'],
     type: [String],
     required: false,
@@ -43,7 +43,8 @@ export class CreateUserDto {
   customRoleIds?: string[];
 
   @ApiPropertyOptional({
-    description: 'Yetki alanları (çoklu il/ilçe seçimi - hasScopeRestriction olan roller için zorunlu)',
+    description:
+      'Yetki alanları (çoklu il/ilçe seçimi - hasScopeRestriction olan roller için zorunlu)',
     type: [RoleScopeDto],
     example: [
       { provinceId: 'province-uuid-1' },
@@ -57,7 +58,8 @@ export class CreateUserDto {
   scopes?: RoleScopeDto[];
 
   @ApiPropertyOptional({
-    description: 'İl ID (geriye uyumluluk için - scopes kullanılması tercih edilir)',
+    description:
+      'İl ID (geriye uyumluluk için - scopes kullanılması tercih edilir)',
     example: 'province-uuid-123',
     type: String,
     required: false,
@@ -68,7 +70,8 @@ export class CreateUserDto {
   provinceId?: string;
 
   @ApiPropertyOptional({
-    description: 'İlçe ID (geriye uyumluluk için - scopes kullanılması tercih edilir)',
+    description:
+      'İlçe ID (geriye uyumluluk için - scopes kullanılması tercih edilir)',
     example: 'district-uuid-123',
     type: String,
     required: false,
@@ -81,7 +84,7 @@ export class CreateUserDto {
 
 export class UpdateUserRolesDto {
   @ApiProperty({
-    description: 'Kullanıcı özel rol ID\'leri',
+    description: "Kullanıcı özel rol ID'leri",
     example: ['role-id-1', 'role-id-2'],
     type: [String],
   })

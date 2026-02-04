@@ -1,6 +1,6 @@
 /**
  * Role Creation Application Service
- * 
+ *
  * Orchestrates role creation use case.
  */
 import { Injectable, Logger, Inject } from '@nestjs/common';

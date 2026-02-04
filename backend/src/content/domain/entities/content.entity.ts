@@ -52,7 +52,9 @@ export class Content {
     content._type = data.type;
     content._status = data.status;
     content._authorId = data.authorId;
-    content._publishedAt = data.publishedAt ? new Date(data.publishedAt) : undefined;
+    content._publishedAt = data.publishedAt
+      ? new Date(data.publishedAt)
+      : undefined;
     content._createdAt = new Date(data.createdAt);
     content._updatedAt = new Date(data.updatedAt);
     return content;

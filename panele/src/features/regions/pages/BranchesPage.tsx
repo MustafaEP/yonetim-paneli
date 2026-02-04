@@ -53,6 +53,7 @@ import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import type { UserListItem } from '../../../types/user';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const BranchesPage: React.FC = () => {
   const theme = useTheme();
@@ -377,14 +378,7 @@ const BranchesPage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
+    <PageLayout>
       {/* Modern Header */}
       <PageHeader
         icon={<BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
@@ -423,17 +417,14 @@ const BranchesPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
-            transform: 'translateY(-2px)',
-          }
+          background: '#fff',
         }}
       >
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -449,33 +440,48 @@ const BranchesPage: React.FC = () => {
           sx={{
             border: 'none',
             '& .MuiDataGrid-cell': {
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+              py: 2,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-start',
             },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.04),
-              borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+              borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
               borderRadius: 0,
+              minHeight: '56px !important',
+              maxHeight: '56px !important',
             },
             '& .MuiDataGrid-columnHeaderTitle': {
               fontWeight: 700,
-              fontSize: '0.875rem',
+              fontSize: '0.9rem',
+            },
+            '& .MuiDataGrid-columnHeaderTitleContainer': {
+              justifyContent: 'center',
             },
             '& .MuiDataGrid-row': {
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.2s ease',
               '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
+              },
+              '&:nth-of-type(even)': {
+                backgroundColor: alpha(theme.palette.grey[50], 0.3),
               },
             },
             '& .MuiDataGrid-footerContainer': {
-              borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              backgroundColor: alpha(theme.palette.background.default, 0.5),
+              borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+              backgroundColor: alpha(theme.palette.grey[50], 0.5),
+              minHeight: '52px',
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              minHeight: '200px',
             },
           }}
         />
+        </Box>
       </Card>
 
       {/* Create/Edit Dialog */}
@@ -943,7 +949,7 @@ const BranchesPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

@@ -31,7 +31,11 @@ export class MemberHistoryService {
 
     // Silinen alanları bul
     Object.keys(oldData).forEach((key) => {
-      if (!(key in newData) && oldData[key] !== null && oldData[key] !== undefined) {
+      if (
+        !(key in newData) &&
+        oldData[key] !== null &&
+        oldData[key] !== undefined
+      ) {
         deletedFields.push(key);
       }
     });
@@ -45,7 +49,8 @@ export class MemberHistoryService {
         memberId,
         action: 'UPDATE',
         changedBy,
-        updatedFields: Object.keys(updatedFields).length > 0 ? updatedFields : undefined,
+        updatedFields:
+          Object.keys(updatedFields).length > 0 ? updatedFields : undefined,
         deletedFields: deletedFields.length > 0 ? deletedFields : undefined,
         ipAddress,
         userAgent,

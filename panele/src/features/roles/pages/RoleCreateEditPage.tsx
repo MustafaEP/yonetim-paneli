@@ -60,6 +60,7 @@ import {
 } from '../../../shared/utils/permissionDependencies';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
@@ -255,8 +256,7 @@ const RoleCreateEditPage: React.FC = () => {
   };
 
   return (
-    <Box>
-      {/* Başlık Bölümü */}
+    <PageLayout>
       <Box sx={{ mb: 2 }}>
         <Button
           startIcon={<ArrowBackIcon />}
@@ -311,9 +311,9 @@ const RoleCreateEditPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           mb: 3,
           overflow: 'hidden',
         }}
@@ -407,10 +407,11 @@ const RoleCreateEditPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
+          background: '#fff',
         }}
       >
         <Box
@@ -698,9 +699,9 @@ const RoleCreateEditPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           mt: 3,
           mb: 3,
           overflow: 'hidden',
@@ -803,7 +804,7 @@ const RoleCreateEditPage: React.FC = () => {
           {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </Button>
       </Box>
-    </Box>
+    </PageLayout>
   );
 };
 

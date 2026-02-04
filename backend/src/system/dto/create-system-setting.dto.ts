@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { SystemSettingCategory } from '@prisma/client';
 
@@ -27,4 +33,3 @@ export class CreateSystemSettingDto {
   @IsOptional()
   isEditable?: boolean;
 }
-

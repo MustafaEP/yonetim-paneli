@@ -45,6 +45,7 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const ContentListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -313,7 +314,7 @@ const ContentListPage: React.FC = () => {
   );
 
   return (
-    <Box>
+    <PageLayout>
       <PageHeader
         icon={<ArticleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="İçerik Yönetimi"
@@ -344,12 +345,21 @@ const ContentListPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          overflow: 'hidden',
+          background: '#fff',
         }}
       >
-        <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+        {/* Filtre Bölümü */}
+        <Box
+          sx={{
+            p: { xs: 3, sm: 4 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
+          }}
+        >
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <FilterListIcon sx={{ color: theme.palette.text.secondary }} />
             <FormControl size="small" sx={{ minWidth: 150 }}>
@@ -385,6 +395,8 @@ const ContentListPage: React.FC = () => {
           </Box>
         </Box>
 
+        {/* DataGrid */}
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -400,15 +412,42 @@ const ContentListPage: React.FC = () => {
           }}
           sx={{
             border: 'none',
+            borderRadius: 3,
+            overflow: 'hidden',
             '& .MuiDataGrid-cell': {
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+              py: 2,
+              display: 'flex',
+              alignItems: 'center',
             },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.04),
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+              borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+              minHeight: '56px !important',
+              maxHeight: '56px !important',
+            },
+            '& .MuiDataGrid-columnHeaderTitle': {
+              fontWeight: 700,
+              fontSize: '0.9rem',
+            },
+            '& .MuiDataGrid-row': {
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
+              },
+              '&:nth-of-type(even)': {
+                backgroundColor: alpha(theme.palette.grey[50], 0.3),
+              },
+            },
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+              backgroundColor: alpha(theme.palette.grey[50], 0.5),
+              minHeight: '52px',
             },
           }}
         />
+        </Box>
       </Card>
 
       {/* Create/Edit Dialog */}
@@ -511,7 +550,7 @@ const ContentListPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

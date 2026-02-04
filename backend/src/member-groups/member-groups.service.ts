@@ -23,10 +23,7 @@ export class MemberGroupsService {
       where: {
         isActive: true,
       },
-      orderBy: [
-        { order: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -35,10 +32,7 @@ export class MemberGroupsService {
    */
   async listAllMemberGroups() {
     return this.prisma.memberGroup.findMany({
-      orderBy: [
-        { order: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -61,29 +55,39 @@ export class MemberGroupsService {
    * Üye grubu oluştur
    */
   async createMemberGroup(dto: CreateMemberGroupDto) {
-    const memberGroup = await this.memberGroupApplicationService.createMemberGroup({ dto });
-    return await this.prisma.memberGroup.findUnique({ where: { id: memberGroup.id } });
+    const memberGroup =
+      await this.memberGroupApplicationService.createMemberGroup({ dto });
+    return await this.prisma.memberGroup.findUnique({
+      where: { id: memberGroup.id },
+    });
   }
 
   async updateMemberGroup(id: string, dto: UpdateMemberGroupDto) {
-    const memberGroup = await this.memberGroupApplicationService.updateMemberGroup({
-      memberGroupId: id,
-      dto,
+    const memberGroup =
+      await this.memberGroupApplicationService.updateMemberGroup({
+        memberGroupId: id,
+        dto,
+      });
+    return await this.prisma.memberGroup.findUnique({
+      where: { id: memberGroup.id },
     });
-    return await this.prisma.memberGroup.findUnique({ where: { id: memberGroup.id } });
   }
 
   async moveMemberGroup(id: string, direction: 'up' | 'down') {
-    const memberGroup = await this.memberGroupApplicationService.moveMemberGroup({
-      memberGroupId: id,
-      direction,
+    const memberGroup =
+      await this.memberGroupApplicationService.moveMemberGroup({
+        memberGroupId: id,
+        direction,
+      });
+    return await this.prisma.memberGroup.findUnique({
+      where: { id: memberGroup.id },
     });
-    return await this.prisma.memberGroup.findUnique({ where: { id: memberGroup.id } });
   }
 
   async deleteMemberGroup(id: string) {
-    await this.memberGroupApplicationService.deleteMemberGroup({ memberGroupId: id });
+    await this.memberGroupApplicationService.deleteMemberGroup({
+      memberGroupId: id,
+    });
     return await this.prisma.memberGroup.findUnique({ where: { id } });
   }
 }
-

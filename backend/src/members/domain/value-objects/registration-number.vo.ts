@@ -1,6 +1,6 @@
 /**
  * RegistrationNumber Value Object
- * 
+ *
  * Domain rule: Üye kayıt numarası validation ve business rule'ları
  */
 export class RegistrationNumber {
@@ -12,7 +12,7 @@ export class RegistrationNumber {
     }
 
     const trimmed = value.trim();
-    
+
     // Business rule: Geçici numaralar (TEMP- ile başlayanlar) geçersiz
     if (trimmed.startsWith('TEMP-')) {
       throw new Error('Geçici üye numarası kullanılamaz');
@@ -21,7 +21,9 @@ export class RegistrationNumber {
     return new RegistrationNumber(trimmed);
   }
 
-  static fromNullable(value: string | null | undefined): RegistrationNumber | null {
+  static fromNullable(
+    value: string | null | undefined,
+  ): RegistrationNumber | null {
     if (!value) {
       return null;
     }

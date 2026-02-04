@@ -1,6 +1,6 @@
 /**
  * Region Domain Exceptions
- * 
+ *
  * Domain-specific exceptions for Region entities business rules.
  */
 export class ProvinceNotFoundException extends Error {
@@ -61,7 +61,9 @@ export class InvalidScopeException extends Error {
 
 export class LastBranchCannotBeDeletedException extends Error {
   constructor() {
-    super('System must have at least one branch. Cannot delete the last branch.');
+    super(
+      'System must have at least one branch. Cannot delete the last branch.',
+    );
     this.name = 'LastBranchCannotBeDeletedException';
   }
 }

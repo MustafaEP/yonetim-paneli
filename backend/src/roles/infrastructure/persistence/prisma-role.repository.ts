@@ -1,6 +1,6 @@
 /**
  * Prisma Role Repository Implementation
- * 
+ *
  * Infrastructure layer: Implements Role repository interface.
  */
 import { Injectable } from '@nestjs/common';

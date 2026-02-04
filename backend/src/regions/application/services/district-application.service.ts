@@ -1,6 +1,6 @@
 /**
  * District Application Service
- * 
+ *
  * Orchestrates district operations.
  */
 import { Injectable, Logger, Inject } from '@nestjs/common';
@@ -28,7 +28,10 @@ export class DistrictApplicationService {
 
   async createDistrict(command: CreateDistrictCommand): Promise<District> {
     const { dto } = command;
-    const district = District.create({ name: dto.name, provinceId: dto.provinceId }, '');
+    const district = District.create(
+      { name: dto.name, provinceId: dto.provinceId },
+      '',
+    );
     const created = await this.districtRepository.create(district);
     this.logger.log(`District created: ${created.id} (${created.name})`);
     return created;

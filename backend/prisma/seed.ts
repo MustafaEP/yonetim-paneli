@@ -714,16 +714,16 @@ async function main() {
   memberRegistrationCounter++;
   console.log(`   - Özel üye: ${burcuMember.firstName} ${burcuMember.lastName} (Haziran 2025'te kayıt)`);
 
-  // 99 üye daha oluştur (toplam 100 üye)
-  // Status dağılımı: ACTIVE %60, PENDING %15, INACTIVE %10, REJECTED %8, RESIGNED %4, EXPELLED %3
-  const totalMembersToCreate = 99;
+  // Her status'tan en az 20 üye (7 status × 21 = 147; Burcu atlanırsa bile her status'tan 20+ kalır)
+  const totalMembersToCreate = 147;
   const statusDistribution = [
-    { status: MemberStatus.ACTIVE, count: 60 },
-    { status: MemberStatus.PENDING, count: 15 },
-    { status: MemberStatus.INACTIVE, count: 10 },
-    { status: MemberStatus.REJECTED, count: 8 },
-    { status: MemberStatus.RESIGNED, count: 4 },
-    { status: MemberStatus.EXPELLED, count: 2 },
+    { status: MemberStatus.PENDING, count: 21 },
+    { status: MemberStatus.APPROVED, count: 21 },
+    { status: MemberStatus.ACTIVE, count: 21 },
+    { status: MemberStatus.INACTIVE, count: 21 },
+    { status: MemberStatus.REJECTED, count: 21 },
+    { status: MemberStatus.RESIGNED, count: 21 },
+    { status: MemberStatus.EXPELLED, count: 21 },
   ];
   
   // Status listesi oluştur
@@ -788,8 +788,8 @@ async function main() {
     let cancellationReason: string | null = null;
     let cancelledByUserId: string | null = null;
     
-    if (status === MemberStatus.ACTIVE) {
-      // Aktif üyeler için onay tarihi
+    if (status === MemberStatus.ACTIVE || status === MemberStatus.APPROVED) {
+      // Aktif veya onaylı üyeler için onay tarihi
       const isThisMonthNew = Math.random() < 0.15; // %15 şansla bu ay içinde onaylanmış
       if (isThisMonthNew) {
         // Bu ay içinde onaylanmış
@@ -893,7 +893,7 @@ async function main() {
           gender: generateGender(firstName),
           educationStatus: generateEducationStatus(),
           createdByUserId: users[Math.floor(Math.random() * users.length)],
-          approvedByUserId: status === MemberStatus.ACTIVE 
+          approvedByUserId: (status === MemberStatus.ACTIVE || status === MemberStatus.APPROVED)
             ? users[Math.floor(Math.random() * users.length)]
             : (status === MemberStatus.REJECTED ? users[Math.floor(Math.random() * users.length)] : null),
           approvedAt,

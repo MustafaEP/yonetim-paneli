@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './presentation/controllers/users.controller';
 import { UserCreationApplicationService } from './application/services/user-creation-application.service';
@@ -9,8 +9,10 @@ import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.r
 import { UserRepository } from './domain/repositories/user.repository.interface';
 import { UserExceptionFilter } from './presentation/filters/user-exception.filter';
 import { UserValidationPipe } from './presentation/pipes/user-validation.pipe';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
+  imports: [forwardRef(() => AuthModule)],
   providers: [
     UsersService,
     UserCreationApplicationService,

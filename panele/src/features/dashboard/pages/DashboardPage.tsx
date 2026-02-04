@@ -51,6 +51,7 @@ import { getPayments } from '../../payments/services/paymentsApi';
 import type { MemberListItem } from '../../../types/member';
 import type { MemberPayment } from '../../payments/services/paymentsApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -271,8 +272,7 @@ const DashboardPage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ pb: 4 }}>
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<TrendingUpIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Dashboard"
@@ -294,7 +294,7 @@ const DashboardPage: React.FC = () => {
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 position: 'relative',
                 overflow: 'hidden',
-                borderRadius: 3,
+                borderRadius: 4,
                 background: '#fff',
                 border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 '&:hover': {
@@ -660,9 +660,9 @@ const DashboardPage: React.FC = () => {
           <Grid item xs={12} lg={6}>
             <Card 
               sx={{ 
-                borderRadius: 3, 
+                borderRadius: 4, 
                 height: '100%',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.08)}`,
               }}
             >
@@ -764,6 +764,7 @@ const DashboardPage: React.FC = () => {
                               )}
                             </Stack>
                           }
+                          secondaryTypographyProps={{ component: 'div' }}
                         />
                       </ListItem>
                     ))}
@@ -789,9 +790,9 @@ const DashboardPage: React.FC = () => {
           <Grid item xs={12} lg={6}>
             <Card 
               sx={{ 
-                borderRadius: 3, 
+                borderRadius: 4, 
                 height: '100%',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.08)}`,
               }}
             >
@@ -898,6 +899,8 @@ const DashboardPage: React.FC = () => {
                                 </Typography>
                               </Stack>
                             }
+                            primaryTypographyProps={{ component: 'div' }}
+                            secondaryTypographyProps={{ component: 'div' }}
                           />
                           {payment.isApproved ? (
                             <Chip 
@@ -942,9 +945,9 @@ const DashboardPage: React.FC = () => {
           <Grid item xs={12} md={6}>
             <Card 
               sx={{ 
-                borderRadius: 3, 
+                borderRadius: 4, 
                 height: '100%',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 boxShadow: `0 2px 8px ${alpha(theme.palette.info.main, 0.08)}`,
               }}
             >
@@ -1055,9 +1058,9 @@ const DashboardPage: React.FC = () => {
           <Grid item xs={12} md={6}>
             <Card 
               sx={{ 
-                borderRadius: 3, 
+                borderRadius: 4, 
                 height: '100%',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.08)}`,
               }}
             >
@@ -1192,9 +1195,9 @@ const DashboardPage: React.FC = () => {
           <Grid item xs={12} md={6}>
             <Card 
               sx={{ 
-                borderRadius: 3, 
+                borderRadius: 4, 
                 height: '100%',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.08)}`,
               }}
             >
@@ -1304,9 +1307,9 @@ const DashboardPage: React.FC = () => {
           <Grid item xs={12} md={6}>
             <Card 
               sx={{ 
-                borderRadius: 3, 
+                borderRadius: 4, 
                 height: '100%',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 boxShadow: `0 2px 8px ${alpha(theme.palette.info.main, 0.08)}`,
               }}
             >
@@ -1408,7 +1411,7 @@ const DashboardPage: React.FC = () => {
           </Grid>
         )}
       </Grid>
-    </Box>
+    </PageLayout>
   );
 };
 

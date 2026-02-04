@@ -1,7 +1,10 @@
 /**
  * PanelUserApplication Repository Interface (Port)
  */
-import { PanelUserApplication, PanelUserApplicationStatus } from '../entities/panel-user-application.entity';
+import {
+  PanelUserApplication,
+  PanelUserApplicationStatus,
+} from '../entities/panel-user-application.entity';
 
 export interface PanelUserApplicationRepository {
   findById(id: string): Promise<PanelUserApplication | null>;

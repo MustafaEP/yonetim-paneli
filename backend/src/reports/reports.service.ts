@@ -16,7 +16,9 @@ export class ReportsService {
   ) {}
 
   async getGlobalReport(user?: CurrentUserData) {
-    const scopeIds = user ? await this.memberScopeService.getUserScopeIds(user) : {};
+    const scopeIds = user
+      ? await this.memberScopeService.getUserScopeIds(user)
+      : {};
 
     const where: any = {};
     if (scopeIds.provinceId) {
@@ -97,10 +99,10 @@ export class ReportsService {
     const byProvince = await Promise.all(
       byProvinceData.map(async (item) => {
         const province = await this.prisma.province.findUnique({
-          where: { id: item.provinceId! },
+          where: { id: item.provinceId },
         });
         return {
-          provinceId: item.provinceId!,
+          provinceId: item.provinceId,
           provinceName: province?.name || 'Bilinmeyen',
           memberCount: item._count.id,
         };
@@ -131,7 +133,9 @@ export class ReportsService {
   }
 
   async getRegionReport(regionId?: string, user?: CurrentUserData) {
-    const scopeIds = user ? await this.memberScopeService.getUserScopeIds(user) : {};
+    const scopeIds = user
+      ? await this.memberScopeService.getUserScopeIds(user)
+      : {};
 
     // Eğer regionId verilmişse, sadece o bölge için rapor döndür
     if (regionId) {
@@ -148,41 +152,37 @@ export class ReportsService {
         throw new Error('Bölge bulunamadı');
       }
 
-      const [
-        memberCount,
-        activeMembers,
-        cancelledMembers,
-        totalPayments,
-      ] = await Promise.all([
-        this.prisma.member.count({
-          where: {
-            provinceId: regionId,
-            status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
-          },
-        }),
-        this.prisma.member.count({
-          where: {
-            provinceId: regionId,
-            status: 'ACTIVE',
-          },
-        }),
-        this.prisma.member.count({
-          where: {
-            provinceId: regionId,
-            status: { in: ['RESIGNED', 'EXPELLED'] },
-          },
-        }),
-        this.prisma.memberPayment.aggregate({
-          where: {
-            member: {
+      const [memberCount, activeMembers, cancelledMembers, totalPayments] =
+        await Promise.all([
+          this.prisma.member.count({
+            where: {
               provinceId: regionId,
+              status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
             },
-          },
-          _sum: {
-            amount: true,
-          },
-        }),
-      ]);
+          }),
+          this.prisma.member.count({
+            where: {
+              provinceId: regionId,
+              status: 'ACTIVE',
+            },
+          }),
+          this.prisma.member.count({
+            where: {
+              provinceId: regionId,
+              status: { in: ['RESIGNED', 'EXPELLED'] },
+            },
+          }),
+          this.prisma.memberPayment.aggregate({
+            where: {
+              member: {
+                provinceId: regionId,
+              },
+            },
+            _sum: {
+              amount: true,
+            },
+          }),
+        ]);
 
       return {
         regionId: province.id,
@@ -203,41 +203,37 @@ export class ReportsService {
 
     const regionReports = await Promise.all(
       provinces.map(async (province) => {
-        const [
-          memberCount,
-          activeMembers,
-          cancelledMembers,
-          totalPayments,
-        ] = await Promise.all([
-          this.prisma.member.count({
-            where: {
-              provinceId: province.id,
-              status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
-            },
-          }),
-          this.prisma.member.count({
-            where: {
-              provinceId: province.id,
-              status: 'ACTIVE',
-            },
-          }),
-          this.prisma.member.count({
-            where: {
-              provinceId: province.id,
-              status: { in: ['RESIGNED', 'EXPELLED'] },
-            },
-          }),
-          this.prisma.memberPayment.aggregate({
-            where: {
-              member: {
+        const [memberCount, activeMembers, cancelledMembers, totalPayments] =
+          await Promise.all([
+            this.prisma.member.count({
+              where: {
                 provinceId: province.id,
+                status: { in: ['ACTIVE', 'RESIGNED', 'EXPELLED'] },
               },
-            },
-            _sum: {
-              amount: true,
-            },
-          }),
-        ]);
+            }),
+            this.prisma.member.count({
+              where: {
+                provinceId: province.id,
+                status: 'ACTIVE',
+              },
+            }),
+            this.prisma.member.count({
+              where: {
+                provinceId: province.id,
+                status: { in: ['RESIGNED', 'EXPELLED'] },
+              },
+            }),
+            this.prisma.memberPayment.aggregate({
+              where: {
+                member: {
+                  provinceId: province.id,
+                },
+              },
+              _sum: {
+                amount: true,
+              },
+            }),
+          ]);
 
         return {
           regionId: province.id,
@@ -255,7 +251,9 @@ export class ReportsService {
   }
 
   async getMemberStatusReport(user?: CurrentUserData) {
-    const scopeIds = user ? await this.memberScopeService.getUserScopeIds(user) : {};
+    const scopeIds = user
+      ? await this.memberScopeService.getUserScopeIds(user)
+      : {};
 
     const where: any = {};
     if (scopeIds.provinceId) {
@@ -284,8 +282,13 @@ export class ReportsService {
     }));
   }
 
-  async getDuesReport(user?: CurrentUserData, params?: { year?: number; month?: number }) {
-    const scopeIds = user ? await this.memberScopeService.getUserScopeIds(user) : {};
+  async getDuesReport(
+    user?: CurrentUserData,
+    params?: { year?: number; month?: number },
+  ) {
+    const scopeIds = user
+      ? await this.memberScopeService.getUserScopeIds(user)
+      : {};
 
     const where: any = {};
     if (scopeIds.provinceId) {
@@ -351,10 +354,7 @@ export class ReportsService {
       _count: {
         id: true,
       },
-      orderBy: [
-        { paymentPeriodYear: 'desc' },
-        { paymentPeriodMonth: 'desc' },
-      ],
+      orderBy: [{ paymentPeriodYear: 'desc' }, { paymentPeriodMonth: 'desc' }],
     });
 
     const byMonth = byMonthData.map((item) => ({
@@ -380,7 +380,11 @@ export class ReportsService {
     if (scopeIds.districtId) {
       memberWhereForDebt.districtId = scopeIds.districtId;
     }
-    const totalDebt = await this.calculateTotalDebt(memberWhereForDebt, params?.year, params?.month);
+    const totalDebt = await this.calculateTotalDebt(
+      memberWhereForDebt,
+      params?.year,
+      params?.month,
+    );
 
     return {
       totalPayments: Number(totalPaymentsResult._sum.amount || 0),
@@ -422,7 +426,11 @@ export class ReportsService {
     let totalDebt = 0;
 
     for (const member of activeMembers) {
-      const memberDebt = await this.calculateMemberDebt(member.id, currentYear, currentMonth);
+      const memberDebt = await this.calculateMemberDebt(
+        member.id,
+        currentYear,
+        currentMonth,
+      );
       totalDebt += memberDebt;
     }
 
@@ -433,7 +441,11 @@ export class ReportsService {
    * Üye bazlı borç hesapla
    * Son 12 ay içinde ödeme yapılmamış aylar için borç hesaplar
    */
-  async calculateMemberDebt(memberId: string, targetYear?: number, targetMonth?: number): Promise<number> {
+  async calculateMemberDebt(
+    memberId: string,
+    targetYear?: number,
+    targetMonth?: number,
+  ): Promise<number> {
     const now = new Date();
     const currentYear = targetYear || now.getFullYear();
     const currentMonth = targetMonth || now.getMonth() + 1;
@@ -496,7 +508,10 @@ export class ReportsService {
       }
 
       // Üyelik başlangıcından önceki ayları sayma
-      if (checkYear < membershipStartYear || (checkYear === membershipStartYear && checkMonth < membershipStartMonth)) {
+      if (
+        checkYear < membershipStartYear ||
+        (checkYear === membershipStartYear && checkMonth < membershipStartMonth)
+      ) {
         continue;
       }
 
@@ -509,5 +524,277 @@ export class ReportsService {
 
     return debtMonths * this.DEFAULT_MONTHLY_DUES;
   }
-}
 
+  /**
+   * Üye artış/azalış istatistikleri (son 6 ay)
+   */
+  async getMemberGrowthStats(user?: CurrentUserData) {
+    const scopeIds = user
+      ? await this.memberScopeService.getUserScopeIds(user)
+      : {};
+
+    const where: any = {};
+    if (scopeIds.provinceId) {
+      where.provinceId = scopeIds.provinceId;
+    }
+    if (scopeIds.districtId) {
+      where.districtId = scopeIds.districtId;
+    }
+
+    const now = new Date();
+    const monthsData: {
+      month: string;
+      year: number;
+      newMembers: number;
+      leftMembers: number;
+      net: number;
+    }[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+
+      // O ay yeni katılanlar (ACTIVE duruma geçenler)
+      const newMembers = await this.prisma.member.count({
+        where: {
+          ...where,
+          status: {
+            in: [
+              MemberStatus.ACTIVE,
+              MemberStatus.RESIGNED,
+              MemberStatus.EXPELLED,
+            ],
+          },
+          approvedAt: {
+            gte: targetDate,
+            lt: nextMonth,
+          },
+        },
+      });
+
+      // O ay ayrılanlar (RESIGNED veya EXPELLED olanlar)
+      const leftMembers = await this.prisma.member.count({
+        where: {
+          ...where,
+          status: { in: [MemberStatus.RESIGNED, MemberStatus.EXPELLED] },
+          updatedAt: {
+            gte: targetDate,
+            lt: nextMonth,
+          },
+        },
+      });
+
+      const monthNames = [
+        'Ocak',
+        'Şubat',
+        'Mart',
+        'Nisan',
+        'Mayıs',
+        'Haziran',
+        'Temmuz',
+        'Ağustos',
+        'Eylül',
+        'Ekim',
+        'Kasım',
+        'Aralık',
+      ];
+
+      monthsData.push({
+        month: monthNames[targetDate.getMonth()],
+        year: targetDate.getFullYear(),
+        newMembers,
+        leftMembers,
+        net: newMembers - leftMembers,
+      });
+    }
+
+    return monthsData;
+  }
+
+  /**
+   * Trend istatistikleri (son 30 gün karşılaştırmalı)
+   */
+  async getTrendStats(user?: CurrentUserData) {
+    const scopeIds = user
+      ? await this.memberScopeService.getUserScopeIds(user)
+      : {};
+
+    const where: any = {};
+    if (scopeIds.provinceId) {
+      where.provinceId = scopeIds.provinceId;
+    }
+    if (scopeIds.districtId) {
+      where.districtId = scopeIds.districtId;
+    }
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    // Son 30 gün üye artışı
+    const [currentMembers, previousMembers] = await Promise.all([
+      this.prisma.member.count({
+        where: {
+          ...where,
+          status: {
+            in: [
+              MemberStatus.ACTIVE,
+              MemberStatus.RESIGNED,
+              MemberStatus.EXPELLED,
+            ],
+          },
+          approvedAt: { gte: thirtyDaysAgo },
+        },
+      }),
+      this.prisma.member.count({
+        where: {
+          ...where,
+          status: {
+            in: [
+              MemberStatus.ACTIVE,
+              MemberStatus.RESIGNED,
+              MemberStatus.EXPELLED,
+            ],
+          },
+          approvedAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+        },
+      }),
+    ]);
+
+    // Son 30 gün ödeme artışı
+    const [currentPayments, previousPayments] = await Promise.all([
+      this.prisma.memberPayment.aggregate({
+        where: {
+          member: where,
+          paymentDate: { gte: thirtyDaysAgo },
+          isApproved: true,
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.memberPayment.aggregate({
+        where: {
+          member: where,
+          paymentDate: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+          isApproved: true,
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const currentPaymentAmount = Number(currentPayments._sum.amount || 0);
+    const previousPaymentAmount = Number(previousPayments._sum.amount || 0);
+
+    // Son 30 gün kullanıcı artışı
+    const [currentUsers, previousUsers] = await Promise.all([
+      this.prisma.user.count({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+          deletedAt: null,
+          isActive: true,
+        },
+      }),
+      this.prisma.user.count({
+        where: {
+          createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+          deletedAt: null,
+          isActive: true,
+        },
+      }),
+    ]);
+
+    return {
+      members: {
+        current: currentMembers,
+        previous: previousMembers,
+        change: currentMembers - previousMembers,
+        percentage:
+          previousMembers > 0
+            ? ((currentMembers - previousMembers) / previousMembers) * 100
+            : 0,
+      },
+      payments: {
+        current: currentPaymentAmount,
+        previous: previousPaymentAmount,
+        change: currentPaymentAmount - previousPaymentAmount,
+        percentage:
+          previousPaymentAmount > 0
+            ? ((currentPaymentAmount - previousPaymentAmount) /
+                previousPaymentAmount) *
+              100
+            : 0,
+      },
+      users: {
+        current: currentUsers,
+        previous: previousUsers,
+        change: currentUsers - previousUsers,
+        percentage:
+          previousUsers > 0
+            ? ((currentUsers - previousUsers) / previousUsers) * 100
+            : 0,
+      },
+    };
+  }
+
+  /**
+   * Hızlı uyarılar ve önemli bilgiler
+   */
+  async getQuickAlerts(user?: CurrentUserData) {
+    const scopeIds = user
+      ? await this.memberScopeService.getUserScopeIds(user)
+      : {};
+
+    const where: any = {};
+    if (scopeIds.provinceId) {
+      where.provinceId = scopeIds.provinceId;
+    }
+    if (scopeIds.districtId) {
+      where.districtId = scopeIds.districtId;
+    }
+
+    const now = new Date();
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    // 60 gündür ödeme yapmayan aktif üyeler
+    const membersWithoutPayment = await this.prisma.member.count({
+      where: {
+        ...where,
+        status: MemberStatus.ACTIVE,
+        payments: {
+          none: {
+            paymentDate: { gte: sixtyDaysAgo },
+            isApproved: true,
+          },
+        },
+      },
+    });
+
+    // Bekleyen üyelik başvuruları
+    const pendingApplications = await this.prisma.member.count({
+      where: {
+        ...where,
+        status: MemberStatus.PENDING,
+      },
+    });
+
+    // Son 30 günde üye kaybı olan iller (önce üyesi olan illeri bulalım)
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const provincesWithLoss = await this.prisma.member.groupBy({
+      by: ['provinceId'],
+      where: {
+        ...where,
+        status: { in: [MemberStatus.RESIGNED, MemberStatus.EXPELLED] },
+        updatedAt: { gte: thirtyDaysAgo },
+      },
+      _count: { id: true },
+      having: {
+        id: { _count: { gt: 0 } },
+      },
+    });
+
+    return {
+      membersWithoutPayment,
+      pendingApplications,
+      provincesWithMemberLoss: provincesWithLoss.length,
+    };
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * User Mapper
- * 
+ *
  * Maps between Domain Entities and DTOs.
  */
 import { User } from '../../domain/entities/user.entity';

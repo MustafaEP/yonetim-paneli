@@ -1,8 +1,8 @@
 /**
  * Prisma Member Repository Implementation
- * 
+ *
  * Infrastructure katmanı: Domain repository interface'ini implement eder.
- * 
+ *
  */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -50,7 +50,9 @@ export class PrismaMemberRepository implements MemberRepository {
     return Member.fromPrisma(data);
   }
 
-  async findCancelledByNationalId(nationalId: NationalId): Promise<Member | null> {
+  async findCancelledByNationalId(
+    nationalId: NationalId,
+  ): Promise<Member | null> {
     const data = await this.prisma.member.findFirst({
       where: {
         nationalId: nationalId.getValue(),
@@ -87,13 +89,13 @@ export class PrismaMemberRepository implements MemberRepository {
     });
 
     return members
-      .map(m => m.registrationNumber)
+      .map((m) => m.registrationNumber)
       .filter((rn): rn is string => rn !== null);
   }
 
   async create(member: Member): Promise<Member> {
     const createData = member.toPrismaCreateData();
-    
+
     // ID'yi kaldır (Prisma otomatik oluşturacak)
     delete createData.id;
 

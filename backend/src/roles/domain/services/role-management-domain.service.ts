@@ -1,6 +1,6 @@
 /**
  * Role Management Domain Service
- * 
+ *
  * Encapsulates complex business logic for role management.
  */
 import { Injectable, Inject } from '@nestjs/common';
@@ -18,7 +18,10 @@ export class RoleManagementDomainService {
     private readonly roleRepository: RoleRepository,
   ) {}
 
-  async validateNameUniqueness(name: string, excludeId?: string): Promise<void> {
+  async validateNameUniqueness(
+    name: string,
+    excludeId?: string,
+  ): Promise<void> {
     try {
       RoleName.create(name);
     } catch (error) {

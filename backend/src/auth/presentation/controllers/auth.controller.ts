@@ -1,27 +1,38 @@
 /**
  * Auth Controller (Presentation Layer)
  */
-import { Body, Controller, Post, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AuthApplicationService } from '../../application/services/auth-application.service';
-import { AuthService } from '../../auth.service'; // Legacy service
 import { LoginDto } from '../../dto/login.dto';
+import { RefreshTokenDto } from '../../dto/refresh-token.dto';
 import { Public } from '../../decorators/public.decorator';
 import { CurrentUser } from '../../decorators/current-user.decorator';
 import type { CurrentUserData } from '../../decorators/current-user.decorator';
 import type { Request } from 'express';
+import { AuthRateLimitGuard } from '../../guards/auth-rate-limit.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
-    private authService: AuthService, // Legacy service
-    private authApplicationService: AuthApplicationService,
+    private readonly authApplicationService: AuthApplicationService,
   ) {}
 
   @Public()
+  @UseGuards(AuthRateLimitGuard)
   @Post('login')
-  @ApiOperation({ summary: 'Kullanıcı girişi', description: 'E-posta ve şifre ile giriş yaparak JWT token alır' })
+  @ApiOperation({
+    summary: 'Kullanıcı girişi',
+    description:
+      'E-posta ve şifre ile giriş yaparak JWT access + refresh token alır',
+  })
   @ApiBody({ type: LoginDto })
   @ApiResponse({
     status: 200,
@@ -29,6 +40,7 @@ export class AuthController {
     schema: {
       example: {
         accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         user: {
           id: 'user-uuid-123',
           email: 'admin@example.com',
@@ -41,11 +53,45 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 401, description: 'Geçersiz kimlik bilgileri' })
-  async login(@Body() dto: LoginDto) {
-    const session = await this.authApplicationService.login(dto);
-    // Return legacy format for backward compatibility
+  @ApiResponse({ status: 429, description: 'Çok fazla istek (rate limit)' })
+  async login(@Body() dto: LoginDto, @Req() request: Request) {
+    const ipAddress = this.getIpAddress(request);
+    const userAgent = request.headers['user-agent'] || 'unknown';
+    const session = await this.authApplicationService.login(dto, {
+      ipAddress,
+      userAgent,
+    });
     return {
       accessToken: session.accessToken,
+      refreshToken: session.refreshToken ?? undefined,
+      user: {
+        id: session.userId,
+        email: session.email,
+        roles: session.roles,
+        permissions: session.permissions,
+      },
+    };
+  }
+
+  @Public()
+  @UseGuards(AuthRateLimitGuard)
+  @Post('refresh')
+  @ApiOperation({
+    summary: 'Token yenileme',
+    description: 'Refresh token ile yeni access + refresh token alır',
+  })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ status: 200, description: 'Yeni tokenlar' })
+  @ApiResponse({
+    status: 401,
+    description: 'Geçersiz veya süresi dolmuş refresh token',
+  })
+  @ApiResponse({ status: 429, description: 'Çok fazla istek (rate limit)' })
+  async refresh(@Body() dto: RefreshTokenDto) {
+    const session = await this.authApplicationService.refresh(dto.refreshToken);
+    return {
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken ?? undefined,
       user: {
         id: session.userId,
         email: session.email,
@@ -57,12 +103,19 @@ export class AuthController {
 
   @Post('logout')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Kullanıcı çıkışı', description: 'Kullanıcı oturumunu sonlandırır ve log kaydı oluşturur' })
+  @ApiOperation({
+    summary: 'Kullanıcı çıkışı',
+    description: 'Kullanıcı oturumunu sonlandırır ve log kaydı oluşturur',
+  })
   @ApiResponse({ status: 200, description: 'Çıkış başarılı' })
   async logout(@CurrentUser() user: CurrentUserData, @Req() request: Request) {
     const ipAddress = this.getIpAddress(request);
     const userAgent = request.headers['user-agent'] || 'unknown';
-    return this.authApplicationService.logout(user.userId, ipAddress, userAgent);
+    return this.authApplicationService.logout(
+      user.userId,
+      ipAddress,
+      userAgent,
+    );
   }
 
   private getIpAddress(request: Request): string {

@@ -45,6 +45,7 @@ import { useToast } from '../../../shared/hooks/useToast';
 import ApprovePanelUserApplicationDialog from '../components/ApprovePanelUserApplicationDialog';
 import RejectPanelUserApplicationDialog from '../components/RejectPanelUserApplicationDialog';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const PanelUserApplicationsPage: React.FC = () => {
   const theme = useTheme();
@@ -323,8 +324,7 @@ const PanelUserApplicationsPage: React.FC = () => {
 
   return (
     <Fade in timeout={300}>
-      <Box sx={{ pb: 4 }}>
-        {/* Başlık Bölümü */}
+      <PageLayout>
         <PageHeader
           icon={<BadgeIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
           title="Panel Kullanıcı Başvuruları"
@@ -332,17 +332,15 @@ const PanelUserApplicationsPage: React.FC = () => {
           color={theme.palette.warning.main}
           darkColor={theme.palette.warning.dark}
           lightColor={theme.palette.warning.light}
-          sx={{ mb: 0 }}
         />
-        <Box sx={{ mb: 4 }}>
 
         {/* Ana Kart */}
         <Card
           elevation={0}
           sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: `0 4px 20px ${alpha(theme.palette.warning.main, 0.08)}`,
+            borderRadius: 4,
+            border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
             overflow: 'hidden',
             background: '#fff',
           }}
@@ -350,9 +348,9 @@ const PanelUserApplicationsPage: React.FC = () => {
           {/* Filtreler */}
           <Box
             sx={{
-              p: 3,
+              p: { xs: 3, sm: 4 },
               background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.02)} 0%, ${alpha(theme.palette.warning.light, 0.01)} 100%)`,
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
             }}
           >
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -441,15 +439,21 @@ const PanelUserApplicationsPage: React.FC = () => {
           </Box>
 
           {/* DataGrid */}
+          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           <Box
             sx={{
-              height: { xs: 500, sm: 600, md: 700 },
+              borderRadius: 3,
+              overflow: 'hidden',
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              height: { xs: 450, sm: 550, md: 650 },
+              minHeight: { xs: 450, sm: 550, md: 650 },
               width: '100%',
               '& .MuiDataGrid-root': {
                 border: 'none',
               },
               '& .MuiDataGrid-cell': {
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                py: 2,
                 display: 'flex',
                 alignItems: 'center',
                 '&:focus': {
@@ -460,8 +464,8 @@ const PanelUserApplicationsPage: React.FC = () => {
                 },
               },
               '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.warning.main, 0.05),
-                borderBottom: `2px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.06)} 0%, ${alpha(theme.palette.warning.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.warning.main, 0.12)}`,
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
@@ -471,22 +475,26 @@ const PanelUserApplicationsPage: React.FC = () => {
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,
-                fontSize: '0.875rem',
+                fontSize: '0.9rem',
                 color: theme.palette.text.primary,
               },
               '& .MuiDataGrid-row': {
-                transition: 'all 0.2s',
+                transition: 'all 0.2s ease',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.warning.main, 0.04),
-                  transform: 'scale(1.001)',
+                  backgroundColor: alpha(theme.palette.warning.main, 0.03),
+                  boxShadow: `inset 4px 0 0 ${theme.palette.warning.main}`,
+                },
+                '&:nth-of-type(even)': {
+                  backgroundColor: alpha(theme.palette.grey[50], 0.3),
                 },
               },
               '& .MuiDataGrid-footerContainer': {
                 borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
                 backgroundColor: alpha(theme.palette.grey[50], 0.5),
+                minHeight: '52px',
               },
               '& .MuiDataGrid-virtualScroller': {
-                minHeight: '300px',
+                minHeight: '200px',
               },
             }}
           >
@@ -503,8 +511,8 @@ const PanelUserApplicationsPage: React.FC = () => {
               }}
             />
           </Box>
+          </Box>
         </Card>
-        </Box>
 
         {/* Onay Dialog */}
         {selectedApplication && (
@@ -534,7 +542,7 @@ const PanelUserApplicationsPage: React.FC = () => {
             onSuccess={handleRejectSuccess}
           />
         )}
-      </Box>
+      </PageLayout>
     </Fade>
   );
 };

@@ -23,6 +23,7 @@ import {
   getDistricts,
 } from '../services/regionsApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import { useToast } from '../../../shared/hooks/useToast';
 
 const RegionsDistrictsPage: React.FC = () => {
@@ -91,7 +92,7 @@ const RegionsDistrictsPage: React.FC = () => {
       headerName: 'İl',
       flex: 1,
       minWidth: 200,
-      valueGetter: (params: { row?: District }) => params?.row?.province?.name ?? ',
+      valueGetter: (params: { row?: District }) => params?.row?.province?.name ?? '',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <MapIcon sx={{ color: theme.palette.info.main, fontSize: '1.1rem' }} />
@@ -102,15 +103,7 @@ const RegionsDistrictsPage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Modern Header */}
+    <PageLayout>
       <PageHeader
         icon={<LocationCityIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="İlçeler"
@@ -124,23 +117,19 @@ const RegionsDistrictsPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
-            transform: 'translateY(-2px)',
-          }
+          background: '#fff',
         }}
       >
         {/* Filtre Bölümü */}
         <Box
           sx={{
-            p: { xs: 2, sm: 3 },
-            backgroundColor: alpha(theme.palette.primary.main, 0.02),
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            p: { xs: 3, sm: 4 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -184,7 +173,7 @@ const RegionsDistrictsPage: React.FC = () => {
         </Box>
 
         {/* İçerik Bölümü */}
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           {/* Sonuç Sayısı */}
           {!loading && (
             <Paper
@@ -216,33 +205,51 @@ const RegionsDistrictsPage: React.FC = () => {
           {/* Tablo */}
           <Box
             sx={{
-              height: { xs: 400, sm: 500, md: 600 },
-              minHeight: { xs: 400, sm: 500, md: 600 },
+              borderRadius: 3,
+              overflow: 'hidden',
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              height: { xs: 450, sm: 550, md: 650 },
+              minHeight: { xs: 450, sm: 550, md: 650 },
               '& .MuiDataGrid-root': {
                 border: 'none',
-                borderRadius: 2,
               },
               '& .MuiDataGrid-cell': {
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                py: 2,
+                display: 'flex',
+                alignItems: 'center',
               },
               '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
                 borderRadius: 0,
+                minHeight: '56px !important',
+                maxHeight: '56px !important',
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,
-                fontSize: '0.875rem',
+                fontSize: '0.9rem',
+              },
+              '& .MuiDataGrid-columnHeaderTitleContainer': {
+                justifyContent: 'center',
               },
               '& .MuiDataGrid-row': {
-                cursor: 'default',
+                transition: 'all 0.2s ease',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                  backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                  boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
+                },
+                '&:nth-of-type(even)': {
+                  backgroundColor: alpha(theme.palette.grey[50], 0.3),
                 },
               },
               '& .MuiDataGrid-footerContainer': {
-                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                backgroundColor: alpha(theme.palette.background.default, 0.5),
+                borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+                backgroundColor: alpha(theme.palette.grey[50], 0.5),
+                minHeight: '52px',
+              },
+              '& .MuiDataGrid-virtualScroller': {
+                minHeight: '200px',
               },
             }}
           >
@@ -267,7 +274,7 @@ const RegionsDistrictsPage: React.FC = () => {
           </Box>
         </Box>
       </Card>
-    </Box>
+    </PageLayout>
   );
 };
 

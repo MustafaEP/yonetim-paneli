@@ -3,7 +3,9 @@
  */
 export class NotificationNotFoundException extends Error {
   constructor(public readonly notificationId?: string) {
-    super(`Notification not found${notificationId ? `: ${notificationId}` : ''}`);
+    super(
+      `Notification not found${notificationId ? `: ${notificationId}` : ''}`,
+    );
     this.name = 'NotificationNotFoundException';
   }
 }

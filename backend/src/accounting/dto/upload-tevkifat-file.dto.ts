@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsEnum, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsEnum,
+  Min,
+  Max,
+} from 'class-validator';
 import { PositionTitle } from '@prisma/client';
 
 export class UploadTevkifatFileDto {
@@ -15,7 +23,7 @@ export class UploadTevkifatFileDto {
 
   @ApiProperty({
     description: 'Gelen tutar toplamı',
-    example: 50000.00,
+    example: 50000.0,
     type: Number,
     required: true,
   })
@@ -67,7 +75,7 @@ export class UploadTevkifatFileDto {
   positionTitle?: PositionTitle;
 
   @ApiProperty({
-    description: 'Dosya URL (yüklenmiş dosyanın URL\'i)',
+    description: "Dosya URL (yüklenmiş dosyanın URL'i)",
     example: 'uploads/tevkifat/file.pdf',
     type: String,
     required: true,

@@ -55,6 +55,7 @@ import { getBranches } from '../../regions/services/branchesApi';
 import { getInstitutions } from '../../regions/services/institutionsApi';
 import type { Province, District } from '../../../types/region';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import {
   getProvinces,
   getDistricts,
@@ -546,8 +547,7 @@ const MembersByStatusPage: React.FC = () => {
   }, []);
 
   return (
-    <Box sx={{ pb: 4 }}>
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title={statusInfo.label}
@@ -1645,7 +1645,7 @@ const MembersByStatusPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

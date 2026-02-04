@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 
 export class CreateTevkifatCenterDto {
-  @ApiProperty({ description: 'Tevkifat merkezi adı', example: 'Sağlık Bakanlığı Tevkifat Merkezi' })
+  @ApiProperty({
+    description: 'Tevkifat merkezi adı',
+    example: 'Sağlık Bakanlığı Tevkifat Merkezi',
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)

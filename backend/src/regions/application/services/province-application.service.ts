@@ -1,6 +1,6 @@
 /**
  * Province Application Service
- * 
+ *
  * Orchestrates province operations.
  */
 import { Injectable, Logger, Inject } from '@nestjs/common';

@@ -1,6 +1,6 @@
 /**
  * Prisma User Repository Implementation
- * 
+ *
  * Infrastructure layer: Implements User repository interface.
  */
 import { Injectable } from '@nestjs/common';
@@ -138,11 +138,12 @@ export class PrismaUserRepository implements UserRepository {
       firstName: user.firstName,
       lastName: user.lastName,
       isActive: user.isActive,
-      customRoles: user.customRoleIds.length > 0
-        ? {
-            connect: user.customRoleIds.map((id) => ({ id })),
-          }
-        : undefined,
+      customRoles:
+        user.customRoleIds.length > 0
+          ? {
+              connect: user.customRoleIds.map((id) => ({ id })),
+            }
+          : undefined,
     };
 
     delete createData.id;

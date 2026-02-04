@@ -1,5 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Gender, EducationStatus, PositionTitle, MemberStatus } from '@prisma/client';
+import {
+  Gender,
+  EducationStatus,
+  PositionTitle,
+  MemberStatus,
+} from '@prisma/client';
 import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
 
 export class UpdateMemberDto {

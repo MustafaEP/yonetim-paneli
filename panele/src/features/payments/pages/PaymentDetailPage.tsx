@@ -30,6 +30,7 @@ import {
 } from '../services/paymentsApi';
 import httpClient from '../../../shared/services/httpClient';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const PaymentDetailPage: React.FC = () => {
   const theme = useTheme();
@@ -110,14 +111,7 @@ const PaymentDetailPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
+    <PageLayout>
       <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}
@@ -235,14 +229,14 @@ const PaymentDetailPage: React.FC = () => {
                   {payment.member?.institution?.name || '-'}
                 </Typography>
               </Box>
-              {payment.member?.branch && (
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Şube
-                  </Typography>
-                  <Typography variant="body1">{payment.member.branch.name}</Typography>
-                </Box>
-              )}
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Tevkifat Merkezi
+                </Typography>
+                <Typography variant="body1">
+                  {payment.tevkifatCenter?.name || '-'}
+                </Typography>
+              </Box>
             </Box>
             </Box>
           </Card>
@@ -497,25 +491,13 @@ const PaymentDetailPage: React.FC = () => {
                   </Typography>
                 </Box>
               </Grid>
-              {payment.ipAddress && (
-                <Grid item xs={12} md={6}>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      IP Adresi
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
-                      {payment.ipAddress}
-                    </Typography>
-                  </Box>
-                </Grid>
-              )}
             </Grid>
             </Box>
           </Card>
         </Grid>
 
       </Grid>
-    </Box>
+    </PageLayout>
   );
 };
 

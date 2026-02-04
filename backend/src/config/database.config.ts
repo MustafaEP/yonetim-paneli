@@ -6,4 +6,3 @@ export class DatabaseConfigService {
     return process.env.DATABASE_URL || '';
   }
 }
-

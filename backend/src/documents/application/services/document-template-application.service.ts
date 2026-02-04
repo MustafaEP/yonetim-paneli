@@ -30,21 +30,30 @@ export class DocumentTemplateApplicationService {
     private readonly templateRepository: DocumentTemplateRepository,
   ) {}
 
-  async createTemplate(command: CreateDocumentTemplateCommand): Promise<DocumentTemplate> {
+  async createTemplate(
+    command: CreateDocumentTemplateCommand,
+  ): Promise<DocumentTemplate> {
     const { dto } = command;
-    const template = DocumentTemplate.create({
-      name: dto.name,
-      description: dto.description,
-      template: dto.template,
-      type: dto.type,
-      isActive: dto.isActive,
-    }, '');
+    const template = DocumentTemplate.create(
+      {
+        name: dto.name,
+        description: dto.description,
+        template: dto.template,
+        type: dto.type,
+        isActive: dto.isActive,
+      },
+      '',
+    );
     const created = await this.templateRepository.create(template);
-    this.logger.log(`Document template created: ${created.id} (${created.name})`);
+    this.logger.log(
+      `Document template created: ${created.id} (${created.name})`,
+    );
     return created;
   }
 
-  async updateTemplate(command: UpdateDocumentTemplateCommand): Promise<DocumentTemplate> {
+  async updateTemplate(
+    command: UpdateDocumentTemplateCommand,
+  ): Promise<DocumentTemplate> {
     const { templateId, dto } = command;
     const template = await this.templateRepository.findById(templateId);
     if (!template) {
@@ -52,7 +61,9 @@ export class DocumentTemplateApplicationService {
     }
     template.update(dto);
     await this.templateRepository.save(template);
-    this.logger.log(`Document template updated: ${template.id} (${template.name})`);
+    this.logger.log(
+      `Document template updated: ${template.id} (${template.name})`,
+    );
     return template;
   }
 
@@ -76,6 +87,8 @@ export class DocumentTemplateApplicationService {
     }
     template.deactivate();
     await this.templateRepository.save(template);
-    this.logger.log(`Document template deleted: ${template.id} (${template.name})`);
+    this.logger.log(
+      `Document template deleted: ${template.id} (${template.name})`,
+    );
   }
 }

@@ -1,6 +1,6 @@
 /**
  * User Repository Interface (Port)
- * 
+ *
  * Defines the contract for User persistence operations.
  */
 import { User } from '../entities/user.entity';

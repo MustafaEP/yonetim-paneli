@@ -53,6 +53,7 @@ import { getTevkifatCenters, getTevkifatTitles } from '../../accounting/services
 import type { TevkifatCenter, TevkifatTitle } from '../../accounting/services/accountingApi';
 import { getMemberGroups } from '../../system/services/memberGroupsApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const MemberUpdatePage: React.FC = () => {
   const theme = useTheme();
@@ -479,8 +480,7 @@ const MemberUpdatePage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ pb: 4 }}>
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<EditIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Üye Bilgilerini Güncelle"
@@ -1730,7 +1730,7 @@ const MemberUpdatePage: React.FC = () => {
           </Box>
         </Box>
       </Card>
-    </Box>
+    </PageLayout>
   );
 };
 

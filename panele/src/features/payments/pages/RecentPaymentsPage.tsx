@@ -32,6 +32,7 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import InfoIcon from '@mui/icons-material/Info';
 import CloseIcon from '@mui/icons-material/Close';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
@@ -49,6 +50,7 @@ import { getTevkifatCenters } from '../../accounting/services/accountingApi';
 import { getMembers } from '../../members/services/membersApi';
 import httpClient from '../../../shared/services/httpClient';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const RecentPaymentsPage: React.FC = () => {
   const theme = useTheme();
@@ -366,13 +368,22 @@ const RecentPaymentsPage: React.FC = () => {
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 180,
+      width: 220,
       sortable: false,
       align: 'center',
       headerAlign: 'center',
       cellClassName: 'recent-payments-actions-cell',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+          <Tooltip title="Ödeme Detayları">
+            <IconButton
+              size="small"
+              onClick={() => navigate(`/payments/${params.row.id}`)}
+              sx={{ color: theme.palette.info.main }}
+            >
+              <InfoIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           {params.row.documentUrl && (
             <Tooltip title="PDF Görüntüle">
               <IconButton
@@ -420,15 +431,7 @@ const RecentPaymentsPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Son Ödemeler"
@@ -785,7 +788,7 @@ const RecentPaymentsPage: React.FC = () => {
           ) : null}
         </DialogContent>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

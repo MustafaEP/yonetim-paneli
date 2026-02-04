@@ -22,4 +22,3 @@ export class UpdateUserScopeDto {
   @IsOptional()
   districtId?: string;
 }
-

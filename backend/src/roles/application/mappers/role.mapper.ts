@@ -1,6 +1,6 @@
 /**
  * Role Mapper
- * 
+ *
  * Maps between Domain Entities and DTOs.
  */
 import { Role } from '../../domain/entities/role.entity';
@@ -25,7 +25,15 @@ export interface RoleResponseDto {
 }
 
 export class RoleMapper {
-  static toResponseDto(role: Role, users?: Array<{ id: string; email: string; firstName: string; lastName: string }>): RoleResponseDto {
+  static toResponseDto(
+    role: Role,
+    users?: Array<{
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+    }>,
+  ): RoleResponseDto {
     const permissions = role.isAdmin() ? ALL_PERMISSIONS : role.permissions;
 
     return {

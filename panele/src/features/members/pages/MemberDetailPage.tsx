@@ -99,6 +99,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const MemberDetailPage = () => {
   const theme = useTheme();
@@ -1095,13 +1096,12 @@ const MemberDetailPage = () => {
     <Card
       elevation={0}
       sx={{
-        borderRadius: 3,
-        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        borderRadius: 4,
+        border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
         overflow: 'hidden',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+        boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+        background: '#fff',
         '&:hover': {
-          boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
           borderColor: alpha(theme.palette.primary.main, 0.2),
           transform: 'translateY(-2px)',
         },
@@ -1160,18 +1160,7 @@ const MemberDetailPage = () => {
   );
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-      maxWidth: 1400,
-      mx: 'auto',
-      p: { xs: 2, sm: 3 }
-    }}>
-      {/* Header Card */}
+    <PageLayout>
       <PageHeader
         icon={
           <PersonIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />
@@ -3913,7 +3902,7 @@ const MemberDetailPage = () => {
           ) : null}
         </DialogContent>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

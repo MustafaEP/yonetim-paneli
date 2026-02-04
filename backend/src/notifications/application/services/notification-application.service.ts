@@ -27,20 +27,25 @@ export class NotificationApplicationService {
     private readonly notificationRepository: NotificationRepository,
   ) {}
 
-  async createNotification(command: CreateNotificationCommand): Promise<Notification> {
+  async createNotification(
+    command: CreateNotificationCommand,
+  ): Promise<Notification> {
     const { dto, userId, metadata } = command;
-    const notification = Notification.create({
-      title: dto.title,
-      message: dto.message,
-      type: dto.type,
-      targetType: dto.targetType,
-      targetId: dto.targetId,
-      metadata: metadata || dto.metadata,
-      sentBy: userId,
-    }, '');
-    
+    const notification = Notification.create(
+      {
+        title: dto.title,
+        message: dto.message,
+        type: dto.type,
+        targetType: dto.targetType,
+        targetId: dto.targetId,
+        metadata: metadata || dto.metadata,
+        sentBy: userId,
+      },
+      '',
+    );
+
     notification.validateTarget();
-    
+
     const created = await this.notificationRepository.create(notification);
     this.logger.log(`Notification created: ${created.id} (${created.title})`);
     return created;
@@ -65,11 +70,14 @@ export class NotificationApplicationService {
 
   async deleteNotification(command: DeleteNotificationCommand): Promise<void> {
     const { notificationId } = command;
-    const notification = await this.notificationRepository.findById(notificationId);
+    const notification =
+      await this.notificationRepository.findById(notificationId);
     if (!notification) {
       throw new NotificationNotFoundException(notificationId);
     }
     await this.notificationRepository.delete(notificationId);
-    this.logger.log(`Notification deleted: ${notification.id} (${notification.title})`);
+    this.logger.log(
+      `Notification deleted: ${notification.id} (${notification.title})`,
+    );
   }
 }

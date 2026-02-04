@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import {
-  CreateProvinceDto,
-  CreateDistrictDto,
-} from './application/dto';
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateProvinceDto, CreateDistrictDto } from './application/dto';
 import {
   AssignUserScopeDto,
   UpdateUserScopeDto,
@@ -93,12 +94,19 @@ export class RegionsService {
 
   async createDistrict(dto: CreateDistrictDto) {
     const district = await this.districtService.createDistrict({ dto });
-    return await this.prisma.district.findUnique({ where: { id: district.id } });
+    return await this.prisma.district.findUnique({
+      where: { id: district.id },
+    });
   }
 
   async updateDistrict(id: string, dto: CreateDistrictDto) {
-    const district = await this.districtService.updateDistrict({ districtId: id, dto });
-    return await this.prisma.district.findUnique({ where: { id: district.id } });
+    const district = await this.districtService.updateDistrict({
+      districtId: id,
+      dto,
+    });
+    return await this.prisma.district.findUnique({
+      where: { id: district.id },
+    });
   }
 
   async getDistrictById(id: string) {
@@ -131,7 +139,9 @@ export class RegionsService {
   async assignUserScope(dto: AssignUserScopeDto) {
     // En az bir scope alanı dolu olmalı
     if (!dto.provinceId && !dto.districtId) {
-      throw new BadRequestException('En az bir yetki alanı (il veya ilçe) seçmelisiniz.');
+      throw new BadRequestException(
+        'En az bir yetki alanı (il veya ilçe) seçmelisiniz.',
+      );
     }
 
     // İlçe seçildiyse il de seçilmiş olmalı
@@ -173,8 +183,10 @@ export class RegionsService {
     }
 
     // Duplicate scope kontrolü: Aynı scope zaten var mı? (soft delete edilmemiş olanlar)
-    const normalizedProvinceId = dto.provinceId && dto.provinceId.trim() !== '' ? dto.provinceId : null;
-    const normalizedDistrictId = dto.districtId && dto.districtId.trim() !== '' ? dto.districtId : null;
+    const normalizedProvinceId =
+      dto.provinceId && dto.provinceId.trim() !== '' ? dto.provinceId : null;
+    const normalizedDistrictId =
+      dto.districtId && dto.districtId.trim() !== '' ? dto.districtId : null;
 
     const existingScope = await this.prisma.userScope.findFirst({
       where: {
@@ -214,7 +226,9 @@ export class RegionsService {
 
     // En az bir scope alanı dolu olmalı
     if (!dto.provinceId && !dto.districtId) {
-      throw new BadRequestException('En az bir yetki alanı (il veya ilçe) seçmelisiniz.');
+      throw new BadRequestException(
+        'En az bir yetki alanı (il veya ilçe) seçmelisiniz.',
+      );
     }
 
     // İlçe seçildiyse il de seçilmiş olmalı
@@ -247,8 +261,10 @@ export class RegionsService {
     }
 
     // Duplicate scope kontrolü: Aynı scope başka bir kayıtta var mı? (mevcut kayıt hariç, soft delete edilmemiş)
-    const normalizedProvinceId = dto.provinceId && dto.provinceId.trim() !== '' ? dto.provinceId : null;
-    const normalizedDistrictId = dto.districtId && dto.districtId.trim() !== '' ? dto.districtId : null;
+    const normalizedProvinceId =
+      dto.provinceId && dto.provinceId.trim() !== '' ? dto.provinceId : null;
+    const normalizedDistrictId =
+      dto.districtId && dto.districtId.trim() !== '' ? dto.districtId : null;
 
     const existingScope = await this.prisma.userScope.findFirst({
       where: {
@@ -279,7 +295,7 @@ export class RegionsService {
 
   async deleteUserScope(scopeId: string) {
     const scope = await this.prisma.userScope.findFirst({
-      where: { 
+      where: {
         id: scopeId,
         deletedAt: null, // Soft delete edilmemiş olanları kontrol et
       },
@@ -300,7 +316,7 @@ export class RegionsService {
 
   async getUserScope(userId: string) {
     const scopes = await this.prisma.userScope.findMany({
-      where: { 
+      where: {
         userId,
         deletedAt: null, // Sadece soft delete edilmemiş scope'ları getir
       },
@@ -314,7 +330,11 @@ export class RegionsService {
   }
 
   // ---------- BRANCH ----------
-  async listBranches(filters?: { isActive?: boolean; provinceId?: string; districtId?: string }) {
+  async listBranches(filters?: {
+    isActive?: boolean;
+    provinceId?: string;
+    districtId?: string;
+  }) {
     const where: Prisma.BranchWhereInput = {};
     if (filters?.isActive !== undefined) where.isActive = filters.isActive;
     if (filters?.provinceId) where.provinceId = filters.provinceId;
@@ -344,7 +364,9 @@ export class RegionsService {
     return branches.map((branch) => ({
       ...branch,
       memberCount: branch._count.members,
-      branchSharePercent: branch.branchSharePercent ? Number(branch.branchSharePercent) : 40,
+      branchSharePercent: branch.branchSharePercent
+        ? Number(branch.branchSharePercent)
+        : 40,
       _count: undefined,
     }));
   }
@@ -398,8 +420,11 @@ export class RegionsService {
     });
 
     const totalRevenueAmount = totalRevenue._sum.amount || 0;
-    const branchSharePercent = branch.branchSharePercent ? Number(branch.branchSharePercent) : 40;
-    const branchShareAmount = Number(totalRevenueAmount) * (branchSharePercent / 100);
+    const branchSharePercent = branch.branchSharePercent
+      ? Number(branch.branchSharePercent)
+      : 40;
+    const branchShareAmount =
+      Number(totalRevenueAmount) * (branchSharePercent / 100);
 
     // _count.members'i memberCount'a dönüştür
     return {
@@ -417,8 +442,12 @@ export class RegionsService {
     return this.prisma.branch.create({
       data: {
         name: dto.name,
-        ...(dto.provinceId && typeof dto.provinceId === 'string' && dto.provinceId.trim() !== '' && { provinceId: dto.provinceId }),
-        ...(dto.districtId && typeof dto.districtId === 'string' && dto.districtId.trim() !== '' && { districtId: dto.districtId }),
+        ...(dto.provinceId &&
+          typeof dto.provinceId === 'string' &&
+          dto.provinceId.trim() !== '' && { provinceId: dto.provinceId }),
+        ...(dto.districtId &&
+          typeof dto.districtId === 'string' &&
+          dto.districtId.trim() !== '' && { districtId: dto.districtId }),
       },
     });
   }
@@ -472,7 +501,9 @@ export class RegionsService {
     // Toplam şube sayısını kontrol et
     const totalBranchCount = await this.prisma.branch.count();
     if (totalBranchCount <= 1) {
-      throw new BadRequestException('Sistemde en az 1 şube bulunmalıdır. Son kalan şubeyi silemezsiniz.');
+      throw new BadRequestException(
+        'Sistemde en az 1 şube bulunmalıdır. Son kalan şubeyi silemezsiniz.',
+      );
     }
 
     // Hedef şubenin var olduğunu kontrol et
@@ -578,7 +609,11 @@ export class RegionsService {
   }
 
   // ---------- INSTITUTION ----------
-  async listInstitutions(provinceId?: string, districtId?: string, isActive?: boolean) {
+  async listInstitutions(
+    provinceId?: string,
+    districtId?: string,
+    isActive?: boolean,
+  ) {
     const where: Prisma.InstitutionWhereInput = {
       deletedAt: null,
     };
@@ -800,4 +835,3 @@ export class RegionsService {
     });
   }
 }
-

@@ -1,7 +1,12 @@
 /**
  * TevkifatTitle Application Service
  */
-import { Injectable, NotFoundException, ConflictException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Inject,
+} from '@nestjs/common';
 import type { TevkifatTitleRepository } from '../../domain/repositories/tevkifat-title.repository.interface';
 import { TevkifatTitle } from '../../domain/entities/tevkifat-title.entity';
 
@@ -22,7 +27,10 @@ export class TevkifatTitleApplicationService {
     return await this.repository.create(title);
   }
 
-  async updateTitle(id: string, data: { name?: string; isActive?: boolean }): Promise<TevkifatTitle> {
+  async updateTitle(
+    id: string,
+    data: { name?: string; isActive?: boolean },
+  ): Promise<TevkifatTitle> {
     const title = await this.repository.findById(id);
     if (!title) {
       throw new NotFoundException('Tevkifat unvanı bulunamadı');

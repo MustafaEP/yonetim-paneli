@@ -17,12 +17,7 @@ export class ResponseUtil {
     };
   }
 
-  static paginated<T>(
-    data: T[],
-    total: number,
-    page: number,
-    limit: number,
-  ) {
+  static paginated<T>(data: T[], total: number, page: number, limit: number) {
     return {
       success: true,
       data,
@@ -36,4 +31,3 @@ export class ResponseUtil {
     };
   }
 }
-

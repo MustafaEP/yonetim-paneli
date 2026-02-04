@@ -1,15 +1,13 @@
 /**
  * Approvals Controller (Presentation Layer)
  */
+import { Controller, Get, Post, Param, Body, Query } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  Post,
-  Param,
-  Body,
-  Query,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ApprovalApplicationService } from '../../application/services/approval-application.service';
 import { ApprovalsService } from '../../approvals.service'; // Legacy service
 import { Permissions } from '../../../auth/decorators/permissions.decorator';

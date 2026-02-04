@@ -4,7 +4,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PanelUserApplicationRepository } from '../../domain/repositories/panel-user-application.repository.interface';
-import { PanelUserApplication, PanelUserApplicationStatus } from '../../domain/entities/panel-user-application.entity';
+import {
+  PanelUserApplication,
+  PanelUserApplicationStatus,
+} from '../../domain/entities/panel-user-application.entity';
 
 @Injectable()
 export class PrismaPanelUserApplicationRepository implements PanelUserApplicationRepository {
@@ -34,7 +37,9 @@ export class PrismaPanelUserApplicationRepository implements PanelUserApplicatio
     return PanelUserApplication.fromPrisma(data);
   }
 
-  async findAll(status?: PanelUserApplicationStatus): Promise<PanelUserApplication[]> {
+  async findAll(
+    status?: PanelUserApplicationStatus,
+  ): Promise<PanelUserApplication[]> {
     const where = status ? { status: status as any } : undefined;
 
     const data = await this.prisma.panelUserApplication.findMany({
@@ -42,7 +47,7 @@ export class PrismaPanelUserApplicationRepository implements PanelUserApplicatio
       orderBy: { createdAt: 'desc' },
     });
 
-    return data.map(item => PanelUserApplication.fromPrisma(item));
+    return data.map((item) => PanelUserApplication.fromPrisma(item));
   }
 
   async save(application: PanelUserApplication): Promise<void> {
@@ -54,7 +59,9 @@ export class PrismaPanelUserApplicationRepository implements PanelUserApplicatio
     });
   }
 
-  async create(application: PanelUserApplication): Promise<PanelUserApplication> {
+  async create(
+    application: PanelUserApplication,
+  ): Promise<PanelUserApplication> {
     const createData = application.toPrismaCreateData();
 
     const created = await this.prisma.panelUserApplication.create({

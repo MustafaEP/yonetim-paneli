@@ -35,4 +35,3 @@ import { RoleValidationPipe } from './presentation/pipes/role-validation.pipe';
   exports: [RolesService],
 })
 export class RolesModule {}
-

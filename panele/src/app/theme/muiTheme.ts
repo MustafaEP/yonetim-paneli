@@ -16,6 +16,14 @@ const muiTheme = createTheme(
     shape: {
       borderRadius: 12,
     },
+    components: {
+      // scrollTop null hatasını önlemek için (MUI Transition + React 19 uyumluluk)
+      MuiModal: {
+        defaultProps: {
+          disableScrollLock: true,
+        },
+      },
+    },
   },
   trTR,
 );

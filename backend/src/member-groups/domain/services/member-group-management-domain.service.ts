@@ -12,7 +12,10 @@ export class MemberGroupManagementDomainService {
     private readonly memberGroupRepository: MemberGroupRepository,
   ) {}
 
-  async validateNameUniqueness(name: string, excludeId?: string): Promise<void> {
+  async validateNameUniqueness(
+    name: string,
+    excludeId?: string,
+  ): Promise<void> {
     const existing = await this.memberGroupRepository.findByName(name);
     if (existing && existing.id !== excludeId) {
       throw new MemberGroupNameAlreadyExistsException(name);

@@ -1,6 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { MemberSource, Gender, EducationStatus, PositionTitle } from '@prisma/client';
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsDateString, Matches } from 'class-validator';
+import {
+  MemberSource,
+  Gender,
+  EducationStatus,
+  PositionTitle,
+} from '@prisma/client';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsDateString,
+  Matches,
+} from 'class-validator';
 
 export class CreateMemberApplicationDto {
   @ApiProperty({
@@ -67,7 +79,8 @@ export class CreateMemberApplicationDto {
 
   // 🔹 Üyelik & Yönetim Kurulu Bilgileri
   @ApiProperty({
-    description: 'Üyelik bilgisi seçeneği ID (seçmeli, admin tarafından yönetilen seçeneklerden)',
+    description:
+      'Üyelik bilgisi seçeneği ID (seçmeli, admin tarafından yönetilen seçeneklerden)',
     example: 'membership-info-uuid-123',
     type: String,
     required: false,
@@ -77,7 +90,8 @@ export class CreateMemberApplicationDto {
   membershipInfoOptionId?: string;
 
   @ApiProperty({
-    description: 'Üye grubu ID (seçmeli, sistem ayarlarından yönetilen üye gruplarından)',
+    description:
+      'Üye grubu ID (seçmeli, sistem ayarlarından yönetilen üye gruplarından)',
     example: 'member-group-uuid-123',
     type: String,
     required: false,
@@ -87,7 +101,8 @@ export class CreateMemberApplicationDto {
   memberGroupId?: string;
 
   @ApiProperty({
-    description: 'Üye kayıt numarası (Admin tarafından belirlenir, başvuru aşamasında opsiyonel - backend geçici değer oluşturur)',
+    description:
+      'Üye kayıt numarası (Admin tarafından belirlenir, başvuru aşamasında opsiyonel - backend geçici değer oluşturur)',
     example: 'UYE-00001',
     type: String,
     required: false,

@@ -1,8 +1,8 @@
 /**
  * Prisma Unit of Work Implementation
- * 
+ *
  * Shared Infrastructure: Prisma için Unit of Work implementasyonu
- * 
+ *
  * ⚠️ NOT: Şu an implement edilmedi, gelecekte kullanılabilir.
  * Prisma transaction'ları için kullanılacak.
  */

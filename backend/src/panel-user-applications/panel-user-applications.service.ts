@@ -36,14 +36,14 @@ export class PanelUserApplicationsService {
         if (existing.status === 'PENDING' || existing.status === 'APPROVED') {
           throw new ConflictException('Bu üye için zaten bir başvuru mevcut');
         }
-        
+
         // Eğer reddedilmiş bir başvuru varsa, onu sil ve yeni başvuru oluştur
         if (existing.status === 'REJECTED') {
           // Önce başvurunun scope'larını sil
           await this.prisma.panelUserApplicationScope.deleteMany({
             where: { applicationId: existing.id },
           });
-          
+
           // Sonra başvuruyu sil
           await this.prisma.panelUserApplication.delete({
             where: { id: existing.id },
@@ -77,17 +77,23 @@ export class PanelUserApplicationsService {
       // Yetki alanı kontrolü: Eğer role hasScopeRestriction true ise scope zorunlu
       if (role.hasScopeRestriction) {
         if (!dto.scopes || dto.scopes.length === 0) {
-          throw new BadRequestException('Bu rol için yetki alanı seçimi zorunludur.');
+          throw new BadRequestException(
+            'Bu rol için yetki alanı seçimi zorunludur.',
+          );
         }
 
         // Her scope için validasyon
         for (const scope of dto.scopes) {
           if (!scope.provinceId && !scope.districtId) {
-            throw new BadRequestException('Her yetki alanı için en az bir il veya ilçe seçmelisiniz.');
+            throw new BadRequestException(
+              'Her yetki alanı için en az bir il veya ilçe seçmelisiniz.',
+            );
           }
 
           if (scope.districtId && !scope.provinceId) {
-            throw new BadRequestException('İlçe seçmek için önce il seçmelisiniz.');
+            throw new BadRequestException(
+              'İlçe seçmek için önce il seçmelisiniz.',
+            );
           }
 
           // İlçenin seçili ile ait olduğunu kontrol et
@@ -96,7 +102,9 @@ export class PanelUserApplicationsService {
               where: { id: scope.districtId },
             });
             if (district && district.provinceId !== scope.provinceId) {
-              throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil.');
+              throw new BadRequestException(
+                'Seçilen ilçe, seçilen ile ait değil.',
+              );
             }
           }
         }
@@ -104,9 +112,9 @@ export class PanelUserApplicationsService {
 
       // Scopes'ları filtrele ve duplicate'leri kaldır
       // Sadece geçerli olanları al (hem provinceId hem districtId null olanları hariç tut)
-      const validScopes = dto.scopes?.filter(
-        (scope) => scope.provinceId || scope.districtId
-      ) || [];
+      const validScopes =
+        dto.scopes?.filter((scope) => scope.provinceId || scope.districtId) ||
+        [];
 
       // Duplicate scope'ları kaldır (aynı provinceId ve districtId kombinasyonu)
       const uniqueScopes = Array.from(
@@ -114,8 +122,8 @@ export class PanelUserApplicationsService {
           validScopes.map((scope) => [
             `${scope.provinceId || 'null'}-${scope.districtId || 'null'}`,
             scope,
-          ])
-        ).values()
+          ]),
+        ).values(),
       );
 
       return await this.prisma.panelUserApplication.create({
@@ -124,14 +132,15 @@ export class PanelUserApplicationsService {
           requestedRoleId: dto.requestedRoleId,
           requestNote: dto.requestNote,
           status: 'PENDING',
-          applicationScopes: uniqueScopes.length > 0
-            ? {
-                create: uniqueScopes.map((scope) => ({
-                  provinceId: scope.provinceId || null,
-                  districtId: scope.districtId || null,
-                })),
-              }
-            : undefined,
+          applicationScopes:
+            uniqueScopes.length > 0
+              ? {
+                  create: uniqueScopes.map((scope) => ({
+                    provinceId: scope.provinceId || null,
+                    districtId: scope.districtId || null,
+                  })),
+                }
+              : undefined,
         },
         include: {
           member: {
@@ -198,7 +207,9 @@ export class PanelUserApplicationsService {
 
       if (error?.code === 'P2011') {
         // Null constraint violation
-        throw new BadRequestException('Zorunlu alanlar eksik. Lütfen tüm gerekli alanları doldurun.');
+        throw new BadRequestException(
+          'Zorunlu alanlar eksik. Lütfen tüm gerekli alanları doldurun.',
+        );
       }
 
       // Genel hata
@@ -322,7 +333,7 @@ export class PanelUserApplicationsService {
   ) {
     const application = await this.prisma.panelUserApplication.findUnique({
       where: { id },
-      include: { 
+      include: {
         member: true,
         requestedRole: true,
         applicationScopes: {
@@ -353,7 +364,7 @@ export class PanelUserApplicationsService {
     // Yetki alanı kontrolü: Eğer role hasScopeRestriction true ise scope zorunlu
     // Admin scope'ları değiştirebilir (dto.scopes varsa onları kullan, yoksa başvurudaki scope'ları kullan)
     let scopesToUse = dto.scopes;
-    
+
     if (application.requestedRole.hasScopeRestriction) {
       // Admin scope değiştirmişse onları kullan
       if (dto.scopes && dto.scopes.length > 0) {
@@ -365,17 +376,23 @@ export class PanelUserApplicationsService {
           districtId: scope.districtId ?? undefined,
         }));
       } else {
-        throw new BadRequestException('Bu rol için yetki alanı seçimi zorunludur.');
+        throw new BadRequestException(
+          'Bu rol için yetki alanı seçimi zorunludur.',
+        );
       }
 
       // Her scope için validasyon
       for (const scope of scopesToUse) {
         if (!scope.provinceId && !scope.districtId) {
-          throw new BadRequestException('Her yetki alanı için en az bir il veya ilçe seçmelisiniz.');
+          throw new BadRequestException(
+            'Her yetki alanı için en az bir il veya ilçe seçmelisiniz.',
+          );
         }
 
         if (scope.districtId && !scope.provinceId) {
-          throw new BadRequestException('İlçe seçmek için önce il seçmelisiniz.');
+          throw new BadRequestException(
+            'İlçe seçmek için önce il seçmelisiniz.',
+          );
         }
 
         // İlçenin seçili ile ait olduğunu kontrol et
@@ -384,7 +401,9 @@ export class PanelUserApplicationsService {
             where: { id: scope.districtId },
           });
           if (district && district.provinceId !== scope.provinceId) {
-            throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil.');
+            throw new BadRequestException(
+              'Seçilen ilçe, seçilen ile ait değil.',
+            );
           }
         }
       }
@@ -392,14 +411,17 @@ export class PanelUserApplicationsService {
 
     // User oluştur (scope'ları UserService'te UserScope olarak ekleyeceğiz)
     // memberId'yi geçirerek user'ı member'a bağla
-    const newUser = await this.usersService.create({
-      email: dto.email,
-      password: dto.password,
-      firstName: application.member.firstName,
-      lastName: application.member.lastName,
-      customRoleIds: [application.requestedRoleId],
-      scopes: scopesToUse,
-    }, application.memberId); // memberId'yi geçir
+    const newUser = await this.usersService.create(
+      {
+        email: dto.email,
+        password: dto.password,
+        firstName: application.member.firstName,
+        lastName: application.member.lastName,
+        customRoleIds: [application.requestedRoleId],
+        scopes: scopesToUse,
+      },
+      application.memberId,
+    ); // memberId'yi geçir
 
     if (!newUser) {
       throw new Error('User creation failed');
@@ -407,7 +429,11 @@ export class PanelUserApplicationsService {
 
     // Başvuruyu güncelle ve Member'a bağla
     // Eğer admin scope değiştirdiyse, başvurudaki scope'ları güncelle
-    if (dto.scopes && dto.scopes.length > 0 && application.requestedRole.hasScopeRestriction) {
+    if (
+      dto.scopes &&
+      dto.scopes.length > 0 &&
+      application.requestedRole.hasScopeRestriction
+    ) {
       // Mevcut scope'ları soft delete et
       await this.prisma.panelUserApplicationScope.updateMany({
         where: {
@@ -494,4 +520,3 @@ export class PanelUserApplicationsService {
     });
   }
 }
-

@@ -1,10 +1,19 @@
 /**
  * Approval Application Service
  */
-import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+} from '@nestjs/common';
 import type { ApprovalRepository } from '../../domain/repositories/approval.repository.interface';
 import { Approval } from '../../domain/entities/approval.entity';
-import { ApprovalStatus, ApprovalEntityType, MemberStatus } from '@prisma/client';
+import {
+  ApprovalStatus,
+  ApprovalEntityType,
+  MemberStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
@@ -25,7 +34,11 @@ export class ApprovalApplicationService {
     return await this.repository.create(approval);
   }
 
-  async approve(id: string, approvedBy: string, approvalNote?: string): Promise<Approval> {
+  async approve(
+    id: string,
+    approvedBy: string,
+    approvalNote?: string,
+  ): Promise<Approval> {
     const approval = await this.repository.findById(id);
     if (!approval) {
       throw new NotFoundException('Onay isteği bulunamadı');
@@ -35,12 +48,21 @@ export class ApprovalApplicationService {
     await this.repository.save(approval);
 
     // Update entity based on approval
-    await this.updateEntity(approval.entityType, approval.entityId, approval.requestData, true);
+    await this.updateEntity(
+      approval.entityType,
+      approval.entityId,
+      approval.requestData,
+      true,
+    );
 
     return approval;
   }
 
-  async reject(id: string, rejectedBy: string, rejectionNote?: string): Promise<Approval> {
+  async reject(
+    id: string,
+    rejectedBy: string,
+    rejectionNote?: string,
+  ): Promise<Approval> {
     const approval = await this.repository.findById(id);
     if (!approval) {
       throw new NotFoundException('Onay isteği bulunamadı');

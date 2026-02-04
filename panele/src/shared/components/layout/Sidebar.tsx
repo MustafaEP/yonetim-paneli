@@ -555,7 +555,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
             px: 2,
           }}
         >
-          RAPORLAR & BİLDİRİMLER
+          ÖDEMELER
         </Typography>
       </Box>
 
@@ -638,7 +638,26 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
             )}
           </>
         )}
+      </List>
 
+      <Divider sx={{ my: 2, mx: 2 }} />
+
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: theme.palette.text.secondary,
+            letterSpacing: '0.08em',
+            px: 2,
+          }}
+        >
+          RAPORLAR & BİLDİRİMLER
+        </Typography>
+      </Box>
+
+      <List sx={{ px: 1 }}>
         {showReports && (
           <ListItemButton
             component={Link}
@@ -800,6 +819,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
           onClose={onDrawerToggle}
           ModalProps={{
             keepMounted: true, // Better open performance on mobile
+            disableScrollLock: true,
           }}
           sx={{
             display: { xs: 'block', md: 'none' },

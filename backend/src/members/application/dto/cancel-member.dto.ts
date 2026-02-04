@@ -22,4 +22,3 @@ export class CancelMemberDto {
   @IsNotEmpty()
   status: 'RESIGNED' | 'EXPELLED' | 'INACTIVE';
 }
-

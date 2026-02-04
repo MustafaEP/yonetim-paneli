@@ -25,4 +25,3 @@ import { ProfessionValidationPipe } from './presentation/pipes/profession-valida
   exports: [ProfessionsService],
 })
 export class ProfessionsModule {}
-

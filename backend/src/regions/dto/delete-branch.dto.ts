@@ -14,7 +14,8 @@ export enum MemberActionOnBranchDelete {
 
 export class DeleteBranchDto {
   @ApiProperty({
-    description: 'Şube silinirken üyelere ne yapılacak (tüm seçenekler üyeleri başka bir şubeye taşır)',
+    description:
+      'Şube silinirken üyelere ne yapılacak (tüm seçenekler üyeleri başka bir şubeye taşır)',
     enum: MemberActionOnBranchDelete,
     example: MemberActionOnBranchDelete.TRANSFER_TO_BRANCH,
     default: MemberActionOnBranchDelete.TRANSFER_TO_BRANCH,
@@ -29,4 +30,3 @@ export class DeleteBranchDto {
   @IsString()
   targetBranchId: string;
 }
-

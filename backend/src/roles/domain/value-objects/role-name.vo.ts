@@ -1,6 +1,6 @@
 /**
  * Role Name Value Object
- * 
+ *
  * Encapsulates role name validation logic.
  */
 import { AdminRoleCannotBeCreatedException } from '../exceptions/role-domain.exception';

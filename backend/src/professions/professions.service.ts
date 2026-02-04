@@ -55,21 +55,30 @@ export class ProfessionsService {
    * Meslek/Unvan oluştur
    */
   async createProfession(dto: CreateProfessionDto) {
-    const profession = await this.professionApplicationService.createProfession({ dto });
-    return await this.prisma.profession.findUnique({ where: { id: profession.id } });
+    const profession = await this.professionApplicationService.createProfession(
+      { dto },
+    );
+    return await this.prisma.profession.findUnique({
+      where: { id: profession.id },
+    });
   }
 
   async updateProfession(id: string, dto: UpdateProfessionDto) {
-    const profession = await this.professionApplicationService.updateProfession({
-      professionId: id,
-      dto,
+    const profession = await this.professionApplicationService.updateProfession(
+      {
+        professionId: id,
+        dto,
+      },
+    );
+    return await this.prisma.profession.findUnique({
+      where: { id: profession.id },
     });
-    return await this.prisma.profession.findUnique({ where: { id: profession.id } });
   }
 
   async deleteProfession(id: string) {
-    await this.professionApplicationService.deleteProfession({ professionId: id });
+    await this.professionApplicationService.deleteProfession({
+      professionId: id,
+    });
     return await this.prisma.profession.findUnique({ where: { id } });
   }
 }
-

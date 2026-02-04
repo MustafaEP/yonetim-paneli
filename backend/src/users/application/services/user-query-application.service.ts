@@ -1,6 +1,6 @@
 /**
  * User Query Application Service
- * 
+ *
  * Handles user query operations.
  */
 import { Injectable, NotFoundException, Inject } from '@nestjs/common';

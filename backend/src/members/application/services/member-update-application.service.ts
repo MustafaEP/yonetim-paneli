@@ -1,15 +1,21 @@
 /**
  * Member Update Application Service
- * 
+ *
  * Use case: Member update işlemini orchestrate eder
- * 
+ *
  * Sorumluluklar:
  * - Transaction yönetimi
  * - Domain Entity çağırma
  * - Cross-cutting concerns (history)
  * - Repository koordinasyonu
  */
-import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
@@ -19,7 +25,10 @@ import {
   MemberActivationMissingFieldsException,
 } from '../../domain/exceptions/member-domain.exception';
 import { UpdateMemberDto } from '../dto/update-member.dto';
-import { GenderEnum, EducationStatusEnum } from '../../domain/entities/member.entity';
+import {
+  GenderEnum,
+  EducationStatusEnum,
+} from '../../domain/entities/member.entity';
 import { MemberStatusEnum } from '../../domain/value-objects/member-status.vo';
 
 export interface UpdateMemberCommand {
@@ -44,7 +53,7 @@ export class MemberUpdateApplicationService {
 
   /**
    * Use case: Member'ı güncelle
-   * 
+   *
    * Orchestration:
    * 1. Member'ı repository'den al
    * 2. History için veriyi sakla
@@ -67,7 +76,9 @@ export class MemberUpdateApplicationService {
       command.updateData.status === 'RESIGNED' ||
       command.updateData.status === 'EXPELLED' ||
       command.updateData.status === 'INACTIVE';
-    const regNo = isCancellationStatus ? member.registrationNumber?.getValue() : null;
+    const regNo = isCancellationStatus
+      ? member.registrationNumber?.getValue()
+      : null;
     const approvedAt = isCancellationStatus ? member.approvedAt : null;
 
     try {

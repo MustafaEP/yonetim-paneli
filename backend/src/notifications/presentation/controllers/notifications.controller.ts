@@ -10,7 +10,12 @@ import {
   UseFilters,
   UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { NotificationsService } from '../../notifications.service';
 import { CreateNotificationDto } from '../../application/dto/create-notification.dto';
 import { Permissions } from '../../../auth/decorators/permissions.decorator';
@@ -26,9 +31,15 @@ import { NotificationValidationPipe } from '../pipes/notification-validation.pip
 @Controller('notifications')
 @UseFilters(NotificationExceptionFilter)
 export class NotificationsController {
-  constructor(
-    private readonly notificationsService: NotificationsService,
-  ) {}
+  constructor(private readonly notificationsService: NotificationsService) {}
+
+  @Get('me/unread-count')
+  @ApiOperation({ summary: 'Okunmamış bildirim sayısı' })
+  @ApiResponse({ status: 200, description: 'count: number' })
+  async getUnreadCount(@CurrentUser() user: CurrentUserData) {
+    const count = await this.notificationsService.findUnreadCount(user.userId);
+    return { count };
+  }
 
   @Get('me')
   @ApiOperation({ summary: 'Kullanıcının kendi bildirimlerini getir' })
@@ -110,7 +121,11 @@ export class NotificationsController {
     @Body() dto: CreateNotificationDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    const notification = await this.notificationsService.create(dto, user.userId, user);
+    const notification = await this.notificationsService.create(
+      dto,
+      user.userId,
+      user,
+    );
     if (!notification) {
       throw new Error('Notification creation failed');
     }

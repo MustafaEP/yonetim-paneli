@@ -1,8 +1,8 @@
 /**
  * Unit of Work Interface (Port)
- * 
+ *
  * Shared Application: Transaction management için interface
- * 
+ *
  * Unit of Work pattern: Bir işlem içinde yapılan tüm değişiklikleri
  * tek bir transaction'da commit etmek için kullanılır.
  */

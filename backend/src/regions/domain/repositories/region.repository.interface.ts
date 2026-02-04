@@ -1,6 +1,6 @@
 /**
  * Region Repository Interface (Port)
- * 
+ *
  * Defines the contract for Region persistence operations.
  */
 import { Province } from '../entities/province.entity';

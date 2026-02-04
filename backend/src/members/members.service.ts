@@ -66,7 +66,10 @@ export class MembersService {
   }
 
   // TC kimlik numarasına göre iptal edilmiş üye kontrolü
-  async checkCancelledMemberByNationalId(nationalId: string, user?: CurrentUserData) {
+  async checkCancelledMemberByNationalId(
+    nationalId: string,
+    user?: CurrentUserData,
+  ) {
     if (!nationalId || nationalId.trim().length === 0) {
       return null;
     }
@@ -85,7 +88,11 @@ export class MembersService {
       where: {
         nationalId: nationalId.trim(),
         status: {
-          in: [MemberStatus.RESIGNED, MemberStatus.EXPELLED, MemberStatus.INACTIVE],
+          in: [
+            MemberStatus.RESIGNED,
+            MemberStatus.EXPELLED,
+            MemberStatus.INACTIVE,
+          ],
         },
         deletedAt: null,
         isActive: true,
@@ -109,7 +116,7 @@ export class MembersService {
 
   /**
    * Create Member Application
-   * 
+   *
    * ✅ Yeni mimari: MemberCreationApplicationService kullanıyor
    */
   async createApplication(
@@ -118,17 +125,17 @@ export class MembersService {
     previousCancelledMemberId?: string,
     user?: CurrentUserData,
   ) {
-    const member = await this.memberCreationApplicationService.createApplication({
-      dto,
-      createdByUserId,
-      previousCancelledMemberId,
-      user,
-    });
+    const member =
+      await this.memberCreationApplicationService.createApplication({
+        dto,
+        createdByUserId,
+        previousCancelledMemberId,
+        user,
+      });
 
     // Domain Entity → Prisma model'e dönüştür
     return await this.getById(member.id);
   }
-
 
   // PENDING başvurular: scope'a göre
   async listApplicationsForUser(user: CurrentUserData) {
@@ -173,8 +180,14 @@ export class MembersService {
     const whereScope = await this.scopeService.buildMemberWhereForUser(user);
 
     console.log('[MembersService] listMembersForUser - userId:', user.userId);
-    console.log('[MembersService] whereScope:', JSON.stringify(whereScope, null, 2));
-    console.log('[MembersService] status filter:', status || 'ACTIVE (default)');
+    console.log(
+      '[MembersService] whereScope:',
+      JSON.stringify(whereScope, null, 2),
+    );
+    console.log(
+      '[MembersService] status filter:',
+      status || 'ACTIVE (default)',
+    );
 
     // Status belirtilmemişse varsayılan olarak ACTIVE
     const filterStatus = status || MemberStatus.ACTIVE;
@@ -221,10 +234,12 @@ export class MembersService {
       orderBy: { createdAt: 'desc' },
     });
 
-    console.log('[MembersService] Found members after scope filter:', members.length);
+    console.log(
+      '[MembersService] Found members after scope filter:',
+      members.length,
+    );
     return members;
   }
-
 
   // Reddedilen üyeler: scope'a göre
   async listRejectedMembersForUser(user: CurrentUserData) {
@@ -400,7 +415,7 @@ export class MembersService {
 
   /**
    * Update Member
-   * 
+   *
    * ✅ Yeni mimari: MemberUpdateApplicationService kullanıyor
    */
   async updateMember(
@@ -430,14 +445,10 @@ export class MembersService {
 
   /**
    * Approve Member
-   * 
+   *
    * ✅ Yeni mimari: MemberApprovalApplicationService kullanıyor
    */
-  async approve(
-    id: string,
-    approvedByUserId?: string,
-    dto?: ApproveMemberDto,
-  ) {
+  async approve(id: string, approvedByUserId?: string, dto?: ApproveMemberDto) {
     // 🆕 Yeni mimari: Application Service kullan
     if (!approvedByUserId) {
       throw new BadRequestException('Onaylayan kullanıcı ID zorunludur');
@@ -461,7 +472,7 @@ export class MembersService {
 
   /**
    * Reject Member
-   * 
+   *
    * ✅ Yeni mimari: MemberRejectionApplicationService kullanıyor
    */
   async reject(id: string, approvedByUserId?: string) {
@@ -481,7 +492,7 @@ export class MembersService {
 
   /**
    * Activate Member
-   * 
+   *
    * ✅ Yeni mimari: MemberActivationApplicationService kullanıyor
    */
   async activate(id: string, activatedByUserId?: string) {
@@ -490,10 +501,12 @@ export class MembersService {
       throw new BadRequestException('Aktifleştiren kullanıcı ID zorunludur');
     }
 
-    const member = await this.memberActivationApplicationService.activateMember({
-      memberId: id,
-      activatedByUserId,
-    });
+    const member = await this.memberActivationApplicationService.activateMember(
+      {
+        memberId: id,
+        activatedByUserId,
+      },
+    );
 
     // Domain Entity → Prisma model'e dönüştür
     return await this.getById(member.id);
@@ -592,7 +605,6 @@ export class MembersService {
     });
   }
 
-
   // İptal edilmiş üyeler: scope'a göre
   async listCancelledMembersForUser(user: CurrentUserData) {
     const whereScope = await this.scopeService.buildMemberWhereForUser(user);
@@ -601,7 +613,11 @@ export class MembersService {
       where: {
         ...whereScope,
         status: {
-          in: [MemberStatus.RESIGNED, MemberStatus.EXPELLED, MemberStatus.INACTIVE],
+          in: [
+            MemberStatus.RESIGNED,
+            MemberStatus.EXPELLED,
+            MemberStatus.INACTIVE,
+          ],
         },
         deletedAt: null,
         isActive: true,
@@ -636,23 +652,33 @@ export class MembersService {
 
   /**
    * Cancel Membership
-   * 
+   *
    * ✅ Yeni mimari: MemberCancellationApplicationService kullanıyor
    */
-  async cancelMembership(id: string, dto: CancelMemberDto, cancelledByUserId: string) {
+  async cancelMembership(
+    id: string,
+    dto: CancelMemberDto,
+    cancelledByUserId: string,
+  ) {
     // Üyelik iptaline izin kontrolü (config check - bu Application Service'te olabilir ama şimdilik burada)
-    const allowCancellation = this.configService.getSystemSettingBoolean('MEMBERSHIP_ALLOW_CANCELLATION', true);
+    const allowCancellation = this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_ALLOW_CANCELLATION',
+      true,
+    );
     if (!allowCancellation) {
-      throw new BadRequestException('Üyelik iptali şu anda devre dışı bırakılmıştır');
+      throw new BadRequestException(
+        'Üyelik iptali şu anda devre dışı bırakılmıştır',
+      );
     }
 
     // 🆕 Yeni mimari: Application Service kullan
-    const member = await this.memberCancellationApplicationService.cancelMembership({
-      memberId: id,
-      cancelledByUserId,
-      status: dto.status as any,
-      cancellationReason: dto.cancellationReason,
-    });
+    const member =
+      await this.memberCancellationApplicationService.cancelMembership({
+        memberId: id,
+        cancelledByUserId,
+        status: dto.status as any,
+        cancellationReason: dto.cancellationReason,
+      });
 
     // Domain Entity → Prisma model'e dönüştür
     return await this.getById(member.id);

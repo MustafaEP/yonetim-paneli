@@ -1,6 +1,6 @@
 /**
  * User Domain Exceptions
- * 
+ *
  * Domain-specific exceptions for User entity business rules.
  */
 export class UserNotFoundException extends Error {

@@ -1,6 +1,6 @@
 /**
  * Base Value Object
- * 
+ *
  * Shared Domain: Tüm value object'ler için base class
  */
 export abstract class BaseValueObject {

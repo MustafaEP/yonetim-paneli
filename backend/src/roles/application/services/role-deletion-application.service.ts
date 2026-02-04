@@ -1,6 +1,6 @@
 /**
  * Role Deletion Application Service
- * 
+ *
  * Orchestrates role deletion use case.
  */
 import { Injectable, Logger, Inject } from '@nestjs/common';

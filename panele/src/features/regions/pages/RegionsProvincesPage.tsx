@@ -19,6 +19,7 @@ import LocationCityIcon from '@mui/icons-material/LocationCity';
 
 import type { Province, District } from '../../../types/region';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import { useToast } from '../../../shared/hooks/useToast';
 import {
   getProvinces,
@@ -101,7 +102,7 @@ const RegionsProvincesPage: React.FC = () => {
       field: 'code',
       headerName: 'Plaka',
       width: 100,
-      valueGetter: (params: { row?: Province }) => params?.row?.code ?? ',
+      valueGetter: (params: { row?: Province }) => params?.row?.code ?? '',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {params.row.code && (
@@ -151,15 +152,7 @@ const RegionsProvincesPage: React.FC = () => {
   const selectedProvince = provinces.find(p => p.id === selectedProvinceId);
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<MapIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="İller ve İlçeler"
@@ -176,24 +169,20 @@ const RegionsProvincesPage: React.FC = () => {
           <Card
             elevation={0}
             sx={{
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              borderRadius: 4,
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
               overflow: 'hidden',
               height: '100%',
-              transition: 'all 0.3s ease-in-out',
-              '&:hover': {
-                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.15)}`,
-                transform: 'translateY(-4px)',
-              }
+              background: '#fff',
             }}
           >
             {/* Kart Başlığı */}
             <Box
               sx={{
-                p: 2.5,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                p: { xs: 3, sm: 4 },
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
@@ -271,7 +260,7 @@ const RegionsProvincesPage: React.FC = () => {
             </Box>
 
             {/* İller Tablosu */}
-            <Box sx={{ p: 2 }}>
+            <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
               <Box
                 sx={{
                   height: 600,
@@ -283,19 +272,20 @@ const RegionsProvincesPage: React.FC = () => {
                     borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
                   },
                   '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                    borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                    borderRadius: '8px 8px 0 0',
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                    borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+                    borderRadius: 0,
                   },
                   '& .MuiDataGrid-columnHeaderTitle': {
                     fontWeight: 700,
-                    fontSize: '0.875rem',
+                    fontSize: '0.9rem',
                   },
                   '& .MuiDataGrid-row': {
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.2s ease',
                     '&:hover': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                      boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
                     },
                     '&.Mui-selected': {
                       backgroundColor: alpha(theme.palette.primary.main, 0.12),
@@ -339,24 +329,20 @@ const RegionsProvincesPage: React.FC = () => {
           <Card
             elevation={0}
             sx={{
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              borderRadius: 4,
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
               overflow: 'hidden',
               height: '100%',
-              transition: 'all 0.3s ease-in-out',
-              '&:hover': {
-                boxShadow: `0 12px 28px ${alpha(theme.palette.success.main, 0.15)}`,
-                transform: 'translateY(-4px)',
-              }
+              background: '#fff',
             }}
           >
             {/* Kart Başlığı */}
             <Box
               sx={{
-                p: 2.5,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.03)} 0%, ${alpha(theme.palette.success.light, 0.02)} 100%)`,
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                p: { xs: 3, sm: 4 },
+                background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.02)} 0%, ${alpha(theme.palette.success.light, 0.01)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
@@ -466,8 +452,8 @@ const RegionsProvincesPage: React.FC = () => {
               )}
             </Box>
 
-            {/* İlçeler Tablosu - Her zaman render edilir, loading state'i DataGrid'e geçirilir */}
-            <Box sx={{ p: 2 }}>
+            {/* İlçeler Tablosu */}
+            <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
               <Box
                 sx={{
                   height: 600,
@@ -479,19 +465,23 @@ const RegionsProvincesPage: React.FC = () => {
                     borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
                   },
                   '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: alpha(theme.palette.success.main, 0.04),
-                    borderBottom: `2px solid ${alpha(theme.palette.success.main, 0.1)}`,
-                    borderRadius: '8px 8px 0 0',
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.06)} 0%, ${alpha(theme.palette.success.light, 0.03)} 100%)`,
+                    borderBottom: `2px solid ${alpha(theme.palette.success.main, 0.12)}`,
+                    borderRadius: 0,
                   },
                   '& .MuiDataGrid-columnHeaderTitle': {
                     fontWeight: 700,
-                    fontSize: '0.875rem',
+                    fontSize: '0.9rem',
                   },
                   '& .MuiDataGrid-row': {
                     cursor: 'default',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.2s ease',
                     '&:hover': {
-                      backgroundColor: alpha(theme.palette.success.main, 0.02),
+                      backgroundColor: alpha(theme.palette.success.main, 0.03),
+                      boxShadow: `inset 4px 0 0 ${theme.palette.success.main}`,
+                    },
+                    '&:nth-of-type(even)': {
+                      backgroundColor: alpha(theme.palette.grey[50], 0.3),
                     },
                   },
                   '& .MuiDataGrid-footerContainer': {
@@ -559,7 +549,7 @@ const RegionsProvincesPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
-    </Box>
+    </PageLayout>
   );
 };
 

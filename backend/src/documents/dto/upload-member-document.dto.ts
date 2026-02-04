@@ -10,6 +10,9 @@ export class UploadMemberDocumentDto {
   @ApiProperty({ description: 'Açıklama (opsiyonel)', required: false })
   description?: string;
 
-  @ApiProperty({ description: 'Özel dosya adı (opsiyonel, uzantı otomatik eklenir)', required: false })
+  @ApiProperty({
+    description: 'Özel dosya adı (opsiyonel, uzantı otomatik eklenir)',
+    required: false,
+  })
   fileName?: string;
 }

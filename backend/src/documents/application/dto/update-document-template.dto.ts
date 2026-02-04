@@ -18,7 +18,11 @@ export class UpdateDocumentTemplateDto {
   @IsOptional()
   template?: string;
 
-  @ApiProperty({ description: 'Şablon tipi', enum: DocumentTemplateType, required: false })
+  @ApiProperty({
+    description: 'Şablon tipi',
+    enum: DocumentTemplateType,
+    required: false,
+  })
   @IsEnum(DocumentTemplateType)
   @IsOptional()
   type?: DocumentTemplateType;

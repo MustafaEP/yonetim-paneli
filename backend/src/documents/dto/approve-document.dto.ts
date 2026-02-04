@@ -13,4 +13,3 @@ export class ApproveDocumentDto {
   @MaxLength(1000)
   adminNote?: string;
 }
-

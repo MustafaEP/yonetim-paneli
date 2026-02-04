@@ -51,6 +51,7 @@ import type { Institution } from '../../regions/services/institutionsApi';
 import { getTevkifatCenters } from '../../accounting/services/accountingApi';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 interface PaymentRow {
   id: string;
@@ -737,17 +738,7 @@ const QuickPaymentEntryPage: React.FC = () => {
   }, []);
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: (theme) =>
-          theme.palette.mode === 'light'
-            ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-            : theme.palette.background.default,
-        pb: 4,
-      }}
-    >
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Hızlı Ödeme Girişi"
@@ -764,9 +755,9 @@ const QuickPaymentEntryPage: React.FC = () => {
         elevation={0}
         sx={{
           mb: 3,
-          borderRadius: 3,
+          borderRadius: 4,
           border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-          boxShadow: `0 2px 8px ${alpha(theme.palette.common.black, 0.04)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
           background: '#fff',
         }}
@@ -957,9 +948,9 @@ const QuickPaymentEntryPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
+          borderRadius: 4,
           border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-          boxShadow: `0 2px 8px ${alpha(theme.palette.common.black, 0.04)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
           background: '#fff',
         }}
@@ -1597,7 +1588,7 @@ const QuickPaymentEntryPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-    </Box>
+    </PageLayout>
   );
 };
 

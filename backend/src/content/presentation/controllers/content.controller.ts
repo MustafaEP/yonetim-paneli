@@ -10,7 +10,12 @@ import {
   UseFilters,
   UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ContentService } from '../../content.service';
 import { CreateContentDto } from '../../application/dto/create-content.dto';
 import { UpdateContentDto } from '../../application/dto/update-content.dto';
@@ -124,7 +129,9 @@ export class ContentController {
   @ApiOperation({ summary: 'İçeriği yayınla' })
   @ApiResponse({ status: 200 })
   async publish(@Param('id') id: string) {
-    const content = await this.contentApplicationService.publishContent({ contentId: id });
+    const content = await this.contentApplicationService.publishContent({
+      contentId: id,
+    });
     return await this.prisma.content.findUnique({
       where: { id: content.id },
       include: {

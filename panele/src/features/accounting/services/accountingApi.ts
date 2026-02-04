@@ -22,6 +22,8 @@ export interface TevkifatFile {
   id: string;
   tevkifatCenterId: string;
   tevkifatCenter?: { id: string; name: string; title: string | null };
+  tevkifatTitleId?: string | null;
+  tevkifatTitle?: { id: string; name: string } | null;
   totalAmount: number | string;
   memberCount: number;
   month: number;
@@ -233,4 +235,82 @@ export const updateTevkifatTitle = async (
 
 export const deleteTevkifatTitle = async (id: string): Promise<void> => {
   await httpClient.delete(`/accounting/tevkifat-titles/${id}`);
+};
+
+// Tevkifat Merkezi Dosya Yükleme
+export const uploadTevkifatCenterDocument = async (
+  tevkifatCenterId: string,
+  file: File,
+  fileName?: string,
+  description?: string,
+  tevkifatTitleId?: string,
+  month?: number,
+  year?: number,
+): Promise<TevkifatFile> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (fileName) {
+    formData.append('fileName', fileName);
+  }
+  if (description) {
+    formData.append('description', description);
+  }
+  if (tevkifatTitleId) {
+    formData.append('tevkifatTitleId', tevkifatTitleId);
+  }
+  if (month) {
+    formData.append('month', month.toString());
+  }
+  if (year) {
+    formData.append('year', year.toString());
+  }
+
+  const res = await httpClient.post<TevkifatFile>(
+    `/accounting/tevkifat-centers/${tevkifatCenterId}/upload-document`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+  return res.data;
+};
+
+/** Tevkifat dosyası/evrakı indir */
+export const downloadTevkifatFile = async (
+  fileId: string,
+  fileName?: string,
+): Promise<void> => {
+  const token = localStorage.getItem('accessToken');
+  const baseURL = httpClient.defaults.baseURL || '';
+  const url = `${baseURL}/accounting/tevkifat-files/${fileId}/download`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Dosya indirilemedi');
+  }
+
+  const blob = await response.blob();
+  const finalFileName =
+    fileName ||
+    response.headers
+      .get('Content-Disposition')
+      ?.match(/filename="?([^";]+)"?/)?.[1] ||
+    'tevkifat-evrak.pdf';
+  const blobUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = finalFileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(blobUrl);
 };

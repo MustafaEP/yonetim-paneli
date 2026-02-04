@@ -36,6 +36,7 @@ import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import type { Province } from '../../../types/region';
 import type { UserListItem } from '../../../types/user';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 
 const NotificationsPage: React.FC = () => {
@@ -379,7 +380,7 @@ const NotificationsPage: React.FC = () => {
   ];
 
   return (
-    <Box>
+    <PageLayout>
       <PageHeader
         icon={<NotificationsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Bildirim Gönder"
@@ -587,7 +588,7 @@ const NotificationsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

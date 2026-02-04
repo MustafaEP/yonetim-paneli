@@ -70,6 +70,7 @@ import { updateUserRoles } from '../services/usersApi';
 
 import UserPermissionsSection from '../components/UserPermissionsSection';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const UserDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -369,8 +370,7 @@ const UserDetailPage: React.FC = () => {
 
   return (
     <Fade in timeout={300}>
-      <Box sx={{ pb: 4 }}>
-        {/* Başlık Bölümü */}
+      <PageLayout>
         <PageHeader
           icon={<PersonIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
           title={fullName}
@@ -1022,7 +1022,7 @@ const UserDetailPage: React.FC = () => {
           onClose={() => setRolesDialogOpen(false)}
           onSave={handleSaveRoles}
         />
-      </Box>
+      </PageLayout>
     </Fade>
   );
 };

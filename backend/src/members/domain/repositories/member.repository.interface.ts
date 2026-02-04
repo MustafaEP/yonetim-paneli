@@ -1,6 +1,6 @@
 /**
  * Member Repository Interface (Port)
- * 
+ *
  * Domain katmanı için repository interface'i.
  * Infrastructure katmanı bu interface'i implement edecek.
  */

@@ -1,8 +1,8 @@
 /**
  * Member Mapper
- * 
+ *
  * Entity ↔ DTO mapping işlemleri
- * 
+ *
  * Sorumluluklar:
  * - Domain Entity → Response DTO
  * - Request DTO → Domain Entity (create/update için)
@@ -112,7 +112,7 @@ export class MemberMapper {
    * Domain Entity list → Response DTO list
    */
   static toResponseDtoList(members: Member[]): MemberResponseDto[] {
-    return members.map(member => this.toResponseDto(member));
+    return members.map((member) => this.toResponseDto(member));
   }
 
   /**

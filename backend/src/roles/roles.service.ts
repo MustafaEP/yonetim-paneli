@@ -29,7 +29,12 @@ export class RolesService {
     private roleQueryService: RoleQueryApplicationService,
   ) {}
 
-  async listRoles(): Promise<Array<RoleResponseDto | { name: string; permissions: Permission[]; isSystemRole: boolean }>> {
+  async listRoles(): Promise<
+    Array<
+      | RoleResponseDto
+      | { name: string; permissions: Permission[]; isSystemRole: boolean }
+    >
+  > {
     // Custom rolleri getir (veritabanından gelen tüm roller)
     const customRoles = await this.prisma.customRole.findMany({
       where: {
@@ -45,15 +50,20 @@ export class RolesService {
 
     // Sadece ADMIN sistem rolü olarak göster (artık CustomRole olarak da eklenmiş olabilir)
     // Sistem rolleri artık CustomRole tablosunda, bu yüzden burada göstermeye gerek yok
-    const systemRoles: Array<{ name: string; permissions: Permission[]; isSystemRole: boolean }> = [];
+    const systemRoles: Array<{
+      name: string;
+      permissions: Permission[];
+      isSystemRole: boolean;
+    }> = [];
 
     // Custom rolleri DTO formatına çevir
     const customRolesDto = customRoles.map((role) => {
       // ADMIN rolü için tüm izinleri göster (veritabanında saklanmasa bile)
-      const permissions = role.name === 'ADMIN' 
-        ? ALL_PERMISSIONS 
-        : role.permissions.map((p) => p.permission as Permission);
-      
+      const permissions =
+        role.name === 'ADMIN'
+          ? ALL_PERMISSIONS
+          : role.permissions.map((p) => p.permission as Permission);
+
       return {
         id: role.id,
         name: role.name,
@@ -70,7 +80,16 @@ export class RolesService {
     return [...systemRoles, ...customRolesDto];
   }
 
-  async getRoleById(id: string): Promise<RoleResponseDto & { users?: Array<{ id: string; email: string; firstName: string; lastName: string }> }> {
+  async getRoleById(id: string): Promise<
+    RoleResponseDto & {
+      users?: Array<{
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+      }>;
+    }
+  > {
     const role = await this.roleQueryService.findById(id);
 
     const prismaRole = await this.prisma.customRole.findUnique({
@@ -102,7 +121,9 @@ export class RolesService {
   async createRole(dto: CreateRoleDto): Promise<RoleResponseDto> {
     // ADMIN rolü oluşturulamaz
     if (dto.name === 'ADMIN') {
-      throw new BadRequestException('ADMIN rolü oluşturulamaz. Bu bir sistem rolüdür.');
+      throw new BadRequestException(
+        'ADMIN rolü oluşturulamaz. Bu bir sistem rolüdür.',
+      );
     }
 
     // Rol adı unique kontrolü
@@ -120,7 +141,7 @@ export class RolesService {
     // ADMIN izinleri kontrolü
     this.validatePermissions(dto.permissions);
 
-    // Scope validasyonunu kaldırdık - scope'lar rol oluşturulurken değil, 
+    // Scope validasyonunu kaldırdık - scope'lar rol oluşturulurken değil,
     // kullanıcıya rol atanırken belirlenir
 
     // Rolü oluştur
@@ -183,7 +204,9 @@ export class RolesService {
 
     // ADMIN rolü izinleri düzenlenemez
     if (role.name === 'ADMIN') {
-      throw new BadRequestException('ADMIN rolü izinleri düzenlenemez. Bu bir sistem rolüdür.');
+      throw new BadRequestException(
+        'ADMIN rolü izinleri düzenlenemez. Bu bir sistem rolüdür.',
+      );
     }
 
     // ADMIN izinleri kontrolü
@@ -239,4 +262,3 @@ export class RolesService {
     // Gerçek kontrol getPermissionsForRoles'de yapılacak (ADMIN her zaman tüm izinlere sahip)
   }
 }
-

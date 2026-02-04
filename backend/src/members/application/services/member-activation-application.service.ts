@@ -1,15 +1,21 @@
 /**
  * Member Activation Application Service
- * 
+ *
  * Use case: Member activation işlemini orchestrate eder (APPROVED → ACTIVE)
- * 
+ *
  * Sorumluluklar:
  * - Transaction yönetimi
  * - Domain Entity çağırma
  * - Cross-cutting concerns (history)
  * - Repository koordinasyonu
  */
-import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
@@ -36,7 +42,7 @@ export class MemberActivationApplicationService {
 
   /**
    * Use case: Member'ı activate et
-   * 
+   *
    * Orchestration:
    * 1. Member'ı repository'den al
    * 2. Domain Entity'de activate method'unu çağır (business rule'lar burada)

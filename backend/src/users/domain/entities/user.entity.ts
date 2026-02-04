@@ -1,6 +1,6 @@
 /**
  * User Domain Entity
- * 
+ *
  * Encapsulates User business logic and state.
  */
 import { Email } from '../value-objects/email.vo';
@@ -65,10 +65,11 @@ export class User {
     user._isActive = data.isActive ?? true;
     user._memberId = data.memberId || data.member?.id;
     user._customRoleIds = data.customRoles?.map((r: any) => r.id) || [];
-    user._scopes = data.scopes?.map((s: any) => ({
-      provinceId: s.provinceId,
-      districtId: s.districtId,
-    })) || [];
+    user._scopes =
+      data.scopes?.map((s: any) => ({
+        provinceId: s.provinceId,
+        districtId: s.districtId,
+      })) || [];
     user._deletedAt = data.deletedAt ? new Date(data.deletedAt) : undefined;
     user._createdAt = new Date(data.createdAt);
     user._updatedAt = new Date(data.updatedAt);

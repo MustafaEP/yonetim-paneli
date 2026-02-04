@@ -43,12 +43,20 @@ export class PanelUserApplicationsController {
     summary: 'Panel kullanıcı başvurusu oluştur',
     description: 'Bir üye için panel kullanıcı başvurusu oluşturur',
   })
-  @ApiParam({ name: 'memberId', description: 'Üye ID', example: 'member-id-123' })
+  @ApiParam({
+    name: 'memberId',
+    description: 'Üye ID',
+    example: 'member-id-123',
+  })
   @ApiResponse({
     status: 201,
     description: 'Başvuru başarıyla oluşturuldu',
   })
-  @ApiResponse({ status: 409, description: 'Bu üye için zaten bir başvuru mevcut veya üye zaten panel kullanıcısı' })
+  @ApiResponse({
+    status: 409,
+    description:
+      'Bu üye için zaten bir başvuru mevcut veya üye zaten panel kullanıcısı',
+  })
   async create(
     @Param('memberId') memberId: string,
     @Body() dto: CreatePanelUserApplicationDto,
@@ -69,7 +77,8 @@ export class PanelUserApplicationsController {
   @Get()
   @ApiOperation({
     summary: 'Panel kullanıcı başvurularını listele',
-    description: 'Tüm panel kullanıcı başvurularını listeler, isteğe bağlı olarak duruma göre filtreler',
+    description:
+      'Tüm panel kullanıcı başvurularını listeler, isteğe bağlı olarak duruma göre filtreler',
   })
   @ApiQuery({
     name: 'status',
@@ -83,7 +92,9 @@ export class PanelUserApplicationsController {
   })
   async findAll(@Query('status') status?: string) {
     // Using legacy service for backward compatibility
-    return this.service.findAll(status as 'PENDING' | 'APPROVED' | 'REJECTED' | undefined);
+    return this.service.findAll(
+      status as 'PENDING' | 'APPROVED' | 'REJECTED' | undefined,
+    );
   }
 
   @Permissions(Permission.PANEL_USER_APPLICATION_VIEW)
@@ -92,7 +103,11 @@ export class PanelUserApplicationsController {
     summary: 'Başvuru detayını getir',
     description: 'ID ile başvuru detayını getirir',
   })
-  @ApiParam({ name: 'id', description: 'Başvuru ID', example: 'application-id-123' })
+  @ApiParam({
+    name: 'id',
+    description: 'Başvuru ID',
+    example: 'application-id-123',
+  })
   @ApiResponse({
     status: 200,
     description: 'Başvuru detayı',
@@ -110,9 +125,14 @@ export class PanelUserApplicationsController {
   @Post(':id/approve')
   @ApiOperation({
     summary: 'Başvuruyu onayla ve User oluştur',
-    description: 'Başvuruyu onaylar, yeni bir User oluşturur ve Member ile ilişkilendirir',
+    description:
+      'Başvuruyu onaylar, yeni bir User oluşturur ve Member ile ilişkilendirir',
   })
-  @ApiParam({ name: 'id', description: 'Başvuru ID', example: 'application-id-123' })
+  @ApiParam({
+    name: 'id',
+    description: 'Başvuru ID',
+    example: 'application-id-123',
+  })
   @ApiResponse({
     status: 200,
     description: 'Başvuru onaylandı ve User oluşturuldu',
@@ -125,12 +145,16 @@ export class PanelUserApplicationsController {
     @Body() dto: ApprovePanelUserApplicationDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    await this.applicationService.approveApplication(id, {
-      email: dto.email,
-      password: dto.password,
-      reviewNote: dto.reviewNote,
-      scopes: dto.scopes,
-    }, user.userId);
+    await this.applicationService.approveApplication(
+      id,
+      {
+        email: dto.email,
+        password: dto.password,
+        reviewNote: dto.reviewNote,
+        scopes: dto.scopes,
+      },
+      user.userId,
+    );
     // Return Prisma format for backward compatibility
     return this.service.approve(id, dto, user.userId);
   }
@@ -141,7 +165,11 @@ export class PanelUserApplicationsController {
     summary: 'Başvuruyu reddet',
     description: 'Başvuruyu reddeder',
   })
-  @ApiParam({ name: 'id', description: 'Başvuru ID', example: 'application-id-123' })
+  @ApiParam({
+    name: 'id',
+    description: 'Başvuru ID',
+    example: 'application-id-123',
+  })
   @ApiResponse({
     status: 200,
     description: 'Başvuru reddedildi',
@@ -153,7 +181,11 @@ export class PanelUserApplicationsController {
     @Body() dto: RejectPanelUserApplicationDto,
     @CurrentUser() user: CurrentUserData,
   ) {
-    await this.applicationService.rejectApplication(id, dto.reviewNote, user.userId);
+    await this.applicationService.rejectApplication(
+      id,
+      dto.reviewNote,
+      user.userId,
+    );
     // Return Prisma format for backward compatibility
     return this.service.reject(id, dto, user.userId);
   }

@@ -25,9 +25,9 @@ import { SystemLogInterceptor } from './common/interceptors/system-log.intercept
 @Module({
   imports: [
     ConfigModule,
-    PrismaModule, 
-    UsersModule, 
-    AuthModule, 
+    PrismaModule,
+    UsersModule,
+    AuthModule,
     MembersModule,
     RegionsModule,
     RolesModule,

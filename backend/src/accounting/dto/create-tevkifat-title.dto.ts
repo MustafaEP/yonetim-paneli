@@ -8,4 +8,3 @@ export class CreateTevkifatTitleDto {
   @MaxLength(255)
   name: string;
 }
-

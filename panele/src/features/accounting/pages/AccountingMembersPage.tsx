@@ -251,23 +251,19 @@ const AccountingMembersPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
-            transform: 'translateY(-2px)',
-          }
+          background: '#fff',
         }}
       >
         {/* Filtre Bölümü */}
         <Box
           sx={{
-            p: { xs: 2, sm: 3 },
-            backgroundColor: alpha(theme.palette.primary.main, 0.02),
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            p: { xs: 3, sm: 4 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
           <Grid container spacing={2.5} alignItems="center">

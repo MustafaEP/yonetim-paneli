@@ -1,6 +1,6 @@
 /**
  * Accounting Controller (Presentation Layer)
- * 
+ *
  * Moved from accounting.controller.ts to presentation/controllers/accounting.controller.ts
  */
 import {
@@ -12,8 +12,21 @@ import {
   Param,
   Body,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  Res,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { TevkifatCenterApplicationService } from '../../application/services/tevkifat-center-application.service';
 import { TevkifatTitleApplicationService } from '../../application/services/tevkifat-title-application.service';
 import { TevkifatFileApplicationService } from '../../application/services/tevkifat-file-application.service';
@@ -44,7 +57,10 @@ export class AccountingController {
   // Legacy endpoints - using legacy service for backward compatibility
   @Permissions(Permission.ACCOUNTING_VIEW)
   @Get('members')
-  @ApiOperation({ summary: 'Muhasebe üyeleri listele', description: 'Excel/PDF export için üye listesi' })
+  @ApiOperation({
+    summary: 'Muhasebe üyeleri listele',
+    description: 'Excel/PDF export için üye listesi',
+  })
   @ApiResponse({ status: 200, description: 'Üye listesi' })
   async getMembers(
     @Query('branchId') branchId?: string,
@@ -62,7 +78,10 @@ export class AccountingController {
 
   @Permissions(Permission.TEVKIFAT_FILE_UPLOAD)
   @Post('tevkifat-files')
-  @ApiOperation({ summary: 'Tevkifat dosyası yükle', description: 'PDF dosya yükleme (admin onayı bekler)' })
+  @ApiOperation({
+    summary: 'Tevkifat dosyası yükle',
+    description: 'PDF dosya yükleme (admin onayı bekler)',
+  })
   @ApiResponse({ status: 201, description: 'Dosya yüklendi (onay bekliyor)' })
   async uploadTevkifatFile(
     @Body() dto: UploadTevkifatFileDto,
@@ -85,8 +104,24 @@ export class AccountingController {
   }
 
   @Permissions(Permission.ACCOUNTING_VIEW)
+  @Get('tevkifat-files/:id/download')
+  @ApiOperation({ summary: 'Tevkifat dosyası/evrakı indir' })
+  @ApiParam({ name: 'id', description: 'Tevkifat dosya ID' })
+  @ApiResponse({ status: 200, description: 'PDF dosyası' })
+  @ApiResponse({ status: 404, description: 'Dosya bulunamadı' })
+  async downloadTevkifatFile(
+    @Param('id') id: string,
+    @Res() res: import('express').Response,
+  ) {
+    await this.accountingService.downloadTevkifatFile(id, res);
+  }
+
+  @Permissions(Permission.ACCOUNTING_VIEW)
   @Get('tevkifat-files')
-  @ApiOperation({ summary: 'Tevkifat dosyalarını listele', description: 'Ay ve yıl bazlı listeleme' })
+  @ApiOperation({
+    summary: 'Tevkifat dosyalarını listele',
+    description: 'Ay ve yıl bazlı listeleme',
+  })
   @ApiResponse({ status: 200, description: 'Tevkifat dosya listesi' })
   async listTevkifatFiles(
     @Query('year') year?: number,
@@ -133,16 +168,31 @@ export class AccountingController {
   @Permissions(Permission.ACCOUNTING_VIEW)
   @Get('tevkifat-centers')
   @ApiOperation({ summary: 'Tevkifat merkezlerini listele' })
-  @ApiQuery({ name: 'provinceId', required: false, description: 'İl ID (filtreleme için - o ile bağlı olanları ve o ilin ilçelerine bağlı olanları gösterir)' })
-  @ApiQuery({ name: 'districtId', required: false, description: 'İlçe ID (filtreleme için)' })
+  @ApiQuery({
+    name: 'provinceId',
+    required: false,
+    description:
+      'İl ID (filtreleme için - o ile bağlı olanları ve o ilin ilçelerine bağlı olanları gösterir)',
+  })
+  @ApiQuery({
+    name: 'districtId',
+    required: false,
+    description: 'İlçe ID (filtreleme için)',
+  })
   @ApiResponse({ status: 200, description: 'Tevkifat merkezleri listesi' })
   async listTevkifatCenters(
     @Query('provinceId') provinceId?: string,
     @Query('districtId') districtId?: string,
   ) {
-    const centers = await this.tevkifatCenterApplicationService.listCenters({ provinceId, districtId });
+    const centers = await this.tevkifatCenterApplicationService.listCenters({
+      provinceId,
+      districtId,
+    });
     // Map to response format (include counts, etc.)
-    return this.accountingService.listTevkifatCenters({ provinceId, districtId });
+    return this.accountingService.listTevkifatCenters({
+      provinceId,
+      districtId,
+    });
   }
 
   @Permissions(Permission.ACCOUNTING_VIEW)
@@ -179,28 +229,106 @@ export class AccountingController {
     @Param('id') id: string,
     @Body() dto: UpdateTevkifatCenterDto,
   ) {
-    const center = await this.tevkifatCenterApplicationService.updateCenter(id, {
-      name: dto.name,
-      provinceId: dto.provinceId,
-      districtId: dto.districtId,
-      isActive: dto.isActive,
-    });
+    const center = await this.tevkifatCenterApplicationService.updateCenter(
+      id,
+      {
+        name: dto.name,
+        provinceId: dto.provinceId,
+        districtId: dto.districtId,
+        isActive: dto.isActive,
+      },
+    );
     // Return Prisma format for backward compatibility
     return this.accountingService.getTevkifatCenterById(center.id);
   }
 
   @Permissions(Permission.ACCOUNTING_VIEW)
   @Delete('tevkifat-centers/:id')
-  @ApiOperation({ 
-    summary: 'Tevkifat merkezi sil (pasif yap)', 
-    description: 'Mevcut tevkifat merkezini pasif yapar. Üyelere ne yapılacağını belirtmek için body içinde memberActionType ve targetTevkifatCenterId gönderilmelidir.' 
+  @ApiOperation({
+    summary: 'Tevkifat merkezi sil (pasif yap)',
+    description:
+      'Mevcut tevkifat merkezini pasif yapar. Üyelere ne yapılacağını belirtmek için body içinde memberActionType ve targetTevkifatCenterId gönderilmelidir.',
   })
   @ApiParam({ name: 'id', description: 'Tevkifat merkezi ID' })
   @ApiResponse({ status: 200, description: 'Tevkifat merkezi pasif yapıldı' })
-  @ApiResponse({ status: 404, description: 'Tevkifat merkezi veya hedef tevkifat merkezi bulunamadı' })
-  async deleteTevkifatCenter(@Param('id') id: string, @Body() dto: DeleteTevkifatCenterDto) {
-    await this.tevkifatCenterApplicationService.deleteCenter(id, dto.memberActionType, dto.targetTevkifatCenterId);
+  @ApiResponse({
+    status: 404,
+    description: 'Tevkifat merkezi veya hedef tevkifat merkezi bulunamadı',
+  })
+  async deleteTevkifatCenter(
+    @Param('id') id: string,
+    @Body() dto: DeleteTevkifatCenterDto,
+  ) {
+    await this.tevkifatCenterApplicationService.deleteCenter(
+      id,
+      dto.memberActionType,
+      dto.targetTevkifatCenterId,
+    );
     return this.accountingService.getTevkifatCenterById(id);
+  }
+
+  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Post('tevkifat-centers/:id/upload-document')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Tevkifat merkezi evrak yükle',
+    description: 'Tevkifat merkezi için PDF evrak yükleme',
+  })
+  @ApiParam({ name: 'id', description: 'Tevkifat merkezi ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        fileName: {
+          type: 'string',
+          description: 'Özel dosya adı (opsiyonel)',
+        },
+        description: {
+          type: 'string',
+          description: 'Dosya açıklaması (opsiyonel)',
+        },
+        tevkifatTitleId: {
+          type: 'string',
+          description: 'Tevkifat ünvanı ID (opsiyonel)',
+        },
+        month: {
+          type: 'number',
+          description: 'Ay (1-12)',
+        },
+        year: {
+          type: 'number',
+          description: 'Yıl',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Evrak yüklendi' })
+  @ApiResponse({ status: 404, description: 'Tevkifat merkezi bulunamadı' })
+  async uploadTevkifatCenterDocument(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('fileName') fileName?: string,
+    @Body('description') description?: string,
+    @Body('tevkifatTitleId') tevkifatTitleId?: string,
+    @Body('month') month?: string,
+    @Body('year') year?: string,
+    @CurrentUser() user?: CurrentUserData,
+  ) {
+    return this.accountingService.uploadTevkifatCenterDocument(
+      id,
+      file,
+      fileName,
+      description,
+      user?.userId,
+      tevkifatTitleId,
+      month ? Number(month) : undefined,
+      year ? Number(year) : undefined,
+    );
   }
 
   // Tevkifat Unvanları CRUD - Using new application service
@@ -231,7 +359,11 @@ export class AccountingController {
   async createTevkifatTitle(@Body() dto: CreateTevkifatTitleDto) {
     await this.tevkifatTitleApplicationService.createTitle({ name: dto.name });
     // Return Prisma format for backward compatibility
-    return this.accountingService.getTevkifatTitleById((await this.tevkifatTitleApplicationService.listTitles()).find(t => t.name === dto.name)!.id);
+    return this.accountingService.getTevkifatTitleById(
+      (await this.tevkifatTitleApplicationService.listTitles()).find(
+        (t) => t.name === dto.name,
+      )!.id,
+    );
   }
 
   @Permissions(Permission.ACCOUNTING_VIEW)

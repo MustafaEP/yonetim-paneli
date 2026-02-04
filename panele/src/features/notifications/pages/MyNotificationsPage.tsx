@@ -28,7 +28,6 @@ import {
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CircleIcon from '@mui/icons-material/Circle';
-import SettingsIcon from '@mui/icons-material/Settings';
 import MarkAsReadIcon from '@mui/icons-material/DoneAll';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -38,26 +37,17 @@ import {
   type UserNotification,
 } from '../services/notificationsApi';
 import { useToast } from '../../../shared/hooks/useToast';
+import { useNotificationContextOptional } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
-
-const formatTimeAgo = (date: Date | string): string => {
-  const now = new Date();
-  const past = new Date(date);
-  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
-
-  if (diffInSeconds < 60) return 'Az önce';
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} dakika önce`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} saat önce`;
-  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} gün önce`;
-  if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} ay önce`;
-  return `${Math.floor(diffInSeconds / 31536000)} yıl önce`;
-};
+import PageLayout from '../../../shared/components/layout/PageLayout';
+import { formatTimeAgo, getCategoryLabel, getCategoryColor } from '../utils/notification.utils';
 
 const MyNotificationsPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const toast = useToast();
+  const notificationContext = useNotificationContextOptional();
 
   const [tab, setTab] = useState(0); // 0: Tümü, 1: Okunmamış, 2: Okundu
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
@@ -145,6 +135,7 @@ const MyNotificationsPage: React.FC = () => {
       toast.success(`${selectedIds.length} bildirim okundu işaretlendi`);
       setSelectedIds([]);
       loadNotifications();
+      notificationContext?.loadUnreadCount();
     } catch (error) {
       toast.error('Bildirimler güncellenirken hata oluştu');
     }
@@ -155,45 +146,16 @@ const MyNotificationsPage: React.FC = () => {
       await markAllNotificationsAsRead();
       toast.success('Tüm bildirimler okundu işaretlendi');
       loadNotifications();
+      notificationContext?.loadUnreadCount();
     } catch (error) {
       toast.error('Bildirimler güncellenirken hata oluştu');
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'SYSTEM':
-        return 'primary';
-      case 'FINANCIAL':
-        return 'success';
-      case 'ANNOUNCEMENT':
-        return 'info';
-      case 'REMINDER':
-        return 'warning';
-      default:
-        return 'default';
-    }
-  };
-
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case 'SYSTEM':
-        return 'Sistem';
-      case 'FINANCIAL':
-        return 'Mali';
-      case 'ANNOUNCEMENT':
-        return 'Duyuru';
-      case 'REMINDER':
-        return 'Hatırlatma';
-      default:
-        return category;
     }
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <Box>
+    <PageLayout>
       <PageHeader
         icon={<NotificationsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Bildirimlerim"
@@ -202,37 +164,36 @@ const MyNotificationsPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
         rightContent={
-          <Stack direction="row" spacing={1}>
-            {unreadCount > 0 && (
-              <Button
-                variant="outlined"
-                startIcon={<MarkAsReadIcon />}
-                onClick={handleMarkAllAsRead}
-              >
-                Tümünü Okundu İşaretle
-              </Button>
-            )}
+          unreadCount > 0 ? (
             <Button
               variant="outlined"
-              startIcon={<SettingsIcon />}
-              onClick={() => navigate('/notifications/settings')}
+              startIcon={<MarkAsReadIcon />}
+              onClick={handleMarkAllAsRead}
             >
-              Ayarlar
+              Tümünü Okundu İşaretle
             </Button>
-          </Stack>
+          ) : undefined
         }
       />
 
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          overflow: 'hidden',
+          background: '#fff',
         }}
       >
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Stack direction="row" spacing={2} sx={{ px: 2, pt: 2, alignItems: 'center' }}>
+        <Box
+          sx={{
+            p: { xs: 3, sm: 4 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
+          }}
+        >
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
             <Tabs value={tab} onChange={handleTabChange}>
               <Tab label="Tümü" />
               <Tab
@@ -351,7 +312,7 @@ const MyNotificationsPage: React.FC = () => {
                           <Chip
                             label={getCategoryLabel(notification.notification.category)}
                             size="small"
-                            color={getCategoryColor(notification.notification.category) as any}
+                            color={getCategoryColor(notification.notification.category)}
                           />
                         </Box>
                       }
@@ -394,7 +355,7 @@ const MyNotificationsPage: React.FC = () => {
           </List>
         )}
       </Card>
-    </Box>
+    </PageLayout>
   );
 };
 

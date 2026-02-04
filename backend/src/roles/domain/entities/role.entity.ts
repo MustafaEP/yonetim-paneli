@@ -1,6 +1,6 @@
 /**
  * Role Domain Entity
- * 
+ *
  * Encapsulates Role business logic and state.
  */
 import { RoleName } from '../value-objects/role-name.vo';
@@ -58,7 +58,8 @@ export class Role {
   static fromPersistence(data: any): Role {
     const role = new Role();
     role._id = data.id;
-    role._name = data.name === 'ADMIN' ? RoleName.admin() : RoleName.create(data.name);
+    role._name =
+      data.name === 'ADMIN' ? RoleName.admin() : RoleName.create(data.name);
     role._description = data.description;
     role._permissions = data.permissions?.map((p: any) => p.permission) || [];
     role._isActive = data.isActive ?? true;

@@ -68,6 +68,7 @@ import type { Institution } from '../../regions/services/institutionsApi';
 import type { Profession } from '../../professions/services/professionsApi';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const MemberApplicationCreatePage: React.FC = () => {
   const theme = useTheme();
@@ -949,8 +950,7 @@ const MemberApplicationCreatePage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ pb: 4 }}>
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<PersonAddIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Yeni Üye Başvurusu"
@@ -2214,7 +2214,7 @@ const MemberApplicationCreatePage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

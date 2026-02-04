@@ -1,6 +1,6 @@
 /**
  * Role Domain Exceptions
- * 
+ *
  * Domain-specific exceptions for Role entity business rules.
  */
 export class RoleNotFoundException extends Error {
@@ -40,7 +40,9 @@ export class AdminRoleCannotBeDeletedException extends Error {
 
 export class RoleHasAssignedUsersException extends Error {
   constructor(public readonly userCount: number) {
-    super(`Role has ${userCount} assigned user(s). Remove users before deleting.`);
+    super(
+      `Role has ${userCount} assigned user(s). Remove users before deleting.`,
+    );
     this.name = 'RoleHasAssignedUsersException';
   }
 }

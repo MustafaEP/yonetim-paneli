@@ -41,34 +41,49 @@ export class MemberGroupApplicationService {
     private readonly memberGroupManagementDomainService: MemberGroupManagementDomainService,
   ) {}
 
-  async createMemberGroup(command: CreateMemberGroupCommand): Promise<MemberGroup> {
+  async createMemberGroup(
+    command: CreateMemberGroupCommand,
+  ): Promise<MemberGroup> {
     const { dto } = command;
-    await this.memberGroupManagementDomainService.validateNameUniqueness(dto.name);
-    
+    await this.memberGroupManagementDomainService.validateNameUniqueness(
+      dto.name,
+    );
+
     let order = dto.order;
     if (order === undefined || order === null) {
       const maxOrder = await this.memberGroupRepository.findMaxOrder();
       order = maxOrder + 1;
     }
 
-    const memberGroup = MemberGroup.create({ name: dto.name, description: dto.description, order }, '');
+    const memberGroup = MemberGroup.create(
+      { name: dto.name, description: dto.description, order },
+      '',
+    );
     const created = await this.memberGroupRepository.create(memberGroup);
     this.logger.log(`Member group created: ${created.id} (${created.name})`);
     return created;
   }
 
-  async updateMemberGroup(command: UpdateMemberGroupCommand): Promise<MemberGroup> {
+  async updateMemberGroup(
+    command: UpdateMemberGroupCommand,
+  ): Promise<MemberGroup> {
     const { memberGroupId, dto } = command;
-    const memberGroup = await this.memberGroupRepository.findById(memberGroupId);
+    const memberGroup =
+      await this.memberGroupRepository.findById(memberGroupId);
     if (!memberGroup) {
       throw new MemberGroupNotFoundException(memberGroupId);
     }
     if (dto.name && dto.name !== memberGroup.name) {
-      await this.memberGroupManagementDomainService.validateNameUniqueness(dto.name, memberGroupId);
+      await this.memberGroupManagementDomainService.validateNameUniqueness(
+        dto.name,
+        memberGroupId,
+      );
     }
     memberGroup.update(dto);
     await this.memberGroupRepository.save(memberGroup);
-    this.logger.log(`Member group updated: ${memberGroup.id} (${memberGroup.name})`);
+    this.logger.log(
+      `Member group updated: ${memberGroup.id} (${memberGroup.name})`,
+    );
     return memberGroup;
   }
 
@@ -86,23 +101,30 @@ export class MemberGroupApplicationService {
 
   async deleteMemberGroup(command: DeleteMemberGroupCommand): Promise<void> {
     const { memberGroupId } = command;
-    const memberGroup = await this.memberGroupRepository.findById(memberGroupId);
+    const memberGroup =
+      await this.memberGroupRepository.findById(memberGroupId);
     if (!memberGroup) {
       throw new MemberGroupNotFoundException(memberGroupId);
     }
-    const memberCount = await this.memberGroupRepository.countMembersByMemberGroupId(memberGroupId);
+    const memberCount =
+      await this.memberGroupRepository.countMembersByMemberGroupId(
+        memberGroupId,
+      );
     if (memberCount > 0) {
       memberGroup.deactivate();
       await this.memberGroupRepository.save(memberGroup);
     } else {
       await this.memberGroupRepository.delete(memberGroupId);
     }
-    this.logger.log(`Member group deleted/deactivated: ${memberGroup.id} (${memberGroup.name})`);
+    this.logger.log(
+      `Member group deleted/deactivated: ${memberGroup.id} (${memberGroup.name})`,
+    );
   }
 
   async moveMemberGroup(command: MoveMemberGroupCommand): Promise<MemberGroup> {
     const { memberGroupId, direction } = command;
-    const memberGroup = await this.memberGroupRepository.findById(memberGroupId);
+    const memberGroup =
+      await this.memberGroupRepository.findById(memberGroupId);
     if (!memberGroup) {
       throw new MemberGroupNotFoundException(memberGroupId);
     }
@@ -139,7 +161,9 @@ export class MemberGroupApplicationService {
     await this.memberGroupRepository.save(memberGroup);
     await this.memberGroupRepository.save(targetGroup);
 
-    this.logger.log(`Member group moved ${direction}: ${memberGroup.id} (${memberGroup.name})`);
+    this.logger.log(
+      `Member group moved ${direction}: ${memberGroup.id} (${memberGroup.name})`,
+    );
     return memberGroup;
   }
 }

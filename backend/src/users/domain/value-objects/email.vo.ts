@@ -1,6 +1,6 @@
 /**
  * Email Value Object
- * 
+ *
  * Encapsulates email validation logic.
  */
 export class Email {

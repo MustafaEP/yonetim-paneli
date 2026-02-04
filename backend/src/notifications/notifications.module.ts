@@ -6,7 +6,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ConfigModule } from '../config/config.module';
 import { MembersModule } from '../members/members.module';
 import { NotificationProcessor } from './processors/notification.processor';
-import { NotificationQueue, NOTIFICATION_QUEUE_NAME } from './queues/notification.queue';
+import {
+  NotificationQueue,
+  NOTIFICATION_QUEUE_NAME,
+} from './queues/notification.queue';
 import { EmailService } from './services/email.service';
 import { SmsService } from './services/sms.service';
 import { ConfigService } from '../config/config.service';
@@ -59,10 +62,6 @@ import { NotificationValidationPipe } from './presentation/pipes/notification-va
     NotificationExceptionFilter,
     NotificationValidationPipe,
   ],
-  exports: [
-    NotificationsService,
-    NotificationQueue,
-  ],
+  exports: [NotificationsService, NotificationQueue],
 })
 export class NotificationsModule {}
-

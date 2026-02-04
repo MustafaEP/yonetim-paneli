@@ -1,6 +1,6 @@
 /**
  * Province Domain Entity
- * 
+ *
  * Encapsulates Province business logic and state.
  */
 export interface CreateProvinceData {

@@ -53,6 +53,7 @@ import type { MemberListItem } from '../../../types/member';
 import type { Institution } from '../../regions/services/institutionsApi';
 import { exportToExcel, exportToPDF, type ExportColumn } from '../../../shared/utils/exportUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const PaymentsListPage: React.FC = () => {
   const theme = useTheme();
@@ -419,15 +420,7 @@ const PaymentsListPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Modern Başlık Bölümü */}
+    <PageLayout>
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Ödeme Sorgulama Sayfası"
@@ -1190,7 +1183,7 @@ const PaymentsListPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 };
 

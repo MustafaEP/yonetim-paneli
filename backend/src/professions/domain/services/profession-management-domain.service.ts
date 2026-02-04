@@ -12,7 +12,10 @@ export class ProfessionManagementDomainService {
     private readonly professionRepository: ProfessionRepository,
   ) {}
 
-  async validateNameUniqueness(name: string, excludeId?: string): Promise<void> {
+  async validateNameUniqueness(
+    name: string,
+    excludeId?: string,
+  ): Promise<void> {
     const existing = await this.professionRepository.findByName(name);
     if (existing && existing.id !== excludeId) {
       throw new ProfessionNameAlreadyExistsException(name);

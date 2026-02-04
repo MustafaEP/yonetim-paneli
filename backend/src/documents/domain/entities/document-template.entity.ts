@@ -31,7 +31,10 @@ export class DocumentTemplate {
 
   private constructor() {}
 
-  static create(data: CreateDocumentTemplateData, id: string = ''): DocumentTemplate {
+  static create(
+    data: CreateDocumentTemplateData,
+    id: string = '',
+  ): DocumentTemplate {
     const template = new DocumentTemplate();
     template._id = id;
     template._name = data.name.trim();

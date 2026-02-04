@@ -23,24 +23,26 @@ export class SmsService {
   private initializeClient() {
     try {
       // Önce sistem ayarlarından oku, yoksa environment variable'lardan
-      this.username = 
+      this.username =
         this.configService.getSystemSetting('SMS_NETGSM_USERNAME') ||
-        this.configService.netgsmUsername || 
+        this.configService.netgsmUsername ||
         '';
-      this.password = 
+      this.password =
         this.configService.getSystemSetting('SMS_NETGSM_PASSWORD') ||
-        this.configService.netgsmPassword || 
+        this.configService.netgsmPassword ||
         '';
-      this.msgHeader = 
+      this.msgHeader =
         this.configService.getSystemSetting('SMS_NETGSM_MSG_HEADER') ||
-        this.configService.netgsmMsgHeader || 
+        this.configService.netgsmMsgHeader ||
         '';
-      this.apiUrl = 
+      this.apiUrl =
         this.configService.getSystemSetting('SMS_NETGSM_API_URL') ||
         this.configService.netgsmApiUrl;
 
       if (!this.username || !this.password) {
-        this.logger.warn('NetGSM credentials not configured. SMS sending will be disabled.');
+        this.logger.warn(
+          'NetGSM credentials not configured. SMS sending will be disabled.',
+        );
       }
 
       this.httpClient = axios.create({
@@ -62,14 +64,22 @@ export class SmsService {
 
   async sendSms(options: SendSmsOptions): Promise<void> {
     // SMS gönderimi aktif mi kontrol et (önce NOTIFICATION_SMS_ENABLED, sonra SMS_ENABLED)
-    const notificationSmsEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_SMS_ENABLED', true);
-    const smsEnabled = this.configService.getSystemSettingBoolean('SMS_ENABLED', true);
-    
+    const notificationSmsEnabled = this.configService.getSystemSettingBoolean(
+      'NOTIFICATION_SMS_ENABLED',
+      true,
+    );
+    const smsEnabled = this.configService.getSystemSettingBoolean(
+      'SMS_ENABLED',
+      true,
+    );
+
     if (!notificationSmsEnabled) {
-      this.logger.warn('SMS notifications are disabled in notification settings.');
+      this.logger.warn(
+        'SMS notifications are disabled in notification settings.',
+      );
       return;
     }
-    
+
     if (!smsEnabled) {
       this.logger.warn('SMS sending is disabled in system settings.');
       return;
@@ -104,17 +114,25 @@ export class SmsService {
         dil: 'TR', // Türkçe karakter desteği
       });
 
-      const response = await this.httpClient.get(`${this.apiUrl}?${params.toString()}`);
+      const response = await this.httpClient.get(
+        `${this.apiUrl}?${params.toString()}`,
+      );
 
       // NetGSM yanıt formatı: "00" başarılı, diğerleri hata kodu
       const responseText = response.data?.toString().trim() || '';
 
       if (responseText.startsWith('00')) {
-        this.logger.log(`SMS sent successfully to ${phoneNumber}. Response: ${responseText}`);
+        this.logger.log(
+          `SMS sent successfully to ${phoneNumber}. Response: ${responseText}`,
+        );
       } else {
         const errorMessage = this.getErrorMessage(responseText);
-        this.logger.error(`Failed to send SMS to ${phoneNumber}. Error code: ${responseText} - ${errorMessage}`);
-        throw new Error(`SMS sending failed: ${errorMessage} (code: ${responseText})`);
+        this.logger.error(
+          `Failed to send SMS to ${phoneNumber}. Error code: ${responseText} - ${errorMessage}`,
+        );
+        throw new Error(
+          `SMS sending failed: ${errorMessage} (code: ${responseText})`,
+        );
       }
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -151,8 +169,9 @@ export class SmsService {
 
     const failed = results.filter((r) => r.status === 'rejected');
     if (failed.length > 0) {
-      this.logger.warn(`${failed.length} SMS failed to send out of ${smsList.length}`);
+      this.logger.warn(
+        `${failed.length} SMS failed to send out of ${smsList.length}`,
+      );
     }
   }
 }
-

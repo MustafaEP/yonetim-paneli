@@ -4,7 +4,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus, ApprovalEntityType, MemberStatus } from '@prisma/client';
+import {
+  ApprovalStatus,
+  ApprovalEntityType,
+  MemberStatus,
+} from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
 
 @Injectable()
@@ -44,11 +48,7 @@ export class ApprovalsService {
   /**
    * Onay isteğini onayla
    */
-  async approve(
-    id: string,
-    approvedBy: string,
-    approvalNote?: string,
-  ) {
+  async approve(id: string, approvedBy: string, approvalNote?: string) {
     const approval = await this.prisma.approval.findUnique({
       where: { id },
     });
@@ -62,7 +62,12 @@ export class ApprovalsService {
     }
 
     // Entity'yi güncelle
-    await this.updateEntity(approval.entityType, approval.entityId, approval.requestData, true);
+    await this.updateEntity(
+      approval.entityType,
+      approval.entityId,
+      approval.requestData,
+      true,
+    );
 
     return this.prisma.approval.update({
       where: { id },
@@ -96,11 +101,7 @@ export class ApprovalsService {
   /**
    * Onay isteğini reddet
    */
-  async reject(
-    id: string,
-    rejectedBy: string,
-    rejectionNote?: string,
-  ) {
+  async reject(id: string, rejectedBy: string, rejectionNote?: string) {
     const approval = await this.prisma.approval.findUnique({
       where: { id },
     });

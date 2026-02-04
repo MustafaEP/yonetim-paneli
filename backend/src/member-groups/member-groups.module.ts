@@ -25,4 +25,3 @@ import { MemberGroupValidationPipe } from './presentation/pipes/member-group-val
   exports: [MemberGroupsService],
 })
 export class MemberGroupsModule {}
-

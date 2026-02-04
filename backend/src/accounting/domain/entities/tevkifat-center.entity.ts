@@ -1,6 +1,6 @@
 /**
  * TevkifatCenter Domain Entity
- * 
+ *
  * Domain rules:
  * - Name must be unique
  * - Province and district must be valid (if provided)

@@ -28,12 +28,9 @@ export class LoggingInterceptor implements NestInterceptor {
         },
         error: (error) => {
           const delay = Date.now() - now;
-          this.logger.error(
-            `${method} ${url} - ${error.message} - ${delay}ms`,
-          );
+          this.logger.error(`${method} ${url} - ${error.message} - ${delay}ms`);
         },
       }),
     );
   }
 }
-

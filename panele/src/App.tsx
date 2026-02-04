@@ -1,6 +1,7 @@
 import React from 'react';
 import { SnackbarProvider } from 'notistack';
 import { ErrorDialogProvider } from './app/providers/ErrorDialogContext';
+import { NotificationProvider } from './features/notifications/context/NotificationContext';
 import { AppRoutes } from './app/router';
 
 const App: React.FC = () => (
@@ -12,8 +13,11 @@ const App: React.FC = () => (
         horizontal: 'right',
       }}
       autoHideDuration={4000}
+      disableScrollLock
     >
-      <AppRoutes />
+      <NotificationProvider>
+        <AppRoutes />
+      </NotificationProvider>
     </SnackbarProvider>
   </ErrorDialogProvider>
 );

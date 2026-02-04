@@ -1,219 +1,121 @@
 // src/features/reports/services/reportsApi.ts
+
+/**
+ * Raporlar sayfası backend API'sini kullanır.
+ *
+ * Backend endpoint'leri:
+ * - GET  /reports/kpis              -> Özet metrikler (KPI'lar)
+ * - GET  /reports/members           -> Üye raporu
+ * - GET  /reports/regions           -> Bölge raporu
+ * - GET  /reports/applications      -> Başvuru raporu
+ * - POST /reports/generate           -> Tüm rapor verileri (filtrelenmiş, tercih edilen)
+ *
+ * POST body / Query parametreleri:
+ * - startDate: string (ISO date)
+ * - endDate: string (ISO date)
+ * - branchId: string
+ * - provinceIds: string[] (POST'ta dizi, GET'te virgülle ayrılmış)
+ * - districtIds: string[] (POST'ta dizi, GET'te virgülle ayrılmış)
+ * - status: MemberStatus
+ */
+
 import httpClient from '../../../shared/services/httpClient';
+import type {
+  ReportFilters,
+  ReportKPIs,
+  MemberReportRow,
+  RegionReportRow,
+  ApplicationReportRow,
+  ReportData,
+} from './reportsMock';
 
-export interface GlobalReport {
-  totalMembers: number;
-  activeMembers: number;
-  cancelledMembers: number;
-  totalUsers: number;
-  totalRoles: number;
-  totalDuesPlans: number;
-  totalPayments: number;
-  totalDebt: number;
-  byProvince: Array<{
-    provinceId: string;
-    provinceName: string;
-    memberCount: number;
-  }>;
-  byStatus: Array<{
-    status: string;
-    count: number;
-  }>;
+/** Backend'den gelen rapor tipleri (reportsMock ile uyumlu) */
+export type {
+  ReportFilters,
+  ReportKPIs,
+  MemberReportRow,
+  RegionReportRow,
+  ApplicationReportRow,
+  ReportData,
+} from './reportsMock';
+
+// KPI'ları getir
+export const fetchKPIs = async (filters: ReportFilters): Promise<ReportKPIs> => {
+  const params = prepareQueryParams(filters);
+  const response = await httpClient.get<ReportKPIs>('/reports/kpis', { params });
+  return response.data;
+};
+
+// Üye raporu getir
+export const fetchMemberReport = async (filters: ReportFilters): Promise<MemberReportRow[]> => {
+  const params = prepareQueryParams(filters);
+  const response = await httpClient.get<MemberReportRow[]>('/reports/members', { params });
+  return response.data;
+};
+
+// Bölge raporu getir
+export const fetchRegionReport = async (filters: ReportFilters): Promise<RegionReportRow[]> => {
+  const params = prepareQueryParams(filters);
+  const response = await httpClient.get<RegionReportRow[]>('/reports/regions', { params });
+  return response.data;
+};
+
+// Başvuru raporu getir
+export const fetchApplicationReport = async (filters: ReportFilters): Promise<ApplicationReportRow[]> => {
+  const params = prepareQueryParams(filters);
+  const response = await httpClient.get<ApplicationReportRow[]>('/reports/applications', { params });
+  return response.data;
+};
+
+/** POST /reports/generate için body (tarihler ISO string) */
+export interface ReportGenerateBody {
+  startDate?: string;
+  endDate?: string;
+  branchId?: string;
+  provinceIds?: string[];
+  districtIds?: string[];
+  status?: string;
 }
 
-export interface RegionReport {
-  regionId: string;
-  regionName: string;
-  memberCount: number;
-  activeMembers: number;
-  cancelledMembers: number;
-  totalPayments: number;
-  totalDebt: number;
+// Tüm rapor verilerini tek seferde getir (backend'den)
+export const fetchReportData = async (filters: ReportFilters): Promise<ReportData> => {
+  const body = prepareReportBody(filters);
+  const response = await httpClient.post<ReportData>('/reports/generate', body);
+  return response.data;
+};
+
+// POST body hazırla (Date -> ISO string, undefined alanları gönderme)
+function prepareReportBody(filters: ReportFilters): ReportGenerateBody {
+  const body: ReportGenerateBody = {};
+  if (filters.startDate) body.startDate = filters.startDate.toISOString();
+  if (filters.endDate) body.endDate = filters.endDate.toISOString();
+  if (filters.branchId) body.branchId = filters.branchId;
+  if (filters.provinceIds?.length) body.provinceIds = filters.provinceIds;
+  if (filters.districtIds?.length) body.districtIds = filters.districtIds;
+  if (filters.status) body.status = filters.status;
+  return body;
 }
 
-export interface MemberStatusReport {
-  status: string;
-  count: number;
-  percentage: number;
-  members: Array<{
-    id: string;
-    firstName: string;
-    lastName: string;
-    memberNumber?: string;
-    status: string;
-  }>;
+// GET query parametrelerini hazırla
+function prepareQueryParams(filters: ReportFilters): Record<string, string | undefined> {
+  const params: Record<string, string | undefined> = {};
+  if (filters.startDate) params.startDate = filters.startDate.toISOString();
+  if (filters.endDate) params.endDate = filters.endDate.toISOString();
+  if (filters.branchId) params.branchId = filters.branchId;
+  if (filters.provinceIds?.length) params.provinceIds = filters.provinceIds.join(',');
+  if (filters.districtIds?.length) params.districtIds = filters.districtIds.join(',');
+  if (filters.status) params.status = filters.status;
+  return params;
 }
 
-export interface DuesReport {
-  totalPayments: number;
-  totalDebt: number;
-  paidMembers: number;
-  unpaidMembers: number;
-  byMonth: Array<{
-    month: number;
-    year: number;
-    total: number;
-    count: number;
-  }>;
-  byPlan: Array<{
-    planId: string;
-    planName: string;
-    totalPayments: number;
-    memberCount: number;
-  }>;
-}
-
-// Genel rapor
-export const getGlobalReport = async (): Promise<GlobalReport> => {
-  const res = await httpClient.get<GlobalReport>('/reports/global');
-  return res.data;
-};
-
-// Bölge raporu
-export const getRegionReport = async (
-  regionId?: string,
-): Promise<RegionReport | RegionReport[]> => {
-  const res = await httpClient.get<RegionReport | RegionReport[]>('/reports/region', {
-    params: regionId ? { regionId } : undefined,
-  });
-  return res.data;
-};
-
-// Üye durum raporu
-export const getMemberStatusReport = async (): Promise<MemberStatusReport[]> => {
-  const res = await httpClient.get<MemberStatusReport[]>('/reports/member-status');
-  return Array.isArray(res.data) ? res.data : [];
-};
-
-// Aidat raporu
-export const getDuesReport = async (params?: {
-  year?: number;
-  month?: number;
-}): Promise<DuesReport> => {
-  const res = await httpClient.get<DuesReport>('/reports/dues', { params });
-  return res.data;
-};
-
-// Export fonksiyonları
-export const exportGlobalReportToExcel = async (): Promise<void> => {
-  const res = await httpClient.get('/reports/global/export/excel', {
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `Genel_Rapor_${new Date().toISOString().split('T')[0]}.xlsx`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
-export const exportGlobalReportToPdf = async (): Promise<void> => {
-  const res = await httpClient.get('/reports/global/export/pdf', {
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `Genel_Rapor_${new Date().toISOString().split('T')[0]}.pdf`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
-export const exportRegionReportToExcel = async (regionId?: string): Promise<void> => {
-  const res = await httpClient.get('/reports/region/export/excel', {
-    params: regionId ? { regionId } : undefined,
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `Bolge_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
-export const exportRegionReportToPdf = async (regionId?: string): Promise<void> => {
-  const res = await httpClient.get('/reports/region/export/pdf', {
-    params: regionId ? { regionId } : undefined,
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `Bolge_Raporu_${new Date().toISOString().split('T')[0]}.pdf`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
-export const exportDuesReportToExcel = async (params?: {
-  year?: number;
-  month?: number;
-}): Promise<void> => {
-  const res = await httpClient.get('/reports/dues/export/excel', {
-    params,
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `Aidat_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
-export const exportDuesReportToPdf = async (params?: {
-  year?: number;
-  month?: number;
-}): Promise<void> => {
-  const res = await httpClient.get('/reports/dues/export/pdf', {
-    params,
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `Aidat_Raporu_${new Date().toISOString().split('T')[0]}.pdf`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
-export const exportMemberStatusReportToExcel = async (): Promise<void> => {
-  const res = await httpClient.get('/reports/member-status/export/excel', {
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `Uye_Durum_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
-export const exportMemberStatusReportToPdf = async (): Promise<void> => {
-  const res = await httpClient.get('/reports/member-status/export/pdf', {
-    responseType: 'blob',
-  });
-  const url = window.URL.createObjectURL(new Blob([res.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `Uye_Durum_Raporu_${new Date().toISOString().split('T')[0]}.pdf`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
+/**
+ * Backend sadece GET endpoint'leri sunuyorsa: fetchReportData yerine
+ * aşağıdaki gibi paralel çağrı kullanılabilir:
+ *
+ * const [kpis, memberReport, regionReport, applicationReport] = await Promise.all([
+ *   fetchKPIs(filters),
+ *   fetchMemberReport(filters),
+ *   fetchRegionReport(filters),
+ *   fetchApplicationReport(filters),
+ * ]);
+ */

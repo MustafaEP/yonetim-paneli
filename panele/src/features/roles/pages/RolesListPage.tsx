@@ -27,6 +27,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import type { RoleListItem, CustomRole } from '../../../types/role';
 import { getRoles, deleteRole } from '../services/rolesApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 import ConfirmDialog from '../../../shared/components/common/ConfirmDialog';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
@@ -278,10 +279,8 @@ const RolesListPage: React.FC = () => {
   };
 
   return (
-    <>
-      <Box>
-        {/* Başlık Bölümü */}
-        <PageHeader
+    <PageLayout>
+      <PageHeader
           icon={<AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
           title="Roller"
           description="Sistem rolleri ve özel rolleri görüntüleyin ve yönetin"
@@ -326,24 +325,25 @@ const RolesListPage: React.FC = () => {
           }
         />
 
-        {/* Ana Kart */}
-        <Card
-          elevation={0}
+      {/* Ana Kart */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          overflow: 'hidden',
+          background: '#fff',
+        }}
+      >
+        {/* Arama Bölümü */}
+        <Box
           sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-            overflow: 'hidden',
+            p: { xs: 3, sm: 4 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
-          {/* Arama Bölümü */}
-          <Box
-            sx={{
-              p: { xs: 2, sm: 3 },
-              backgroundColor: alpha(theme.palette.primary.main, 0.02),
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-            }}
-          >
             <TextField
               placeholder="Rol adı veya açıklama ile ara..."
               size="small"
@@ -369,10 +369,10 @@ const RolesListPage: React.FC = () => {
                 },
               }}
             />
-          </Box>
+        </Box>
 
-          {/* İçerik Bölümü */}
-          <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        {/* İçerik Bölümü */}
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
             {/* Sonuç Sayısı */}
             {!loading && (
               <Paper
@@ -401,44 +401,57 @@ const RolesListPage: React.FC = () => {
               </Paper>
             )}
 
-            {/* Tablo - Her zaman render edilir, loading state'i DataGrid'e geçirilir */}
-            <Box
-              sx={{
-                height: { xs: 400, sm: 500, md: 600 },
-                minHeight: { xs: 400, sm: 500, md: 600 },
-                '& .MuiDataGrid-root': {
-                  border: 'none',
-                  borderRadius: 2,
+          {/* Tablo */}
+          <Box
+            sx={{
+              borderRadius: 3,
+              overflow: 'hidden',
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              height: { xs: 450, sm: 550, md: 650 },
+              minHeight: { xs: 450, sm: 550, md: 650 },
+              '& .MuiDataGrid-root': {
+                border: 'none',
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                py: 2,
+                display: 'flex',
+                alignItems: 'center',
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+                borderRadius: 0,
+                minHeight: '56px !important',
+                maxHeight: '56px !important',
+              },
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontWeight: 700,
+                fontSize: '0.9rem',
+              },
+              '& .MuiDataGrid-columnHeaderTitleContainer': {
+                justifyContent: 'center',
+              },
+              '& .MuiDataGrid-row': {
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                  boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
                 },
-                '& .MuiDataGrid-cell': {
-                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
-                  display: 'flex',
-                  alignItems: 'center',
+                '&:nth-of-type(even)': {
+                  backgroundColor: alpha(theme.palette.grey[50], 0.3),
                 },
-                '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                  borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  borderRadius: 0,
-                },
-                '& .MuiDataGrid-columnHeader': {
-                  display: 'flex',
-                  alignItems: 'center',
-                },
-                '& .MuiDataGrid-columnHeaderTitle': {
-                  fontWeight: 700,
-                  fontSize: '0.875rem',
-                },
-                '& .MuiDataGrid-row': {
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                  },
-                },
-                '& .MuiDataGrid-footerContainer': {
-                  borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  backgroundColor: alpha(theme.palette.background.default, 0.5),
-                },
-              }}
-            >
+              },
+              '& .MuiDataGrid-footerContainer': {
+                borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+                backgroundColor: alpha(theme.palette.grey[50], 0.5),
+                minHeight: '52px',
+              },
+              '& .MuiDataGrid-virtualScroller': {
+                minHeight: '200px',
+              },
+            }}
+          >
               <DataGrid
                 rows={filteredRows}
                 columns={columns}
@@ -455,10 +468,9 @@ const RolesListPage: React.FC = () => {
                   },
                 }}
               />
-            </Box>
           </Box>
-        </Card>
-      </Box>
+        </Box>
+      </Card>
 
       <ConfirmDialog
         open={deleteDialogOpen}
@@ -480,7 +492,7 @@ const RolesListPage: React.FC = () => {
         variant="error"
         loading={deleting}
       />
-    </>
+    </PageLayout>
   );
 };
 

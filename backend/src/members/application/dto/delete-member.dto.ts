@@ -13,7 +13,8 @@ export class DeleteMemberDto {
   deletePayments?: boolean;
 
   @ApiProperty({
-    description: 'Üyeye ait döküman kayıtlarını da sil (true) veya koru (false)',
+    description:
+      'Üyeye ait döküman kayıtlarını da sil (true) veya koru (false)',
     example: false,
     default: false,
     required: false,
@@ -22,4 +23,3 @@ export class DeleteMemberDto {
   @IsOptional()
   deleteDocuments?: boolean;
 }
-

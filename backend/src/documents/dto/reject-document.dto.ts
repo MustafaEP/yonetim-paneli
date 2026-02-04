@@ -13,4 +13,3 @@ export class RejectDocumentDto {
   @MaxLength(1000)
   rejectionReason: string;
 }
-

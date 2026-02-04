@@ -8,7 +8,14 @@ import {
   UseFilters,
   UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBearerAuth,
+  ApiBody,
+} from '@nestjs/swagger';
 import { UsersService } from '../../users.service';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import type { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
@@ -35,7 +42,10 @@ export class UsersController {
   ) {}
 
   @Get('me')
-  @ApiOperation({ summary: 'Mevcut kullanıcı bilgilerini getir', description: 'JWT token\'dan kullanıcı bilgilerini döner' })
+  @ApiOperation({
+    summary: 'Mevcut kullanıcı bilgilerini getir',
+    description: "JWT token'dan kullanıcı bilgilerini döner",
+  })
   @ApiResponse({
     status: 200,
     description: 'Kullanıcı bilgileri',
@@ -48,7 +58,12 @@ export class UsersController {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    const userWithRoles = dbUser as typeof dbUser & { customRoles?: Array<{ name: string; permissions: Array<{ permission: string }> }> };
+    const userWithRoles = dbUser as typeof dbUser & {
+      customRoles?: Array<{
+        name: string;
+        permissions: Array<{ permission: string }>;
+      }>;
+    };
 
     const permissions: string[] = [];
     if (userWithRoles.customRoles) {
@@ -66,14 +81,17 @@ export class UsersController {
       email: dbUser.email,
       firstName: dbUser.firstName,
       lastName: dbUser.lastName,
-      roles: userWithRoles.customRoles?.map(r => r.name) || [],
+      roles: userWithRoles.customRoles?.map((r) => r.name) || [],
       permissions,
     };
   }
 
   @Permissions(Permission.USER_LIST)
   @Get()
-  @ApiOperation({ summary: 'Tüm kullanıcıları listele', description: 'Sadece USER_LIST yetkisi olan kullanıcılar erişebilir' })
+  @ApiOperation({
+    summary: 'Tüm kullanıcıları listele',
+    description: 'Sadece USER_LIST yetkisi olan kullanıcılar erişebilir',
+  })
   @ApiResponse({
     status: 200,
     description: 'Kullanıcı listesi',
@@ -81,13 +99,15 @@ export class UsersController {
   async getAllUsers() {
     const users = await this.usersService.findAll();
     return users.map((u) => {
-      const userWithRoles = u as typeof u & { customRoles?: Array<{ name: string }> };
+      const userWithRoles = u as typeof u & {
+        customRoles?: Array<{ name: string }>;
+      };
       return {
         id: u.id,
         email: u.email,
         firstName: u.firstName,
         lastName: u.lastName,
-        roles: userWithRoles.customRoles?.map(r => r.name) || [],
+        roles: userWithRoles.customRoles?.map((r) => r.name) || [],
         isActive: u.isActive,
       };
     });
@@ -95,8 +115,15 @@ export class UsersController {
 
   @Permissions(Permission.USER_VIEW)
   @Get(':id')
-  @ApiOperation({ summary: 'Kullanıcı detayını getir', description: 'ID ile kullanıcı bilgilerini getirir' })
-  @ApiParam({ name: 'id', description: 'Kullanıcı ID', example: 'user-uuid-123' })
+  @ApiOperation({
+    summary: 'Kullanıcı detayını getir',
+    description: 'ID ile kullanıcı bilgilerini getirir',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Kullanıcı ID',
+    example: 'user-uuid-123',
+  })
   @ApiResponse({
     status: 200,
     description: 'Kullanıcı bilgileri',
@@ -109,7 +136,12 @@ export class UsersController {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    const userWithRoles = user as typeof user & { customRoles?: Array<{ name: string; permissions: Array<{ permission: string }> }> };
+    const userWithRoles = user as typeof user & {
+      customRoles?: Array<{
+        name: string;
+        permissions: Array<{ permission: string }>;
+      }>;
+    };
 
     const permissions: string[] = [];
     if (userWithRoles.customRoles) {
@@ -122,37 +154,57 @@ export class UsersController {
       });
     }
 
-    const userWithMember = user as typeof user & { member?: { id: string; firstName: string; lastName: string; nationalId: string; phone: string | null; email: string | null; status: string; registrationNumber: string | null } | null };
+    const userWithMember = user as typeof user & {
+      member?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        nationalId: string;
+        phone: string | null;
+        email: string | null;
+        status: string;
+        registrationNumber: string | null;
+      } | null;
+    };
 
     return {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      roles: userWithRoles.customRoles?.map(r => r.name) || [],
+      roles: userWithRoles.customRoles?.map((r) => r.name) || [],
       permissions,
       isActive: user.isActive,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
       deletedAt: user.deletedAt?.toISOString() || null,
-      member: userWithMember.member ? {
-        id: userWithMember.member.id,
-        firstName: userWithMember.member.firstName,
-        lastName: userWithMember.member.lastName,
-        nationalId: userWithMember.member.nationalId,
-        phone: userWithMember.member.phone,
-        email: userWithMember.member.email,
-        status: userWithMember.member.status,
-        registrationNumber: userWithMember.member.registrationNumber,
-      } : null,
+      member: userWithMember.member
+        ? {
+            id: userWithMember.member.id,
+            firstName: userWithMember.member.firstName,
+            lastName: userWithMember.member.lastName,
+            nationalId: userWithMember.member.nationalId,
+            phone: userWithMember.member.phone,
+            email: userWithMember.member.email,
+            status: userWithMember.member.status,
+            registrationNumber: userWithMember.member.registrationNumber,
+          }
+        : null,
     };
   }
 
   @Permissions(Permission.USER_ASSIGN_ROLE)
   @Patch(':id/roles')
   @UsePipes(UserValidationPipe)
-  @ApiOperation({ summary: 'Kullanıcı rollerini güncelle', description: 'Kullanıcıya özel roller atar' })
-  @ApiParam({ name: 'id', description: 'Kullanıcı ID', example: 'user-uuid-123' })
+  @ApiOperation({
+    summary: 'Kullanıcı rollerini güncelle',
+    description: 'Kullanıcıya özel roller atar',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Kullanıcı ID',
+    example: 'user-uuid-123',
+  })
   @ApiBody({ type: UpdateUserRolesDto })
   @ApiResponse({
     status: 200,
@@ -187,15 +239,23 @@ export class UsersController {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    const userWithRoles = prismaUser as typeof prismaUser & { customRoles?: Array<{ name: string; permissions: Array<{ permission: string }> }> };
+    const userWithRoles = prismaUser as typeof prismaUser & {
+      customRoles?: Array<{
+        name: string;
+        permissions: Array<{ permission: string }>;
+      }>;
+    };
 
     return {
       id: prismaUser.id,
       email: prismaUser.email,
       firstName: prismaUser.firstName,
       lastName: prismaUser.lastName,
-      roles: userWithRoles.customRoles?.map(r => r.name) || [],
-      permissions: userWithRoles.customRoles?.flatMap(r => r.permissions.map(p => p.permission)) || [],
+      roles: userWithRoles.customRoles?.map((r) => r.name) || [],
+      permissions:
+        userWithRoles.customRoles?.flatMap((r) =>
+          r.permissions.map((p) => p.permission),
+        ) || [],
       isActive: prismaUser.isActive,
     };
   }

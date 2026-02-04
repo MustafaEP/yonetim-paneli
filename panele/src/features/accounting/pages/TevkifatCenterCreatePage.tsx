@@ -36,6 +36,7 @@ import {
 } from '../services/accountingApi';
 import { getProvinces, getDistricts, type Province, type District } from '../../regions/services/regionsApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const TevkifatCenterCreatePage: React.FC = () => {
   const theme = useTheme();
@@ -207,16 +208,8 @@ const TevkifatCenterCreatePage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Back Button */}
-      <Box sx={{ mb: 3, pt: { xs: 2, md: 3 } }}>
+    <PageLayout>
+      <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/accounting/tevkifat-centers')}
@@ -231,7 +224,6 @@ const TevkifatCenterCreatePage: React.FC = () => {
           Geri Dön
         </Button>
 
-        {/* Modern Header Card */}
         <PageHeader
           icon={<BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
           title={isEditMode ? 'Tevkifat Merkezi Düzenle' : 'Yeni Tevkifat Merkezi Oluştur'}
@@ -248,15 +240,11 @@ const TevkifatCenterCreatePage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
-            transform: 'translateY(-2px)',
-          }
+          background: '#fff',
         }}
       >
         <Box sx={{ p: { xs: 2.5, sm: 3.5 } }}>
@@ -405,7 +393,7 @@ const TevkifatCenterCreatePage: React.FC = () => {
           </form>
         </Box>
       </Card>
-    </Box>
+    </PageLayout>
   );
 };
 

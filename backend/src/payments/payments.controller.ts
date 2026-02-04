@@ -14,7 +14,15 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreateMemberPaymentDto } from './dto/create-member-payment.dto';
 import { UpdateMemberPaymentDto } from './dto/update-member-payment.dto';
@@ -32,16 +40,20 @@ export class PaymentsController {
 
   @Permissions(Permission.MEMBER_PAYMENT_ADD)
   @Post()
-  @ApiOperation({ summary: 'Üye ödemesi oluştur', description: 'Muhasebe tarafından ödeme girişi yapılır' })
+  @ApiOperation({
+    summary: 'Üye ödemesi oluştur',
+    description: 'Muhasebe tarafından ödeme girişi yapılır',
+  })
   @ApiResponse({ status: 201, description: 'Ödeme kaydı oluşturuldu' })
   async createPayment(
     @Body() dto: CreateMemberPaymentDto,
     @CurrentUser() user: CurrentUserData,
     @Req() req: any,
   ) {
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const ipAddress =
+      req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
-    
+
     return this.paymentsService.createPayment(
       dto,
       user.userId,
@@ -52,7 +64,10 @@ export class PaymentsController {
 
   @Permissions(Permission.MEMBER_PAYMENT_LIST)
   @Get()
-  @ApiOperation({ summary: 'Ödeme listesi', description: 'Filtreleme ile ödeme listesi' })
+  @ApiOperation({
+    summary: 'Ödeme listesi',
+    description: 'Filtreleme ile ödeme listesi',
+  })
   @ApiResponse({ status: 200, description: 'Ödeme listesi' })
   async listPayments(
     @Query('memberId') memberId?: string,
@@ -82,7 +97,10 @@ export class PaymentsController {
 
   @Permissions(Permission.MEMBER_PAYMENT_LIST)
   @Get('member/:memberId')
-  @ApiOperation({ summary: 'Üye ödemeleri', description: 'Belirli bir üyenin ödemeleri' })
+  @ApiOperation({
+    summary: 'Üye ödemeleri',
+    description: 'Belirli bir üyenin ödemeleri',
+  })
   @ApiResponse({ status: 200, description: 'Üye ödemeleri' })
   async getMemberPayments(@Param('memberId') memberId: string) {
     return this.paymentsService.getMemberPayments(memberId);
@@ -90,33 +108,36 @@ export class PaymentsController {
 
   @Permissions(Permission.MEMBER_PAYMENT_VIEW)
   @Get(':id/document/view')
-  @ApiOperation({ summary: 'Ödeme belgesi görüntüle', description: 'Ödeme belgesini yeni sekmede aç' })
+  @ApiOperation({
+    summary: 'Ödeme belgesi görüntüle',
+    description: 'Ödeme belgesini yeni sekmede aç',
+  })
   @ApiParam({ name: 'id', description: 'Ödeme ID' })
   @ApiResponse({ status: 200, description: 'Dosya görüntüleniyor' })
   @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
-  async viewPaymentDocument(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
+  async viewPaymentDocument(@Param('id') id: string, @Res() res: Response) {
     await this.paymentsService.viewPaymentDocument(id, res);
   }
 
   @Permissions(Permission.MEMBER_PAYMENT_VIEW)
   @Get(':id/document/download')
-  @ApiOperation({ summary: 'Ödeme belgesi indir', description: 'Ödeme belgesini indir' })
+  @ApiOperation({
+    summary: 'Ödeme belgesi indir',
+    description: 'Ödeme belgesini indir',
+  })
   @ApiParam({ name: 'id', description: 'Ödeme ID' })
   @ApiResponse({ status: 200, description: 'Dosya indiriliyor' })
   @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
-  async downloadPaymentDocument(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
+  async downloadPaymentDocument(@Param('id') id: string, @Res() res: Response) {
     await this.paymentsService.downloadPaymentDocument(id, res);
   }
 
   @Permissions(Permission.MEMBER_PAYMENT_VIEW)
   @Get(':id')
-  @ApiOperation({ summary: 'Ödeme detayı', description: 'Ödeme kaydı detayları' })
+  @ApiOperation({
+    summary: 'Ödeme detayı',
+    description: 'Ödeme kaydı detayları',
+  })
   @ApiResponse({ status: 200, description: 'Ödeme detayı' })
   async getPaymentById(@Param('id') id: string) {
     return this.paymentsService.getPaymentById(id);
@@ -124,7 +145,10 @@ export class PaymentsController {
 
   @Permissions(Permission.MEMBER_PAYMENT_ADD)
   @Patch(':id')
-  @ApiOperation({ summary: 'Ödemeyi güncelle', description: 'Mevcut ödeme kaydını güncelle' })
+  @ApiOperation({
+    summary: 'Ödemeyi güncelle',
+    description: 'Mevcut ödeme kaydını güncelle',
+  })
   @ApiResponse({ status: 200, description: 'Ödeme güncellendi' })
   async updatePayment(
     @Param('id') id: string,
@@ -132,9 +156,10 @@ export class PaymentsController {
     @CurrentUser() user: CurrentUserData,
     @Req() req: any,
   ) {
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const ipAddress =
+      req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
-    
+
     return this.paymentsService.updatePayment(
       id,
       dto,
@@ -146,7 +171,10 @@ export class PaymentsController {
 
   @Permissions(Permission.MEMBER_PAYMENT_APPROVE)
   @Post(':id/approve')
-  @ApiOperation({ summary: 'Ödemeyi onayla', description: 'Admin tarafından ödeme onayı' })
+  @ApiOperation({
+    summary: 'Ödemeyi onayla',
+    description: 'Admin tarafından ödeme onayı',
+  })
   @ApiResponse({ status: 200, description: 'Ödeme onaylandı' })
   async approvePayment(
     @Param('id') id: string,
@@ -157,7 +185,10 @@ export class PaymentsController {
 
   @Permissions(Permission.MEMBER_PAYMENT_APPROVE)
   @Delete(':id')
-  @ApiOperation({ summary: 'Ödemeyi sil', description: 'Onaysız ödemeleri silme (Admin)' })
+  @ApiOperation({
+    summary: 'Ödemeyi sil',
+    description: 'Onaysız ödemeleri silme (Admin)',
+  })
   @ApiResponse({ status: 200, description: 'Ödeme silindi' })
   async deletePayment(@Param('id') id: string) {
     return this.paymentsService.deletePayment(id);
@@ -165,7 +196,10 @@ export class PaymentsController {
 
   @Permissions(Permission.ACCOUNTING_VIEW)
   @Get('accounting/list')
-  @ApiOperation({ summary: 'Muhasebe ödeme listesi', description: 'Excel/PDF export için ödeme listesi' })
+  @ApiOperation({
+    summary: 'Muhasebe ödeme listesi',
+    description: 'Excel/PDF export için ödeme listesi',
+  })
   @ApiResponse({ status: 200, description: 'Muhasebe ödeme listesi' })
   async getPaymentsForAccounting(
     @Query('branchId') branchId?: string,
@@ -187,7 +221,10 @@ export class PaymentsController {
   @Post('upload-document')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Ödeme evrakı yükle', description: 'Ödeme için PDF evrak yükleme' })
+  @ApiOperation({
+    summary: 'Ödeme evrakı yükle',
+    description: 'Ödeme için PDF evrak yükleme',
+  })
   @ApiBody({
     schema: {
       type: 'object',

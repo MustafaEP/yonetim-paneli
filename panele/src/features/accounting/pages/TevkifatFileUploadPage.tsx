@@ -36,6 +36,7 @@ import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { uploadTevkifatFile, getTevkifatFiles, approveTevkifatFile, rejectTevkifatFile } from '../services/accountingApi';
 import type { TevkifatFile } from '../services/accountingApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const TevkifatFileUploadPage: React.FC = () => {
   const theme = useTheme();
@@ -192,15 +193,7 @@ const TevkifatFileUploadPage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: (theme) => 
-        theme.palette.mode === 'light' 
-          ? `linear-gradient(135deg, ${alpha(theme.palette.info.light, 0.05)} 0%, ${alpha(theme.palette.background.default, 1)} 100%)`
-          : theme.palette.background.default,
-      pb: 4,
-    }}>
-      {/* Modern Header */}
+    <PageLayout>
       <PageHeader
         icon={<CloudUploadIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Tevkifat Dosya Yükleme"
@@ -215,14 +208,10 @@ const TevkifatFileUploadPage: React.FC = () => {
           elevation={0}
           sx={{ 
             mb: 3, 
-            borderRadius: 3,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-            transition: 'all 0.3s ease-in-out',
-            '&:hover': {
-              boxShadow: `0 12px 28px ${alpha(theme.palette.info.main, 0.12)}`,
-              transform: 'translateY(-2px)',
-            }
+            borderRadius: 4,
+            border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+            background: '#fff',
           }}
         >
           <Box sx={{ p: 3 }}>
@@ -450,22 +439,18 @@ const TevkifatFileUploadPage: React.FC = () => {
       <Card
         elevation={0}
         sx={{
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
           overflow: 'hidden',
-          transition: 'all 0.3s ease-in-out',
-          '&:hover': {
-            boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`,
-            transform: 'translateY(-2px)',
-          }
+          background: '#fff',
         }}
       >
         <Box
           sx={{
-            p: { xs: 2, sm: 3 },
-            backgroundColor: alpha(theme.palette.primary.main, 0.02),
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            p: { xs: 3, sm: 4 },
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
           }}
         >
           <Stack direction="row" spacing={2} alignItems="center">
@@ -638,7 +623,7 @@ const TevkifatFileUploadPage: React.FC = () => {
           )}
         </Box>
       </Card>
-    </Box>
+    </PageLayout>
   );
 };
 

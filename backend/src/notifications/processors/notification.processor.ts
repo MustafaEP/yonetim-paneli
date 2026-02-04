@@ -30,13 +30,23 @@ export class NotificationProcessor extends WorkerHost {
   }
 
   async process(job: Job<NotificationJobData>): Promise<void> {
-    const { notificationId, type, recipientId, recipientEmail, recipientPhone, title, message } = job.data;
+    const {
+      notificationId,
+      type,
+      recipientId,
+      recipientEmail,
+      recipientPhone,
+      title,
+      message,
+    } = job.data;
 
     try {
       switch (type) {
         case NotificationType.EMAIL:
           if (!recipientEmail) {
-            throw new Error('Email recipient is required for EMAIL notification');
+            throw new Error(
+              'Email recipient is required for EMAIL notification',
+            );
           }
           await this.emailService.sendEmail({
             to: recipientEmail,
@@ -87,9 +97,14 @@ export class NotificationProcessor extends WorkerHost {
           throw new Error(`Unsupported notification type: ${type}`);
       }
 
-      this.logger.log(`Notification ${notificationId} sent successfully (type: ${type})`);
+      this.logger.log(
+        `Notification ${notificationId} sent successfully (type: ${type})`,
+      );
     } catch (error: any) {
-      this.logger.error(`Failed to send notification ${notificationId}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to send notification ${notificationId}: ${error.message}`,
+        error.stack,
+      );
       throw error; // Job retry için
     }
   }
@@ -104,4 +119,3 @@ export class NotificationProcessor extends WorkerHost {
     this.logger.error(`Job ${job.id} failed: ${error.message}`);
   }
 }
-

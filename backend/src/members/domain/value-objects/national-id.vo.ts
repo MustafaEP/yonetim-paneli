@@ -1,6 +1,6 @@
 /**
  * NationalId Value Object
- * 
+ *
  * Domain rule: TC Kimlik numarası validation
  */
 export class NationalId {

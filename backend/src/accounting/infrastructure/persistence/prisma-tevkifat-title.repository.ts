@@ -39,7 +39,7 @@ export class PrismaTevkifatTitleRepository implements TevkifatTitleRepository {
       orderBy: { name: 'asc' },
     });
 
-    return data.map(item => TevkifatTitle.fromPrisma(item));
+    return data.map((item) => TevkifatTitle.fromPrisma(item));
   }
 
   async save(title: TevkifatTitle): Promise<void> {

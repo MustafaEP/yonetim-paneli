@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '../config/config.service';
 import { CreateSystemSettingDto, UpdateSystemSettingDto } from './dto';
@@ -62,7 +67,11 @@ export class SystemService {
     return created;
   }
 
-  async updateSetting(key: string, dto: UpdateSystemSettingDto, userId: string) {
+  async updateSetting(
+    key: string,
+    dto: UpdateSystemSettingDto,
+    userId: string,
+  ) {
     // Önce ayarın var olup olmadığını kontrol et
     const existingSetting = await this.prisma.systemSetting.findUnique({
       where: { key },
@@ -76,7 +85,7 @@ export class SystemService {
       // Ayar varsa güncelle
       oldValue = existingSetting.value;
       oldCategory = existingSetting.category;
-      
+
       updated = await this.prisma.systemSetting.update({
         where: { key },
         data: {
@@ -90,7 +99,7 @@ export class SystemService {
       // Varsayılan değerler
       const defaultCategory = SystemSettingCategory.GENERAL;
       const defaultDescription = `Sistem ayarı: ${key}`;
-      
+
       updated = await this.prisma.systemSetting.create({
         data: {
           key,
@@ -101,7 +110,7 @@ export class SystemService {
           updatedBy: userId,
         },
       });
-      
+
       oldValue = undefined;
       oldCategory = defaultCategory;
     }
@@ -148,13 +157,22 @@ export class SystemService {
     endDate?: string;
     user?: CurrentUserData; // Scope filtreleme için
   }) {
-    const { limit = 25, offset = 0, userId, entityType, action, startDate, endDate, user } = params || {};
+    const {
+      limit = 25,
+      offset = 0,
+      userId,
+      entityType,
+      action,
+      startDate,
+      endDate,
+      user,
+    } = params || {};
 
     const where: any = {};
     if (userId) where.userId = userId;
     if (entityType) where.entityType = entityType;
     if (action) where.action = action;
-    
+
     // Tarih filtreleri
     if (startDate || endDate) {
       where.createdAt = {};
@@ -171,16 +189,21 @@ export class SystemService {
 
     // Scope bazlı filtreleme: LOG_VIEW_OWN_SCOPE izni varsa ve LOG_VIEW_ALL yoksa
     const hasViewAll = user?.permissions?.includes('LOG_VIEW_ALL' as any);
-    const hasViewOwnScope = user?.permissions?.includes('LOG_VIEW_OWN_SCOPE' as any);
-    
+    const hasViewOwnScope = user?.permissions?.includes(
+      'LOG_VIEW_OWN_SCOPE' as any,
+    );
+
     if (user && hasViewOwnScope && !hasViewAll) {
       // Kullanıcının scope'unu al
       const scopeIds = await this.memberScopeService.getUserScopeIds(user);
-      
+
       if (scopeIds.provinceId || scopeIds.districtId) {
         // Scope'a göre filtreleme yapılacak entity ID'lerini topla
-        const scopeEntityIds = await this.getEntityIdsByScope(scopeIds, entityType);
-        
+        const scopeEntityIds = await this.getEntityIdsByScope(
+          scopeIds,
+          entityType,
+        );
+
         if (scopeEntityIds.length > 0) {
           // Scope'daki entity'lerle ilgili logları göster
           where.OR = [
@@ -247,7 +270,7 @@ export class SystemService {
         where: memberWhere,
         select: { id: true },
       });
-      entityIds.push(...members.map(m => m.id));
+      entityIds.push(...members.map((m) => m.id));
     }
 
     // BRANCH entity type için
@@ -263,7 +286,7 @@ export class SystemService {
         where: branchWhere,
         select: { id: true },
       });
-      entityIds.push(...branches.map(b => b.id));
+      entityIds.push(...branches.map((b) => b.id));
     }
 
     // INSTITUTION entity type için
@@ -282,7 +305,7 @@ export class SystemService {
         where: institutionWhere,
         select: { id: true },
       });
-      entityIds.push(...institutions.map(i => i.id));
+      entityIds.push(...institutions.map((i) => i.id));
     }
 
     return entityIds;
@@ -310,14 +333,16 @@ export class SystemService {
     // Scope kontrolü için helper metod
     if (user) {
       const hasViewAll = user.permissions?.includes('LOG_VIEW_ALL' as any);
-      const hasViewOwnScope = user.permissions?.includes('LOG_VIEW_OWN_SCOPE' as any);
-      
+      const hasViewOwnScope = user.permissions?.includes(
+        'LOG_VIEW_OWN_SCOPE' as any,
+      );
+
       if (hasViewOwnScope && !hasViewAll) {
         // Kendi logu değilse scope kontrolü yap
         if (log.userId !== user.userId) {
           const scopeIds = await this.memberScopeService.getUserScopeIds(user);
           const hasAccess = await this.checkLogAccessByScope(log, scopeIds);
-          
+
           if (!hasAccess) {
             throw new NotFoundException('Log bulunamadı');
           }
@@ -408,4 +433,3 @@ export class SystemService {
     });
   }
 }
-

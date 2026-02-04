@@ -154,7 +154,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                   fontWeight: 800,
                   fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
                   color: theme.palette.text.primary,
-                  mb: 0.5,
+                  mb: 1,
                   letterSpacing: '-0.02em',
                   textAlign: 'left',
                 }}

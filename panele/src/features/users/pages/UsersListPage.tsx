@@ -16,7 +16,6 @@ import {
   useTheme,
   alpha,
   Stack,
-  Fade,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +32,7 @@ import { getUsers, getUserById } from '../services/usersApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const UsersListPage: React.FC = () => {
   const theme = useTheme();
@@ -208,40 +208,36 @@ const UsersListPage: React.FC = () => {
   }, []);
 
   return (
-    <Fade in timeout={300}>
-      <Box sx={{ pb: 4 }}>
-        {/* Başlık Bölümü */}
-        <PageHeader
-          icon={<PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
-          title="Panel Kullanıcıları"
-          description="Sistemde tanımlı tüm kullanıcıları ve rollerini görüntüleyin"
-          color={theme.palette.primary.main}
-          darkColor={theme.palette.primary.dark}
-          lightColor={theme.palette.primary.light}
-          sx={{ mb: 0 }}
-        />
-        <Box sx={{ mb: 4 }}>
+    <PageLayout>
+      <PageHeader
+        icon={<PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
+        title="Panel Kullanıcıları"
+        description="Sistemde tanımlı tüm kullanıcıları ve rollerini görüntüleyin"
+        color={theme.palette.primary.main}
+        darkColor={theme.palette.primary.dark}
+        lightColor={theme.palette.primary.light}
+      />
 
-        {/* Ana Kart */}
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.08)}`,
-            overflow: 'hidden',
-            background: '#fff',
-          }}
-        >
-          {/* Filtre Bölümü */}
-          <Box
+      {/* Ana Kart */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+          boxShadow: `0 4px 24px ${alpha(theme.palette.common.black, 0.06)}`,
+          overflow: 'hidden',
+          background: '#fff',
+        }}
+      >
+        {/* Filtre Bölümü */}
+        <Box
             sx={{
-              p: 3,
+              p: { xs: 3, sm: 4 },
               background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.light, 0.01)} 100%)`,
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              borderBottom: `2px solid ${alpha(theme.palette.divider, 0.08)}`,
             }}
-          >
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        >
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
                 placeholder="Ad, Soyad, E-posta, Rol..."
                 size="medium"
@@ -322,15 +318,21 @@ const UsersListPage: React.FC = () => {
           </Box>
 
           {/* DataGrid */}
+          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           <Box
             sx={{
-              height: { xs: 500, sm: 600, md: 700 },
+              borderRadius: 3,
+              overflow: 'hidden',
+              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+              height: { xs: 450, sm: 550, md: 650 },
+              minHeight: { xs: 450, sm: 550, md: 650 },
               width: '100%',
               '& .MuiDataGrid-root': {
                 border: 'none',
               },
               '& .MuiDataGrid-cell': {
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                py: 2,
                 display: 'flex',
                 alignItems: 'center',
                 '&:focus': {
@@ -341,34 +343,38 @@ const UsersListPage: React.FC = () => {
                 },
               },
               '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.12)}`,
                 borderRadius: 0,
                 minHeight: '56px !important',
                 maxHeight: '56px !important',
               },
               '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,
-                fontSize: '0.875rem',
+                fontSize: '0.9rem',
                 color: theme.palette.text.primary,
               },
               '& .MuiDataGrid-columnHeaderTitleContainer': {
                 justifyContent: 'center',
               },
               '& .MuiDataGrid-row': {
-                transition: 'all 0.2s',
+                transition: 'all 0.2s ease',
                 cursor: 'pointer',
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                  transform: 'scale(1.001)',
+                  backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                  boxShadow: `inset 4px 0 0 ${theme.palette.primary.main}`,
+                },
+                '&:nth-of-type(even)': {
+                  backgroundColor: alpha(theme.palette.grey[50], 0.3),
                 },
               },
               '& .MuiDataGrid-footerContainer': {
                 borderTop: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
                 backgroundColor: alpha(theme.palette.grey[50], 0.5),
+                minHeight: '52px',
               },
               '& .MuiDataGrid-virtualScroller': {
-                minHeight: '300px',
+                minHeight: '200px',
               },
             }}
           >
@@ -400,10 +406,9 @@ const UsersListPage: React.FC = () => {
               }}
             />
           </Box>
+          </Box>
         </Card>
-        </Box>
-      </Box>
-    </Fade>
+    </PageLayout>
   );
 };
 

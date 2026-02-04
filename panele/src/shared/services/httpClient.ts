@@ -1,10 +1,8 @@
 // src/shared/services/httpClient.ts
-import axios, { type AxiosError } from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-// API base URL - Vite environment variable'dan al
-// Eğer VITE_API_BASE_URL ayarlanmışsa onu kullan, yoksa relative path kullan (nginx proxy için)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
-  ? import.meta.env.VITE_API_BASE_URL 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL
   : (import.meta.env.PROD ? '/api' : 'http://localhost:3000');
 
 export const httpClient = axios.create({
@@ -14,6 +12,43 @@ export const httpClient = axios.create({
   },
 });
 
+function isRefreshRequest(config: InternalAxiosRequestConfig | undefined): boolean {
+  if (!config?.url) return false;
+  const url = typeof config.url === 'string' ? config.url : config.url.pathname ?? '';
+  return url.includes('/auth/refresh');
+}
+
+function clearAuthAndRedirect(): void {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
+
+let refreshPromise: Promise<string> | null = null;
+
+async function doRefresh(): Promise<string> {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) {
+    throw new Error('No refresh token');
+  }
+  const { data } = await axios.post<{ accessToken: string; refreshToken?: string; user?: unknown }>(
+    `${API_BASE_URL}/auth/refresh`,
+    { refreshToken },
+    { headers: { 'Content-Type': 'application/json' } },
+  );
+  localStorage.setItem('accessToken', data.accessToken);
+  if (data.refreshToken) {
+    localStorage.setItem('refreshToken', data.refreshToken);
+  }
+  if (data.user) {
+    localStorage.setItem('user', JSON.stringify(data.user));
+  }
+  return data.accessToken;
+}
+
 // Request interceptor: Authorization header ve FormData desteği
 httpClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
@@ -21,32 +56,45 @@ httpClient.interceptors.request.use((config) => {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
-  // FormData gönderirken Content-Type header'ını kaldır
-  // Axios otomatik olarak multipart/form-data ve boundary'yi ayarlayacak
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
   }
-  
   return config;
 });
 
-// Response interceptor: 401 ise logout / yönlendirme
+// Response interceptor: 401 ise önce refresh dene, başarısızsa logout
 httpClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // Token geçersiz veya süresi dolmuş
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('user');
-      
-      // Sadece login sayfasında değilsek yönlendir
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+  async (error: AxiosError) => {
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
+    if (isRefreshRequest(error.config)) {
+      clearAuthAndRedirect();
+      return Promise.reject(error);
+    }
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      clearAuthAndRedirect();
+      return Promise.reject(error);
+    }
+    try {
+      if (!refreshPromise) {
+        refreshPromise = doRefresh().finally(() => {
+          refreshPromise = null;
+        });
+      }
+      const newAccessToken = await refreshPromise;
+      const config = error.config;
+      if (config?.headers) {
+        config.headers.Authorization = `Bearer ${newAccessToken}`;
+      }
+      return httpClient.request(config);
+    } catch {
+      clearAuthAndRedirect();
+      return Promise.reject(error);
+    }
+  },
 );
 
 export default httpClient;

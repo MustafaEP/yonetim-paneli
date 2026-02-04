@@ -1,11 +1,19 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { ConfigService } from '../../config/config.service';
 
 export const NOTIFICATION_QUEUE_NAME = 'notifications';
 
 @Injectable()
-export class NotificationQueue extends Queue implements OnModuleInit, OnModuleDestroy {
+export class NotificationQueue
+  extends Queue
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(NotificationQueue.name);
   private isRedisAvailable = false;
   private lastErrorLogTime = 0;
@@ -87,16 +95,22 @@ export class NotificationQueue extends Queue implements OnModuleInit, OnModuleDe
         try {
           await client.ping();
           this.isRedisAvailable = true;
-          this.logger.log(`Redis connection verified successfully at ${(this.opts.connection as any)?.host || 'localhost'}:${(this.opts.connection as any)?.port || 6379}`);
+          this.logger.log(
+            `Redis connection verified successfully at ${(this.opts.connection as any)?.host || 'localhost'}:${(this.opts.connection as any)?.port || 6379}`,
+          );
           return;
         } catch (pingError) {
           // Ping başarısız, bağlantı yok
-          this.logger.debug('Redis ping failed, connection may not be ready yet');
+          this.logger.debug(
+            'Redis ping failed, connection may not be ready yet',
+          );
         }
       }
     } catch (error) {
       // Client erişimi başarısız, normal olabilir (henüz bağlantı kurulmamış olabilir)
-      this.logger.debug('Redis client access pending, waiting for connection...');
+      this.logger.debug(
+        'Redis client access pending, waiting for connection...',
+      );
     }
 
     // Eğer hemen bağlantı kurulamadıysa, biraz bekleyip tekrar kontrol et
@@ -115,7 +129,7 @@ export class NotificationQueue extends Queue implements OnModuleInit, OnModuleDe
         } catch (error) {
           // Hala bağlantı yok
         }
-        
+
         // Hala bağlantı kurulamadıysa uyarı ver
         if (!this.isRedisAvailable) {
           this.logger.warn(
@@ -142,12 +156,17 @@ export class NotificationQueue extends Queue implements OnModuleInit, OnModuleDe
       // Başarılı olduysa Redis çalışıyor demektir
       if (!this.isRedisAvailable) {
         this.isRedisAvailable = true;
-        this.logger.log(`Redis connection verified through successful job addition`);
+        this.logger.log(
+          `Redis connection verified through successful job addition`,
+        );
       }
       return job;
     } catch (error) {
       this.isRedisAvailable = false;
-      if (error.message?.includes('ECONNREFUSED') || error.message?.includes('Redis')) {
+      if (
+        error.message?.includes('ECONNREFUSED') ||
+        error.message?.includes('Redis')
+      ) {
         this.logger.warn(
           `Cannot add job '${jobName}': Redis is not available. Job data: ${JSON.stringify(data)}`,
         );
@@ -166,7 +185,9 @@ export class NotificationQueue extends Queue implements OnModuleInit, OnModuleDe
       // Başarılı olduysa Redis çalışıyor demektir
       if (!this.isRedisAvailable) {
         this.isRedisAvailable = true;
-        this.logger.log(`Redis connection verified through successful job addition`);
+        this.logger.log(
+          `Redis connection verified through successful job addition`,
+        );
       }
       return job;
     } catch (error) {
@@ -182,4 +203,3 @@ export class NotificationQueue extends Queue implements OnModuleInit, OnModuleDe
     await this.close();
   }
 }
-

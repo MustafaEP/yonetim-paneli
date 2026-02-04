@@ -47,7 +47,7 @@ export class PrismaApprovalRepository implements ApprovalRepository {
       orderBy: { createdAt: 'asc' },
     });
 
-    return data.map(item => Approval.fromPrisma(item));
+    return data.map((item) => Approval.fromPrisma(item));
   }
 
   async save(approval: Approval): Promise<void> {

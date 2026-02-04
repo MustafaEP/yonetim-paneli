@@ -1,6 +1,6 @@
 /**
  * Role Query Application Service
- * 
+ *
  * Handles role query operations.
  */
 import { Injectable, Inject } from '@nestjs/common';

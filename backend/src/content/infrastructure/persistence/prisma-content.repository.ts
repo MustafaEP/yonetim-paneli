@@ -18,7 +18,10 @@ export class PrismaContentRepository implements ContentRepository {
     return data ? Content.fromPersistence(data) : null;
   }
 
-  async findAll(params?: { type?: ContentType; status?: ContentStatus }): Promise<Content[]> {
+  async findAll(params?: {
+    type?: ContentType;
+    status?: ContentStatus;
+  }): Promise<Content[]> {
     const where: any = {};
     if (params?.type) where.type = params.type;
     if (params?.status) where.status = params.status;

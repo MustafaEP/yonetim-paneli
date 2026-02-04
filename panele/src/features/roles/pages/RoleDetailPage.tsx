@@ -35,6 +35,7 @@ import { PERMISSION_GROUPS, PERMISSION_LABELS } from '../../../types/role';
 import { getUserById } from '../../users/services/usersApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const RoleDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -137,8 +138,7 @@ const RoleDetailPage: React.FC = () => {
   ).filter((group) => group.permissions.length > 0);
 
   return (
-    <Box>
-      {/* Başlık Bölümü */}
+    <PageLayout>
       <Box sx={{ mb: 2 }}>
         <Button
           startIcon={<ArrowBackIcon />}
@@ -593,7 +593,7 @@ const RoleDetailPage: React.FC = () => {
           ))}
         </Box>
       </Card>
-    </Box>
+    </PageLayout>
   );
 };
 

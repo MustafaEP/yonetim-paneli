@@ -22,18 +22,20 @@ export class EmailService {
   private initializeClient() {
     try {
       // Önce sistem ayarlarından oku, yoksa environment variable'lardan
-      const accessKeyId = 
+      const accessKeyId =
         this.configService.getSystemSetting('EMAIL_AWS_ACCESS_KEY_ID') ||
         this.configService.awsSesAccessKeyId;
-      const secretAccessKey = 
+      const secretAccessKey =
         this.configService.getSystemSetting('EMAIL_AWS_SECRET_ACCESS_KEY') ||
         this.configService.awsSesSecretAccessKey;
-      const region = 
+      const region =
         this.configService.getSystemSetting('EMAIL_AWS_REGION') ||
         this.configService.awsSesRegion;
 
       if (!accessKeyId || !secretAccessKey) {
-        this.logger.warn('AWS SES credentials not configured. Email sending will be disabled.');
+        this.logger.warn(
+          'AWS SES credentials not configured. Email sending will be disabled.',
+        );
         this.sesClient = undefined;
       } else {
         this.sesClient = new SESClient({
@@ -45,9 +47,9 @@ export class EmailService {
         });
       }
 
-      this.fromEmail = 
+      this.fromEmail =
         this.configService.getSystemSetting('EMAIL_FROM_ADDRESS') ||
-        this.configService.awsSesFromEmail || 
+        this.configService.awsSesFromEmail ||
         'noreply@example.com';
     } catch (error) {
       this.logger.error('Error initializing email client:', error);
@@ -61,14 +63,22 @@ export class EmailService {
 
   async sendEmail(options: SendEmailOptions): Promise<void> {
     // Email gönderimi aktif mi kontrol et (önce NOTIFICATION_EMAIL_ENABLED, sonra EMAIL_ENABLED)
-    const notificationEmailEnabled = this.configService.getSystemSettingBoolean('NOTIFICATION_EMAIL_ENABLED', true);
-    const emailEnabled = this.configService.getSystemSettingBoolean('EMAIL_ENABLED', true);
-    
+    const notificationEmailEnabled = this.configService.getSystemSettingBoolean(
+      'NOTIFICATION_EMAIL_ENABLED',
+      true,
+    );
+    const emailEnabled = this.configService.getSystemSettingBoolean(
+      'EMAIL_ENABLED',
+      true,
+    );
+
     if (!notificationEmailEnabled) {
-      this.logger.warn('Email notifications are disabled in notification settings.');
+      this.logger.warn(
+        'Email notifications are disabled in notification settings.',
+      );
       return;
     }
-    
+
     if (!emailEnabled) {
       this.logger.warn('Email sending is disabled in system settings.');
       return;
@@ -104,7 +114,9 @@ export class EmailService {
       });
 
       const response = await this.sesClient.send(command);
-      this.logger.log(`Email sent successfully. MessageId: ${response.MessageId}`);
+      this.logger.log(
+        `Email sent successfully. MessageId: ${response.MessageId}`,
+      );
     } catch (error) {
       this.logger.error(`Failed to send email: ${error.message}`, error.stack);
       throw error;
@@ -120,8 +132,9 @@ export class EmailService {
 
     const failed = results.filter((r) => r.status === 'rejected');
     if (failed.length > 0) {
-      this.logger.warn(`${failed.length} emails failed to send out of ${emails.length}`);
+      this.logger.warn(
+        `${failed.length} emails failed to send out of ${emails.length}`,
+      );
     }
   }
 }
-

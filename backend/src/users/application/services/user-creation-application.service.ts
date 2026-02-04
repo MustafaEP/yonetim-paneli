@@ -1,16 +1,22 @@
 /**
  * User Creation Application Service
- * 
+ *
  * Orchestrates user creation use case.
  */
-import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { PasswordService } from '../../../auth/infrastructure/services/password.service';
 import { User } from '../../domain/entities/user.entity';
 import type { UserRepository } from '../../domain/repositories/user.repository.interface';
 import { Email } from '../../domain/value-objects/email.vo';
 import { UserRegistrationDomainService } from '../../domain/services/user-registration-domain.service';
 import { CreateUserDto } from '../dto/create-user.dto';
-import * as bcrypt from 'bcrypt';
 
 export interface CreateUserCommand {
   dto: CreateUserDto;
@@ -26,6 +32,7 @@ export class UserCreationApplicationService {
     private readonly userRepository: UserRepository,
     private readonly registrationDomainService: UserRegistrationDomainService,
     private readonly prisma: PrismaService,
+    private readonly passwordService: PasswordService,
   ) {}
 
   async createUser(command: CreateUserCommand): Promise<User> {
@@ -35,7 +42,11 @@ export class UserCreationApplicationService {
     await this.registrationDomainService.validateEmailUniqueness(email);
 
     let hasAdminRole = false;
-    let roles: Array<{ id: string; name: string; hasScopeRestriction: boolean }> = [];
+    let roles: Array<{
+      id: string;
+      name: string;
+      hasScopeRestriction: boolean;
+    }> = [];
 
     if (dto.customRoleIds && dto.customRoleIds.length > 0) {
       roles = await this.prisma.customRole.findMany({
@@ -53,7 +64,10 @@ export class UserCreationApplicationService {
 
       hasAdminRole = roles.some((role) => role.name === 'ADMIN');
 
-      this.registrationDomainService.validateMemberRequirement(hasAdminRole, memberId);
+      this.registrationDomainService.validateMemberRequirement(
+        hasAdminRole,
+        memberId,
+      );
 
       if (memberId) {
         const member = await this.prisma.member.findUnique({
@@ -63,10 +77,16 @@ export class UserCreationApplicationService {
         if (!member) {
           throw new NotFoundException('Belirtilen üye bulunamadı.');
         }
-        await this.registrationDomainService.validateMemberLink(memberId, member);
+        await this.registrationDomainService.validateMemberLink(
+          memberId,
+          member,
+        );
       }
 
-      this.registrationDomainService.validateScopeRequirement(roles, dto.scopes);
+      this.registrationDomainService.validateScopeRequirement(
+        roles,
+        dto.scopes,
+      );
 
       if (dto.scopes && dto.scopes.length > 0) {
         for (const scope of dto.scopes) {
@@ -76,7 +96,9 @@ export class UserCreationApplicationService {
               select: { provinceId: true },
             });
             if (district && district.provinceId !== scope.provinceId) {
-              throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil.');
+              throw new BadRequestException(
+                'Seçilen ilçe, seçilen ile ait değil.',
+              );
             }
           }
         }
@@ -97,14 +119,20 @@ export class UserCreationApplicationService {
           throw new NotFoundException('Belirtilen üye bulunamadı.');
         }
         if (member.userId) {
-          throw new BadRequestException('Bu üye zaten bir panel kullanıcısına bağlı.');
+          throw new BadRequestException(
+            'Bu üye zaten bir panel kullanıcısına bağlı.',
+          );
         }
       }
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await this.passwordService.hash(dto.password);
 
-    const scopes = dto.scopes || (dto.provinceId || dto.districtId ? [{ provinceId: dto.provinceId, districtId: dto.districtId }] : []);
+    const scopes =
+      dto.scopes ||
+      (dto.provinceId || dto.districtId
+        ? [{ provinceId: dto.provinceId, districtId: dto.districtId }]
+        : []);
 
     const user = User.create(
       {

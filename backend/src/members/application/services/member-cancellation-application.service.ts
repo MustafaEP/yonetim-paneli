@@ -1,15 +1,21 @@
 /**
  * Member Cancellation Application Service
- * 
+ *
  * Use case: Member cancellation işlemini orchestrate eder (ACTIVE → RESIGNED/EXPELLED/INACTIVE)
- * 
+ *
  * Sorumluluklar:
  * - Transaction yönetimi
  * - Domain Entity çağırma
  * - Cross-cutting concerns (history)
  * - Repository koordinasyonu
  */
-import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
@@ -30,7 +36,9 @@ export interface CancelMemberCommand {
 
 @Injectable()
 export class MemberCancellationApplicationService {
-  private readonly logger = new Logger(MemberCancellationApplicationService.name);
+  private readonly logger = new Logger(
+    MemberCancellationApplicationService.name,
+  );
 
   constructor(
     @Inject('MemberRepository')
@@ -42,7 +50,7 @@ export class MemberCancellationApplicationService {
 
   /**
    * Use case: Member'ın üyeliğini iptal et
-   * 
+   *
    * Orchestration:
    * 1. Member'ı repository'den al
    * 2. Domain Entity'de cancelMembership method'unu çağır (business rule'lar burada)
@@ -77,17 +85,17 @@ export class MemberCancellationApplicationService {
       const periodStart = approvedAt ?? cancelledAt;
       const regNoForPeriod = regNo ?? `Üye-${member.id.slice(-6)}`;
       await this.membershipPeriodRepository.create({
-          memberId: member.id,
-          registrationNumber: regNoForPeriod,
-          periodStart,
-          periodEnd: cancelledAt,
-          status: command.status,
-          cancellationReason: command.cancellationReason,
-          cancelledAt,
-          approvedAt: approvedAt ?? null,
-          approvedByUserId: member.approvedByUserId ?? null,
-          cancelledByUserId: command.cancelledByUserId,
-        });
+        memberId: member.id,
+        registrationNumber: regNoForPeriod,
+        periodStart,
+        periodEnd: cancelledAt,
+        status: command.status,
+        cancellationReason: command.cancellationReason,
+        cancelledAt,
+        approvedAt: approvedAt ?? null,
+        approvedByUserId: member.approvedByUserId ?? null,
+        cancelledByUserId: command.cancelledByUserId,
+      });
 
       // 4. Repository'ye kaydet
       await this.memberRepository.save(member);

@@ -123,14 +123,3 @@ export class UpdateMemberPaymentDto {
   @IsOptional()
   documentUrl?: string;
 }
-
-
-
-
-
-
-
-
-
-
-

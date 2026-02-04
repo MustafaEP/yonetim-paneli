@@ -1,9 +1,18 @@
 /**
  * PanelUserApplication Application Service
  */
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  Inject,
+} from '@nestjs/common';
 import type { PanelUserApplicationRepository } from '../../domain/repositories/panel-user-application.repository.interface';
-import { PanelUserApplication, PanelUserApplicationStatus } from '../../domain/entities/panel-user-application.entity';
+import {
+  PanelUserApplication,
+  PanelUserApplicationStatus,
+} from '../../domain/entities/panel-user-application.entity';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { UsersService } from '../../../users/users.service';
 
@@ -25,7 +34,11 @@ export class PanelUserApplicationApplicationService {
   }): Promise<PanelUserApplication> {
     // Check if member already has an application
     const existing = await this.repository.findByMemberId(data.memberId);
-    if (existing && (existing.status === PanelUserApplicationStatus.PENDING || existing.status === PanelUserApplicationStatus.APPROVED)) {
+    if (
+      existing &&
+      (existing.status === PanelUserApplicationStatus.PENDING ||
+        existing.status === PanelUserApplicationStatus.APPROVED)
+    ) {
       throw new ConflictException('Bu üye için zaten bir başvuru mevcut');
     }
 
@@ -55,16 +68,22 @@ export class PanelUserApplicationApplicationService {
     // Validate scopes if role requires them
     if (role.hasScopeRestriction) {
       if (!data.scopes || data.scopes.length === 0) {
-        throw new BadRequestException('Bu rol için yetki alanı seçimi zorunludur.');
+        throw new BadRequestException(
+          'Bu rol için yetki alanı seçimi zorunludur.',
+        );
       }
 
       for (const scope of data.scopes) {
         if (!scope.provinceId && !scope.districtId) {
-          throw new BadRequestException('Her yetki alanı için en az bir il veya ilçe seçmelisiniz.');
+          throw new BadRequestException(
+            'Her yetki alanı için en az bir il veya ilçe seçmelisiniz.',
+          );
         }
 
         if (scope.districtId && !scope.provinceId) {
-          throw new BadRequestException('İlçe seçmek için önce il seçmelisiniz.');
+          throw new BadRequestException(
+            'İlçe seçmek için önce il seçmelisiniz.',
+          );
         }
 
         if (scope.districtId && scope.provinceId) {
@@ -72,7 +91,9 @@ export class PanelUserApplicationApplicationService {
             where: { id: scope.districtId },
           });
           if (district && district.provinceId !== scope.provinceId) {
-            throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil.');
+            throw new BadRequestException(
+              'Seçilen ilçe, seçilen ile ait değil.',
+            );
           }
         }
       }
@@ -88,14 +109,16 @@ export class PanelUserApplicationApplicationService {
 
     // Create scopes if provided
     if (data.scopes && data.scopes.length > 0) {
-      const validScopes = data.scopes.filter(s => s.provinceId || s.districtId);
+      const validScopes = data.scopes.filter(
+        (s) => s.provinceId || s.districtId,
+      );
       const uniqueScopes = Array.from(
         new Map(
           validScopes.map((scope) => [
             `${scope.provinceId || 'null'}-${scope.districtId || 'null'}`,
             scope,
-          ])
-        ).values()
+          ]),
+        ).values(),
       );
 
       await this.prisma.panelUserApplicationScope.createMany({
@@ -168,26 +191,31 @@ export class PanelUserApplicationApplicationService {
             deletedAt: null,
           },
         });
-        scopesToUse = appScopes.map(s => ({
+        scopesToUse = appScopes.map((s) => ({
           provinceId: s.provinceId ?? undefined,
           districtId: s.districtId ?? undefined,
         }));
       }
 
       if (!scopesToUse || scopesToUse.length === 0) {
-        throw new BadRequestException('Bu rol için yetki alanı seçimi zorunludur.');
+        throw new BadRequestException(
+          'Bu rol için yetki alanı seçimi zorunludur.',
+        );
       }
     }
 
     // Create user
-    const newUser = await this.usersService.create({
-      email: data.email,
-      password: data.password,
-      firstName: member.firstName,
-      lastName: member.lastName,
-      customRoleIds: [application.requestedRoleId],
-      scopes: scopesToUse,
-    }, application.memberId);
+    const newUser = await this.usersService.create(
+      {
+        email: data.email,
+        password: data.password,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        customRoleIds: [application.requestedRoleId],
+        scopes: scopesToUse,
+      },
+      application.memberId,
+    );
 
     if (!newUser) {
       throw new Error('User creation failed');
@@ -241,7 +269,9 @@ export class PanelUserApplicationApplicationService {
     return application;
   }
 
-  async findAll(status?: PanelUserApplicationStatus): Promise<PanelUserApplication[]> {
+  async findAll(
+    status?: PanelUserApplicationStatus,
+  ): Promise<PanelUserApplication[]> {
     return await this.repository.findAll(status);
   }
 

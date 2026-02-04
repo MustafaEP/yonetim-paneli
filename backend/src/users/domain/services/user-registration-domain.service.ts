@@ -1,6 +1,6 @@
 /**
  * User Registration Domain Service
- * 
+ *
  * Encapsulates complex business logic for user registration.
  */
 import { Injectable, Inject } from '@nestjs/common';
@@ -39,7 +39,10 @@ export class UserRegistrationDomainService {
     }
   }
 
-  async validateMemberLink(memberId: string, memberInfo: MemberInfo | null): Promise<void> {
+  async validateMemberLink(
+    memberId: string,
+    memberInfo: MemberInfo | null,
+  ): Promise<void> {
     if (!memberInfo) {
       throw new Error('Member not found');
     }
@@ -58,7 +61,9 @@ export class UserRegistrationDomainService {
     roles: RoleInfo[],
     scopes?: Array<{ provinceId?: string; districtId?: string }>,
   ): void {
-    const hasScopeRestrictedRole = roles.some((role) => role.hasScopeRestriction);
+    const hasScopeRestrictedRole = roles.some(
+      (role) => role.hasScopeRestriction,
+    );
     if (hasScopeRestrictedRole) {
       if (!scopes || scopes.length === 0) {
         const restrictedRoleNames = roles
@@ -70,11 +75,15 @@ export class UserRegistrationDomainService {
 
       for (const scope of scopes) {
         if (!scope.provinceId && !scope.districtId) {
-          throw new UserInvalidScopeException('Her yetki alanı için en az bir il veya ilçe seçmelisiniz.');
+          throw new UserInvalidScopeException(
+            'Her yetki alanı için en az bir il veya ilçe seçmelisiniz.',
+          );
         }
 
         if (scope.districtId && !scope.provinceId) {
-          throw new UserInvalidScopeException('İlçe seçmek için önce il seçmelisiniz.');
+          throw new UserInvalidScopeException(
+            'İlçe seçmek için önce il seçmelisiniz.',
+          );
         }
       }
     }
@@ -87,7 +96,9 @@ export class UserRegistrationDomainService {
   ): Promise<void> {
     const isValid = await validateFn(districtId, provinceId);
     if (!isValid) {
-      throw new UserInvalidScopeException('Seçilen ilçe, seçilen ile ait değil.');
+      throw new UserInvalidScopeException(
+        'Seçilen ilçe, seçilen ile ait değil.',
+      );
     }
   }
 }

@@ -1,11 +1,11 @@
 /**
  * MemberStatus Value Object
- * 
+ *
  * Domain rule: Member status transitions
  * - PENDING → APPROVED (via approve)
  * - APPROVED → ACTIVE (via activate)
  * - PENDING/APPROVED → REJECTED (via reject)
- * 
+ *
  * Bu Value Object, status'un business rule'larını encapsulate eder.
  */
 export enum MemberStatusEnum {
@@ -51,7 +51,7 @@ export class MemberStatus {
   }
 
   static fromString(value: string): MemberStatus {
-    const status = Object.values(MemberStatusEnum).find(s => s === value);
+    const status = Object.values(MemberStatusEnum).find((s) => s === value);
     if (!status) {
       throw new Error(`Invalid member status: ${value}`);
     }

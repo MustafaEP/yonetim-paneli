@@ -1,6 +1,6 @@
 /**
  * TevkifatCenter Application Service
- * 
+ *
  * Use cases:
  * - Create tevkifat center
  * - Update tevkifat center
@@ -8,7 +8,13 @@
  * - List tevkifat centers
  * - Get tevkifat center by ID
  */
-import { Injectable, NotFoundException, BadRequestException, ConflictException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  Inject,
+} from '@nestjs/common';
 import type { TevkifatCenterRepository } from '../../domain/repositories/tevkifat-center.repository.interface';
 import { TevkifatCenter } from '../../domain/entities/tevkifat-center.entity';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -30,19 +36,24 @@ export class TevkifatCenterApplicationService {
     // Check if name already exists
     const existing = await this.repository.findByName(data.name);
     if (existing) {
-      throw new ConflictException('Bu isimde bir tevkifat merkezi zaten mevcut');
+      throw new ConflictException(
+        'Bu isimde bir tevkifat merkezi zaten mevcut',
+      );
     }
 
     const center = TevkifatCenter.create(data);
     return await this.repository.create(center);
   }
 
-  async updateCenter(id: string, data: {
-    name?: string;
-    provinceId?: string | null;
-    districtId?: string | null;
-    isActive?: boolean;
-  }): Promise<TevkifatCenter> {
+  async updateCenter(
+    id: string,
+    data: {
+      name?: string;
+      provinceId?: string | null;
+      districtId?: string | null;
+      isActive?: boolean;
+    },
+  ): Promise<TevkifatCenter> {
     const center = await this.repository.findById(id);
     if (!center) {
       throw new NotFoundException('Tevkifat merkezi bulunamadı');
@@ -52,7 +63,9 @@ export class TevkifatCenterApplicationService {
     if (data.name && data.name !== center.name) {
       const existing = await this.repository.findByName(data.name);
       if (existing) {
-        throw new ConflictException('Bu isimde bir tevkifat merkezi zaten mevcut');
+        throw new ConflictException(
+          'Bu isimde bir tevkifat merkezi zaten mevcut',
+        );
       }
     }
 
@@ -61,7 +74,11 @@ export class TevkifatCenterApplicationService {
     return center;
   }
 
-  async deleteCenter(id: string, memberAction: MemberActionOnTevkifatCenterDelete, targetCenterId?: string): Promise<void> {
+  async deleteCenter(
+    id: string,
+    memberAction: MemberActionOnTevkifatCenterDelete,
+    targetCenterId?: string,
+  ): Promise<void> {
     const center = await this.repository.findById(id);
     if (!center) {
       throw new NotFoundException('Tevkifat merkezi bulunamadı');
@@ -90,7 +107,9 @@ export class TevkifatCenterApplicationService {
 
       case MemberActionOnTevkifatCenterDelete.TRANSFER_TO_TEVKIFAT_CENTER:
         if (!targetCenterId) {
-          throw new BadRequestException('TRANSFER_TO_TEVKIFAT_CENTER seçeneği için targetTevkifatCenterId gereklidir');
+          throw new BadRequestException(
+            'TRANSFER_TO_TEVKIFAT_CENTER seçeneği için targetTevkifatCenterId gereklidir',
+          );
         }
         const targetCenter = await this.repository.findById(targetCenterId);
         if (!targetCenter) {
@@ -115,7 +134,9 @@ export class TevkifatCenterApplicationService {
 
       case MemberActionOnTevkifatCenterDelete.TRANSFER_AND_DEACTIVATE:
         if (!targetCenterId) {
-          throw new BadRequestException('TRANSFER_AND_DEACTIVATE seçeneği için targetTevkifatCenterId gereklidir');
+          throw new BadRequestException(
+            'TRANSFER_AND_DEACTIVATE seçeneği için targetTevkifatCenterId gereklidir',
+          );
         }
         const targetCenter2 = await this.repository.findById(targetCenterId);
         if (!targetCenter2) {
@@ -133,7 +154,9 @@ export class TevkifatCenterApplicationService {
 
       case MemberActionOnTevkifatCenterDelete.TRANSFER_AND_CANCEL:
         if (!targetCenterId) {
-          throw new BadRequestException('TRANSFER_AND_CANCEL seçeneği için targetTevkifatCenterId gereklidir');
+          throw new BadRequestException(
+            'TRANSFER_AND_CANCEL seçeneği için targetTevkifatCenterId gereklidir',
+          );
         }
         const targetCenter3 = await this.repository.findById(targetCenterId);
         if (!targetCenter3) {
@@ -158,7 +181,10 @@ export class TevkifatCenterApplicationService {
     return center;
   }
 
-  async listCenters(filters?: { provinceId?: string; districtId?: string }): Promise<TevkifatCenter[]> {
+  async listCenters(filters?: {
+    provinceId?: string;
+    districtId?: string;
+  }): Promise<TevkifatCenter[]> {
     return await this.repository.findAll(filters);
   }
 }

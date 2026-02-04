@@ -15,7 +15,9 @@ export class GenerateDocumentDto {
   @IsOptional()
   variables?: Record<string, string>;
 
-  @ApiPropertyOptional({ description: 'Oluşturulacak PDF dosya adı (uzantısız veya .pdf ile)' })
+  @ApiPropertyOptional({
+    description: 'Oluşturulacak PDF dosya adı (uzantısız veya .pdf ile)',
+  })
   @IsString()
   @IsOptional()
   fileName?: string;

@@ -1,6 +1,6 @@
 /**
  * District Domain Entity
- * 
+ *
  * Encapsulates District business logic and state.
  */
 import { DistrictProvinceMismatchException } from '../exceptions/region-domain.exception';

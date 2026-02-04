@@ -120,6 +120,7 @@ const ProfileMenu: React.FC = () => {
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
+        disableScrollLock
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         PaperProps={{

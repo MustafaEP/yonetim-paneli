@@ -1,6 +1,6 @@
 /**
  * Role Repository Interface (Port)
- * 
+ *
  * Defines the contract for Role persistence operations.
  */
 import { Role } from '../entities/role.entity';

@@ -25,7 +25,6 @@ export enum Permission {
   MEMBER_STATUS_CHANGE = 'MEMBER_STATUS_CHANGE', // istifa / ihraç / pasif
   MEMBER_LIST_BY_PROVINCE = 'MEMBER_LIST_BY_PROVINCE', // Belirli bir ildeki üyeleri görüntüleme (UserScope'daki provinceId'ye göre)
 
-
   // Şube / İl / İlçe Yönetimi
   REGION_LIST = 'REGION_LIST',
   BRANCH_MANAGE = 'BRANCH_MANAGE',

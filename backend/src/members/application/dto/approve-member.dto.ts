@@ -73,22 +73,3 @@ export class ApproveMemberDto {
   @IsOptional()
   memberGroupId?: string;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -13,4 +13,3 @@ export class UpdateTevkifatTitleDto {
   @IsOptional()
   isActive?: boolean;
 }
-

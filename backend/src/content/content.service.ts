@@ -55,7 +55,10 @@ export class ContentService {
   }
 
   async create(dto: CreateContentDto, authorId: string) {
-    const content = await this.contentApplicationService.createContent({ dto, authorId });
+    const content = await this.contentApplicationService.createContent({
+      dto,
+      authorId,
+    });
     return await this.prisma.content.findUnique({
       where: { id: content.id },
       include: {
@@ -72,7 +75,10 @@ export class ContentService {
   }
 
   async update(id: string, dto: UpdateContentDto) {
-    const content = await this.contentApplicationService.updateContent({ contentId: id, dto });
+    const content = await this.contentApplicationService.updateContent({
+      contentId: id,
+      dto,
+    });
     return await this.prisma.content.findUnique({
       where: { id: content.id },
       include: {
@@ -94,7 +100,9 @@ export class ContentService {
   }
 
   async publish(id: string) {
-    const content = await this.contentApplicationService.publishContent({ contentId: id });
+    const content = await this.contentApplicationService.publishContent({
+      contentId: id,
+    });
     return await this.prisma.content.findUnique({
       where: { id: content.id },
       include: {
@@ -110,4 +118,3 @@ export class ContentService {
     });
   }
 }
-

@@ -1,11 +1,10 @@
+import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  Param,
-  Query,
-  Res,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { ExcelExportService } from './services/excel-export.service';
@@ -78,7 +77,10 @@ export class ReportsController {
     @CurrentUser() user?: CurrentUserData,
   ) {
     const data = await this.reportsService.getGlobalReport(user);
-    const excelData = this.excelExportService.formatReportDataForExcel(data, 'global');
+    const excelData = this.excelExportService.formatReportDataForExcel(
+      data,
+      'global',
+    );
     await this.excelExportService.exportToExcel(
       excelData,
       [
@@ -104,7 +106,10 @@ export class ReportsController {
     @CurrentUser() user?: CurrentUserData,
   ) {
     const data = await this.reportsService.getRegionReport(regionId, user);
-    const excelData = this.excelExportService.formatReportDataForExcel(data, 'region');
+    const excelData = this.excelExportService.formatReportDataForExcel(
+      data,
+      'region',
+    );
     await this.excelExportService.exportToExcel(
       excelData,
       [
@@ -135,7 +140,10 @@ export class ReportsController {
       month: month ? parseInt(month, 10) : undefined,
     };
     const data = await this.reportsService.getDuesReport(user, params);
-    const excelData = this.excelExportService.formatReportDataForExcel(data, 'dues');
+    const excelData = this.excelExportService.formatReportDataForExcel(
+      data,
+      'dues',
+    );
     await this.excelExportService.exportToExcel(
       excelData,
       [
@@ -158,7 +166,10 @@ export class ReportsController {
     @CurrentUser() user?: CurrentUserData,
   ) {
     const data = await this.reportsService.getMemberStatusReport(user);
-    const excelData = this.excelExportService.formatReportDataForExcel(data, 'member-status');
+    const excelData = this.excelExportService.formatReportDataForExcel(
+      data,
+      'member-status',
+    );
     await this.excelExportService.exportToExcel(
       excelData,
       [
@@ -246,5 +257,28 @@ export class ReportsController {
       res,
     );
   }
-}
 
+  @Permissions(Permission.REPORT_GLOBAL_VIEW)
+  @Get('member-growth')
+  @ApiOperation({ summary: 'Üye artış/azalış istatistikleri' })
+  @ApiResponse({ status: 200 })
+  async getMemberGrowthStats(@CurrentUser() user?: CurrentUserData) {
+    return this.reportsService.getMemberGrowthStats(user);
+  }
+
+  @Permissions(Permission.REPORT_GLOBAL_VIEW)
+  @Get('trends')
+  @ApiOperation({ summary: 'Trend istatistikleri' })
+  @ApiResponse({ status: 200 })
+  async getTrendStats(@CurrentUser() user?: CurrentUserData) {
+    return this.reportsService.getTrendStats(user);
+  }
+
+  @Permissions(Permission.REPORT_GLOBAL_VIEW)
+  @Get('alerts')
+  @ApiOperation({ summary: 'Hızlı uyarılar' })
+  @ApiResponse({ status: 200 })
+  async getQuickAlerts(@CurrentUser() user?: CurrentUserData) {
+    return this.reportsService.getQuickAlerts(user);
+  }
+}

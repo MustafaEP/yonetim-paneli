@@ -86,6 +86,25 @@ model User {
   // 🔹 Üyelik dönemi ilişkileri (onaylayan / iptal eden)
   approvedMembershipPeriods   MemberMembershipPeriod[] @relation("PeriodApprovedBy")
   cancelledMembershipPeriods  MemberMembershipPeriod[] @relation("PeriodCancelledBy")
+
+  // 🔹 Refresh token'lar (auth – logout'ta revoke)
+  refreshTokens RefreshToken[]
+}
+
+// 🔹 Refresh Token – JWT refresh için; logout'ta revoke edilir
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   // Hashlenmiş token (plain token saklanmaz)
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
 }
 
 enum MemberStatus {
@@ -809,7 +828,8 @@ model TevkifatTitle {
   name     String  @unique // Unvan adı (örn: "Müdür", "Başhekim", vb.)
   isActive Boolean @default(true)
 
-  members Member[]
+  members       Member[]
+  tevkifatFiles TevkifatFile[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -906,23 +926,25 @@ model Approval {
 
 // 🔹 Tevkifat Dosyaları (Muhasebe Modülü)
 model TevkifatFile {
-  id               String         @id @default(cuid())
-  tevkifatCenterId String
-  tevkifatCenter   TevkifatCenter @relation(fields: [tevkifatCenterId], references: [id])
-  totalAmount      Decimal        @db.Decimal(10, 2) // Gelen tutar toplamı
-  memberCount      Int // Üye sayısı
-  month            Int // Ay (1-12)
-  year             Int // Yıl
-  positionTitle    PositionTitle? // Kadro (seçmeli)
-  fileName         String
-  fileUrl          String
-  fileSize         Int? // Dosya boyutu (byte)
-  status           ApprovalStatus @default(PENDING) // Admin onay durumu
-  uploadedBy       String // Yükleyen kullanıcı ID
-  uploadedByUser   User?          @relation("TevkifatFileUploadedBy", fields: [uploadedBy], references: [id])
-  approvedBy       String? // Onaylayan admin kullanıcı
-  approvedByUser   User?          @relation("TevkifatFileApprovedBy", fields: [approvedBy], references: [id])
-  approvedAt       DateTime?
+  id                String          @id @default(cuid())
+  tevkifatCenterId  String
+  tevkifatCenter    TevkifatCenter  @relation(fields: [tevkifatCenterId], references: [id])
+  tevkifatTitleId   String? // Tevkifat ünvanı (evrak yüklemede seçilen)
+  tevkifatTitle     TevkifatTitle?  @relation(fields: [tevkifatTitleId], references: [id])
+  totalAmount       Decimal         @db.Decimal(10, 2) // Gelen tutar toplamı
+  memberCount       Int // Üye sayısı
+  month             Int // Ay (1-12)
+  year              Int // Yıl
+  positionTitle     PositionTitle? // Kadro (seçmeli)
+  fileName          String
+  fileUrl           String
+  fileSize          Int? // Dosya boyutu (byte)
+  status            ApprovalStatus @default(PENDING) // Admin onay durumu
+  uploadedBy        String // Yükleyen kullanıcı ID
+  uploadedByUser    User?           @relation("TevkifatFileUploadedBy", fields: [uploadedBy], references: [id])
+  approvedBy        String? // Onaylayan admin kullanıcı
+  approvedByUser   User?           @relation("TevkifatFileApprovedBy", fields: [approvedBy], references: [id])
+  approvedAt        DateTime?
 
   // 🔹 Tevkifat dosyasına bağlı ödemeler
   payments MemberPayment[]
@@ -931,6 +953,7 @@ model TevkifatFile {
   updatedAt DateTime @updatedAt
 
   @@index([tevkifatCenterId])
+  @@index([tevkifatTitleId])
   @@index([year, month])
   @@index([status])
   @@index([uploadedBy])

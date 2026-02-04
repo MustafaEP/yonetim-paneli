@@ -1,8 +1,8 @@
 /**
  * Repository Interface (Port)
- * 
+ *
  * Shared Application: Tüm repository'ler için base interface
- * 
+ *
  * Generic repository pattern için base interface.
  * Her domain kendi repository interface'ini buradan extend edebilir.
  */

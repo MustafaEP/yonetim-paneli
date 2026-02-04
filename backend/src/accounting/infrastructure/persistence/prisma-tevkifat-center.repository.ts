@@ -34,7 +34,10 @@ export class PrismaTevkifatCenterRepository implements TevkifatCenterRepository 
     return TevkifatCenter.fromPrisma(data);
   }
 
-  async findAll(filters?: { provinceId?: string; districtId?: string }): Promise<TevkifatCenter[]> {
+  async findAll(filters?: {
+    provinceId?: string;
+    districtId?: string;
+  }): Promise<TevkifatCenter[]> {
     const where: any = {};
 
     if (filters?.districtId) {
@@ -51,7 +54,7 @@ export class PrismaTevkifatCenterRepository implements TevkifatCenterRepository 
       orderBy: { name: 'asc' },
     });
 
-    return data.map(item => TevkifatCenter.fromPrisma(item));
+    return data.map((item) => TevkifatCenter.fromPrisma(item));
   }
 
   async save(center: TevkifatCenter): Promise<void> {

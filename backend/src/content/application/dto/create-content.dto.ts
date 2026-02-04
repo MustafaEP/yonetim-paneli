@@ -13,12 +13,21 @@ export class CreateContentDto {
   @IsNotEmpty()
   content: string;
 
-  @ApiProperty({ description: 'İçerik tipi', enum: ContentType, example: ContentType.ANNOUNCEMENT })
+  @ApiProperty({
+    description: 'İçerik tipi',
+    enum: ContentType,
+    example: ContentType.ANNOUNCEMENT,
+  })
   @IsEnum(ContentType)
   @IsNotEmpty()
   type: ContentType;
 
-  @ApiProperty({ description: 'Durum', enum: ContentStatus, required: false, example: ContentStatus.DRAFT })
+  @ApiProperty({
+    description: 'Durum',
+    enum: ContentStatus,
+    required: false,
+    example: ContentStatus.DRAFT,
+  })
   @IsEnum(ContentStatus)
   @IsOptional()
   status?: ContentStatus;
