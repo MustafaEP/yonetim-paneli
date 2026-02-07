@@ -23,6 +23,7 @@ import CreditCardIcon from '@mui/icons-material/CreditCard';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -116,6 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
   const showInstitutions = hasPermission('INSTITUTION_LIST');
   const showProfessions = hasPermission('MEMBER_CREATE_APPLICATION') || hasPermission('MEMBER_UPDATE');
+  const showBulkMemberRegistration = hasPermission('MEMBER_CREATE_APPLICATION');
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -325,6 +327,26 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                 </ListItemButton>
               </>
             )}
+            {showBulkMemberRegistration && (
+              <ListItemButton
+                component={Link}
+                to="/members/bulk-registration"
+                selected={location.pathname === '/members/bulk-registration'}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <GroupAddIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Toplu Üye Kayıt" 
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
             <ListItemButton
               component={Link}
               to="/members"
@@ -333,6 +355,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                 (location.pathname.startsWith('/members/') &&
                  !location.pathname.startsWith('/members/applications') &&
                  !location.pathname.startsWith('/members/waiting') &&
+                 !location.pathname.startsWith('/members/bulk-registration') &&
                  !location.pathname.startsWith('/members/status') &&
                  /^\/members\/[^/]+$/.test(location.pathname))
               }

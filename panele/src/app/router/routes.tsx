@@ -14,6 +14,7 @@ import MembersApplicationsPage from '../../features/members/pages/MembersApplica
 import ApprovedMembersPage from '../../features/members/pages/ApprovedMembersPage';
 import ActiveWaitingMembersPage from '../../features/members/pages/ActiveWaitingMembersPage';
 import MemberApplicationCreatePage from '../../features/members/pages/MemberApplicationCreatePage';
+import BulkMemberRegistrationPage from '../../features/members/pages/BulkMemberRegistrationPage';
 import UsersListPage from '../../features/users/pages/UsersListPage';
 import PanelUserApplicationsPage from '../../features/users/pages/PanelUserApplicationsPage';
 import RolesListPage from '../../features/roles/pages/RolesListPage';
@@ -72,6 +73,7 @@ const AppRoutes: React.FC = () => (
 
         <Route element={<ProtectedRoute requiredPermission="MEMBER_CREATE_APPLICATION" />}>
           <Route path="/members/applications/new" element={<MemberApplicationCreatePage />} />
+          <Route path="/members/bulk-registration" element={<BulkMemberRegistrationPage />} />
         </Route>
 
         <Route element={<ProtectedRoute requiredPermission="USER_LIST" />}>

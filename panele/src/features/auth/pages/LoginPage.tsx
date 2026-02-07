@@ -73,7 +73,7 @@ const LoginPage: React.FC = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedField, setCopiedField] = useState<'email-admin' | 'email-genel' | null>(null);
+  const [copiedField, setCopiedField] = useState<'email-admin' | null>(null);
 
   // Public sistem bilgilerini yükle
   useEffect(() => {
@@ -471,51 +471,6 @@ const LoginPage: React.FC = () => {
                       </Typography>
                     </Box>
                     {copiedField === 'email-admin' ? (
-                      <CheckIcon sx={{ fontSize: 18, color: theme.palette.success.main }} />
-                    ) : (
-                      <ContentCopyIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-                    )}
-                  </Box>
-                </Box>
-
-                {/* Genel Başkan */}
-                <Box>
-                  <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: theme.palette.text.secondary, fontWeight: 500 }}>
-                    🎖️ Genel Başkan
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      p: 1.5,
-                      borderRadius: 1.5,
-                      backgroundColor: alpha(theme.palette.common.white, 0.6),
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.common.white, 0.8),
-                        transform: 'translateX(4px)',
-                      },
-                    }}
-                    onClick={async () => {
-                      await copyToClipboard('genel.baskan@sendika.local');
-                      setCopiedField('email-genel');
-                      setTimeout(() => setCopiedField(null), 2000);
-                      setEmail('genel.baskan@sendika.local');
-                      setPassword('123456');
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                      <EmailIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                        genel.baskan@sendika.local
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, ml: 0.5 }}>
-                        / 123456
-                      </Typography>
-                    </Box>
-                    {copiedField === 'email-genel' ? (
                       <CheckIcon sx={{ fontSize: 18, color: theme.palette.success.main }} />
                     ) : (
                       <ContentCopyIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
