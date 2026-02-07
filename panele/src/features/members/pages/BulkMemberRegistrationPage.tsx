@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import DownloadIcon from '@mui/icons-material/Download';
+import PeopleIcon from '@mui/icons-material/People';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -31,9 +32,10 @@ import PageLayout from '../../../shared/components/layout/PageLayout';
 import {
   validateMemberImport,
   downloadMemberImportTemplate,
+  downloadSampleMembersCsv,
   type ValidateMemberImportResponse,
 } from '../services/membersApi';
-import { MAX_FILE_SIZE_MB, MAX_ROWS } from '../constants/memberImportTemplate';
+import { MAX_FILE_SIZE_MB, MAX_ROWS, PREVIEW_COLUMN_LABELS } from '../constants/memberImportTemplate';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { useToast } from '../../../shared/hooks/useToast';
 
@@ -43,40 +45,12 @@ const STATUS_LABELS: Record<string, { label: string; Icon: React.ElementType; co
   error: { label: 'Hata', Icon: ErrorIcon, color: 'error.main' },
 };
 
-/** Üye detay sayfasındaki alan etiketleriyle uyumlu önizleme sütun adları */
-const PREVIEW_COLUMN_LABELS: Record<string, string> = {
-  firstName: 'Adı',
-  lastName: 'Soyadı',
-  nationalId: 'TC Kimlik Numarası',
-  phone: 'Telefon',
-  email: 'E-posta',
-  motherName: 'Anne Adı',
-  fatherName: 'Baba Adı',
-  birthDate: 'Doğum Tarihi',
-  birthplace: 'Doğum Yeri',
-  gender: 'Cinsiyet',
-  educationStatus: 'Öğrenim Durumu',
-  provinceId: 'İl (Kayıtlı Olduğu Yer)',
-  districtId: 'İlçe (Kayıtlı Olduğu Yer)',
-  institutionId: 'Kurum Adı',
-  branchId: 'Şube',
-  tevkifatCenterId: 'Tevkifat Kurumu',
-  tevkifatTitleId: 'Tevkifat Ünvanı',
-  memberGroupId: 'Üye Grubu',
-  dutyUnit: 'Görev Birimi',
-  institutionAddress: 'Kurum Adresi',
-  institutionProvinceId: 'Kurum İli',
-  institutionDistrictId: 'Kurum İlçesi',
-  professionId: 'Meslek/Unvan',
-  institutionRegNo: 'Kurum Sicil No',
-  staffTitleCode: 'Kadro Unvan Kodu',
-};
-
 const BulkMemberRegistrationPage: React.FC = () => {
   const theme = useTheme();
   const toast = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [templateLoading, setTemplateLoading] = useState(false);
+  const [sampleLoading, setSampleLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [result, setResult] = useState<ValidateMemberImportResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +65,19 @@ const BulkMemberRegistrationPage: React.FC = () => {
       toast.showError(msg);
     } finally {
       setTemplateLoading(false);
+    }
+  }, [toast]);
+
+  const handleDownloadSample = useCallback(async () => {
+    setSampleLoading(true);
+    try {
+      await downloadSampleMembersCsv();
+      toast.showSuccess('10 rastgele üyeli örnek CSV indirildi.');
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Örnek CSV indirilirken bir hata oluştu.');
+      toast.showError(msg);
+    } finally {
+      setSampleLoading(false);
     }
   }, [toast]);
 
@@ -169,15 +156,26 @@ const BulkMemberRegistrationPage: React.FC = () => {
               kaydedebilirsiniz. Doğum tarihi: <strong>YYYY-MM-DD</strong>. Cinsiyet: Erkek / Kadın / Diğer.
               Öğrenim: İlkokul / Lise / Üniversite.
             </Typography>
-            <Button
-              variant="outlined"
-              startIcon={templateLoading ? <CircularProgress size={18} color="inherit" /> : <DownloadIcon />}
-              onClick={handleDownloadTemplate}
-              disabled={templateLoading}
-              size="medium"
-            >
-              {templateLoading ? 'İndiriliyor…' : 'CSV şablonunu indir'}
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                startIcon={templateLoading ? <CircularProgress size={18} color="inherit" /> : <DownloadIcon />}
+                onClick={handleDownloadTemplate}
+                disabled={templateLoading || sampleLoading}
+                size="medium"
+              >
+                {templateLoading ? 'İndiriliyor…' : 'CSV şablonunu indir'}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={sampleLoading ? <CircularProgress size={18} color="inherit" /> : <PeopleIcon />}
+                onClick={handleDownloadSample}
+                disabled={templateLoading || sampleLoading}
+                size="medium"
+              >
+                {sampleLoading ? 'İndiriliyor…' : '10 rastgele üye CSV indir'}
+              </Button>
+            </Box>
           </CardContent>
         </Card>
 

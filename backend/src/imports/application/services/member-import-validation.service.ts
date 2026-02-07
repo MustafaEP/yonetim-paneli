@@ -3,14 +3,14 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { parseCsvBuffer } from '../utils/csv-parser';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { parseCsvBuffer } from '../../utils/csv-parser';
 import {
   MEMBER_IMPORT_HEADER_ALIASES,
   MAX_IMPORT_FILE_BYTES,
   MAX_IMPORT_ROWS,
   PREVIEW_ROWS,
-} from '../constants/member-import-schema';
+} from '../../constants/member-import-schema';
 import { Gender, EducationStatus } from '@prisma/client';
 
 export type RowStatus = 'valid' | 'warning' | 'error';
@@ -155,6 +155,72 @@ export class MemberImportValidationService {
     ].join(sep);
 
     const csv = '\uFEFF' + headers + '\n' + exampleRow + '\n';
+    return csv;
+  }
+
+  /** 10 rastgele üyeyi aynı CSV formatında (noktalı virgül) döndürür. Test/örnek veri için. */
+  async getSampleMembersCsv(count = 10): Promise<string> {
+    const sep = ';';
+    const headers =
+      'Ad;Soyad;TC Kimlik No;Telefon;E-posta;Anne Adı;Baba Adı;Doğum Tarihi;Doğum Yeri;Cinsiyet;Öğrenim Durumu;İl;İlçe;Kurum;Şube;Tevkifat Merkezi;Tevkifat Ünvanı;Üye Grubu;Görev Birimi;Kurum Adresi;Kurum İli;Kurum İlçesi;Meslek;Kurum Sicil No;Kadro Unvan Kodu';
+
+    const members = await this.prisma.member.findMany({
+      take: Math.max(count * 3, 30),
+      include: {
+        province: { select: { name: true } },
+        district: { select: { name: true } },
+        institution: { select: { name: true } },
+        branch: { select: { name: true } },
+        tevkifatCenter: { select: { name: true } },
+        tevkifatTitle: { select: { name: true } },
+        memberGroup: { select: { name: true } },
+        profession: { select: { name: true } },
+        institutionProvince: { select: { name: true } },
+        institutionDistrict: { select: { name: true } },
+      },
+    });
+
+    const shuffled = [...members].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, count);
+
+    const genderTr = (g: string | null) =>
+      g === 'MALE' ? 'Erkek' : g === 'FEMALE' ? 'Kadın' : g === 'OTHER' ? 'Diğer' : '';
+    const educationTr = (e: string | null) =>
+      e === 'PRIMARY' ? 'İlkokul' : e === 'HIGH_SCHOOL' ? 'Lise' : e === 'COLLEGE' ? 'Üniversite' : '';
+    const dateStr = (d: Date | null) =>
+      d ? new Date(d).toISOString().slice(0, 10) : '';
+
+    const rows = selected.map((m) =>
+      [
+        m.firstName ?? '',
+        m.lastName ?? '',
+        m.nationalId ?? '',
+        m.phone ?? '',
+        m.email ?? '',
+        m.motherName ?? '',
+        m.fatherName ?? '',
+        dateStr(m.birthDate),
+        m.birthplace ?? '',
+        genderTr(m.gender),
+        educationTr(m.educationStatus),
+        m.province?.name ?? '',
+        m.district?.name ?? '',
+        m.institution?.name ?? '',
+        m.branch?.name ?? '',
+        m.tevkifatCenter?.name ?? '',
+        m.tevkifatTitle?.name ?? '',
+        m.memberGroup?.name ?? '',
+        m.dutyUnit ?? '',
+        m.institutionAddress ?? '',
+        m.institutionProvince?.name ?? '',
+        m.institutionDistrict?.name ?? '',
+        m.profession?.name ?? '',
+        m.institutionRegNo ?? '',
+        m.staffTitleCode ?? '',
+      ].join(sep),
+    );
+
+    const csv = '\uFEFF' + headers + '\n' + rows.join('\n') + '\n';
     return csv;
   }
 

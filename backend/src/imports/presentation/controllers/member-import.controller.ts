@@ -18,12 +18,12 @@ import {
   ApiConsumes,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { Permissions } from '../../auth/decorators/permissions.decorator';
-import { Permission } from '../../auth/permission.enum';
-import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import type { CurrentUserData } from '../../auth/decorators/current-user.decorator';
-import { MemberImportValidationService } from '../services/member-import-validation.service';
-import { MAX_IMPORT_FILE_BYTES } from '../constants/member-import-schema';
+import { Permissions } from '../../../auth/decorators/permissions.decorator';
+import { Permission } from '../../../auth/permission.enum';
+import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
+import type { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
+import { MemberImportValidationService } from '../../application/services/member-import-validation.service';
+import { MAX_IMPORT_FILE_BYTES } from '../../constants/member-import-schema';
 
 const allowedMimes = ['text/csv', 'application/csv', 'text/plain', 'application/vnd.ms-excel'];
 
@@ -49,6 +49,24 @@ export class MemberImportController {
   ) {
     const csv = await this.validationService.getTemplateCsv();
     const filename = `toplu_uye_sablonu_${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(Buffer.from(csv, 'utf-8'));
+  }
+
+  @Permissions(Permission.MEMBER_CREATE_APPLICATION)
+  @Get('members/sample-csv')
+  @ApiOperation({
+    summary: '10 rastgele üyeli örnek CSV indir',
+    description: 'Sistemdeki üyelerden 10 tanesi rastgele seçilip aynı CSV formatında döner. Test için kullanılabilir.',
+  })
+  @ApiResponse({ status: 200, description: 'CSV dosyası' })
+  async getSampleMembersCsv(
+    @Res() res: Response,
+    @CurrentUser() _user: CurrentUserData,
+  ) {
+    const csv = await this.validationService.getSampleMembersCsv(10);
+    const filename = `ornek_10_uye_${new Date().toISOString().split('T')[0]}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(Buffer.from(csv, 'utf-8'));

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { MemberImportController } from './controllers/member-import.controller';
-import { MemberImportValidationService } from './services/member-import-validation.service';
+import { MemberImportController } from './presentation/controllers/member-import.controller';
+import { MemberImportValidationService } from './application/services/member-import-validation.service';
 
 @Module({
   controllers: [MemberImportController],

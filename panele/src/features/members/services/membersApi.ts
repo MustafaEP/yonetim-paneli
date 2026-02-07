@@ -284,6 +284,28 @@ export const downloadMemberImportTemplate = async (): Promise<void> => {
   window.URL.revokeObjectURL(url);
 };
 
+// 🔹 10 rastgele üyeli örnek CSV indir (test için)
+export const downloadSampleMembersCsv = async (): Promise<void> => {
+  const res = await httpClient.get('/imports/members/sample-csv', {
+    responseType: 'blob',
+  });
+  const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const contentDisposition = res.headers['content-disposition'];
+  let filename = `ornek_10_uye_${new Date().toISOString().split('T')[0]}.csv`;
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename="?(.+?)"?$/);
+    if (match) filename = match[1].trim();
+  }
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 // 🔹 Üyeyi soft delete et: DELETE /members/:id
 export const deleteMember = async (
   memberId: string,
