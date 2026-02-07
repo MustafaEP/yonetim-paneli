@@ -165,6 +165,9 @@ export class MemberImportValidationService {
       'Ad;Soyad;TC Kimlik No;Telefon;E-posta;Anne Adı;Baba Adı;Doğum Tarihi;Doğum Yeri;Cinsiyet;Öğrenim Durumu;İl;İlçe;Kurum;Şube;Tevkifat Merkezi;Tevkifat Ünvanı;Üye Grubu;Görev Birimi;Kurum Adresi;Kurum İli;Kurum İlçesi;Meslek;Kurum Sicil No;Kadro Unvan Kodu';
 
     const members = await this.prisma.member.findMany({
+      where: {
+        institution: { deletedAt: null },
+      },
       take: Math.max(count * 3, 30),
       include: {
         province: { select: { name: true } },
@@ -190,12 +193,21 @@ export class MemberImportValidationService {
     const dateStr = (d: Date | null) =>
       d ? new Date(d).toISOString().slice(0, 10) : '';
 
+    const normalizePhoneForCsv = (phone: string | null): string => {
+      if (!phone) return '';
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length === 10) return digits;
+      if (digits.length === 9) return '0' + digits;
+      if (digits.length === 12 && digits.startsWith('90')) return '0' + digits.slice(2);
+      return phone.trim();
+    };
+
     const rows = selected.map((m) =>
       [
         m.firstName ?? '',
         m.lastName ?? '',
         m.nationalId ?? '',
-        m.phone ?? '',
+        normalizePhoneForCsv(m.phone ?? ''),
         m.email ?? '',
         m.motherName ?? '',
         m.fatherName ?? '',

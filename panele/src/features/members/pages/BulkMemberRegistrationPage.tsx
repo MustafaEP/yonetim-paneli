@@ -296,18 +296,46 @@ const BulkMemberRegistrationPage: React.FC = () => {
                     {result.previewRows.map((row) => {
                       const conf = STATUS_LABELS[row.status] ?? STATUS_LABELS.error;
                       const Icon = conf.Icon;
+                      const errorTitle =
+                        row.errors?.length &&
+                        `Satır ${row.rowIndex} hataları:\n${row.errors.map((e) => `• ${PREVIEW_COLUMN_LABELS[e.column ?? ''] ?? e.column ?? '—'}: ${e.message}`).join('\n')}`;
                       return (
                         <TableRow key={row.rowIndex}>
                           <TableCell sx={{ minWidth: 56 }}>{row.rowIndex}</TableCell>
-                          <TableCell sx={{ minWidth: 100 }}>
-                            <Tooltip title={row.errors?.map((e) => e.message).join(' • ') || conf.label}>
-                              <IconButton size="small" sx={{ color: conf.color }}>
-                                <Icon fontSize="small" />
-                              </IconButton>
+                          <TableCell sx={{ minWidth: 100, maxWidth: 220 }}>
+                            <Tooltip
+                              title={
+                                errorTitle ? (
+                                  <Box component="span" sx={{ whiteSpace: 'pre-line', display: 'block' }}>
+                                    {errorTitle}
+                                  </Box>
+                                ) : (
+                                  conf.label
+                                )
+                              }
+                            >
+                              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                <IconButton size="small" sx={{ color: conf.color }}>
+                                  <Icon fontSize="small" />
+                                </IconButton>
+                                <Typography component="span" variant="caption" sx={{ color: conf.color, ml: 0.5 }}>
+                                  {conf.label}
+                                  {row.status === 'error' && row.errors?.length && row.errors.length > 1
+                                    ? ` (${row.errors.length})`
+                                    : ''}
+                                </Typography>
+                              </span>
                             </Tooltip>
-                            <Typography component="span" variant="caption" sx={{ color: conf.color, ml: 0.5 }}>
-                              {conf.label}
-                            </Typography>
+                            {row.status === 'error' && row.errors?.length === 1 && (
+                              <Typography
+                                component="div"
+                                variant="caption"
+                                sx={{ color: 'error.main', display: 'block', mt: 0.25 }}
+                              >
+                                {PREVIEW_COLUMN_LABELS[row.errors[0].column ?? ''] ?? row.errors[0].column}:{' '}
+                                {row.errors[0].message}
+                              </Typography>
+                            )}
                           </TableCell>
                           {previewColumns.map((col) => (
                             <TableCell

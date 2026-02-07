@@ -141,10 +141,14 @@ const MainLayout: React.FC = () => {
     districts: 'İlçeler',
   };
 
-  // Üye detay sayfasında üye bilgisini çek
+  // Üye detay sayfasında üye bilgisini çek (sadece CUID benzeri segment üye ID kabul edilir)
+  const looksLikeMemberId = (segment: string) => /^c[a-z0-9]{24}$/i.test(segment);
   useEffect(() => {
     const currentPathnames = location.pathname.split('/').filter((x) => x);
-    const isMemberDetailPage = currentPathnames.length === 2 && currentPathnames[0] === 'members' && currentPathnames[1] !== 'applications' && currentPathnames[1] !== 'waiting' && currentPathnames[1] !== 'approved' && currentPathnames[1] !== 'status' && !breadcrumbNameMap[currentPathnames[1]];
+    const isMemberDetailPage =
+      currentPathnames.length === 2 &&
+      currentPathnames[0] === 'members' &&
+      looksLikeMemberId(currentPathnames[1]);
     
     if (isMemberDetailPage) {
       const memberId = currentPathnames[1];
