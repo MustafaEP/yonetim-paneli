@@ -20,12 +20,14 @@ import { DocumentsModule } from './documents/documents.module';
 import { ProfessionsModule } from './professions/professions.module';
 import { MemberGroupsModule } from './member-groups/member-groups.module';
 import { PanelUserApplicationsModule } from './panel-user-applications/panel-user-applications.module';
+import { ImportsModule } from './imports/imports.module';
 import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
 
 @Module({
   imports: [
     ConfigModule,
     PrismaModule,
+    ImportsModule,
     UsersModule,
     AuthModule,
     MembersModule,

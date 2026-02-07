@@ -237,6 +237,53 @@ export const exportMemberDetailToPdf = async (memberId: string): Promise<void> =
   window.URL.revokeObjectURL(url);
 };
 
+// 🔹 Toplu üye import doğrulama: POST /imports/members/validate
+export interface ValidateMemberImportRow {
+  rowIndex: number;
+  data: Record<string, string>;
+  status: 'valid' | 'warning' | 'error';
+  errors?: { column?: string; message: string }[];
+}
+export interface ValidateMemberImportResponse {
+  totalRows: number;
+  previewRows: ValidateMemberImportRow[];
+  errors: { rowIndex: number; column?: string; message: string }[];
+  summary: { valid: number; warning: number; error: number };
+}
+export const validateMemberImport = async (
+  file: File,
+): Promise<ValidateMemberImportResponse> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await httpClient.post<ValidateMemberImportResponse>(
+    '/imports/members/validate',
+    formData,
+  );
+  return res.data;
+};
+
+// 🔹 Toplu üye CSV şablonu indir (Türkçe Excel uyumlu, örnek satır sistemdeki il/ilçe/kurum ile)
+export const downloadMemberImportTemplate = async (): Promise<void> => {
+  const res = await httpClient.get('/imports/members/template', {
+    responseType: 'blob',
+  });
+  const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const contentDisposition = res.headers['content-disposition'];
+  let filename = `toplu_uye_sablonu_${new Date().toISOString().split('T')[0]}.csv`;
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename="?(.+?)"?$/);
+    if (match) filename = match[1].trim();
+  }
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 // 🔹 Üyeyi soft delete et: DELETE /members/:id
 export const deleteMember = async (
   memberId: string,
