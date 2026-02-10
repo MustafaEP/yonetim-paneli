@@ -106,18 +106,11 @@ const LoginPage: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
-    e.preventDefault();
+  const doLogin = async (emailValue: string, passwordValue: string) => {
     setError(null);
-
-    if (!email.trim() || !password.trim()) {
-      setError('E-posta ve şifre zorunludur.');
-      return;
-    }
-
     setSubmitting(true);
     try {
-      await login({ email: email.trim(), password });
+      await login({ email: emailValue.trim(), password: passwordValue });
 
       const state = location.state as { from?: string } | undefined;
       if (state?.from) {
@@ -136,6 +129,26 @@ const LoginPage: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      setError('E-posta ve şifre zorunludur.');
+      return;
+    }
+    await doLogin(email, password);
+  };
+
+  const handleQuickLoginAdmin = async () => {
+    const quickEmail = 'admin@sendika.local';
+    const quickPassword = '123456';
+    setEmail(quickEmail);
+    setPassword(quickPassword);
+    await copyToClipboard(quickEmail);
+    setCopiedField('email-admin');
+    setTimeout(() => setCopiedField(null), 2000);
+    await doLogin(quickEmail, quickPassword);
   };
 
   return (
@@ -448,20 +461,15 @@ const LoginPage: React.FC = () => {
                           p: 1.5,
                           borderRadius: 1.5,
                           backgroundColor: alpha(theme.palette.common.white, 0.6),
-                          cursor: 'pointer',
+                          cursor: submitting ? 'wait' : 'pointer',
+                          opacity: submitting ? 0.8 : 1,
                           transition: 'all 0.2s ease',
-                          '&:hover': {
+                          '&:hover': submitting ? {} : {
                             backgroundColor: alpha(theme.palette.common.white, 0.8),
                             transform: 'translateX(4px)',
                           },
                         }}
-                        onClick={async () => {
-                          await copyToClipboard('admin@sendika.local');
-                          setCopiedField('email-admin');
-                          setTimeout(() => setCopiedField(null), 2000);
-                          setEmail('admin@sendika.local');
-                          setPassword('123456');
-                        }}
+                        onClick={submitting ? undefined : handleQuickLoginAdmin}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
                           <EmailIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
