@@ -36,6 +36,7 @@ services:
       - edge
 
   backend:
+    command: node dist/main.js
     build:
       context: ./backend
       dockerfile: Dockerfile
