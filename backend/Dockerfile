@@ -69,7 +69,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev && \
+    npm install -D ts-node @types/node @types/bcrypt && \
+    npm cache clean --force
 
 # Copy Prisma files (generate edilen client + schema + CLI)
 COPY prisma ./prisma
