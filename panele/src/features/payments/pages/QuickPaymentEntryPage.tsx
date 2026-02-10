@@ -48,6 +48,8 @@ import { createPayment, updatePayment, getPayments, type PaymentType, type Creat
 import type { MemberListItem } from '../../../types/member';
 import { getTevkifatCenters } from '../../accounting/services/accountingApi';
 import type { TevkifatCenter } from '../../accounting/services/accountingApi';
+import { getProvinces } from '../../regions/services/regionsApi';
+import type { Province } from '../../../types/region';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
@@ -62,6 +64,7 @@ interface PaymentRow {
   nationalId: string;
   institution: string;
   tevkifatCenter: string;
+  provinceName: string;
   amount: string;
   paymentType: PaymentType;
   description: string;
@@ -75,6 +78,7 @@ const QuickPaymentEntryPage: React.FC = () => {
   const toast = useToast();
 
   const [tevkifatCenters, setTevkifatCenters] = useState<TevkifatCenter[]>([]);
+  const [provinces, setProvinces] = useState<Province[]>([]);
   const [members, setMembers] = useState<MemberListItem[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,6 +88,7 @@ const QuickPaymentEntryPage: React.FC = () => {
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
     tevkifatCenterId: '',
+    provinceId: '',
   });
   const [showOnlyUnpaidMembers, setShowOnlyUnpaidMembers] = useState(false);
 
@@ -93,6 +98,7 @@ const QuickPaymentEntryPage: React.FC = () => {
     name: '',
     nationalId: '',
     tevkifatCenter: '',
+    province: '',
   });
 
   // Debounced filtreler (performans için)
@@ -169,6 +175,7 @@ const QuickPaymentEntryPage: React.FC = () => {
   useEffect(() => {
     if (canView) {
       loadTevkifatCenters();
+      loadProvinces();
     }
   }, [canView]);
 
@@ -179,6 +186,15 @@ const QuickPaymentEntryPage: React.FC = () => {
     } catch (e) {
       console.error('Tevkifat merkezleri yüklenirken hata:', e);
       toast.showError('Tevkifat merkezleri yüklenirken bir hata oluştu');
+    }
+  };
+
+  const loadProvinces = async () => {
+    try {
+      const data = await getProvinces();
+      setProvinces(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('İller yüklenirken hata:', e);
     }
   };
 
@@ -196,13 +212,18 @@ const QuickPaymentEntryPage: React.FC = () => {
         return;
       }
 
-      // Seçilen statüye göre üyeleri yükle
-      const allMembers = await getMembers(status);
+      // Seçilen statüye göre üyeleri yükle (il filtresi varsa backend'e gönder)
+      const allMembers = await getMembers(
+        status,
+        filters.provinceId || undefined,
+      );
 
       // Tevkifat merkezi filtresi uygula (zorunlu)
       let filteredMembers = allMembers.filter(
         (m) => m.tevkifatCenter?.id === filters.tevkifatCenterId
       );
+
+      // İl filtresi backend'de provinceId parametresi ile uygulanıyor (getMembers'a gönderildi)
 
       // Eğer "Sadece bu ay ödeme yapmayan üyeleri göster" seçiliyse, bu ay ödeme yapmış üyeleri filtrele
       if (excludePaidMembers) {
@@ -272,6 +293,10 @@ const QuickPaymentEntryPage: React.FC = () => {
             nationalId: member.nationalId || '',
             institution: member.institution?.name || '',
             tevkifatCenter: member.tevkifatCenter?.name || '',
+            provinceName:
+              member.workingProvince?.name ||
+              member.province?.name ||
+              '',
             amount: '',
             paymentType: 'TEVKIFAT' as PaymentType,
             description: '',
@@ -386,8 +411,10 @@ const QuickPaymentEntryPage: React.FC = () => {
         row.nationalId.includes(debouncedFilters.nationalId);
       const matchesTevkifatCenter = !debouncedFilters.tevkifatCenter ||
         row.tevkifatCenter.toLowerCase().includes(debouncedFilters.tevkifatCenter.toLowerCase());
-      
-      return matchesRegistrationNumber && matchesName && matchesNationalId && matchesTevkifatCenter;
+      const matchesProvince = !debouncedFilters.province ||
+        (row.provinceName || '').toLowerCase().includes(debouncedFilters.province.toLowerCase());
+
+      return matchesRegistrationNumber && matchesName && matchesNationalId && matchesTevkifatCenter && matchesProvince;
     });
   }, [rows, debouncedFilters]);
 
@@ -852,6 +879,24 @@ const QuickPaymentEntryPage: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
+
+            <FormControl size="medium" sx={{ minWidth: { xs: '100%', sm: 180 } }}>
+              <InputLabel>İl</InputLabel>
+              <Select
+                value={filters.provinceId}
+                label="İl"
+                onChange={(e) => setFilters({ ...filters, provinceId: e.target.value })}
+              >
+                <MenuItem value="">
+                  <em>Tümü</em>
+                </MenuItem>
+                {provinces.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
 
           {/* Üye Filtresi */}
@@ -1034,6 +1079,7 @@ const QuickPaymentEntryPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Ad Soyad</TableCell>
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>TC Kimlik No</TableCell>
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Tevkifat Merkezi</TableCell>
+                <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>İl</TableCell>
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Aidat Tutarı</TableCell>
               </TableRow>
               {/* Filtre Satırı */}
@@ -1078,13 +1124,23 @@ const QuickPaymentEntryPage: React.FC = () => {
                     sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.75rem' } }}
                   />
                 </TableCell>
+                <TableCell sx={{ bgcolor: alpha(theme.palette.grey[100], 0.5), p: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Filtrele..."
+                    value={tableFilters.province}
+                    onChange={(e) => setTableFilters({ ...tableFilters, province: e.target.value })}
+                    fullWidth
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.75rem' } }}
+                  />
+                </TableCell>
                 <TableCell sx={{ bgcolor: alpha(theme.palette.grey[100], 0.5) }}></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {paginatedRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
                       {rows.length === 0 
                         ? 'Henüz satır eklenmedi. Üstteki butonlardan birine tıklayarak üyeleri getirin.'
@@ -1123,6 +1179,11 @@ const QuickPaymentEntryPage: React.FC = () => {
                       <TableCell>
                         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
                           {row.tevkifatCenter || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                          {row.provinceName || '-'}
                         </Typography>
                       </TableCell>
                       <TableCell>

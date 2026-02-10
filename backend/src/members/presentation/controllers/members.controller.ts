@@ -167,6 +167,12 @@ export class MembersController {
     ],
     description: 'Üye durumu filtresi. Belirtilmezse ACTIVE üyeler gösterilir.',
   })
+  @ApiQuery({
+    name: 'provinceId',
+    required: false,
+    description:
+      'İl filtresi. Verilirse üyenin ili, şubenin ili veya kurumun ili bu il olan üyeler döner.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Üye listesi',
@@ -175,12 +181,13 @@ export class MembersController {
   async listMembers(
     @CurrentUser() user: CurrentUserData,
     @Query('status') status?: string,
+    @Query('provinceId') provinceId?: string,
   ) {
     const members = await this.membersService.listMembersForUser(
       user,
       status as any,
+      provinceId,
     );
-    // Prisma model'leri için mapper kullanılabilir, şimdilik direkt dönüyoruz
     return members;
   }
 
