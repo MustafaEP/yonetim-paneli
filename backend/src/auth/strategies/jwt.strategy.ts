@@ -8,6 +8,7 @@ import {
   getPermissionsForCustomRoles,
 } from '../role-permissions.map';
 import type { Permission } from '../permission.enum';
+import { TOKEN_TYPE_ACCESS } from '../domain/types/token-payload.types';
 
 const USER_CACHE_TTL_MS = 60 * 1000; // 1 dakika – DB yükünü azaltır
 
@@ -39,6 +40,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any): Promise<CachedUser> {
+    // Refresh token'ın access token olarak kullanılmasını engelle.
+    // type claim'i olmayan eski token'lar da kabul edilir (geriye uyumluluk).
+    if (payload?.type && payload.type !== TOKEN_TYPE_ACCESS) {
+      throw new UnauthorizedException('Invalid token type: expected access token');
+    }
+
     const userId = payload?.sub;
     if (!userId) throw new UnauthorizedException('Invalid token');
 

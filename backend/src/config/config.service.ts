@@ -1,8 +1,9 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ConfigService implements OnModuleInit {
+  private readonly logger = new Logger(ConfigService.name);
   private settingsCache: Map<string, string> = new Map();
   private cacheInitialized = false;
 
@@ -10,6 +11,25 @@ export class ConfigService implements OnModuleInit {
 
   async onModuleInit() {
     await this.loadSettingsCache();
+    this.validateSecurityConfig();
+  }
+
+  /**
+   * Güvenlik yapılandırmasını kontrol eder ve uyarı loglar.
+   */
+  private validateSecurityConfig(): void {
+    const defaultSecret = 'your-secret-key-change-in-production';
+    if (this.jwtSecret === defaultSecret) {
+      this.logger.error(
+        '⚠️  JWT_SECRET ortam değişkeni ayarlanmamış! Varsayılan secret kullanılıyor. ' +
+        'PRODUCTION ortamında bu ÇOK TEHLİKELİDİR. Lütfen güçlü bir secret belirleyin.',
+      );
+    }
+    if (this.jwtSecret.length < 32) {
+      this.logger.warn(
+        'JWT_SECRET çok kısa (< 32 karakter). Güvenlik için en az 32 karakterlik bir secret kullanılması önerilir.',
+      );
+    }
   }
 
   /**

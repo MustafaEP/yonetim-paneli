@@ -25,6 +25,9 @@ import { PasswordService } from './infrastructure/services/password.service';
 import { AuthBruteForceService } from './infrastructure/services/auth-brute-force.service';
 import type { AccessPayload } from './domain/types/token-payload.types';
 
+/** signAccess type'ı otomatik ekler; buildUserPayload type olmadan döner */
+type AccessPayloadWithoutType = Omit<AccessPayload, 'type'>;
+
 type UserWithRoles = User & {
   customRoles?: Array<{
     name: string;
@@ -97,7 +100,7 @@ export class AuthService {
     this.logger.log(`Refresh token used | userId=${userId}`);
   }
 
-  private buildUserPayload(user: UserWithRoles): AccessPayload {
+  private buildUserPayload(user: UserWithRoles): AccessPayloadWithoutType {
     const customRolePermissions: Permission[] = [];
     const customRoleNames: string[] = [];
 

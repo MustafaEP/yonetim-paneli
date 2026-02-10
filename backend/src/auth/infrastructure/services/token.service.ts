@@ -2,12 +2,16 @@
  * TokenService – JWT access ve refresh token üretimi / doğrulama.
  * Access doğrulama (verify) şu an Passport JWT strategy tarafından yapılıyor.
  */
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '../../../config/config.service';
 import type {
   AccessPayload,
   RefreshPayload,
+} from '../../domain/types/token-payload.types';
+import {
+  TOKEN_TYPE_ACCESS,
+  TOKEN_TYPE_REFRESH,
 } from '../../domain/types/token-payload.types';
 
 @Injectable()
@@ -19,16 +23,18 @@ export class TokenService {
 
   /**
    * Access token üretir. Süre JwtModule config'ten (access) gelir.
+   * type: 'access' claim'i ile refresh token'dan ayırt edilir.
    */
-  signAccess(payload: AccessPayload): Promise<string> {
-    return this.jwtService.signAsync(payload);
+  signAccess(payload: Omit<AccessPayload, 'type'>): Promise<string> {
+    return this.jwtService.signAsync({ ...payload, type: TOKEN_TYPE_ACCESS });
   }
 
   /**
    * Refresh token üretir (sadece sub; süre env'den refresh süresi).
+   * type: 'refresh' claim'i ile access token'dan ayırt edilir.
    */
   signRefresh(userId: string): Promise<string> {
-    const payload: RefreshPayload = { sub: userId };
+    const payload: RefreshPayload = { type: TOKEN_TYPE_REFRESH, sub: userId };
     // JwtSignOptions.expiresIn tipi string kabul etmeyebilir; runtime'da "7d" geçerli
     return this.jwtService.signAsync(payload, {
       expiresIn: this.configService.jwtRefreshExpiresIn,
@@ -36,10 +42,14 @@ export class TokenService {
   }
 
   /**
-   * Refresh token'ı doğrular; geçerliyse payload döner.
+   * Refresh token'ı doğrular; type: 'refresh' olmalıdır.
    */
   async verifyRefresh(token: string): Promise<RefreshPayload> {
-    return this.jwtService.verifyAsync<RefreshPayload>(token);
+    const payload = await this.jwtService.verifyAsync<RefreshPayload>(token);
+    if (payload.type !== TOKEN_TYPE_REFRESH) {
+      throw new UnauthorizedException('Invalid token type: expected refresh token');
+    }
+    return payload;
   }
 
   /**

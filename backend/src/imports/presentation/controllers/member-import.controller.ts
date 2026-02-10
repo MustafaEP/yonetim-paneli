@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
@@ -111,5 +112,51 @@ export class MemberImportController {
       throw new BadRequestException('Sadece CSV dosyası yükleyebilirsiniz.');
     }
     return this.validationService.validate(file);
+  }
+
+  @Permissions(Permission.MEMBER_CREATE_APPLICATION)
+  @Post('members/import')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_IMPORT_FILE_BYTES },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Toplu üye içe aktar',
+    description:
+      'CSV dosyasındaki geçerli üyeleri sisteme kaydeder. Hatalı satırları atlayabilir (skipErrors=true) veya tüm satırlar geçerli olmalı (skipErrors=false).',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary', description: 'CSV dosyası' },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'İçe aktarma sonucu' })
+  @ApiResponse({ status: 400, description: 'Geçersiz dosya veya doğrulama hatası' })
+  async importMembers(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: CurrentUserData,
+    @Query('skipErrors') skipErrors?: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Lütfen bir CSV dosyası seçin.');
+    }
+    const isCsv =
+      allowedMimes.includes(file.mimetype) ||
+      file.originalname?.toLowerCase().endsWith('.csv');
+    if (!isCsv) {
+      throw new BadRequestException('Sadece CSV dosyası yükleyebilirsiniz.');
+    }
+    return this.validationService.bulkImport(
+      file,
+      user.userId,
+      skipErrors === 'true',
+    );
   }
 }

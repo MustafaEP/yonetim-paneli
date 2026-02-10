@@ -34,6 +34,13 @@ export interface ValidateMemberImportResult {
   summary: { valid: number; warning: number; error: number };
 }
 
+export interface BulkImportResult {
+  imported: number;
+  skipped: number;
+  errors: { rowIndex: number; column?: string; message: string }[];
+  duplicateNationalIds: string[];
+}
+
 /** İsimden id bulmak için normalize: trim, lowercase, Türkçe karakterleri düzelt */
 function normalizeName(s: string): string {
   return s
@@ -50,6 +57,43 @@ function normalizeName(s: string): string {
 /** CUID benzeri mi (c ile başlar, 25 karakter) */
 function looksLikeId(value: string): boolean {
   return /^c[a-z0-9]{24}$/i.test((value || '').trim());
+}
+
+/** CSV hücresini güvenli yaz: ; \n " içeriyorsa tırnakla sar ve " → "" */
+function escapeCsvCell(value: string): string {
+  const s = value ?? '';
+  if (/[;"\r\n]/.test(s)) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+/**
+ * Telefon numarasını normalize eder → her zaman "05XXXXXXXXX" (11 hane) formatına çevirir.
+ * Desteklenen formatlar:
+ *   +905551234567 → 05551234567
+ *   905551234567  → 05551234567
+ *   05551234567   → 05551234567
+ *   5551234567    → 05551234567
+ *   0(555)1234567 → 05551234567
+ */
+function normalizePhone(phone: string | null): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  // 12 hane: 905551234567 → 05551234567
+  if (digits.length === 12 && digits.startsWith('90')) {
+    return '0' + digits.slice(2);
+  }
+  // 11 hane: 05551234567 → olduğu gibi
+  if (digits.length === 11 && digits.startsWith('0')) {
+    return digits;
+  }
+  // 10 hane: 5551234567 → 05551234567
+  if (digits.length === 10) {
+    return '0' + digits;
+  }
+  // Diğer → trim
+  return phone.trim();
 }
 
 @Injectable()
@@ -152,7 +196,9 @@ export class MemberImportValidationService {
       profession?.name ?? '',
       '12345',
       'K001',
-    ].join(sep);
+    ]
+      .map((cell) => escapeCsvCell(String(cell)))
+      .join(sep);
 
     const csv = '\uFEFF' + headers + '\n' + exampleRow + '\n';
     return csv;
@@ -164,9 +210,23 @@ export class MemberImportValidationService {
     const headers =
       'Ad;Soyad;TC Kimlik No;Telefon;E-posta;Anne Adı;Baba Adı;Doğum Tarihi;Doğum Yeri;Cinsiyet;Öğrenim Durumu;İl;İlçe;Kurum;Şube;Tevkifat Merkezi;Tevkifat Ünvanı;Üye Grubu;Görev Birimi;Kurum Adresi;Kurum İli;Kurum İlçesi;Meslek;Kurum Sicil No;Kadro Unvan Kodu';
 
+    // Sadece aktif üyeleri al; silinmiş kurum ve eksik zorunlu alan olanları hariç tut
     const members = await this.prisma.member.findMany({
       where: {
+        status: { in: ['ACTIVE', 'PENDING'] },
+        cancelledAt: null,
         institution: { deletedAt: null },
+        firstName: { not: '' },
+        lastName: { not: '' },
+        nationalId: { not: '' },
+        phone: { not: '' },
+        motherName: { not: '' },
+        fatherName: { not: '' },
+        birthDate: { not: null },
+        birthplace: { not: '' },
+        provinceId: { not: null },
+        districtId: { not: null },
+        institutionId: { not: null },
       },
       take: Math.max(count * 3, 30),
       include: {
@@ -193,21 +253,12 @@ export class MemberImportValidationService {
     const dateStr = (d: Date | null) =>
       d ? new Date(d).toISOString().slice(0, 10) : '';
 
-    const normalizePhoneForCsv = (phone: string | null): string => {
-      if (!phone) return '';
-      const digits = phone.replace(/\D/g, '');
-      if (digits.length === 10) return digits;
-      if (digits.length === 9) return '0' + digits;
-      if (digits.length === 12 && digits.startsWith('90')) return '0' + digits.slice(2);
-      return phone.trim();
-    };
-
     const rows = selected.map((m) =>
       [
         m.firstName ?? '',
         m.lastName ?? '',
         m.nationalId ?? '',
-        normalizePhoneForCsv(m.phone ?? ''),
+        normalizePhone(m.phone),
         m.email ?? '',
         m.motherName ?? '',
         m.fatherName ?? '',
@@ -229,8 +280,13 @@ export class MemberImportValidationService {
         m.profession?.name ?? '',
         m.institutionRegNo ?? '',
         m.staffTitleCode ?? '',
-      ].join(sep),
+      ].map((cell) => escapeCsvCell(String(cell))).join(sep),
     );
+
+    if (rows.length === 0) {
+      const csv = '\uFEFF' + headers + '\n';
+      return csv;
+    }
 
     const csv = '\uFEFF' + headers + '\n' + rows.join('\n') + '\n';
     return csv;
@@ -304,6 +360,238 @@ export class MemberImportValidationService {
       previewRows,
       errors: allErrors,
       summary: { valid, warning, error },
+    };
+  }
+
+  /**
+   * CSV dosyasındaki geçerli satırları veritabanına kaydeder.
+   * Hatalı satırları atlar. Duplicate nationalId'leri raporlar.
+   */
+  async bulkImport(
+    file: Express.Multer.File,
+    userId: string,
+    skipErrors: boolean,
+  ): Promise<BulkImportResult> {
+    const buffer = file?.buffer ?? (file as unknown as { buffer?: Buffer })?.buffer;
+    if (!buffer || !Buffer.isBuffer(buffer)) {
+      throw new BadRequestException('Dosya yüklenmedi veya geçersiz.');
+    }
+    if (buffer.length > MAX_IMPORT_FILE_BYTES) {
+      throw new BadRequestException(
+        `Dosya boyutu ${MAX_IMPORT_FILE_BYTES / 1024 / 1024} MB sınırını aşamaz.`,
+      );
+    }
+
+    const { headers: rawHeaders, rows: rawRows } = parseCsvBuffer(buffer);
+    if (rawHeaders.length === 0) {
+      throw new BadRequestException('CSV dosyasında başlık satırı bulunamadı.');
+    }
+
+    const headerMap = this.normalizeHeaders(rawHeaders);
+    if (rawRows.length > MAX_IMPORT_ROWS) {
+      throw new BadRequestException(
+        `En fazla ${MAX_IMPORT_ROWS} satır yükleyebilirsiniz. Mevcut: ${rawRows.length}.`,
+      );
+    }
+
+    const refs = await this.loadReferenceData();
+    const allErrors: { rowIndex: number; column?: string; message: string }[] = [];
+    const duplicateNationalIds: string[] = [];
+
+    // Mevcut nationalId'leri topla (duplicate kontrolü)
+    const existingNationalIds = new Set<string>();
+    const existingMembers = await this.prisma.member.findMany({
+      select: { nationalId: true },
+    });
+    existingMembers.forEach((m) => existingNationalIds.add(m.nationalId));
+
+    // CSV içi duplicate kontrolü
+    const csvNationalIds = new Set<string>();
+
+    // Geçerli satırları hazırla
+    interface MemberCreateData {
+      rowIndex: number;
+      data: {
+        firstName: string;
+        lastName: string;
+        nationalId: string;
+        phone: string;
+        email: string | null;
+        motherName: string;
+        fatherName: string;
+        birthDate: Date;
+        birthplace: string;
+        gender: Gender;
+        educationStatus: EducationStatus;
+        provinceId: string;
+        districtId: string;
+        institutionId: string;
+        branchId?: string;
+        tevkifatCenterId?: string;
+        tevkifatTitleId?: string;
+        memberGroupId?: string;
+        dutyUnit?: string;
+        institutionAddress?: string;
+        institutionProvinceId?: string;
+        institutionDistrictId?: string;
+        professionId?: string;
+        institutionRegNo?: string;
+        staffTitleCode?: string;
+        source: 'OTHER';
+        status: 'PENDING';
+        createdByUserId: string;
+      };
+    }
+
+    const validRows: MemberCreateData[] = [];
+
+    for (let i = 0; i < rawRows.length; i++) {
+      const rowIndex = i + 2;
+      const rawRow = rawRows[i];
+      const data: Record<string, string> = {};
+      rawHeaders.forEach((h, j) => {
+        const key = headerMap[j] ?? `col_${j}`;
+        data[key] = (rawRow[j] ?? '').trim();
+      });
+
+      // Satırı doğrula
+      const { status, errors: rowErrors } = this.validateRow(data, refs);
+      if (status === 'error') {
+        rowErrors.forEach((e) =>
+          allErrors.push({ rowIndex, column: e.column, message: e.message }),
+        );
+        if (!skipErrors) {
+          throw new BadRequestException({
+            message: `Satır ${rowIndex} hatalı. Önce tüm hataları düzeltin veya "Hatalıları atla" seçeneğini kullanın.`,
+            errors: allErrors,
+          });
+        }
+        continue;
+      }
+
+      const get = (key: string) => (data[key] ?? '').trim();
+      const nationalId = get('nationalId');
+
+      // Mevcut üye duplicate kontrolü
+      if (existingNationalIds.has(nationalId)) {
+        duplicateNationalIds.push(nationalId);
+        allErrors.push({
+          rowIndex,
+          column: 'nationalId',
+          message: `TC Kimlik No zaten kayıtlı: ${nationalId}`,
+        });
+        continue;
+      }
+
+      // CSV içi duplicate kontrolü
+      if (csvNationalIds.has(nationalId)) {
+        duplicateNationalIds.push(nationalId);
+        allErrors.push({
+          rowIndex,
+          column: 'nationalId',
+          message: `TC Kimlik No CSV içinde tekrar ediyor: ${nationalId}`,
+        });
+        continue;
+      }
+      csvNationalIds.add(nationalId);
+
+      // Referans alanları çöz (isim → id)
+      const resolved = this.resolveRow(data, refs);
+      if (!resolved) {
+        allErrors.push({ rowIndex, message: 'Referans alanları çözülemedi.' });
+        continue;
+      }
+
+      const email = get('email');
+      const gender = this.normalizeGender(get('gender'))!;
+      const educationStatus = this.normalizeEducation(get('educationStatus'))!;
+
+      validRows.push({
+        rowIndex,
+        data: {
+          firstName: get('firstName'),
+          lastName: get('lastName'),
+          nationalId,
+          phone: normalizePhone(get('phone')),
+          email: email || null,
+          motherName: get('motherName'),
+          fatherName: get('fatherName'),
+          birthDate: new Date(get('birthDate')),
+          birthplace: get('birthplace'),
+          gender,
+          educationStatus,
+          provinceId: resolved.provinceId,
+          districtId: resolved.districtId,
+          institutionId: resolved.institutionId,
+          branchId: resolved.branchId || undefined,
+          tevkifatCenterId: resolved.tevkifatCenterId || undefined,
+          tevkifatTitleId: resolved.tevkifatTitleId || undefined,
+          memberGroupId: resolved.memberGroupId || undefined,
+          dutyUnit: get('dutyUnit') || undefined,
+          institutionAddress: get('institutionAddress') || undefined,
+          institutionProvinceId: resolved.institutionProvinceId || undefined,
+          institutionDistrictId: resolved.institutionDistrictId || undefined,
+          professionId: resolved.professionId || undefined,
+          institutionRegNo: get('institutionRegNo') || undefined,
+          staffTitleCode: get('staffTitleCode') || undefined,
+          source: 'OTHER' as const,
+          status: 'PENDING' as const,
+          createdByUserId: userId,
+        },
+      });
+    }
+
+    if (validRows.length === 0) {
+      return {
+        imported: 0,
+        skipped: rawRows.length,
+        errors: allErrors,
+        duplicateNationalIds,
+      };
+    }
+
+    // Toplu kayıt – transaction ile
+    let imported = 0;
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        for (const row of validRows) {
+          try {
+            await tx.member.create({ data: row.data });
+            imported++;
+          } catch (err: any) {
+            // Unique constraint violation (nationalId duplicate race condition)
+            if (err?.code === 'P2002') {
+              duplicateNationalIds.push(row.data.nationalId);
+              allErrors.push({
+                rowIndex: row.rowIndex,
+                column: 'nationalId',
+                message: `TC Kimlik No zaten kayıtlı (veritabanı): ${row.data.nationalId}`,
+              });
+            } else {
+              allErrors.push({
+                rowIndex: row.rowIndex,
+                message: `Kayıt hatası: ${err?.message ?? 'Bilinmeyen hata'}`,
+              });
+            }
+          }
+        }
+      });
+    } catch (err: any) {
+      this.logger.error('Toplu üye kayıt transaction hatası', err?.stack ?? err);
+      throw new BadRequestException(
+        'Toplu kayıt sırasında bir hata oluştu. Hiçbir üye kaydedilmedi.',
+      );
+    }
+
+    this.logger.log(
+      `Toplu üye kayıt tamamlandı: ${imported} kayıt, ${rawRows.length - imported} atlandı`,
+    );
+
+    return {
+      imported,
+      skipped: rawRows.length - imported,
+      errors: allErrors,
+      duplicateNationalIds,
     };
   }
 
@@ -402,6 +690,98 @@ export class MemberImportValidationService {
     };
   }
 
+  /**
+   * Satır verilerindeki isimleri (il, ilçe, kurum vb.) ID'ye çözer.
+   * Doğrulama zaten geçmiş olduğu varsayılır.
+   */
+  private resolveRow(
+    data: Record<string, string>,
+    refs: Awaited<ReturnType<MemberImportValidationService['loadReferenceData']>>,
+  ): {
+    provinceId: string;
+    districtId: string;
+    institutionId: string;
+    branchId: string | null;
+    tevkifatCenterId: string | null;
+    tevkifatTitleId: string | null;
+    memberGroupId: string | null;
+    institutionProvinceId: string | null;
+    institutionDistrictId: string | null;
+    professionId: string | null;
+  } | null {
+    const get = (key: string) => (data[key] ?? '').trim();
+
+    const resolveId = (
+      value: string,
+      idsSet: Set<string>,
+      nameMap: Map<string, string>,
+    ): string | null => {
+      if (!value) return null;
+      if (looksLikeId(value) && idsSet.has(value)) return value;
+      return nameMap.get(normalizeName(value)) ?? null;
+    };
+
+    const provinceId = resolveId(get('provinceId'), refs.provinceIds, refs.provinceByName);
+    if (!provinceId) return null;
+
+    // İlçe çözümü (il ile birlikte)
+    const districtVal = get('districtId');
+    let districtId: string | null = null;
+    if (districtVal) {
+      if (looksLikeId(districtVal) && refs.districtIds.has(districtVal)) {
+        districtId = districtVal;
+      } else {
+        const key = normalizeName(districtVal);
+        const prov = refs.provinces.get(provinceId);
+        const keyWithProv = prov ? normalizeName(prov.name) + '|' + key : key;
+        districtId = refs.districtByName.get(keyWithProv) ?? refs.districtByName.get(key) ?? null;
+      }
+    }
+    if (!districtId) return null;
+
+    const institutionId = resolveId(get('institutionId'), refs.institutionIds, refs.institutionByName);
+    if (!institutionId) return null;
+
+    const branchId = resolveId(get('branchId'), refs.branchIds, refs.branchByName);
+    const tevkifatCenterId = resolveId(get('tevkifatCenterId'), refs.tevkifatCenterIds, refs.tevkifatCenterByName);
+    const tevkifatTitleId = resolveId(get('tevkifatTitleId'), refs.tevkifatTitleIds, refs.tevkifatTitleByName);
+    const memberGroupId = resolveId(get('memberGroupId'), refs.memberGroupIds, refs.memberGroupByName);
+    const institutionProvinceId = resolveId(get('institutionProvinceId'), refs.provinceIds, refs.provinceByName);
+
+    // Kurum ilçesi
+    const instDistrictVal = get('institutionDistrictId');
+    let institutionDistrictId: string | null = null;
+    if (instDistrictVal) {
+      if (looksLikeId(instDistrictVal) && refs.districtIds.has(instDistrictVal)) {
+        institutionDistrictId = instDistrictVal;
+      } else {
+        const key = normalizeName(instDistrictVal);
+        if (institutionProvinceId) {
+          const prov = refs.provinces.get(institutionProvinceId);
+          const keyWithProv = prov ? normalizeName(prov.name) + '|' + key : key;
+          institutionDistrictId = refs.districtByName.get(keyWithProv) ?? refs.districtByName.get(key) ?? null;
+        } else {
+          institutionDistrictId = refs.districtByName.get(key) ?? null;
+        }
+      }
+    }
+
+    const professionId = resolveId(get('professionId'), refs.professionIds, refs.professionByName);
+
+    return {
+      provinceId,
+      districtId,
+      institutionId,
+      branchId,
+      tevkifatCenterId,
+      tevkifatTitleId,
+      memberGroupId,
+      institutionProvinceId,
+      institutionDistrictId,
+      professionId,
+    };
+  }
+
   private validateRow(
     data: Record<string, string>,
     refs: Awaited<ReturnType<MemberImportValidationService['loadReferenceData']>>,
@@ -437,11 +817,12 @@ export class MemberImportValidationService {
     if (!phone) {
       errors.push({ column: 'phone', message: 'Telefon zorunludur.' });
     } else {
-      const phoneNorm = phone.replace(/\s/g, '');
-      if (!/^(\+90|0)?[0-9]{10}$/.test(phoneNorm)) {
+      // Telefonu normalize et ve doğrula
+      const phoneNormalized = normalizePhone(phone);
+      if (!/^0[0-9]{10}$/.test(phoneNormalized)) {
         errors.push({
           column: 'phone',
-          message: 'Geçerli bir telefon numarası giriniz.',
+          message: 'Geçerli bir telefon numarası giriniz (örn: 05551234567).',
         });
       }
     }
@@ -539,6 +920,63 @@ export class MemberImportValidationService {
         const found = refs.branchByName.get(normalizeName(branchId));
         if (!found) {
           errors.push({ column: 'branchId', message: `Şube bulunamadı: ${branchId}` });
+        }
+      }
+    }
+
+    // Opsiyonel referans alanlarını da kontrol et (varsa geçerli olmalı)
+    const tevkifatCenterId = get('tevkifatCenterId');
+    if (tevkifatCenterId) {
+      if (looksLikeId(tevkifatCenterId)) {
+        if (!refs.tevkifatCenterIds.has(tevkifatCenterId)) {
+          errors.push({ column: 'tevkifatCenterId', message: `Tevkifat Merkezi bulunamadı: ${tevkifatCenterId}` });
+        }
+      } else {
+        const found = refs.tevkifatCenterByName.get(normalizeName(tevkifatCenterId));
+        if (!found) {
+          errors.push({ column: 'tevkifatCenterId', message: `Tevkifat Merkezi bulunamadı: ${tevkifatCenterId}` });
+        }
+      }
+    }
+
+    const tevkifatTitleId = get('tevkifatTitleId');
+    if (tevkifatTitleId) {
+      if (looksLikeId(tevkifatTitleId)) {
+        if (!refs.tevkifatTitleIds.has(tevkifatTitleId)) {
+          errors.push({ column: 'tevkifatTitleId', message: `Tevkifat Ünvanı bulunamadı: ${tevkifatTitleId}` });
+        }
+      } else {
+        const found = refs.tevkifatTitleByName.get(normalizeName(tevkifatTitleId));
+        if (!found) {
+          errors.push({ column: 'tevkifatTitleId', message: `Tevkifat Ünvanı bulunamadı: ${tevkifatTitleId}` });
+        }
+      }
+    }
+
+    const memberGroupId = get('memberGroupId');
+    if (memberGroupId) {
+      if (looksLikeId(memberGroupId)) {
+        if (!refs.memberGroupIds.has(memberGroupId)) {
+          errors.push({ column: 'memberGroupId', message: `Üye Grubu bulunamadı: ${memberGroupId}` });
+        }
+      } else {
+        const found = refs.memberGroupByName.get(normalizeName(memberGroupId));
+        if (!found) {
+          errors.push({ column: 'memberGroupId', message: `Üye Grubu bulunamadı: ${memberGroupId}` });
+        }
+      }
+    }
+
+    const professionVal = get('professionId');
+    if (professionVal) {
+      if (looksLikeId(professionVal)) {
+        if (!refs.professionIds.has(professionVal)) {
+          errors.push({ column: 'professionId', message: `Meslek bulunamadı: ${professionVal}` });
+        }
+      } else {
+        const found = refs.professionByName.get(normalizeName(professionVal));
+        if (!found) {
+          errors.push({ column: 'professionId', message: `Meslek bulunamadı: ${professionVal}` });
         }
       }
     }

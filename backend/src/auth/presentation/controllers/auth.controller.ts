@@ -1,7 +1,7 @@
 /**
  * Auth Controller (Presentation Layer)
  */
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -98,6 +98,35 @@ export class AuthController {
         roles: session.roles,
         permissions: session.permissions,
       },
+    };
+  }
+
+  @Get('me')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Mevcut kullanıcı bilgileri',
+    description:
+      'Access token ile doğrulanmış kullanıcının bilgilerini döner. Frontend token doğrulaması için kullanılır.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Kullanıcı bilgileri',
+    schema: {
+      example: {
+        userId: 'user-uuid-123',
+        email: 'admin@example.com',
+        roles: ['ADMIN'],
+        permissions: ['USER_LIST', 'USER_VIEW'],
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Geçersiz veya süresi dolmuş token' })
+  me(@CurrentUser() user: CurrentUserData) {
+    return {
+      userId: user.userId,
+      email: user.email,
+      roles: user.roles,
+      permissions: user.permissions,
     };
   }
 

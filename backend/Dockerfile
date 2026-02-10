@@ -8,48 +8,28 @@ ARG PRISMA_ENGINES_MIRROR
 ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
 
 # Prisma (and some native deps) rely on OpenSSL + CA certificates.
-# Alpine images are more likely to hit Prisma engine / OpenSSL friction.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     openssl \
   && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install dependencies (package-lock.json'dan tam sürümleri kullanır)
 COPY package*.json ./
 RUN npm ci
 
-# Copy Prisma schema
+# Copy Prisma schema & generate client
+# NOT: prisma CLI ve @prisma/client sürümleri package.json'da eşleştirilmiştir.
+# Hardcoded versiyon KULLANMAYIN - sürüm uyumsuzluğu veritabanı hatalarına yol açar.
 COPY prisma ./prisma
-
-# Generate Prisma Client
-# NOTE:
-# - In this project, @prisma/client is pinned to 6.1 while the devDependency
-#   "prisma" version in package.json / package-lock can drift.
-# - To avoid "Prisma Client and CLI version mismatch" errors during Docker builds,
-#   we explicitly install a matching Prisma CLI version here (without modifying package.json).
-# - Install corepack and use npm cache to speed up binary downloads
-RUN npm install prisma@6.1 --no-save
-ENV PRISMA_BINARY_CACHE_DIR=/root/.cache/prisma
-RUN mkdir -p $PRISMA_BINARY_CACHE_DIR
 RUN npx prisma generate
 
-# Copy source code
+# Copy source code & build
 COPY . .
-
-# Build application
 RUN npm run build
 
-# Verify build output exists and show contents
-RUN echo "=== Build output directory ===" && \
-    ls -la /app/dist/ || (echo "Build failed - dist directory is empty" && exit 1) && \
-    echo "=== Looking for main files ===" && \
-    find /app/dist -name "main.*" -type f || echo "No main.* files found" && \
-    echo "=== Dist structure ===" && \
-    find /app/dist -type f | head -20 && \
-    echo "=== Checking for main.js in common locations ===" && \
-    (test -f /app/dist/main.js && echo "Found: dist/main.js") || \
-    (test -f /app/dist/src/main.js && echo "Found: dist/src/main.js") || \
-    (echo "WARNING: main.js not found in expected locations" && find /app/dist -name "*.js" | head -5)
+# Build doğrulama
+RUN test -f /app/dist/main.js || test -f /app/dist/src/main.js || \
+    (echo "ERROR: main.js bulunamadı" && ls -la /app/dist/ && exit 1)
 
 # ---- Production stage ----
 FROM node:20-bookworm-slim
@@ -91,15 +71,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy Prisma files
+# Copy Prisma files (generate edilen client + schema + CLI)
 COPY prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Ensure Prisma CLI version matches @prisma/client (6.1) at runtime as well.
-# This avoids runtime errors such as "ensureBinariesExist is not a function"
-# that come from version mismatches between the Prisma CLI and client.
-RUN npm install prisma@6.1 --no-save
+# Runtime'da migration çalıştırmak için prisma CLI gerekli
+# package.json'daki sürümü kullan (hardcoded versiyon değil!)
+RUN npx prisma generate
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
@@ -126,5 +105,4 @@ COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
-# Try different possible paths for main.js
-CMD ["sh", "-c", "if [ -f dist/main.js ]; then node dist/main.js; elif [ -f dist/src/main.js ]; then node dist/src/main.js; else echo 'Error: main.js not found' && find dist -name '*.js' | head -5 && exit 1; fi"]
+CMD ["node", "dist/main.js"]

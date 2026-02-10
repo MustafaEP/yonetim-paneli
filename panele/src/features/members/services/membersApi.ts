@@ -306,6 +306,26 @@ export const downloadSampleMembersCsv = async (): Promise<void> => {
   window.URL.revokeObjectURL(url);
 };
 
+// 🔹 Toplu üye içe aktar: POST /imports/members/import
+export interface BulkImportResponse {
+  imported: number;
+  skipped: number;
+  errors: { rowIndex: number; column?: string; message: string }[];
+  duplicateNationalIds: string[];
+}
+export const bulkImportMembers = async (
+  file: File,
+  skipErrors: boolean,
+): Promise<BulkImportResponse> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await httpClient.post<BulkImportResponse>(
+    `/imports/members/import?skipErrors=${skipErrors}`,
+    formData,
+  );
+  return res.data;
+};
+
 // 🔹 Üyeyi soft delete et: DELETE /members/:id
 export const deleteMember = async (
   memberId: string,

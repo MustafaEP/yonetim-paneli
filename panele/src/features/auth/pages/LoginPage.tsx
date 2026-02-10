@@ -414,104 +414,108 @@ const LoginPage: React.FC = () => {
               </Button>
             </Box>
 
-            {/* Örnek Kullanıcı Bilgileri */}
-            <Box
-              sx={{
-                mt: 3,
-                p: 2,
-                borderRadius: 2,
-                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                position: 'relative',
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                <PersonIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
-                <Typography variant="body2" fontWeight={600} sx={{ color: theme.palette.primary.main }}>
-                  Örnek Kullanıcı Bilgileri
-                </Typography>
-              </Box>
-              
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {/* Admin Kullanıcı */}
-                <Box>
-                  <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: theme.palette.text.secondary, fontWeight: 500 }}>
-                    👑 Admin
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      p: 1.5,
-                      borderRadius: 1.5,
-                      backgroundColor: alpha(theme.palette.common.white, 0.6),
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.common.white, 0.8),
-                        transform: 'translateX(4px)',
-                      },
-                    }}
-                    onClick={async () => {
-                      await copyToClipboard('admin@sendika.local');
-                      setCopiedField('email-admin');
-                      setTimeout(() => setCopiedField(null), 2000);
-                      setEmail('admin@sendika.local');
-                      setPassword('123456');
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                      <EmailIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                        admin@sendika.local
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, ml: 0.5 }}>
-                        / 123456
-                      </Typography>
-                    </Box>
-                    {copiedField === 'email-admin' ? (
-                      <CheckIcon sx={{ fontSize: 18, color: theme.palette.success.main }} />
-                    ) : (
-                      <ContentCopyIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-                    )}
+            {/* Örnek Kullanıcı Bilgileri – sadece development ortamında göster */}
+            {import.meta.env.DEV && (
+              <>
+                <Box
+                  sx={{
+                    mt: 3,
+                    p: 2,
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                    position: 'relative',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                    <PersonIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
+                    <Typography variant="body2" fontWeight={600} sx={{ color: theme.palette.primary.main }}>
+                      Örnek Kullanıcı Bilgileri (DEV)
+                    </Typography>
                   </Box>
+                  
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {/* Admin Kullanıcı */}
+                    <Box>
+                      <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: theme.palette.text.secondary, fontWeight: 500 }}>
+                        Admin
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          p: 1.5,
+                          borderRadius: 1.5,
+                          backgroundColor: alpha(theme.palette.common.white, 0.6),
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            backgroundColor: alpha(theme.palette.common.white, 0.8),
+                            transform: 'translateX(4px)',
+                          },
+                        }}
+                        onClick={async () => {
+                          await copyToClipboard('admin@sendika.local');
+                          setCopiedField('email-admin');
+                          setTimeout(() => setCopiedField(null), 2000);
+                          setEmail('admin@sendika.local');
+                          setPassword('123456');
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                          <EmailIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                            admin@sendika.local
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, ml: 0.5 }}>
+                            / 123456
+                          </Typography>
+                        </Box>
+                        {copiedField === 'email-admin' ? (
+                          <CheckIcon sx={{ fontSize: 18, color: theme.palette.success.main }} />
+                        ) : (
+                          <ContentCopyIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                        )}
+                      </Box>
+                    </Box>
+
+                  </Box>
+
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: theme.palette.text.secondary, fontSize: '0.75rem' }}>
+                    Bu bilgiler sadece development ortaminda gorunur
+                  </Typography>
                 </Box>
 
-              </Box>
-
-              <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: theme.palette.text.secondary, fontSize: '0.75rem' }}>
-                💡 Tıklayarak bilgileri kopyalayabilir ve otomatik doldurulmasını sağlayabilirsiniz
-              </Typography>
-            </Box>
-
-            {/* Demo/Test Verisi Bildirimi */}
-            <Alert
-              severity="info"
-              icon={<InfoIcon />}
-              sx={{
-                mt: 3,
-                borderRadius: 2,
-                backgroundColor: alpha(theme.palette.info.main, 0.08),
-                border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-                '& .MuiAlert-icon': {
-                  fontSize: 20,
-                  color: theme.palette.info.main,
-                },
-                '& .MuiAlert-message': {
-                  fontSize: '0.85rem',
-                  lineHeight: 1.6,
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              <Typography variant="body2" component="div" sx={{ fontWeight: 500, mb: 0.5 }}>
-                Demo/Test Sistemi
-              </Typography>
-              <Typography variant="body2" component="div" sx={{ fontSize: '0.8rem', opacity: 0.9 }}>
-                Bu sistemde yer alan kamu kurum/kuruluşlar, isim, soyisim ve diğer tüm bilgiler test amaçlıdır ve gerçek kişi veya kurumları temsil etmemektedir.
-              </Typography>
-            </Alert>
+                {/* Demo/Test Verisi Bildirimi */}
+                <Alert
+                  severity="info"
+                  icon={<InfoIcon />}
+                  sx={{
+                    mt: 3,
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.info.main, 0.08),
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                    '& .MuiAlert-icon': {
+                      fontSize: 20,
+                      color: theme.palette.info.main,
+                    },
+                    '& .MuiAlert-message': {
+                      fontSize: '0.85rem',
+                      lineHeight: 1.6,
+                      color: theme.palette.text.primary,
+                    },
+                  }}
+                >
+                  <Typography variant="body2" component="div" sx={{ fontWeight: 500, mb: 0.5 }}>
+                    Demo/Test Sistemi
+                  </Typography>
+                  <Typography variant="body2" component="div" sx={{ fontSize: '0.8rem', opacity: 0.9 }}>
+                    Bu sistemde yer alan kamu kurum/kuruluslar, isim, soyisim ve diger tum bilgiler test amaçlıdır ve gercek kisi veya kurumlari temsil etmemektedir.
+                  </Typography>
+                </Alert>
+              </>
+            )}
 
             {/* Footer */}
             <Box sx={{ mt: 4, pt: 3, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>

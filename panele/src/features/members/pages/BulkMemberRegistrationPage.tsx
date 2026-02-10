@@ -19,6 +19,8 @@ import {
   Alert,
   Tooltip,
   IconButton,
+  Chip,
+  Divider,
 } from '@mui/material';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -27,13 +29,17 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
+import SaveIcon from '@mui/icons-material/Save';
+import PublishIcon from '@mui/icons-material/Publish';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
 import {
   validateMemberImport,
   downloadMemberImportTemplate,
   downloadSampleMembersCsv,
+  bulkImportMembers,
   type ValidateMemberImportResponse,
+  type BulkImportResponse,
 } from '../services/membersApi';
 import { MAX_FILE_SIZE_MB, MAX_ROWS, PREVIEW_COLUMN_LABELS } from '../constants/memberImportTemplate';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
@@ -52,7 +58,9 @@ const BulkMemberRegistrationPage: React.FC = () => {
   const [templateLoading, setTemplateLoading] = useState(false);
   const [sampleLoading, setSampleLoading] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ValidateMemberImportResponse | null>(null);
+  const [importResult, setImportResult] = useState<BulkImportResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleDownloadTemplate = useCallback(async () => {
@@ -85,6 +93,7 @@ const BulkMemberRegistrationPage: React.FC = () => {
     const f = e.target.files?.[0];
     setFile(f ?? null);
     setResult(null);
+    setImportResult(null);
     setError(null);
   }, []);
 
@@ -100,6 +109,7 @@ const BulkMemberRegistrationPage: React.FC = () => {
     setValidating(true);
     setError(null);
     setResult(null);
+    setImportResult(null);
     try {
       const data = await validateMemberImport(file);
       if (data && typeof data.totalRows === 'number' && Array.isArray(data.previewRows)) {
@@ -125,9 +135,39 @@ const BulkMemberRegistrationPage: React.FC = () => {
     }
   }, [file, toast]);
 
+  const handleImport = useCallback(async (skipErrors: boolean) => {
+    if (!file) {
+      toast.showWarning('Lütfen bir CSV dosyası seçin.');
+      return;
+    }
+    setImporting(true);
+    setError(null);
+    setImportResult(null);
+    try {
+      const data = await bulkImportMembers(file, skipErrors);
+      setImportResult(data);
+      if (data.imported > 0) {
+        toast.showSuccess(`${data.imported} üye başarıyla kaydedildi.`);
+      }
+      if (data.skipped > 0 && data.imported === 0) {
+        toast.showWarning('Hiçbir üye kaydedilemedi. Lütfen hataları kontrol edin.');
+      }
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'İçe aktarma sırasında bir hata oluştu.');
+      setError(msg);
+      toast.showError(msg);
+    } finally {
+      setImporting(false);
+    }
+  }, [file, toast]);
+
   const previewColumns = result?.previewRows[0]
     ? Object.keys(result.previewRows[0].data).filter((k) => k && !k.startsWith('col_'))
     : [];
+
+  const hasValidRows = result && result.summary.valid > 0;
+  const hasErrors = result && result.summary.error > 0;
+  const allValid = result && result.summary.error === 0 && result.summary.valid > 0;
 
   return (
     <PageLayout>
@@ -200,7 +240,7 @@ const BulkMemberRegistrationPage: React.FC = () => {
                 variant="contained"
                 component="label"
                 startIcon={<UploadFileIcon />}
-                disabled={validating}
+                disabled={validating || importing}
               >
                 Dosya seç
                 <input
@@ -218,7 +258,7 @@ const BulkMemberRegistrationPage: React.FC = () => {
               <Button
                 variant="contained"
                 onClick={handleValidate}
-                disabled={!file || validating}
+                disabled={!file || validating || importing}
                 startIcon={validating ? <CircularProgress size={18} color="inherit" /> : null}
               >
                 {validating ? 'Doğrulanıyor…' : 'Doğrula'}
@@ -232,8 +272,8 @@ const BulkMemberRegistrationPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Önizleme ve doğrulama raporu – sadece kontrol; onaylamadan kayıt yapılmaz */}
-        {result && (
+        {/* Önizleme ve doğrulama raporu */}
+        {result && !importResult && (
           <Card
             sx={{
               borderRadius: 2,
@@ -245,16 +285,93 @@ const BulkMemberRegistrationPage: React.FC = () => {
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
                 3. Önizleme ve doğrulama raporu
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Toplam <strong>{result.totalRows}</strong> satır: {result.summary.valid} geçerli,{' '}
-                {result.summary.warning} uyarı, {result.summary.error} hatalı.
-              </Typography>
-              <Alert severity="warning" sx={{ mb: 2 }} variant="outlined">
-                Bu önizleme sadece kontrol içindir. Üyeler &quot;İçe aktar&quot; ile onaylamadıkça sisteme kaydedilmez.
-              </Alert>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                <Chip
+                  label={`Toplam: ${result.totalRows}`}
+                  variant="outlined"
+                  size="small"
+                />
+                <Chip
+                  icon={<CheckCircleIcon />}
+                  label={`Geçerli: ${result.summary.valid}`}
+                  color="success"
+                  variant="outlined"
+                  size="small"
+                />
+                {result.summary.warning > 0 && (
+                  <Chip
+                    icon={<WarningIcon />}
+                    label={`Uyarı: ${result.summary.warning}`}
+                    color="warning"
+                    variant="outlined"
+                    size="small"
+                  />
+                )}
+                {result.summary.error > 0 && (
+                  <Chip
+                    icon={<ErrorIcon />}
+                    label={`Hatalı: ${result.summary.error}`}
+                    color="error"
+                    variant="outlined"
+                    size="small"
+                  />
+                )}
+              </Box>
+
+              {/* İçe Aktar Butonları */}
+              {hasValidRows && (
+                <Box sx={{ mb: 2 }}>
+                  <Divider sx={{ mb: 2 }} />
+                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
+                    4. Üyeleri kaydet
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {allValid && (
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={importing ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
+                        onClick={() => handleImport(false)}
+                        disabled={importing}
+                        size="large"
+                      >
+                        {importing ? 'Kaydediliyor…' : `Tümünü kaydet (${result.summary.valid} üye)`}
+                      </Button>
+                    )}
+
+                    {hasErrors && hasValidRows && (
+                      <>
+                        <Button
+                          variant="contained"
+                          color="warning"
+                          startIcon={importing ? <CircularProgress size={18} color="inherit" /> : <PublishIcon />}
+                          onClick={() => handleImport(true)}
+                          disabled={importing}
+                        >
+                          {importing
+                            ? 'Kaydediliyor…'
+                            : `Hatalıları atla, geçerlileri kaydet (${result.summary.valid} üye)`
+                          }
+                        </Button>
+                        <Typography variant="caption" color="text.secondary">
+                          {result.summary.error} hatalı satır atlanacak
+                        </Typography>
+                      </>
+                    )}
+
+                    {hasErrors && !hasValidRows && (
+                      <Alert severity="error" sx={{ flex: 1 }}>
+                        Tüm satırlarda hata var. Lütfen dosyayı düzeltip tekrar yükleyin.
+                      </Alert>
+                    )}
+                  </Box>
+                </Box>
+              )}
+
               {result.errors.length > 0 && (
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Hatalı satırları düzeltip dosyayı tekrar yükleyebilir veya bir sonraki adımda
+                  Hatalı satırları düzeltip dosyayı tekrar yükleyebilir veya
                   &quot;Hatalıları atla, geçerlileri kaydet&quot; seçeneği ile devam edebilirsiniz.
                 </Alert>
               )}
@@ -326,16 +443,6 @@ const BulkMemberRegistrationPage: React.FC = () => {
                                 </Typography>
                               </span>
                             </Tooltip>
-                            {row.status === 'error' && row.errors?.length === 1 && (
-                              <Typography
-                                component="div"
-                                variant="caption"
-                                sx={{ color: 'error.main', display: 'block', mt: 0.25 }}
-                              >
-                                {PREVIEW_COLUMN_LABELS[row.errors[0].column ?? ''] ?? row.errors[0].column}:{' '}
-                                {row.errors[0].message}
-                              </Typography>
-                            )}
                           </TableCell>
                           {previewColumns.map((col) => (
                             <TableCell
@@ -370,7 +477,98 @@ const BulkMemberRegistrationPage: React.FC = () => {
           </Card>
         )}
 
-        {!result && !validating && (
+        {/* İçe Aktarma Sonucu */}
+        {importResult && (
+          <Card
+            sx={{
+              borderRadius: 2,
+              backgroundColor: alpha(theme.palette.background.paper, 0.8),
+              border: `1px solid ${
+                importResult.imported > 0
+                  ? alpha(theme.palette.success.main, 0.4)
+                  : alpha(theme.palette.error.main, 0.4)
+              }`,
+            }}
+          >
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+                İçe Aktarma Sonucu
+              </Typography>
+
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+                <Chip
+                  icon={<CheckCircleIcon />}
+                  label={`Kaydedildi: ${importResult.imported}`}
+                  color="success"
+                  size="medium"
+                />
+                {importResult.skipped > 0 && (
+                  <Chip
+                    icon={<ErrorIcon />}
+                    label={`Atlandı: ${importResult.skipped}`}
+                    color="error"
+                    variant="outlined"
+                    size="medium"
+                  />
+                )}
+              </Box>
+
+              {importResult.imported > 0 && (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  <strong>{importResult.imported}</strong> üye başarıyla sisteme kaydedildi.
+                  Üyeler &quot;Beklemede&quot; durumunda oluşturuldu; onay sürecinden geçmesi gerekir.
+                </Alert>
+              )}
+
+              {importResult.duplicateNationalIds.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  <strong>{importResult.duplicateNationalIds.length}</strong> TC Kimlik No zaten sistemde kayıtlı olduğu için atlandı:
+                  <Box component="span" sx={{ display: 'block', mt: 0.5, fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                    {importResult.duplicateNationalIds.slice(0, 10).join(', ')}
+                    {importResult.duplicateNationalIds.length > 10 && ` ve ${importResult.duplicateNationalIds.length - 10} daha...`}
+                  </Box>
+                </Alert>
+              )}
+
+              {importResult.errors.length > 0 && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  {importResult.errors.length} satırda hata tespit edildi. Detaylar:
+                  <Box component="ul" sx={{ mt: 0.5, pl: 2, mb: 0 }}>
+                    {importResult.errors.slice(0, 10).map((e, idx) => (
+                      <li key={idx}>
+                        <Typography variant="caption">
+                          Satır {e.rowIndex}: {e.message}
+                        </Typography>
+                      </li>
+                    ))}
+                    {importResult.errors.length > 10 && (
+                      <li>
+                        <Typography variant="caption">
+                          ... ve {importResult.errors.length - 10} hata daha
+                        </Typography>
+                      </li>
+                    )}
+                  </Box>
+                </Alert>
+              )}
+
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setFile(null);
+                  setResult(null);
+                  setImportResult(null);
+                  setError(null);
+                }}
+                sx={{ mt: 1 }}
+              >
+                Yeni dosya yükle
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {!result && !importResult && !validating && (
           <Card
             sx={{
               p: 4,
@@ -384,7 +582,7 @@ const BulkMemberRegistrationPage: React.FC = () => {
               dosyayı yükleyin ve &quot;Doğrula&quot; ile önizleme ve hata raporunu görün.
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Bir sonraki adımda &quot;İçe aktar&quot; ile geçerli satırları sisteme kaydedebilirsiniz.
+              Doğrulama sonrasında &quot;Kaydet&quot; butonu ile geçerli satırları sisteme kaydedebilirsiniz.
             </Typography>
           </Card>
         )}

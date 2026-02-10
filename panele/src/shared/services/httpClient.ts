@@ -1,5 +1,6 @@
 // src/shared/services/httpClient.ts
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { AUTH_EVENTS } from '../constants/authEvents';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ? import.meta.env.VITE_API_BASE_URL
@@ -22,6 +23,8 @@ function clearAuthAndRedirect(): void {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
+  // AuthContext'i bilgilendir
+  window.dispatchEvent(new Event(AUTH_EVENTS.SESSION_EXPIRED));
   if (window.location.pathname !== '/login') {
     window.location.href = '/login';
   }
@@ -46,6 +49,8 @@ async function doRefresh(): Promise<string> {
   if (data.user) {
     localStorage.setItem('user', JSON.stringify(data.user));
   }
+  // AuthContext'i bilgilendir – state güncellensin
+  window.dispatchEvent(new Event(AUTH_EVENTS.TOKENS_UPDATED));
   return data.accessToken;
 }
 
