@@ -175,8 +175,12 @@ export class MembersService {
   }
 
   // Ana üye listesi: Status parametresine göre filtreleme yapar
-  // Varsayılan olarak ACTIVE üyeler gösterilir
-  async listMembersForUser(user: CurrentUserData, status?: MemberStatus) {
+  // Varsayılan olarak ACTIVE üyeler gösterilir. provinceId verilirse il'e göre filtreler (üye ili, şube ili veya kurum ili).
+  async listMembersForUser(
+    user: CurrentUserData,
+    status?: MemberStatus,
+    provinceId?: string,
+  ) {
     const whereScope = await this.scopeService.buildMemberWhereForUser(user);
 
     console.log('[MembersService] listMembersForUser - userId:', user.userId);
@@ -188,17 +192,31 @@ export class MembersService {
       '[MembersService] status filter:',
       status || 'ACTIVE (default)',
     );
+    if (provinceId) {
+      console.log('[MembersService] provinceId filter:', provinceId);
+    }
 
     // Status belirtilmemişse varsayılan olarak ACTIVE
     const filterStatus = status || MemberStatus.ACTIVE;
 
+    const where: Prisma.MemberWhereInput = {
+      ...whereScope,
+      status: filterStatus,
+      deletedAt: null,
+      isActive: true,
+    };
+
+    // İl filtresi: üyenin ili, şubenin ili veya kurumun ili seçilen ile eşleşsin
+    if (provinceId && provinceId.trim() !== '') {
+      where.OR = [
+        { provinceId },
+        { branch: { provinceId } },
+        { institution: { provinceId } },
+      ];
+    }
+
     const members = await this.prisma.member.findMany({
-      where: {
-        ...whereScope,
-        status: filterStatus,
-        deletedAt: null, // Soft delete kontrolü
-        isActive: true,
-      },
+      where,
       include: {
         province: {
           select: {
@@ -216,6 +234,12 @@ export class MembersService {
           select: {
             id: true,
             name: true,
+            province: {
+              select: { id: true, name: true },
+            },
+            district: {
+              select: { id: true, name: true },
+            },
           },
         },
         tevkifatCenter: {
@@ -228,6 +252,12 @@ export class MembersService {
           select: {
             id: true,
             name: true,
+            province: {
+              select: { id: true, name: true },
+            },
+            district: {
+              select: { id: true, name: true },
+            },
           },
         },
       },
@@ -238,7 +268,19 @@ export class MembersService {
       '[MembersService] Found members after scope filter:',
       members.length,
     );
-    return members;
+
+    // workingProvince / workingDistrict: şube > kurum > üye il/ilçe
+    return members.map((m: any) => {
+      const workingProvince =
+        m.branch?.province ?? m.institution?.province ?? m.province;
+      const workingDistrict =
+        m.branch?.district ?? m.institution?.district ?? m.district;
+      return {
+        ...m,
+        workingProvince: workingProvince ?? { id: '', name: '-' },
+        workingDistrict: workingDistrict ?? { id: '', name: '-' },
+      };
+    });
   }
 
   // Reddedilen üyeler: scope'a göre

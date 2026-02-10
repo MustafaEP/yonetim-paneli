@@ -7,9 +7,14 @@ import type {
   MemberStatus,
 } from '../../../types/member';
 
-// 🔹 Üyeleri listele: GET /members?status=ACTIVE
-export const getMembers = async (status?: MemberStatus): Promise<MemberListItem[]> => {
-  const params = status ? { status } : {};
+// 🔹 Üyeleri listele: GET /members?status=ACTIVE&provinceId=...
+export const getMembers = async (
+  status?: MemberStatus,
+  provinceId?: string,
+): Promise<MemberListItem[]> => {
+  const params: Record<string, string> = {};
+  if (status) params.status = status;
+  if (provinceId && provinceId.trim() !== '') params.provinceId = provinceId;
   const res = await httpClient.get<MemberListItem[]>('/members', { params });
   return Array.isArray(res.data) ? res.data : [];
 };
