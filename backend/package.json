@@ -21,6 +21,8 @@
     "prisma:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "prisma:seed2": "ts-node -r tsconfig-paths/register prisma/seed2.ts",
     "prisma:seed:prod": "node dist/prisma/seed.js",
+    "prisma:seed2:prod": "node dist/prisma/seed2.js",
+    "prisma:build-seed": "tsc -p tsconfig.prisma.json",
     "prisma:migrate:document-upload": "ts-node -r tsconfig-paths/register scripts/apply-document-upload-migration-simple.ts",
     "prisma:sync:document-templates": "ts-node -r tsconfig-paths/register scripts/sync-document-templates.ts",
     "prisma:generate": "prisma generate"

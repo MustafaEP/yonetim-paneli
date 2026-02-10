@@ -26,6 +26,7 @@ RUN npx prisma generate
 # Copy source code & build
 COPY . .
 RUN npm run build
+RUN npm run prisma:build-seed
 
 # Build doğrulama
 RUN test -f /app/dist/main.js || test -f /app/dist/src/main.js || \
