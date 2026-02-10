@@ -211,6 +211,8 @@ export class MemberImportValidationService {
       'Ad;Soyad;TC Kimlik No;Telefon;E-posta;Anne Adı;Baba Adı;Doğum Tarihi;Doğum Yeri;Cinsiyet;Öğrenim Durumu;İl;İlçe;Kurum;Şube;Tevkifat Merkezi;Tevkifat Ünvanı;Üye Grubu;Görev Birimi;Kurum Adresi;Kurum İli;Kurum İlçesi;Meslek;Kurum Sicil No;Kadro Unvan Kodu';
 
     // Sadece aktif üyeleri al; silinmiş kurum ve eksik zorunlu alan olanları hariç tut
+    // Not: birthDate, provinceId, districtId, institutionId Prisma'da zorunlu alan (non-nullable),
+    // dolayısıyla { not: null } filtresi gereksiz – TypeScript de kabul etmez.
     const members = await this.prisma.member.findMany({
       where: {
         status: { in: ['ACTIVE', 'PENDING'] },
@@ -222,11 +224,7 @@ export class MemberImportValidationService {
         phone: { not: '' },
         motherName: { not: '' },
         fatherName: { not: '' },
-        birthDate: { not: null },
         birthplace: { not: '' },
-        provinceId: { not: null },
-        districtId: { not: null },
-        institutionId: { not: null },
       },
       take: Math.max(count * 3, 30),
       include: {
