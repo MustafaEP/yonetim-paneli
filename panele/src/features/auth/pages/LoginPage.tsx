@@ -427,8 +427,7 @@ const LoginPage: React.FC = () => {
               </Button>
             </Box>
 
-            {/* Örnek Kullanıcı Bilgileri – sadece development ortamında göster */}
-            {import.meta.env.DEV && (
+            {/* Örnek Kullanıcı Bilgileri – sadece development ortamında göster */}  
               <>
                 <Box
                   sx={{
@@ -523,7 +522,6 @@ const LoginPage: React.FC = () => {
                   </Typography>
                 </Alert>
               </>
-            )}
 
             {/* Footer */}
             <Box sx={{ mt: 4, pt: 3, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
