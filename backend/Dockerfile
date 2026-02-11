@@ -46,6 +46,7 @@ ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     openssl \
+    wget \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \
@@ -98,9 +99,9 @@ ENV PORT=3000
 
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+# Health check - root endpoint kullanıyoruz çünkü /health 404 dönüyor
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
 # Start script that runs migrations and starts the app
 COPY docker-entrypoint.sh ./
