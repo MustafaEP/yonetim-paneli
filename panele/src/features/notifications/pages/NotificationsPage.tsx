@@ -136,13 +136,10 @@ const NotificationsPage: React.FC = () => {
       defaultType = 'SMS';
     }
 
-    // NOTIFY_OWN_SCOPE izni varsa ve diğer izinler yoksa, otomatik olarak SCOPE seç
-    let defaultTargetType: 'ALL_MEMBERS' | 'REGION' | 'SCOPE' | 'USER' = 'USER';
-    if (canNotifyScope && !canNotifyAll && !canNotifyRegion) {
-      defaultTargetType = 'SCOPE';
-    }
+    // Şu an sadece Panel Kullanıcıları hedef tipi kullanılıyor
+    const defaultTargetType: 'ALL_MEMBERS' | 'REGION' | 'SCOPE' | 'USER' = 'USER';
 
-      setFormData({
+    setFormData({
         title: '',
         message: '',
       type: defaultType,
@@ -515,9 +512,15 @@ const NotificationsPage: React.FC = () => {
                   label="Hedef Tip"
                 >
                   <MenuItem value="USER">Panel Kullanıcıları</MenuItem>
-                  {canNotifyAll && <MenuItem value="ALL_MEMBERS">Tüm Üyeler</MenuItem>}
-                  {canNotifyRegion && <MenuItem value="REGION">Bölge</MenuItem>}
-                  {canNotifyScope && <MenuItem value="SCOPE">Kapsam</MenuItem>}
+                  <MenuItem value="ALL_MEMBERS" disabled>
+                    Tüm Üyeler (şu an devre dışı)
+                  </MenuItem>
+                  <MenuItem value="REGION" disabled>
+                    Bölge (şu an devre dışı)
+                  </MenuItem>
+                  <MenuItem value="SCOPE" disabled>
+                    Kapsam (şu an devre dışı)
+                  </MenuItem>
                 </Select>
               </FormControl>
             </Box>
