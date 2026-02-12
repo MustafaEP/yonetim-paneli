@@ -325,45 +325,53 @@ const NotificationsPage: React.FC = () => {
       flex: 1,
       renderCell: (params) => {
         const notification = params.row as Notification;
-        // Metadata içinde userNames varsa göster
-        if (notification.metadata && typeof notification.metadata === 'object' && 'userNames' in notification.metadata) {
-          const userNames = (notification.metadata as any).userNames;
-          if (Array.isArray(userNames) && userNames.length > 0) {
-            const maxVisible = 5; // Maksimum gösterilecek isim sayısı
-            if (userNames.length <= maxVisible) {
-              return (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {userNames.map((name: string, index: number) => (
-                    <Chip key={index} label={name} size="small" variant="outlined" />
-                  ))}
-                </Box>
-              );
-            } else {
-              return (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
-                  {userNames.slice(0, maxVisible).map((name: string, index: number) => (
-                    <Chip key={index} label={name} size="small" variant="outlined" />
-                  ))}
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-                    ...
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                    (+{userNames.length - maxVisible} kişi)
-                  </Typography>
-                </Box>
-              );
+        const cellContent = (() => {
+          // Metadata içinde userNames varsa göster
+          if (notification.metadata && typeof notification.metadata === 'object' && 'userNames' in notification.metadata) {
+            const userNames = (notification.metadata as any).userNames;
+            if (Array.isArray(userNames) && userNames.length > 0) {
+              const maxVisible = 5; // Maksimum gösterilecek isim sayısı
+              if (userNames.length <= maxVisible) {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {userNames.map((name: string, index: number) => (
+                      <Chip key={index} label={name} size="small" variant="outlined" />
+                    ))}
+                  </Box>
+                );
+              } else {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                    {userNames.slice(0, maxVisible).map((name: string, index: number) => (
+                      <Chip key={index} label={name} size="small" variant="outlined" />
+                    ))}
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+                      ...
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                      (+{userNames.length - maxVisible} kişi)
+                    </Typography>
+                  </Box>
+                );
+              }
             }
           }
-        }
-        // Diğer durumlar için alıcı sayısını göster
-        if (notification.recipientCount > 0) {
-          return (
-            <Typography variant="body2" color="text.secondary">
-              {notification.recipientCount} alıcı
-            </Typography>
-          );
-        }
-        return '-';
+          // Diğer durumlar için alıcı sayısını göster
+          if (notification.recipientCount > 0) {
+            return (
+              <Typography variant="body2" color="text.secondary">
+                {notification.recipientCount} alıcı
+              </Typography>
+            );
+          }
+          return '-';
+        })();
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', height: '100%' }}>
+            {cellContent}
+          </Box>
+        );
       },
     },
     {
