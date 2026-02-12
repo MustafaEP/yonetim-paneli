@@ -281,11 +281,17 @@ const DashboardPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
       />
-
       {/* Hızlı Aksiyon Kartları */}
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         {quickActions.filter(action => action.show).map((action) => (
-          <Grid item xs={12} sm={6} md={6} lg={3} key={action.path}>
+          <Grid
+            key={action.path}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 6,
+              lg: 3
+            }}>
             <Card
               sx={{
                 cursor: 'pointer',
@@ -374,12 +380,17 @@ const DashboardPage: React.FC = () => {
           </Grid>
         ))}
       </Grid>
-
       {/* Statistics Cards */}
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         {/* Pending Applications */}
         {canViewApplications && (
-          <Grid item xs={12} sm={6} md={6} lg={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 6,
+              lg: 3
+            }}>
             <Card
               sx={{
                 background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
@@ -447,7 +458,13 @@ const DashboardPage: React.FC = () => {
 
         {/* Active Members */}
         {canListMembers && (
-          <Grid item xs={12} sm={6} md={6} lg={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 6,
+              lg: 3
+            }}>
             <Card
               sx={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -515,7 +532,13 @@ const DashboardPage: React.FC = () => {
 
         {/* Total Payments */}
         {canListMembers && (
-          <Grid item xs={12} sm={6} md={6} lg={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 6,
+              lg: 3
+            }}>
             <Card
               sx={{
                 background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
@@ -586,7 +609,13 @@ const DashboardPage: React.FC = () => {
 
         {/* Total Users */}
         {canListUsers && (
-          <Grid item xs={12} sm={6} md={6} lg={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 6,
+              lg: 3
+            }}>
             <Card
               sx={{
                 background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
@@ -652,12 +681,15 @@ const DashboardPage: React.FC = () => {
           </Grid>
         )}
       </Grid>
-
       {/* Detailed Statistics Section */}
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
         {/* Recent Members */}
         {canListMembers && (
-          <Grid item xs={12} lg={6}>
+          <Grid
+            size={{
+              xs: 12,
+              lg: 6
+            }}>
             <Card 
               sx={{ 
                 borderRadius: 4, 
@@ -787,7 +819,11 @@ const DashboardPage: React.FC = () => {
 
         {/* Recent Payments */}
         {canListMembers && (
-          <Grid item xs={12} lg={6}>
+          <Grid
+            size={{
+              xs: 12,
+              lg: 6
+            }}>
             <Card 
               sx={{ 
                 borderRadius: 4, 
@@ -942,7 +978,11 @@ const DashboardPage: React.FC = () => {
 
         {/* Payment Statistics */}
         {canListMembers && (
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card 
               sx={{ 
                 borderRadius: 4, 
@@ -1055,7 +1095,11 @@ const DashboardPage: React.FC = () => {
         )}
         {/* Member Statistics */}
         {canListMembers && (
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card 
               sx={{ 
                 borderRadius: 4, 
@@ -1192,7 +1236,11 @@ const DashboardPage: React.FC = () => {
 
         {/* Quick Info & Applications */}
         {canViewApplications && (
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card 
               sx={{ 
                 borderRadius: 4, 
@@ -1304,7 +1352,11 @@ const DashboardPage: React.FC = () => {
 
         {/* User Statistics */}
         {canListUsers && (
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Card 
               sx={{ 
                 borderRadius: 4, 

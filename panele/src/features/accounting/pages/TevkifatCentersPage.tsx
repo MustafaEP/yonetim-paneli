@@ -398,7 +398,6 @@ const TevkifatCentersPage: React.FC = () => {
           ) : undefined
         }
       />
-
       {/* Tabs */}
       <Card
         elevation={0}
@@ -447,7 +446,6 @@ const TevkifatCentersPage: React.FC = () => {
           />
         </Tabs>
       </Card>
-
       {/* Ana Kart - Filtre ve Tablo */}
       <Card
         elevation={0}
@@ -630,7 +628,7 @@ const TevkifatCentersPage: React.FC = () => {
           </>
         ) : activeTab === 1 ? (
           /* Tevkifat Unvanları Tab */
-          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          (<Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
             {loadingTitles ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
@@ -775,10 +773,9 @@ const TevkifatCentersPage: React.FC = () => {
                 </TableContainer>
               </Box>
             )}
-          </Box>
+          </Box>)
         ) : null}
       </Card>
-
       {/* Tevkifat Unvanları Dialog'ları */}
       {/* Unvan Ekle/Düzenle Dialog */}
       <Dialog 
@@ -854,7 +851,6 @@ const TevkifatCentersPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Unvan Pasifleştir Dialog */}
       <Dialog 
         open={deactivateTitleDialogOpen} 
@@ -920,7 +916,6 @@ const TevkifatCentersPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Unvan Sil Dialog */}
       <Dialog 
         open={deleteTitleDialogOpen} 
@@ -988,7 +983,6 @@ const TevkifatCentersPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Tevkifat Merkezi Kaldırma Dialog */}
       <DeleteTevkifatCenterDialog
         open={deleteDialogOpen}
@@ -1005,7 +999,6 @@ const TevkifatCentersPage: React.FC = () => {
         loadingCenters={loading}
         onSuccess={handleDeleteSuccess}
       />
-
     </PageLayout>
   );
 };

@@ -479,7 +479,6 @@ const PaymentsListPage: React.FC = () => {
           ) : undefined
         }
       />
-
       {/* Ana Kart - Filtre ve Tablo */}
       <Card
         elevation={0}
@@ -842,7 +841,6 @@ const PaymentsListPage: React.FC = () => {
           </Box>
         </Box>
       </Card>
-
       {/* Ödeme Ekleme Dialog */}
       <Dialog 
         open={paymentDialogOpen} 

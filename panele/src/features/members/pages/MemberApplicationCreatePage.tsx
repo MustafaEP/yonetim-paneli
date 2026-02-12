@@ -953,8 +953,6 @@ const MemberApplicationCreatePage: React.FC = () => {
         darkColor={theme.palette.success.dark}
         lightColor={theme.palette.success.light}
       />
-
-
       {/* Ana Kart */}
       <Card
         elevation={0}
@@ -999,7 +997,7 @@ const MemberApplicationCreatePage: React.FC = () => {
 
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {/* TC Kimlik No - Tam genişlik */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 label="TC Kimlik Numarası *"
                 value={form.nationalId}
@@ -1048,7 +1046,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Ad - Soyad (2 sütun) */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 label="Adı *"
                 value={form.firstName}
@@ -1075,7 +1077,11 @@ const MemberApplicationCreatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 label="Soyadı *"
                 value={form.lastName}
@@ -1103,7 +1109,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Anne Adı - Baba Adı (2 sütun) */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 label="Anne Adı *"
                 value={form.motherName}
@@ -1130,7 +1140,11 @@ const MemberApplicationCreatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 label="Baba Adı *"
                 value={form.fatherName}
@@ -1158,7 +1172,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Doğum Tarihi - Doğum Yeri (2 sütun) */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 label="Doğum Tarihi *"
                 type="date"
@@ -1185,7 +1203,11 @@ const MemberApplicationCreatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <TextField
                 label="Doğum Yeri *"
                 value={form.birthplace}
@@ -1213,7 +1235,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Cinsiyet - Öğrenim Durumu (2 sütun) */}
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Autocomplete
                 options={[
                   { value: 'MALE', label: 'Erkek' },
@@ -1255,7 +1281,11 @@ const MemberApplicationCreatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6
+              }}>
               <Autocomplete
                 options={[
                   { value: 'PRIMARY', label: 'İlköğretim' },
@@ -1307,7 +1337,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Telefon - E-posta (2 sütun) */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Telefon *"
                 value={form.phone}
@@ -1351,7 +1385,11 @@ const MemberApplicationCreatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="E-posta"
                 type="email"
@@ -1429,7 +1467,11 @@ const MemberApplicationCreatePage: React.FC = () => {
 
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {/* İl - İlçe (2 sütun) */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Autocomplete
                 options={provinces}
                 value={provinces.find((p) => p.id === form.provinceId) || null}
@@ -1465,7 +1507,11 @@ const MemberApplicationCreatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Autocomplete
                 options={districts}
                 value={districts.find((d) => d.id === form.districtId) || null}
@@ -1535,7 +1581,7 @@ const MemberApplicationCreatePage: React.FC = () => {
 
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {/* Kurum Adı - Tek alan, tam genişlik */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Autocomplete
                 options={institutions}
                 value={institutions.find((i) => i.id === form.institutionId) || null}
@@ -1572,7 +1618,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Görev Birimi */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Görev Birimi"
                 value={form.dutyUnit}
@@ -1596,7 +1646,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Meslek(Unvan) */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Autocomplete
                 options={professions}
                 value={professions.find((p) => p.id === form.professionId) || null}
@@ -1632,7 +1686,7 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum Adresi */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 label="Kurum Adresi"
                 value={form.institutionAddress}
@@ -1658,7 +1712,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum İli - Kurum İlçesi */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Autocomplete
                 options={institutionProvinces.length > 0 ? institutionProvinces : provinces}
                 value={
@@ -1697,7 +1755,11 @@ const MemberApplicationCreatePage: React.FC = () => {
               <FormHelperText>Zorunlu değildir</FormHelperText>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <Autocomplete
                 options={institutionDistricts}
                 value={institutionDistricts.find((d) => d.id === form.institutionDistrictId) || null}
@@ -1734,7 +1796,11 @@ const MemberApplicationCreatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum Sicil No - Kadro Unvan Kodu */}
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Kurum Sicil No"
                 value={form.institutionRegNo}
@@ -1757,7 +1823,11 @@ const MemberApplicationCreatePage: React.FC = () => {
               <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Kadro Unvan Kodu"
                 value={form.staffTitleCode}
@@ -1813,7 +1883,7 @@ const MemberApplicationCreatePage: React.FC = () => {
           </Box>
 
           <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Box
                 sx={{
                   border: `2px dashed ${alpha(theme.palette.primary.main, 0.3)}`,
@@ -2074,7 +2144,6 @@ const MemberApplicationCreatePage: React.FC = () => {
           </Box>
         </Box>
       </Card>
-
       {/* İptal Edilmiş Üye Uyarı Dialog'u */}
       <Dialog
         open={cancelledMemberDialogOpen}
@@ -2102,19 +2171,31 @@ const MemberApplicationCreatePage: React.FC = () => {
                   Önceki Üye Bilgileri
                 </Typography>
                 <Grid container spacing={2} sx={{ mt: 1 }}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <Typography variant="body2" color="text.secondary">Ad Soyad</Typography>
                     <Typography variant="body1" fontWeight={500}>
                       {cancelledMember.firstName} {cancelledMember.lastName}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <Typography variant="body2" color="text.secondary">TC Kimlik No</Typography>
                     <Typography variant="body1" fontWeight={500}>
                       {cancelledMember.nationalId || '-'}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <Typography variant="body2" color="text.secondary">İptal Tarihi</Typography>
                     <Typography variant="body1" fontWeight={500}>
                       {cancelledMember.cancelledAt
@@ -2126,7 +2207,11 @@ const MemberApplicationCreatePage: React.FC = () => {
                         : '-'}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <Typography variant="body2" color="text.secondary">Durum</Typography>
                     <Chip
                       label={cancelledMember.status}
@@ -2136,7 +2221,11 @@ const MemberApplicationCreatePage: React.FC = () => {
                     />
                   </Grid>
                   {cancelledMember.province && (
-                    <Grid item xs={12} sm={6}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}>
                       <Typography variant="body2" color="text.secondary">İl/İlçe</Typography>
                       <Typography variant="body1" fontWeight={500}>
                         {cancelledMember.province.name}
@@ -2173,7 +2262,6 @@ const MemberApplicationCreatePage: React.FC = () => {
           )}
         </DialogActions>
       </Dialog>
-
       {/* Hata Dialog'u */}
       <Dialog
         open={errorDialogOpen}

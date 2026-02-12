@@ -858,7 +858,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
         </Drawer>
       ) : (
         /* Desktop Drawer */
-        <Drawer
+        (<Drawer
           variant="persistent"
           open={desktopOpen}
           sx={{
@@ -879,7 +879,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
           }}
         >
           {drawerContent}
-        </Drawer>
+        </Drawer>)
       )}
     </>
   );

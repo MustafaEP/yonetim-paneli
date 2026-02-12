@@ -585,7 +585,6 @@ const InstitutionsPage: React.FC = () => {
               ) : undefined
         }
       />
-
       {/* Tabs */}
       <Card
         elevation={0}
@@ -634,7 +633,6 @@ const InstitutionsPage: React.FC = () => {
           />
         </Tabs>
       </Card>
-
       {/* Ana Kart */}
       <Card
         elevation={0}
@@ -742,7 +740,7 @@ const InstitutionsPage: React.FC = () => {
           </>
         ) : activeTab === 1 ? (
           /* Meslek/Unvanlar Tab */
-          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          (<Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
             {/* Filtre: Pasif olanları göster */}
             {canManageInstitution && (
               <Box
@@ -772,7 +770,6 @@ const InstitutionsPage: React.FC = () => {
                 />
               </Box>
             )}
-
             {loadingProfessions ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
@@ -921,10 +918,9 @@ const InstitutionsPage: React.FC = () => {
                 </TableContainer>
               </Box>
             )}
-          </Box>
+          </Box>)
         ) : null}
       </Card>
-
       {/* Kurum Kaldır Dialog */}
       <Dialog 
         open={deleteDialogOpen} 
@@ -1186,7 +1182,6 @@ const InstitutionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Kurum Ekle Dialog */}
       <Dialog
         open={dialogOpen}
@@ -1311,7 +1306,6 @@ const InstitutionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Meslek/Unvanlar Dialog'ları */}
       {/* Meslek/Unvan Ekle/Düzenle Dialog */}
       <Dialog 
@@ -1403,7 +1397,6 @@ const InstitutionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Meslek/Unvan Pasifleştir Dialog */}
       <Dialog 
         open={deactivateProfessionDialogOpen} 
@@ -1469,7 +1462,6 @@ const InstitutionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Meslek/Unvan Sil Dialog */}
       <Dialog 
         open={deleteProfessionDialogOpen} 

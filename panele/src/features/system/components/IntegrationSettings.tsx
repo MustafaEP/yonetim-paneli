@@ -141,7 +141,6 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
           Kaydedilmemiş değişiklikler var
         </Alert>
       )}
-
       {/* Bildirim Kanalları */}
       <Card
         elevation={0}
@@ -340,7 +339,6 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
           </Stack>
         </Box>
       </Card>
-
       {/* E-posta Entegrasyonu (SMTP) */}
       <Card
         elevation={0}
@@ -417,7 +415,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
               <>
                 <Divider />
                 <Grid container spacing={2.5}>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="SMTP Sunucu"
                       value={getValue('INTEGRATION_EMAIL_SMTP_HOST')}
@@ -432,7 +434,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="SMTP Port"
                       type="number"
@@ -448,7 +454,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="Gönderen E-posta"
                       type="email"
@@ -464,7 +474,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="Gönderen Adı"
                       value={getValue('INTEGRATION_EMAIL_FROM_NAME')}
@@ -479,7 +493,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="SMTP Kullanıcı Adı"
                       value={getValue('INTEGRATION_EMAIL_SMTP_USER')}
@@ -494,7 +512,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="SMTP Şifre"
                       type={showPasswords['INTEGRATION_EMAIL_SMTP_PASS'] ? 'text' : 'password'}
@@ -526,7 +548,7 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -558,7 +580,6 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
           </Stack>
         </Box>
       </Card>
-
       {/* SMS Entegrasyonu */}
       <Card
         elevation={0}
@@ -635,7 +656,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
               <>
                 <Divider />
                 <Grid container spacing={2.5}>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="SMS Servis Sağlayıcı"
                       value={getValue('INTEGRATION_SMS_PROVIDER')}
@@ -650,7 +675,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="API Endpoint"
                       value={getValue('INTEGRATION_SMS_API_URL')}
@@ -665,7 +694,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="API Kullanıcı Adı / Key"
                       value={getValue('INTEGRATION_SMS_API_USER')}
@@ -679,7 +712,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="API Şifre / Secret"
                       type={showPasswords['INTEGRATION_SMS_API_PASS'] ? 'text' : 'password'}
@@ -711,7 +748,11 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
                       <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
                     )}
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      md: 6
+                    }}>
                     <TextField
                       label="Gönderen Numarası / Başlık"
                       value={getValue('INTEGRATION_SMS_SENDER')}
@@ -732,7 +773,6 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
           </Stack>
         </Box>
       </Card>
-
       {/* API Entegrasyonları (Yakında) */}
       <Card
         elevation={0}
@@ -795,7 +835,7 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
           </Alert>
 
           <Grid container spacing={2.5}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 label="Webhook URL"
                 value=""
@@ -809,7 +849,6 @@ const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({
           </Grid>
         </Box>
       </Card>
-
       {/* Bilgilendirme */}
       <Alert severity="info" icon={<IntegrationInstructionsIcon />}>
         <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>

@@ -325,7 +325,6 @@ const MemberPaymentsPage: React.FC = () => {
           </Box>
         </Card>
       </Box>
-
       {/* Ana Kart */}
       <Card
         elevation={0}
@@ -350,7 +349,12 @@ const MemberPaymentsPage: React.FC = () => {
           }}
         >
           <Grid container spacing={2.5} alignItems="center">
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 3
+              }}>
               <FormControl 
                 size="small" 
                 fullWidth
@@ -387,7 +391,12 @@ const MemberPaymentsPage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <FormControl 
                 size="small" 
                 fullWidth
@@ -413,7 +422,12 @@ const MemberPaymentsPage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 2
+              }}>
               <FormControl 
                 size="small" 
                 fullWidth
@@ -453,7 +467,11 @@ const MemberPaymentsPage: React.FC = () => {
             </Grid>
 
             {canExport && (
-              <Grid item xs={12} md={5}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 5
+                }}>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
                   <Button
                     variant="outlined"

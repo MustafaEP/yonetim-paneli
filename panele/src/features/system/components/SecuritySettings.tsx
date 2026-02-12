@@ -111,10 +111,13 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
           Kaydedilmemiş değişiklikler var
         </Alert>
       )}
-
       <Grid container spacing={3}>
         {/* Şifre Politikası */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card
             elevation={0}
             sx={{
@@ -283,7 +286,11 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
         </Grid>
 
         {/* Oturum ve Erişim Kontrolü */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card
             elevation={0}
             sx={{
@@ -386,7 +393,7 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
         </Grid>
 
         {/* İki Faktörlü Kimlik Doğrulama */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Card
             elevation={0}
             sx={{

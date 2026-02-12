@@ -286,7 +286,6 @@ const PaymentInquiryPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
       />
-
       {/* Sorgulama Kartı */}
       <Card
         elevation={0}
@@ -332,7 +331,11 @@ const PaymentInquiryPage: React.FC = () => {
           </Box>
 
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={3}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 3
+              }}>
               <Box sx={{ display: 'flex', gap: 1, minWidth: 200 }}>
                 <Button
                   variant={searchType === 'registrationNumber' ? 'contained' : 'outlined'}
@@ -372,7 +375,11 @@ const PaymentInquiryPage: React.FC = () => {
                 </Button>
               </Box>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 4
+              }}>
               {searchType === 'registrationNumber' ? (
                 <TextField
                   fullWidth
@@ -473,7 +480,11 @@ const PaymentInquiryPage: React.FC = () => {
                 />
               )}
             </Grid>
-            <Grid item xs={12} sm={2}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 2
+              }}>
               <Button
                 fullWidth
                 variant="contained"
@@ -506,7 +517,6 @@ const PaymentInquiryPage: React.FC = () => {
           </Grid>
         </Box>
       </Card>
-
       {/* Sonuçlar Kartı */}
       {searched && (
         <Card

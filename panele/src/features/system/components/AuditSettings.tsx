@@ -111,10 +111,13 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
           Kaydedilmemiş değişiklikler var
         </Alert>
       )}
-
       <Grid container spacing={3}>
         {/* Loglama Ayarları */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card
             elevation={0}
             sx={{
@@ -231,7 +234,11 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
         </Grid>
 
         {/* İzleme ve Güvenlik */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card
             elevation={0}
             sx={{
@@ -385,7 +392,7 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
         </Grid>
 
         {/* Bilgilendirme */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Alert severity="info" icon={<HistoryIcon />}>
             <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
               Log Görüntüleme

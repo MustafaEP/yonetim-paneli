@@ -128,7 +128,6 @@ const PaymentDetailPage: React.FC = () => {
           Geri Dön
         </Button>
       </Box>
-
       {/* Modern Header Card */}
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
@@ -138,10 +137,13 @@ const PaymentDetailPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
       />
-
       <Grid container spacing={3}>
         {/* Üye Bilgisi */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card
             elevation={0}
             sx={{
@@ -243,7 +245,11 @@ const PaymentDetailPage: React.FC = () => {
         </Grid>
 
         {/* Ödeme Bilgileri */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card
             elevation={0}
             sx={{
@@ -352,7 +358,7 @@ const PaymentDetailPage: React.FC = () => {
         </Grid>
 
         {/* Belge ve İşlem Bilgileri */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Card
             elevation={0}
             sx={{
@@ -412,7 +418,11 @@ const PaymentDetailPage: React.FC = () => {
             <Box sx={{ p: 2.5 }}>
             <Grid container spacing={2}>
               {payment.documentUrl && (
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <PictureAsPdfIcon color="error" sx={{ fontSize: '2rem' }} />
                     <Box sx={{ flex: 1 }}>
@@ -445,7 +455,11 @@ const PaymentDetailPage: React.FC = () => {
                   </Box>
                 </Grid>
               )}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     Ödeme Yapan
@@ -457,7 +471,11 @@ const PaymentDetailPage: React.FC = () => {
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     Onaylayan Kullanıcı
@@ -470,7 +488,11 @@ const PaymentDetailPage: React.FC = () => {
                 </Box>
               </Grid>
               {payment.approvedAt && (
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       Onay Tarihi
@@ -481,7 +503,11 @@ const PaymentDetailPage: React.FC = () => {
                   </Box>
                 </Grid>
               )}
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     İşlem Zamanı

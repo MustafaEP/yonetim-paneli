@@ -235,7 +235,6 @@ const TevkifatCenterCreatePage: React.FC = () => {
           lightColor={theme.palette.primary.light}
         />
       </Box>
-
       {/* Ana Kart */}
       <Card
         elevation={0}
@@ -265,7 +264,7 @@ const TevkifatCenterCreatePage: React.FC = () => {
             )}
 
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   label="Tevkifat Merkezi Adı"
                   value={form.name}
@@ -285,7 +284,11 @@ const TevkifatCenterCreatePage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth>
                   <InputLabel id="province-label">İl (Opsiyonel)</InputLabel>
                   <Select
@@ -314,7 +317,11 @@ const TevkifatCenterCreatePage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}>
                 <FormControl fullWidth disabled={!form.provinceId}>
                   <InputLabel id="district-label">İlçe (Opsiyonel)</InputLabel>
                   <Select
@@ -347,7 +354,7 @@ const TevkifatCenterCreatePage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
                   <Button
                     variant="outlined"

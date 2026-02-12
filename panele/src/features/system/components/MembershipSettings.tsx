@@ -136,7 +136,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
           Bu ayarları değiştirmek için sistem ayarları yönetim yetkisine sahip olmanız gerekmektedir.
         </Alert>
       )}
-
       {/* Üst Aksiyon Bölümü */}
       {hasUnsavedChanges && onUpdate && canManage && (
         <Alert 
@@ -199,7 +198,11 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
 
         <Box sx={{ p: 3 }}>
           <Grid container spacing={2.5}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -227,7 +230,11 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Varsayılan Üye Durumu</InputLabel>
                 <Select
@@ -251,7 +258,7 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 500 }}>
                 İzin Verilen Başvuru Kaynakları
               </Typography>
@@ -307,7 +314,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
           </Grid>
         </Box>
       </Card>
-
       {/* Kayıt Numarası Ayarları */}
       <Card
         elevation={0}
@@ -351,7 +357,11 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
 
         <Box sx={{ p: 3 }}>
           <Grid container spacing={2.5}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -382,7 +392,11 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Kayıt Numarası Öneki"
                 value={getValue('MEMBERSHIP_REG_NUMBER_PREFIX')}
@@ -398,7 +412,11 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Kayıt Numarası Formatı</InputLabel>
                 <Select
@@ -420,7 +438,11 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Başlangıç Numarası"
                 type="number"
@@ -438,7 +460,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
           </Grid>
         </Box>
       </Card>
-
       {/* Onay Akışı Ayarları */}
       <Card
         elevation={0}
@@ -545,7 +566,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
           </Stack>
         </Box>
       </Card>
-
       {/* Üyelik Yaşam Döngüsü */}
       <Card
         elevation={0}
@@ -665,7 +685,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
           </Stack>
         </Box>
       </Card>
-
       {/* Zorunlu Alanlar */}
       <Card
         elevation={0}
@@ -726,7 +745,13 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                 { key: 'MEMBERSHIP_REQUIRE_INSTITUTION_REG_NO', label: 'Kurum Sicil No' },
                 { key: 'MEMBERSHIP_REQUIRE_WORK_UNIT', label: 'Görev Yaptığı Birim' },
             ].map((field) => (
-              <Grid item xs={12} sm={6} md={4} key={field.key}>
+              <Grid
+                key={field.key}
+                size={{
+                  xs: 12,
+                  sm: 6,
+                  md: 4
+                }}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -745,7 +770,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
           </Grid>
         </Box>
       </Card>
-
       {/* Üye Grupları Yönetimi */}
       <MemberGroupsManagement canManage={canManage} />
     </Stack>

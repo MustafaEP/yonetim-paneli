@@ -109,10 +109,13 @@ const NotificationSettingsPage: React.FC = () => {
           </Button>
         }
       />
-
       <Grid container spacing={3}>
         {/* Kanal Ayarları */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card
             elevation={0}
             sx={{
@@ -172,7 +175,11 @@ const NotificationSettingsPage: React.FC = () => {
         </Grid>
 
         {/* Zaman Ayarları */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Card
             elevation={0}
             sx={{
@@ -227,7 +234,7 @@ const NotificationSettingsPage: React.FC = () => {
         </Grid>
 
         {/* Kategori Ayarları */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Card
             elevation={0}
             sx={{

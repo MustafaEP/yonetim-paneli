@@ -200,10 +200,14 @@ const RoleDetailPage: React.FC = () => {
           ) : undefined
         }
       />
-
       {/* İstatistik Kartları */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Paper
             elevation={0}
             sx={{
@@ -243,7 +247,12 @@ const RoleDetailPage: React.FC = () => {
             </Box>
           </Paper>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Paper
             elevation={0}
             sx={{
@@ -283,7 +292,12 @@ const RoleDetailPage: React.FC = () => {
             </Box>
           </Paper>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 4
+          }}>
           <Paper
             elevation={0}
             sx={{
@@ -327,7 +341,6 @@ const RoleDetailPage: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
-
       {/* Rol Bilgileri Kartı */}
       <Card
         elevation={0}
@@ -381,7 +394,6 @@ const RoleDetailPage: React.FC = () => {
           )}
         </Box>
       </Card>
-
       {/* Kullanıcılar Kartı */}
       <Card
         elevation={0}
@@ -521,7 +533,6 @@ const RoleDetailPage: React.FC = () => {
           )}
         </Box>
       </Card>
-
       {/* İzinler Kartı */}
       <Card
         elevation={0}

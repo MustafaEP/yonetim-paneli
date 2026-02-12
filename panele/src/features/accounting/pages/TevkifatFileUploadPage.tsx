@@ -202,7 +202,6 @@ const TevkifatFileUploadPage: React.FC = () => {
         darkColor={theme.palette.info.dark}
         lightColor={theme.palette.info.light}
       />
-
       {canUpload && (
         <Card 
           elevation={0}
@@ -235,7 +234,7 @@ const TevkifatFileUploadPage: React.FC = () => {
               </Typography>
             </Box>
             <Grid container spacing={2.5}>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <FormControl 
                   fullWidth 
                   required
@@ -260,7 +259,11 @@ const TevkifatFileUploadPage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <TextField
                   label="Gelen Tutar Toplamı"
                   type="number"
@@ -277,7 +280,11 @@ const TevkifatFileUploadPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <TextField
                   label="Üye Sayısı"
                   type="number"
@@ -294,7 +301,11 @@ const TevkifatFileUploadPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <FormControl 
                   fullWidth 
                   required
@@ -332,7 +343,11 @@ const TevkifatFileUploadPage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid
+                size={{
+                  xs: 12,
+                  sm: 6
+                }}>
                 <TextField
                   label="Yıl"
                   type="number"
@@ -349,7 +364,7 @@ const TevkifatFileUploadPage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <FormControl 
                   fullWidth
                   sx={{
@@ -375,7 +390,7 @@ const TevkifatFileUploadPage: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Box>
                   <input
                     accept="application/pdf"
@@ -409,7 +424,7 @@ const TevkifatFileUploadPage: React.FC = () => {
                 </Box>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Button
                   variant="contained"
                   color="info"
@@ -435,7 +450,6 @@ const TevkifatFileUploadPage: React.FC = () => {
           </Box>
         </Card>
       )}
-
       <Card
         elevation={0}
         sx={{

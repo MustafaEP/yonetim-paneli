@@ -489,7 +489,6 @@ const MemberUpdatePage: React.FC = () => {
         darkColor={theme.palette.info.dark}
         lightColor={theme.palette.info.light}
       />
-
       {/* Hata Mesajı */}
       {error && (
         <Alert 
@@ -509,7 +508,6 @@ const MemberUpdatePage: React.FC = () => {
           {error}
         </Alert>
       )}
-
       {/* Ana Kart */}
       <Card
         elevation={0}
@@ -558,7 +556,12 @@ const MemberUpdatePage: React.FC = () => {
           </Box>
 
           <Grid container spacing={3}>
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Ad *"
                 value={form.firstName}
@@ -594,7 +597,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Soyad *"
                 value={form.lastName}
@@ -630,7 +638,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Telefon"
                 value={form.phone}
@@ -665,7 +678,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="E-posta"
                 value={form.email}
@@ -701,7 +719,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -737,7 +760,12 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Anne Adı"
                 value={form.motherName}
@@ -772,7 +800,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Baba Adı"
                 value={form.fatherName}
@@ -807,7 +840,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Doğum Tarihi"
                 type="date"
@@ -839,7 +877,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Doğum Yeri"
                 value={form.birthplace}
@@ -874,7 +917,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -910,7 +958,12 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -948,7 +1001,12 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -1025,7 +1083,12 @@ const MemberUpdatePage: React.FC = () => {
           </Box>
 
           <Grid container spacing={3}>
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Üye Kayıt No"
                 value={form.registrationNumber}
@@ -1060,7 +1123,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -1098,7 +1166,12 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -1136,7 +1209,12 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Yönetim Kurulu Karar Tarihi"
                 type="date"
@@ -1168,7 +1246,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Yönetim Kurulu Karar Defter No"
                 value={form.boardDecisionBookNo}
@@ -1234,7 +1317,12 @@ const MemberUpdatePage: React.FC = () => {
           </Box>
 
           <Grid container spacing={3}>
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -1274,7 +1362,12 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Görev Birimi */}
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Görev Birimi"
                 value={form.dutyUnit}
@@ -1310,7 +1403,12 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Meslek(Unvan) */}
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -1354,7 +1452,7 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum Adresi */}
-            <Grid xs={12}>
+            <Grid size={12}>
               <TextField
                 label="Kurum Adresi"
                 value={form.institutionAddress}
@@ -1389,7 +1487,12 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum İli - Kurum İlçesi */}
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -1432,7 +1535,12 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -1477,7 +1585,12 @@ const MemberUpdatePage: React.FC = () => {
             </Grid>
 
             {/* Kurum Sicil No - Kadro Unvan Kodu */}
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Kurum Sicil No"
                 value={form.institutionRegNo}
@@ -1512,7 +1625,12 @@ const MemberUpdatePage: React.FC = () => {
               />
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <TextField
                 label="Kadro Unvan Kodu"
                 value={form.staffTitleCode}
@@ -1585,7 +1703,12 @@ const MemberUpdatePage: React.FC = () => {
           </Box>
 
           <Grid container spacing={3}>
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',
@@ -1623,7 +1746,12 @@ const MemberUpdatePage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid xs={12} sm={6} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                sm: 6,
+                md: 4
+              }}>
               <FormControl 
                 sx={{
                   width: '100%',

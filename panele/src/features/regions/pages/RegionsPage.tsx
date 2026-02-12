@@ -516,7 +516,6 @@ const RegionsPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
       />
-
       {/* Filter Section */}
       <Fade in timeout={1000}>
           <Card 
@@ -537,7 +536,11 @@ const RegionsPage: React.FC = () => {
                 </Typography>
               </Box>
               <Grid container spacing={{ xs: 2, md: 3 }}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Box sx={{ position: 'relative' }}>
                     <FormControl 
                       fullWidth
@@ -583,7 +586,11 @@ const RegionsPage: React.FC = () => {
                   </Box>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Box sx={{ position: 'relative' }}>
                     <FormControl 
                       fullWidth 
@@ -629,522 +636,532 @@ const RegionsPage: React.FC = () => {
             </CardContent>
           </Card>
         </Fade>
-
-        {/* İl veya ilçe seçildiğinde gösterilecek listeler */}
-        {selectedProvinceId && (
-          <Zoom in timeout={600}>
-            <Box>
-              <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+      {/* İl veya ilçe seçildiğinde gösterilecek listeler */}
+      {selectedProvinceId && (
+        <Zoom in timeout={600}>
+          <Box>
+            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
+                sx={{
+                  width: 4,
+                  height: 32,
+                  borderRadius: 2,
+                  background: (theme) => `linear-gradient(180deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                }}
+              />
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                {selectedDistrictId 
+                  ? `${districts.find(d => d.id === selectedDistrictId)?.name} İlçesine Bağlı Kayıtlar`
+                  : `${provinces.find(p => p.id === selectedProvinceId)?.name} İline Bağlı Kayıtlar`
+                }
+              </Typography>
+            </Box>
+            <Grid container spacing={{ xs: 2, md: 3 }}>
+            {/* Tevkifat Merkezleri */}
+            <Grid
+              size={{
+                xs: 12,
+                lg: 4
+              }}>
+              <Card 
+                elevation={0}
+                sx={{ 
+                  height: '100%',
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  transition: 'all 0.3s ease-in-out',
+                  '&:hover': {
+                    boxShadow: (theme) => `0 12px 28px ${alpha(theme.palette.primary.main, 0.15)}`,
+                    transform: 'translateY(-4px)',
+                    borderColor: 'primary.main',
+                  }
+                }}
+              >
                 <Box
                   sx={{
-                    width: 4,
-                    height: 32,
-                    borderRadius: 2,
-                    background: (theme) => `linear-gradient(180deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-                  }}
-                />
-                <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                  {selectedDistrictId 
-                    ? `${districts.find(d => d.id === selectedDistrictId)?.name} İlçesine Bağlı Kayıtlar`
-                    : `${provinces.find(p => p.id === selectedProvinceId)?.name} İline Bağlı Kayıtlar`
-                  }
-                </Typography>
-              </Box>
-              <Grid container spacing={{ xs: 2, md: 3 }}>
-              {/* Tevkifat Merkezleri */}
-              <Grid item xs={12} lg={4}>
-                <Card 
-                  elevation={0}
-                  sx={{ 
-                    height: '100%',
-                    borderRadius: 3,
-                    border: '1px solid',
+                    p: 2.5,
+                    borderBottom: '1px solid',
                     borderColor: 'divider',
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      boxShadow: (theme) => `0 12px 28px ${alpha(theme.palette.primary.main, 0.15)}`,
-                      transform: 'translateY(-4px)',
-                      borderColor: 'primary.main',
-                    }
+                    background: (theme) => alpha(theme.palette.primary.main, 0.04),
                   }}
                 >
-                  <Box
-                    sx={{
-                      p: 2.5,
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      background: (theme) => alpha(theme.palette.primary.main, 0.04),
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box
-                          sx={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 2,
-                            background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-                          }}
-                        >
-                          <AccountBalanceIcon sx={{ color: 'white', fontSize: 24 }} />
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                            Tevkifat Merkezleri
-                          </Typography>
-                          <Chip 
-                            label={`${tevkifatCenters.length} Kayıt`}
-                            size="small" 
-                            sx={{ 
-                              height: 20,
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              background: (theme) => alpha(theme.palette.primary.main, 0.1),
-                              color: 'primary.main',
-                              mt: 0.5,
-                            }}
-                          />
-                        </Box>
-                      </Box>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenTevkifatDialog}
-                        disabled={!selectedProvinceId}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box
                         sx={{
+                          width: 48,
+                          height: 48,
                           borderRadius: 2,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          boxShadow: 'none',
-                          '&:hover': {
-                            boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-                          }
+                          background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
                         }}
                       >
-                        Ekle
-                      </Button>
-                    </Box>
-                  </Box>
-                  <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-                    {loadingTevkifatCenters ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                        <CircularProgress size={32} />
+                        <AccountBalanceIcon sx={{ color: 'white', fontSize: 24 }} />
                       </Box>
-                    ) : tevkifatCenters.length === 0 ? (
-                      <Box sx={{ py: 6, px: 3, textAlign: 'center' }}>
-                        <AccountBalanceIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {selectedDistrictId 
-                            ? 'Bu ilçeye bağlı tevkifat merkezi bulunmamaktadır.'
-                            : 'Bu ile bağlı tevkifat merkezi bulunmamaktadır.'
-                          }
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                          Tevkifat Merkezleri
                         </Typography>
-                      </Box>
-                    ) : (
-                      <Box sx={{ maxHeight: 420, overflowY: 'auto' }}>
-                        <List dense disablePadding>
-                          {tevkifatCenters.map((center, index) => (
-                            <ListItem
-                              key={center.id}
-                              sx={{
-                                px: 2.5,
-                                py: 1.5,
-                                borderBottom: index < tevkifatCenters.length - 1 ? '1px solid' : 'none',
-                                borderColor: 'divider',
-                                transition: 'all 0.2s',
-                                '&:hover': { 
-                                  backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.06),
-                                  pl: 3,
-                                },
-                              }}
-                            >
-                              <ListItemText
-                                primary={
-                                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    {center.name}
-                                  </Typography>
-                                }
-                                secondary={
-                                  <Typography variant="caption" color="text.secondary">
-                                    {center.title || center.district?.name}
-                                  </Typography>
-                                }
-                              />
-                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <Button
-                                  size="small"
-                                  startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
-                                  onClick={() => navigate(`/accounting/tevkifat-centers/${center.id}`)}
-                                  sx={{
-                                    textTransform: 'none',
-                                    fontSize: '0.75rem',
-                                    borderRadius: 1.5,
-                                    minWidth: 'auto',
-                                    px: 1.5,
-                                  }}
-                                >
-                                  Görüntüle
-                                </Button>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleOpenUnlinkDialog('tevkifat', center.id, center.name)}
-                                  sx={{
-                                    color: 'error.main',
-                                    '&:hover': {
-                                      backgroundColor: (theme) => alpha(theme.palette.error.main, 0.1),
-                                    },
-                                  }}
-                                  title="Bağlantıyı Kopar"
-                                >
-                                  <LinkOffIcon sx={{ fontSize: 18 }} />
-                                </IconButton>
-                              </Box>
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* Kurumlar */}
-              <Grid item xs={12} lg={4}>
-                <Card 
-                  elevation={0}
-                  sx={{ 
-                    height: '100%',
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      boxShadow: (theme) => `0 12px 28px ${alpha(theme.palette.success.main, 0.15)}`,
-                      transform: 'translateY(-4px)',
-                      borderColor: 'success.main',
-                    }
-                  }}
-                >
-                  <Box
-                    sx={{
-                      p: 2.5,
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      background: (theme) => alpha(theme.palette.success.main, 0.04),
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box
-                          sx={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 2,
-                            background: (theme) => `linear-gradient(135deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                        <Chip 
+                          label={`${tevkifatCenters.length} Kayıt`}
+                          size="small" 
+                          sx={{ 
+                            height: 20,
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            background: (theme) => alpha(theme.palette.primary.main, 0.1),
+                            color: 'primary.main',
+                            mt: 0.5,
                           }}
-                        >
-                          <BusinessIcon sx={{ color: 'white', fontSize: 24 }} />
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                            Kurumlar
-                          </Typography>
-                          <Chip 
-                            label={`${institutions.length} Kayıt`}
-                            size="small" 
-                            sx={{ 
-                              height: 20,
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              background: (theme) => alpha(theme.palette.success.main, 0.1),
-                              color: 'success.main',
-                              mt: 0.5,
-                            }}
-                          />
-                        </Box>
+                        />
                       </Box>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenInstitutionDialog}
-                        disabled={!selectedProvinceId}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          boxShadow: 'none',
-                          '&:hover': {
-                            boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
-                          }
-                        }}
-                      >
-                        Ekle
-                      </Button>
                     </Box>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={handleOpenTevkifatDialog}
+                      disabled={!selectedProvinceId}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        boxShadow: 'none',
+                        '&:hover': {
+                          boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+                        }
+                      }}
+                    >
+                      Ekle
+                    </Button>
                   </Box>
-                  <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-                    {loadingInstitutions ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                        <CircularProgress size={32} color="success" />
-                      </Box>
-                    ) : institutions.length === 0 ? (
-                      <Box sx={{ py: 6, px: 3, textAlign: 'center' }}>
-                        <BusinessIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {selectedDistrictId 
-                            ? 'Bu ilçeye bağlı kurum bulunmamaktadır.'
-                            : 'Bu ile bağlı kurum bulunmamaktadır.'
-                          }
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Box sx={{ maxHeight: 420, overflowY: 'auto' }}>
-                        <List dense disablePadding>
-                          {institutions.map((institution, index) => (
-                            <ListItem
-                              key={institution.id}
-                              sx={{
-                                px: 2.5,
-                                py: 1.5,
-                                borderBottom: index < institutions.length - 1 ? '1px solid' : 'none',
-                                borderColor: 'divider',
-                                transition: 'all 0.2s',
-                                '&:hover': { 
-                                  backgroundColor: (theme) => alpha(theme.palette.success.main, 0.06),
-                                  pl: 3,
-                                },
-                              }}
-                            >
-                              <ListItemText
-                                primary={
-                                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    {institution.name}
-                                  </Typography>
-                                }
-                                secondary={
-                                  <Typography variant="caption" color="text.secondary">
-                                    {institution.district?.name || institution.province?.name}
-                                  </Typography>
-                                }
-                              />
-                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <Button
-                                  size="small"
-                                  color="success"
-                                  startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
-                                  onClick={() => navigate(`/institutions?institutionId=${institution.id}`)}
-                                  sx={{
-                                    textTransform: 'none',
-                                    fontSize: '0.75rem',
-                                    borderRadius: 1.5,
-                                    minWidth: 'auto',
-                                    px: 1.5,
-                                  }}
-                                >
-                                  Görüntüle
-                                </Button>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleOpenUnlinkDialog('institution', institution.id, institution.name)}
-                                  sx={{
-                                    color: 'error.main',
-                                    '&:hover': {
-                                      backgroundColor: (theme) => alpha(theme.palette.error.main, 0.1),
-                                    },
-                                  }}
-                                  title="Bağlantıyı Kopar"
-                                >
-                                  <LinkOffIcon sx={{ fontSize: 18 }} />
-                                </IconButton>
-                              </Box>
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* Şubeler */}
-              <Grid item xs={12} lg={4}>
-                <Card 
-                  elevation={0}
-                  sx={{ 
-                    height: '100%',
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      boxShadow: (theme) => `0 12px 28px ${alpha(theme.palette.info.main, 0.15)}`,
-                      transform: 'translateY(-4px)',
-                      borderColor: 'info.main',
-                    }
-                  }}
-                >
-                  <Box
-                    sx={{
-                      p: 2.5,
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      background: (theme) => alpha(theme.palette.info.main, 0.04),
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box
-                          sx={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 2,
-                            background: (theme) => `linear-gradient(135deg, ${theme.palette.info.main}, ${theme.palette.info.dark})`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
-                          }}
-                        >
-                          <StoreIcon sx={{ color: 'white', fontSize: 24 }} />
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                            Şubeler
-                          </Typography>
-                          <Chip 
-                            label={`${branches.length} Kayıt`}
-                            size="small" 
-                            sx={{ 
-                              height: 20,
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              background: (theme) => alpha(theme.palette.info.main, 0.1),
-                              color: 'info.main',
-                              mt: 0.5,
-                            }}
-                          />
-                        </Box>
-                      </Box>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="info"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenBranchDialog}
-                        disabled={!selectedProvinceId}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          boxShadow: 'none',
-                          '&:hover': {
-                            boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
-                          }
-                        }}
-                      >
-                        Ekle
-                      </Button>
+                </Box>
+                <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                  {loadingTevkifatCenters ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                      <CircularProgress size={32} />
                     </Box>
-                  </Box>
-                  <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-                    {loadingBranches ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                        <CircularProgress size={32} color="info" />
-                      </Box>
-                    ) : branches.length === 0 ? (
-                      <Box sx={{ py: 6, px: 3, textAlign: 'center' }}>
-                        <StoreIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {selectedDistrictId 
-                            ? 'Bu ilçeye bağlı şube bulunmamaktadır.'
-                            : 'Bu ile bağlı şube bulunmamaktadır.'
-                          }
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Box sx={{ maxHeight: 420, overflowY: 'auto' }}>
-                        <List dense disablePadding>
-                          {branches.map((branch, index) => (
-                            <ListItem
-                              key={branch.id}
-                              sx={{
-                                px: 2.5,
-                                py: 1.5,
-                                borderBottom: index < branches.length - 1 ? '1px solid' : 'none',
-                                borderColor: 'divider',
-                                transition: 'all 0.2s',
-                                '&:hover': { 
-                                  backgroundColor: (theme) => alpha(theme.palette.info.main, 0.06),
-                                  pl: 3,
-                                },
-                              }}
-                            >
-                              <ListItemText
-                                primary={
-                                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    {branch.name}
-                                  </Typography>
-                                }
-                                secondary={
-                                  <Typography variant="caption" color="text.secondary">
-                                    {branch.district?.name || branch.province?.name || ''}
-                                  </Typography>
-                                }
-                              />
-                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <Button
-                                  size="small"
-                                  color="info"
-                                  startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
-                                  onClick={() => navigate(`/regions/branches/${branch.id}`)}
-                                  sx={{
-                                    textTransform: 'none',
-                                    fontSize: '0.75rem',
-                                    borderRadius: 1.5,
-                                    minWidth: 'auto',
-                                    px: 1.5,
-                                  }}
-                                >
-                                  Görüntüle
-                                </Button>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleOpenUnlinkDialog('branch', branch.id, branch.name)}
-                                  sx={{
-                                    color: 'error.main',
-                                    '&:hover': {
-                                      backgroundColor: (theme) => alpha(theme.palette.error.main, 0.1),
-                                    },
-                                  }}
-                                  title="Bağlantıyı Kopar"
-                                >
-                                  <LinkOffIcon sx={{ fontSize: 18 }} />
-                                </IconButton>
-                              </Box>
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
+                  ) : tevkifatCenters.length === 0 ? (
+                    <Box sx={{ py: 6, px: 3, textAlign: 'center' }}>
+                      <AccountBalanceIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedDistrictId 
+                          ? 'Bu ilçeye bağlı tevkifat merkezi bulunmamaktadır.'
+                          : 'Bu ile bağlı tevkifat merkezi bulunmamaktadır.'
+                        }
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ maxHeight: 420, overflowY: 'auto' }}>
+                      <List dense disablePadding>
+                        {tevkifatCenters.map((center, index) => (
+                          <ListItem
+                            key={center.id}
+                            sx={{
+                              px: 2.5,
+                              py: 1.5,
+                              borderBottom: index < tevkifatCenters.length - 1 ? '1px solid' : 'none',
+                              borderColor: 'divider',
+                              transition: 'all 0.2s',
+                              '&:hover': { 
+                                backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.06),
+                                pl: 3,
+                              },
+                            }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                  {center.name}
+                                </Typography>
+                              }
+                              secondary={
+                                <Typography variant="caption" color="text.secondary">
+                                  {center.title || center.district?.name}
+                                </Typography>
+                              }
+                            />
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                              <Button
+                                size="small"
+                                startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
+                                onClick={() => navigate(`/accounting/tevkifat-centers/${center.id}`)}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontSize: '0.75rem',
+                                  borderRadius: 1.5,
+                                  minWidth: 'auto',
+                                  px: 1.5,
+                                }}
+                              >
+                                Görüntüle
+                              </Button>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenUnlinkDialog('tevkifat', center.id, center.name)}
+                                sx={{
+                                  color: 'error.main',
+                                  '&:hover': {
+                                    backgroundColor: (theme) => alpha(theme.palette.error.main, 0.1),
+                                  },
+                                }}
+                                title="Bağlantıyı Kopar"
+                              >
+                                <LinkOffIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Box>
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
             </Grid>
-            </Box>
-          </Zoom>
-        )}
 
+            {/* Kurumlar */}
+            <Grid
+              size={{
+                xs: 12,
+                lg: 4
+              }}>
+              <Card 
+                elevation={0}
+                sx={{ 
+                  height: '100%',
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  transition: 'all 0.3s ease-in-out',
+                  '&:hover': {
+                    boxShadow: (theme) => `0 12px 28px ${alpha(theme.palette.success.main, 0.15)}`,
+                    transform: 'translateY(-4px)',
+                    borderColor: 'success.main',
+                  }
+                }}
+              >
+                <Box
+                  sx={{
+                    p: 2.5,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    background: (theme) => alpha(theme.palette.success.main, 0.04),
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 2,
+                          background: (theme) => `linear-gradient(135deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                        }}
+                      >
+                        <BusinessIcon sx={{ color: 'white', fontSize: 24 }} />
+                      </Box>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                          Kurumlar
+                        </Typography>
+                        <Chip 
+                          label={`${institutions.length} Kayıt`}
+                          size="small" 
+                          sx={{ 
+                            height: 20,
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            background: (theme) => alpha(theme.palette.success.main, 0.1),
+                            color: 'success.main',
+                            mt: 0.5,
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      startIcon={<AddIcon />}
+                      onClick={handleOpenInstitutionDialog}
+                      disabled={!selectedProvinceId}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        boxShadow: 'none',
+                        '&:hover': {
+                          boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                        }
+                      }}
+                    >
+                      Ekle
+                    </Button>
+                  </Box>
+                </Box>
+                <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                  {loadingInstitutions ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                      <CircularProgress size={32} color="success" />
+                    </Box>
+                  ) : institutions.length === 0 ? (
+                    <Box sx={{ py: 6, px: 3, textAlign: 'center' }}>
+                      <BusinessIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedDistrictId 
+                          ? 'Bu ilçeye bağlı kurum bulunmamaktadır.'
+                          : 'Bu ile bağlı kurum bulunmamaktadır.'
+                        }
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ maxHeight: 420, overflowY: 'auto' }}>
+                      <List dense disablePadding>
+                        {institutions.map((institution, index) => (
+                          <ListItem
+                            key={institution.id}
+                            sx={{
+                              px: 2.5,
+                              py: 1.5,
+                              borderBottom: index < institutions.length - 1 ? '1px solid' : 'none',
+                              borderColor: 'divider',
+                              transition: 'all 0.2s',
+                              '&:hover': { 
+                                backgroundColor: (theme) => alpha(theme.palette.success.main, 0.06),
+                                pl: 3,
+                              },
+                            }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                  {institution.name}
+                                </Typography>
+                              }
+                              secondary={
+                                <Typography variant="caption" color="text.secondary">
+                                  {institution.district?.name || institution.province?.name}
+                                </Typography>
+                              }
+                            />
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                              <Button
+                                size="small"
+                                color="success"
+                                startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
+                                onClick={() => navigate(`/institutions?institutionId=${institution.id}`)}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontSize: '0.75rem',
+                                  borderRadius: 1.5,
+                                  minWidth: 'auto',
+                                  px: 1.5,
+                                }}
+                              >
+                                Görüntüle
+                              </Button>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenUnlinkDialog('institution', institution.id, institution.name)}
+                                sx={{
+                                  color: 'error.main',
+                                  '&:hover': {
+                                    backgroundColor: (theme) => alpha(theme.palette.error.main, 0.1),
+                                  },
+                                }}
+                                title="Bağlantıyı Kopar"
+                              >
+                                <LinkOffIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Box>
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Şubeler */}
+            <Grid
+              size={{
+                xs: 12,
+                lg: 4
+              }}>
+              <Card 
+                elevation={0}
+                sx={{ 
+                  height: '100%',
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  transition: 'all 0.3s ease-in-out',
+                  '&:hover': {
+                    boxShadow: (theme) => `0 12px 28px ${alpha(theme.palette.info.main, 0.15)}`,
+                    transform: 'translateY(-4px)',
+                    borderColor: 'info.main',
+                  }
+                }}
+              >
+                <Box
+                  sx={{
+                    p: 2.5,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    background: (theme) => alpha(theme.palette.info.main, 0.04),
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 2,
+                          background: (theme) => `linear-gradient(135deg, ${theme.palette.info.main}, ${theme.palette.info.dark})`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
+                        }}
+                      >
+                        <StoreIcon sx={{ color: 'white', fontSize: 24 }} />
+                      </Box>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                          Şubeler
+                        </Typography>
+                        <Chip 
+                          label={`${branches.length} Kayıt`}
+                          size="small" 
+                          sx={{ 
+                            height: 20,
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            background: (theme) => alpha(theme.palette.info.main, 0.1),
+                            color: 'info.main',
+                            mt: 0.5,
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="info"
+                      startIcon={<AddIcon />}
+                      onClick={handleOpenBranchDialog}
+                      disabled={!selectedProvinceId}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        boxShadow: 'none',
+                        '&:hover': {
+                          boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
+                        }
+                      }}
+                    >
+                      Ekle
+                    </Button>
+                  </Box>
+                </Box>
+                <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                  {loadingBranches ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                      <CircularProgress size={32} color="info" />
+                    </Box>
+                  ) : branches.length === 0 ? (
+                    <Box sx={{ py: 6, px: 3, textAlign: 'center' }}>
+                      <StoreIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedDistrictId 
+                          ? 'Bu ilçeye bağlı şube bulunmamaktadır.'
+                          : 'Bu ile bağlı şube bulunmamaktadır.'
+                        }
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ maxHeight: 420, overflowY: 'auto' }}>
+                      <List dense disablePadding>
+                        {branches.map((branch, index) => (
+                          <ListItem
+                            key={branch.id}
+                            sx={{
+                              px: 2.5,
+                              py: 1.5,
+                              borderBottom: index < branches.length - 1 ? '1px solid' : 'none',
+                              borderColor: 'divider',
+                              transition: 'all 0.2s',
+                              '&:hover': { 
+                                backgroundColor: (theme) => alpha(theme.palette.info.main, 0.06),
+                                pl: 3,
+                              },
+                            }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                  {branch.name}
+                                </Typography>
+                              }
+                              secondary={
+                                <Typography variant="caption" color="text.secondary">
+                                  {branch.district?.name || branch.province?.name || ''}
+                                </Typography>
+                              }
+                            />
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                              <Button
+                                size="small"
+                                color="info"
+                                startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
+                                onClick={() => navigate(`/regions/branches/${branch.id}`)}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontSize: '0.75rem',
+                                  borderRadius: 1.5,
+                                  minWidth: 'auto',
+                                  px: 1.5,
+                                }}
+                              >
+                                Görüntüle
+                              </Button>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenUnlinkDialog('branch', branch.id, branch.name)}
+                                sx={{
+                                  color: 'error.main',
+                                  '&:hover': {
+                                    backgroundColor: (theme) => alpha(theme.palette.error.main, 0.1),
+                                  },
+                                }}
+                                title="Bağlantıyı Kopar"
+                              >
+                                <LinkOffIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Box>
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+          </Box>
+        </Zoom>
+      )}
       {/* Kurum Ekleme Dialog */}
       <Dialog 
         open={institutionDialogOpen} 
@@ -1287,7 +1304,6 @@ const RegionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Tevkifat Merkezi Ekleme Dialog */}
       <Dialog 
         open={tevkifatDialogOpen} 
@@ -1429,7 +1445,6 @@ const RegionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Şube Ekleme Dialog */}
       <Dialog 
         open={branchDialogOpen} 
@@ -1573,7 +1588,6 @@ const RegionsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Bağlantıyı Kopar Onay Dialog */}
       <Dialog 
         open={unlinkDialogOpen} 

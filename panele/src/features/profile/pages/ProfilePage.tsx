@@ -112,7 +112,11 @@ const ProfilePage: React.FC = () => {
 
           <Grid container spacing={{ xs: 2, sm: 3 }}>
             {/* Sol Taraf - Kullanıcı Bilgileri */}
-            <Grid item xs={12} md={4}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 4
+              }}>
               <Zoom in={mounted} timeout={700} style={{ transitionDelay: '100ms' }}>
                 <Card
                   elevation={0}
@@ -313,7 +317,11 @@ const ProfilePage: React.FC = () => {
             </Grid>
 
             {/* Sağ Taraf - Detaylar */}
-            <Grid item xs={12} md={8}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 8
+              }}>
               <Stack spacing={{ xs: 2, sm: 3 }}>
                 {/* İzinler */}
                 <Zoom in={mounted} timeout={700} style={{ transitionDelay: '200ms' }}>
