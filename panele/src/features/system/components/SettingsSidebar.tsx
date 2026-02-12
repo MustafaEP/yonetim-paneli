@@ -55,31 +55,31 @@ const categories: CategoryItem[] = [
     id: 'DUES',
     label: 'Aidat',
     icon: <AccountBalanceIcon />,
-    description: 'Ödeme ve finans',
+    description: 'Yakında eklenecek',
   },
   {
     id: 'SECURITY',
     label: 'Güvenlik',
     icon: <SecurityIcon />,
-    description: 'Şifre ve oturum',
+    description: 'Yakında eklenecek',
   },
   {
     id: 'AUDIT',
     label: 'Loglama',
     icon: <HistoryIcon />,
-    description: 'Audit ve izleme',
+    description: 'Yakında eklenecek',
   },
   {
     id: 'INTEGRATION',
     label: 'Entegrasyon',
     icon: <IntegrationInstructionsIcon />,
-    description: 'Bildirim ve API',
+    description: 'Yakında eklenecek',
   },
   {
     id: 'MAINTENANCE',
     label: 'Bakım',
     icon: <AssessmentIcon />,
-    description: 'Sistem bakımı',
+    description: 'Yakında eklenecek',
   },
 ];
 

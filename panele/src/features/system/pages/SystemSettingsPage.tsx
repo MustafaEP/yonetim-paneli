@@ -22,12 +22,7 @@ import type { SystemSetting } from '../services/systemApi';
 import SettingsSidebar, { type SettingsCategory } from '../components/SettingsSidebar';
 import GeneralSettings from '../components/GeneralSettings';
 import MembershipSettings from '../components/MembershipSettings';
-import DuesSettings from '../components/DuesSettings';
-import SecuritySettings from '../components/SecuritySettings';
-import AuditSettings from '../components/AuditSettings';
-import IntegrationSettings from '../components/IntegrationSettings';
-import NotificationsSettings from '../components/NotificationsSettings';
-import MaintenanceSettings from '../components/MaintenanceSettings';
+import ComingSoonPlaceholder from '../components/ComingSoonPlaceholder';
 
 const SystemSettingsPage: React.FC = () => {
   const theme = useTheme();
@@ -167,41 +162,20 @@ const SystemSettingsPage: React.FC = () => {
                 />
               )}
               {selectedCategory === 'DUES' && (
-                <DuesSettings
-                  settings={settings}
-                  onUpdate={handleUpdate}
-                  loading={false}
-                />
+                <ComingSoonPlaceholder title="Aidat" />
               )}
               {selectedCategory === 'SECURITY' && (
-                <SecuritySettings
-                  settings={settings}
-                  onUpdate={canManage ? handleUpdate : undefined}
-                  loading={false}
-                />
+                <ComingSoonPlaceholder title="Güvenlik" />
               )}
               {selectedCategory === 'AUDIT' && (
-                <AuditSettings
-                  settings={settings}
-                  onUpdate={canManage ? handleUpdate : undefined}
-                  loading={false}
-                />
+                <ComingSoonPlaceholder title="Loglama" />
               )}
               {selectedCategory === 'INTEGRATION' && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <IntegrationSettings
-                    settings={settings}
-                    onUpdate={canManage ? handleUpdate : undefined}
-                    loading={false}
-                  />
-                  <NotificationsSettings
-                    settings={settings}
-                    onUpdate={canManage ? handleUpdate : undefined}
-                    loading={false}
-                  />
-                </Box>
+                <ComingSoonPlaceholder title="Entegrasyon" />
               )}
-              {selectedCategory === 'MAINTENANCE' && <MaintenanceSettings />}
+              {selectedCategory === 'MAINTENANCE' && (
+                <ComingSoonPlaceholder title="Bakım" />
+              )}
             </Box>
           )}
         </Paper>
