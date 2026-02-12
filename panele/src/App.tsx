@@ -3,9 +3,11 @@ import { SnackbarProvider } from 'notistack';
 import { ErrorDialogProvider } from './app/providers/ErrorDialogContext';
 import { NotificationProvider } from './features/notifications/context/NotificationContext';
 import { AppRoutes } from './app/router';
+import ErrorBoundary from './shared/components/common/ErrorBoundary';
 
 const App: React.FC = () => (
-  <ErrorDialogProvider>
+  <ErrorBoundary>
+    <ErrorDialogProvider>
     <SnackbarProvider
       maxSnack={3}
       anchorOrigin={{
@@ -20,6 +22,7 @@ const App: React.FC = () => (
       </NotificationProvider>
     </SnackbarProvider>
   </ErrorDialogProvider>
+  </ErrorBoundary>
 );
 
 export default App;

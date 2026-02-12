@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import MainLayout from '../../shared/components/layout/MainLayout';
 import ForbiddenPage from './ForbiddenPage';
+import NotFoundPage from './NotFoundPage';
 
 import LoginPage from '../../features/auth/pages/LoginPage';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
@@ -163,6 +164,7 @@ const AppRoutes: React.FC = () => (
 
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/forbidden" element={<ForbiddenPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Route>
   </Routes>
