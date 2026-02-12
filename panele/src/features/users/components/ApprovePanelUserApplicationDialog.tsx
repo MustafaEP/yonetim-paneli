@@ -23,6 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { approvePanelUserApplication, getPanelUserApplicationById, type RoleScopeDto } from '../services/panelUserApplicationsApi';
 import type { ApprovePanelUserApplicationDto } from '../services/panelUserApplicationsApi';
 import { useToast } from '../../../shared/hooks/useToast';
+import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { getProvinces, getDistricts } from '../../regions/services/regionsApi';
 import type { Province, District } from '../../../types/region';
 import { getRoleById } from '../../roles/services/rolesApi';

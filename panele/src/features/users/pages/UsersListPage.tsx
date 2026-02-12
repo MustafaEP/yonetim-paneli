@@ -1,5 +1,5 @@
 // src/pages/users/UsersListPage.tsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Box,
   Card,
@@ -38,6 +38,8 @@ const UsersListPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const toast = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   const [rows, setRows] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -191,21 +193,31 @@ const UsersListPage: React.FC = () => {
     },
   ];
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const data = await getUsers();
-        setRows(data);
-      } catch (e: unknown) {
-        console.error('Kullanıcılar alınırken hata:', e);
-        toast.showError(getApiErrorMessage(e, 'Kullanıcılar alınırken bir hata oluştu.'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
+  const fetchUsers = React.useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+      const data = await getUsers();
+      setRows(data);
+    } catch (e: unknown) {
+      console.error('Kullanıcılar alınırken hata:', e);
+      toastRef.current.showError(getApiErrorMessage(e, 'Kullanıcılar alınırken bir hata oluştu.'));
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Panel Kullanıcı Başvurusu onaylandığında listeyi güncelle (onaylanan üye panel kullanıcıları listesinde görünsün)
+  useEffect(() => {
+    const handlePanelUserApproved = () => {
+      fetchUsers(false);
+    };
+    window.addEventListener('panelUserApproved', handlePanelUserApproved);
+    return () => window.removeEventListener('panelUserApproved', handlePanelUserApproved);
+  }, [fetchUsers]);
 
   return (
     <PageLayout>

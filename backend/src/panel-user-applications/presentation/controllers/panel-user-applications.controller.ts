@@ -155,8 +155,8 @@ export class PanelUserApplicationsController {
       },
       user.userId,
     );
-    // Return Prisma format for backward compatibility
-    return this.service.approve(id, dto, user.userId);
+    // Onay zaten applicationService ile yapıldı; yanıtı Prisma formatında döndür (tekrar service.approve çağrılmaz, "zaten işleme alınmış" hatası önlenir)
+    return this.service.findById(id);
   }
 
   @Permissions(Permission.PANEL_USER_APPLICATION_REJECT)
@@ -186,7 +186,7 @@ export class PanelUserApplicationsController {
       dto.reviewNote,
       user.userId,
     );
-    // Return Prisma format for backward compatibility
-    return this.service.reject(id, dto, user.userId);
+    // Reddetme zaten applicationService ile yapıldı; yanıtı Prisma formatında döndür
+    return this.service.findById(id);
   }
 }
