@@ -43,6 +43,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ErrorIcon from '@mui/icons-material/Error';
 
 import { useAuth } from '../../../app/providers/AuthContext';
+import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
 import { createMemberApplication, checkCancelledMemberByNationalId } from '../services/membersApi';
 import { uploadMemberDocument } from '../../documents/services/documentsApi';
 import httpClient from '../../../shared/services/httpClient';
@@ -74,6 +75,16 @@ const MemberApplicationCreatePage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { hasPermission, user } = useAuth();
+  const { getSettingValue } = useSystemSettings();
+
+  // Başvuru zorunlu alanları – Sistem Ayarları > Üyelik’ten okunur
+  const requireMotherName = getSettingValue('MEMBERSHIP_REQUIRE_MOTHER_NAME') === 'true';
+  const requireFatherName = getSettingValue('MEMBERSHIP_REQUIRE_FATHER_NAME') === 'true';
+  const requireBirthplace = getSettingValue('MEMBERSHIP_REQUIRE_BIRTHPLACE') === 'true';
+  const requireGender = getSettingValue('MEMBERSHIP_REQUIRE_GENDER') === 'true';
+  const requireEducation = getSettingValue('MEMBERSHIP_REQUIRE_EDUCATION') === 'true';
+  const requirePhone = getSettingValue('MEMBERSHIP_REQUIRE_PHONE') === 'true';
+  const requireEmail = getSettingValue('MEMBERSHIP_REQUIRE_EMAIL') === 'true';
 
   const canCreateApplication = hasPermission('MEMBER_CREATE_APPLICATION');
   const hasMemberListByProvince = hasPermission('MEMBER_LIST_BY_PROVINCE');
@@ -740,12 +751,12 @@ const MemberApplicationCreatePage: React.FC = () => {
       setErrorDialogOpen(true);
       return false;
     }
-    if (!form.motherName.trim()) {
+    if (requireMotherName && !form.motherName.trim()) {
       setError('Anne adı zorunludur.');
       setErrorDialogOpen(true);
       return false;
     }
-    if (!form.fatherName.trim()) {
+    if (requireFatherName && !form.fatherName.trim()) {
       setError('Baba adı zorunludur.');
       setErrorDialogOpen(true);
       return false;
@@ -755,17 +766,17 @@ const MemberApplicationCreatePage: React.FC = () => {
       setErrorDialogOpen(true);
       return false;
     }
-    if (!form.birthplace.trim()) {
+    if (requireBirthplace && !form.birthplace.trim()) {
       setError('Doğum yeri zorunludur.');
       setErrorDialogOpen(true);
       return false;
     }
-    if (!form.gender) {
+    if (requireGender && !form.gender) {
       setError('Cinsiyet seçimi zorunludur.');
       setErrorDialogOpen(true);
       return false;
     }
-    if (!form.educationStatus) {
+    if (requireEducation && !form.educationStatus) {
       setError('Öğrenim durumu zorunludur.');
       setErrorDialogOpen(true);
       return false;
@@ -780,20 +791,35 @@ const MemberApplicationCreatePage: React.FC = () => {
       setErrorDialogOpen(true);
       return false;
     }
-    const normalizedPhone = normalizePhoneNumber(form.phone);
-    if (!normalizedPhone || normalizedPhone.trim() === '') {
-      setError('Telefon numarası zorunludur.');
+    if (requirePhone) {
+      const normalizedPhone = normalizePhoneNumber(form.phone);
+      if (!normalizedPhone || normalizedPhone.trim() === '') {
+        setError('Telefon numarası zorunludur.');
+        setErrorDialogOpen(true);
+        return false;
+      }
+      const phoneErr = getPhoneError(normalizedPhone);
+      if (phoneErr) {
+        setError(phoneErr);
+        setPhoneError(phoneErr);
+        setErrorDialogOpen(true);
+        return false;
+      }
+    } else if (form.phone.trim()) {
+      const normalizedPhone = normalizePhoneNumber(form.phone);
+      const phoneErr = getPhoneError(normalizedPhone);
+      if (phoneErr) {
+        setError(phoneErr);
+        setPhoneError(phoneErr);
+        setErrorDialogOpen(true);
+        return false;
+      }
+    }
+    if (requireEmail && !form.email.trim()) {
+      setError('E-posta alanı zorunludur.');
       setErrorDialogOpen(true);
       return false;
     }
-    const phoneError = getPhoneError(normalizedPhone);
-    if (phoneError) {
-      setError(phoneError);
-      setPhoneError(phoneError);
-      setErrorDialogOpen(true);
-      return false;
-    }
-    // Email zorunlu değil, sadece format kontrolü yap
     if (form.email.trim()) {
       const emailError = getEmailError(form.email);
       if (emailError) {
@@ -1115,11 +1141,12 @@ const MemberApplicationCreatePage: React.FC = () => {
                 sm: 6
               }}>
               <TextField
-                label="Anne Adı *"
+                label={requireMotherName ? 'Anne Adı *' : 'Anne Adı'}
                 value={form.motherName}
                 onChange={(e) => handleChange('motherName', e.target.value)}
                 fullWidth
-                required
+                required={requireMotherName}
+                helperText={!requireMotherName ? 'Opsiyonel' : undefined}
                 inputProps={{
                   pattern: '[a-zA-ZçğıöşüÇĞIİÖŞÜ\\s\\-\\.\']*',
                   onKeyPress: handleTextOnlyKeyPress,
@@ -1146,11 +1173,12 @@ const MemberApplicationCreatePage: React.FC = () => {
                 sm: 6
               }}>
               <TextField
-                label="Baba Adı *"
+                label={requireFatherName ? 'Baba Adı *' : 'Baba Adı'}
                 value={form.fatherName}
                 onChange={(e) => handleChange('fatherName', e.target.value)}
                 fullWidth
-                required
+                required={requireFatherName}
+                helperText={!requireFatherName ? 'Opsiyonel' : undefined}
                 inputProps={{
                   pattern: '[a-zA-ZçğıöşüÇĞIİÖŞÜ\\s\\-\\.\']*',
                   onKeyPress: handleTextOnlyKeyPress,
@@ -1209,11 +1237,12 @@ const MemberApplicationCreatePage: React.FC = () => {
                 sm: 6
               }}>
               <TextField
-                label="Doğum Yeri *"
+                label={requireBirthplace ? 'Doğum Yeri *' : 'Doğum Yeri'}
                 value={form.birthplace}
                 onChange={(e) => handleChange('birthplace', e.target.value)}
                 fullWidth
-                required
+                required={requireBirthplace}
+                helperText={!requireBirthplace ? 'Opsiyonel' : undefined}
                 inputProps={{
                   pattern: '[a-zA-ZçğıöşüÇĞIİÖŞÜ\\s\\-\\.\']*',
                   onKeyPress: handleTextOnlyKeyPress,
@@ -1256,8 +1285,9 @@ const MemberApplicationCreatePage: React.FC = () => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Cinsiyet *"
-                    required
+                    label={requireGender ? 'Cinsiyet *' : 'Cinsiyet'}
+                    required={requireGender}
+                    helperText={!requireGender ? 'Opsiyonel' : undefined}
                     InputProps={{
                       ...params.InputProps,
                       startAdornment: (
@@ -1311,8 +1341,9 @@ const MemberApplicationCreatePage: React.FC = () => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Öğrenim Durumu *"
-                    required
+                    label={requireEducation ? 'Öğrenim Durumu *' : 'Öğrenim Durumu'}
+                    required={requireEducation}
+                    helperText={!requireEducation ? 'Opsiyonel' : undefined}
                     InputProps={{
                       ...params.InputProps,
                       startAdornment: (
@@ -1343,11 +1374,12 @@ const MemberApplicationCreatePage: React.FC = () => {
                 md: 6
               }}>
               <TextField
-                label="Telefon *"
+                label={requirePhone ? 'Telefon *' : 'Telefon'}
                 value={form.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
                 fullWidth
-                required
+                required={requirePhone}
+                helperText={!requirePhone ? 'Opsiyonel' : undefined}
                 error={!!phoneError}
                 placeholder="+90 (5XX) XXX XX XX"
                 InputProps={{
@@ -1391,11 +1423,13 @@ const MemberApplicationCreatePage: React.FC = () => {
                 md: 6
               }}>
               <TextField
-                label="E-posta"
+                label={requireEmail ? 'E-posta *' : 'E-posta'}
                 type="email"
                 value={form.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 fullWidth
+                required={requireEmail}
+                helperText={!requireEmail ? 'Opsiyonel' : undefined}
                 error={!!emailError}
                 placeholder="ornek@email.com"
                 InputProps={{

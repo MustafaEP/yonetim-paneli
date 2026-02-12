@@ -13,6 +13,7 @@ import {
   alpha,
   Divider,
   Alert,
+  Paper,
   Select,
   MenuItem,
   FormControl,
@@ -195,24 +196,37 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
         )}
         {hasUnsavedChanges && onUpdate && canManage && (
           <Grid size={{ xs: 12 }}>
-            <Alert
-              severity="info"
-              sx={{ borderRadius: 2 }}
-              action={
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={saving === 'all' ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
-                  onClick={handleSaveAll}
-                  disabled={saving === 'all'}
-                  sx={{ borderRadius: 2 }}
-                >
-                  {saving === 'all' ? 'Kaydediliyor...' : 'Tümünü Kaydet'}
-                </Button>
-              }
+            <Paper
+              elevation={2}
+              sx={{
+                position: 'sticky',
+                top: 16,
+                zIndex: 10,
+                p: 2,
+                borderRadius: 2,
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 2,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.light, 0.04)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+              }}
             >
-              Kaydedilmemiş değişiklikler var
-            </Alert>
+              <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                Kaydedilmemiş değişiklikler var
+              </Typography>
+              <Button
+                variant="contained"
+                size="medium"
+                startIcon={saving === 'all' ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                onClick={handleSaveAll}
+                disabled={saving === 'all'}
+                sx={{ borderRadius: 2, minWidth: 160 }}
+              >
+                {saving === 'all' ? 'Kaydediliyor...' : 'Tümünü Kaydet'}
+              </Button>
+            </Paper>
           </Grid>
         )}
         {/* Başvuru Ayarları */}
