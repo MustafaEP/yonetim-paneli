@@ -127,6 +127,11 @@ export class SystemLogInterceptor implements NestInterceptor {
       return next.handle();
     }
 
+    // Çıkış (logout) için özel action – denetim için kim, ne zaman çıkış yaptı
+    if (entityType === 'AUTH' && url.includes('/auth/logout')) {
+      action = 'LOGOUT';
+    }
+
     // Entity ID'yi params veya body'den al
     const entityId = params?.id || body?.id || query?.id || null;
 
@@ -215,7 +220,7 @@ export class SystemLogInterceptor implements NestInterceptor {
   }
 
   private extractEntityType(url: string): string | null {
-    // URL'den entity type çıkar
+    // URL'den entity type çıkar (kapsam: SISTEM_LOGLARI_KAPSAM_TAKIP.md)
     const patterns = [
       { pattern: /\/users(\/|$)/, type: 'USER' },
       { pattern: /\/members(\/|$)/, type: 'MEMBER' },
@@ -232,6 +237,15 @@ export class SystemLogInterceptor implements NestInterceptor {
       { pattern: /\/approvals(\/|$)/, type: 'APPROVAL' },
       { pattern: /\/accounting(\/|$)/, type: 'ACCOUNTING' },
       { pattern: /\/system\/settings(\/|$)/, type: 'SYSTEM_SETTING' },
+      // Kapsam genişletmesi – SISTEM_LOGLARI_KAPSAM_TAKIP.md
+      { pattern: /\/auth(\/|$)/, type: 'AUTH' },
+      { pattern: /\/panel-user-applications(\/|$)/, type: 'PANEL_APPLICATION' },
+      { pattern: /\/professions(\/|$)/, type: 'PROFESSION' },
+      { pattern: /\/member-groups(\/|$)/, type: 'MEMBER_GROUP' },
+      { pattern: /\/imports(\/|$)/, type: 'IMPORT' },
+      { pattern: /\/reports(\/|$)/, type: 'REPORT' },
+      { pattern: /\/system\/logs(\/|$)/, type: 'SYSTEM_LOG' },
+      { pattern: /\/system\/upload-/, type: 'SYSTEM_SETTING' },
     ];
 
     for (const { pattern, type } of patterns) {
@@ -244,13 +258,14 @@ export class SystemLogInterceptor implements NestInterceptor {
   }
 
   private shouldLogGetRequest(url: string): boolean {
-    // Sadece önemli GET isteklerini logla (detay sayfaları, export işlemleri vb.)
+    // Sadece önemli GET isteklerini logla (detay sayfaları, export işlemleri vb.) – SISTEM_LOGLARI_KAPSAM_TAKIP.md
     const importantPatterns = [
       /\/export/,
       /\/download/,
       /\/generate/,
       /\/reports/,
       /\/system\/logs/,
+      /\/view\//, // belge/döküman görüntüleme
     ];
 
     return importantPatterns.some((pattern) => pattern.test(url));
