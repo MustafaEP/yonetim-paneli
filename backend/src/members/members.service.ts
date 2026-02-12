@@ -183,19 +183,6 @@ export class MembersService {
   ) {
     const whereScope = await this.scopeService.buildMemberWhereForUser(user);
 
-    console.log('[MembersService] listMembersForUser - userId:', user.userId);
-    console.log(
-      '[MembersService] whereScope:',
-      JSON.stringify(whereScope, null, 2),
-    );
-    console.log(
-      '[MembersService] status filter:',
-      status || 'ACTIVE (default)',
-    );
-    if (provinceId) {
-      console.log('[MembersService] provinceId filter:', provinceId);
-    }
-
     // Status belirtilmemişse varsayılan olarak ACTIVE
     const filterStatus = status || MemberStatus.ACTIVE;
 
@@ -263,11 +250,6 @@ export class MembersService {
       },
       orderBy: { createdAt: 'desc' },
     });
-
-    console.log(
-      '[MembersService] Found members after scope filter:',
-      members.length,
-    );
 
     // workingProvince / workingDistrict: şube > kurum > üye il/ilçe
     return members.map((m: any) => {

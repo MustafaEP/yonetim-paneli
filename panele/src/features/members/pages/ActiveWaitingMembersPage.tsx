@@ -319,7 +319,6 @@ const ActiveWaitingMembersPage: React.FC = () => {
         return dateB - dateA; // Azalan sıralama (yeni önce)
       });
       setRows(allMembers);
-      console.log('[ActiveWaitingMembersPage] Loaded members:', allMembers.length, `(APPROVED: ${approvedMembers.length}, ACTIVE: ${activeMembers.length})`);
     } catch (e) {
       console.error('Üyeler alınırken hata:', e);
       toast.showError('Üyeler yüklenirken bir hata oluştu');

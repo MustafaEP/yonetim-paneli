@@ -190,11 +190,9 @@ const MemberApplicationCreatePage: React.FC = () => {
                 if (role.districtId) {
                   userDistrictId = role.districtId;
                   userProvinceId = role.provinceId || null;
-                  console.log('[MemberApplicationCreatePage] Found districtId from role:', roleName, userDistrictId);
                   break;
                 } else if (role.provinceId) {
                   userProvinceId = role.provinceId;
-                  console.log('[MemberApplicationCreatePage] Found provinceId from role:', roleName, userProvinceId);
                   break;
                 }
               }
@@ -206,10 +204,8 @@ const MemberApplicationCreatePage: React.FC = () => {
               if (scope?.district?.id) {
                 userDistrictId = scope.district.id;
                 userProvinceId = scope.province?.id || null;
-                console.log('[MemberApplicationCreatePage] Found districtId from scope:', userDistrictId);
               } else if (scope?.province?.id) {
                 userProvinceId = scope.province.id;
-                console.log('[MemberApplicationCreatePage] Found provinceId from scope:', userProvinceId);
               }
             }
 
@@ -227,10 +223,8 @@ const MemberApplicationCreatePage: React.FC = () => {
                     setDistricts([allowedDistrict]);
                     setForm((prev) => ({ ...prev, districtId: userDistrictId! }));
                     setDistrictDisabled(true);
-                    console.log('[MemberApplicationCreatePage] Auto-selected district:', allowedDistrict.name);
                   }
                 }
-                console.log('[MemberApplicationCreatePage] Auto-selected province:', allowedProvince.name);
               } else {
                 setProvinces([]);
               }

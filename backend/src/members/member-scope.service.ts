@@ -12,13 +12,9 @@ export class MemberScopeService {
   ): Promise<Prisma.MemberWhereInput> {
     // Önce JWT'den gelen rolleri kontrol et (fallback olarak)
     const jwtRoles = user.roles || [];
-    console.log('[MemberScopeService] JWT roles:', jwtRoles);
 
     // ADMIN her şeyi görsün (JWT'den gelen rol bilgisini kullan)
     if (jwtRoles.includes('ADMIN')) {
-      console.log(
-        '[MemberScopeService] User is ADMIN (from JWT), returning empty filter',
-      );
       return {}; // filtre yok → tüm üyeler
     }
 
@@ -29,9 +25,6 @@ export class MemberScopeService {
       jwtRoles.includes('GENEL_BASKAN_YRD') ||
       jwtRoles.includes('GENEL_SEKRETER')
     ) {
-      console.log(
-        '[MemberScopeService] User has super role (from JWT), returning empty filter',
-      );
       return {}; // filtre yok → tüm üyeler
     }
 
@@ -61,7 +54,6 @@ export class MemberScopeService {
     });
 
     if (!dbUser) {
-      console.log('[MemberScopeService] User not found in DB:', user.userId);
       // Kullanıcı bulunamadı ama JWT'de rol var - zaten yukarıda kontrol ettik
       // Eğer süper rol yoksa, scope olmadan üye gösteremeyiz
       return { id: '' }; // impossible filter
@@ -82,10 +74,6 @@ export class MemberScopeService {
 
     // Custom role isimlerini kontrol et
     const customRoleNames = userWithRoles.customRoles?.map((r) => r.name) || [];
-    console.log(
-      '[MemberScopeService] User custom roles from DB:',
-      customRoleNames,
-    );
 
     // MEMBER_LIST_BY_PROVINCE izni olan ve hasScopeRestriction true olan custom role'lerin scope'larını kontrol et
     // Önce districtId kontrolü (daha spesifik) - çoklu scope desteği
@@ -121,29 +109,17 @@ export class MemberScopeService {
 
       // DistrictId varsa önce onu kullan
       if (districtIds.length > 0) {
-        console.log(
-          '[MemberScopeService] Filtering by role districtIds:',
-          districtIds,
-        );
         return { districtId: { in: districtIds } };
       }
 
       // ProvinceId varsa onu kullan
       if (provinceIds.length > 0) {
-        console.log(
-          '[MemberScopeService] Filtering by role provinceIds:',
-          provinceIds,
-        );
         return { provinceId: { in: provinceIds } };
       }
     }
 
     // Eğer custom role'ler boş geliyorsa ama JWT'de rol varsa, JWT'deki rol adına göre role'ü çek
     if (customRoleNames.length === 0 && jwtRoles.length > 0) {
-      console.log(
-        '[MemberScopeService] Custom roles empty, trying to fetch by JWT role names:',
-        jwtRoles,
-      );
       for (const roleName of jwtRoles) {
         const role = await this.prisma.customRole.findFirst({
           where: {
@@ -166,7 +142,6 @@ export class MemberScopeService {
         });
 
         if (role) {
-          console.log('[MemberScopeService] Found role by name:', roleName);
           // MEMBER_LIST_BY_PROVINCE izni var mı kontrol et
           const hasProvincePermission = role.permissions?.some(
             (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE',
@@ -189,18 +164,10 @@ export class MemberScopeService {
               .filter((id): id is string => id !== null);
 
             if (districtIds.length > 0) {
-              console.log(
-                '[MemberScopeService] Filtering by role districtIds (from JWT role name):',
-                districtIds,
-              );
               return { districtId: { in: districtIds } };
             }
 
             if (provinceIds.length > 0) {
-              console.log(
-                '[MemberScopeService] Filtering by role provinceIds (from JWT role name):',
-                provinceIds,
-              );
               return { provinceId: { in: provinceIds } };
             }
           }
@@ -210,9 +177,6 @@ export class MemberScopeService {
 
     // ADMIN her şeyi görsün (veritabanından gelen rol bilgisini kullan)
     if (customRoleNames.includes('ADMIN')) {
-      console.log(
-        '[MemberScopeService] User is ADMIN (from DB), returning empty filter',
-      );
       return {}; // filtre yok → tüm üyeler
     }
 
@@ -223,9 +187,6 @@ export class MemberScopeService {
       customRoleNames.includes('GENEL_BASKAN_YRD') ||
       customRoleNames.includes('GENEL_SEKRETER')
     ) {
-      console.log(
-        '[MemberScopeService] User has super role (from DB), returning empty filter',
-      );
       return {}; // filtre yok → tüm üyeler
     }
 
@@ -239,17 +200,8 @@ export class MemberScopeService {
 
     if (!scopes || scopes.length === 0) {
       // Scope tanımlı değilse, şimdilik hiçbir üye göstermeyelim
-      console.log('[MemberScopeService] No scope found for user:', user.userId);
       return { id: '' }; // impossible filter
     }
-
-    console.log(
-      '[MemberScopeService] User scopes:',
-      scopes.map((s) => ({
-        provinceId: s.provinceId,
-        districtId: s.districtId,
-      })),
-    );
 
     // IL_BASKANI → il bazlı (veritabanından gelen rol)
     if (customRoleNames.includes('IL_BASKANI')) {
@@ -259,10 +211,6 @@ export class MemberScopeService {
         .filter((id): id is string => id !== null);
 
       if (provinceIds.length > 0) {
-        console.log(
-          '[MemberScopeService] Filtering by provinceIds:',
-          provinceIds,
-        );
         return { provinceId: { in: provinceIds } };
       }
     }
@@ -275,10 +223,6 @@ export class MemberScopeService {
         .filter((id): id is string => id !== null);
 
       if (districtIds.length > 0) {
-        console.log(
-          '[MemberScopeService] Filtering by districtIds:',
-          districtIds,
-        );
         return { districtId: { in: districtIds } };
       }
     }
@@ -311,17 +255,11 @@ export class MemberScopeService {
       }
 
       if (orConditions.length > 0) {
-        console.log(
-          '[MemberScopeService] Filtering by multiple scopes with OR logic',
-        );
         return { OR: orConditions };
       }
     }
 
     // Diğer roller veya eksik scope: şimdilik hiç üye gösterme
-    console.log(
-      '[MemberScopeService] No matching role/scope combination, returning impossible filter',
-    );
     return { id: '' };
   }
 

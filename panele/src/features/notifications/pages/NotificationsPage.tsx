@@ -215,8 +215,7 @@ const NotificationsPage: React.FC = () => {
             userNames: selectedUsers.map((u) => `${u.firstName} ${u.lastName}`),
           },
         };
-        
-        console.log('Gönderilen payload:', payload);
+
         await sendNotification(payload);
         toast.success(`${selectedUsers.length} kullanıcıya bildirim başarıyla gönderildi`);
         handleCloseDialog();

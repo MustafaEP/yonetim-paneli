@@ -525,7 +525,6 @@ const MembersByStatusPage: React.FC = () => {
     const fetchMembers = async () => {
       try {
         setError(null);
-        console.log('[MembersByStatusPage] Fetching members...');
         const data = await getMembers();
         // Kayıt tarihine göre sırala (yeni üyeler önce)
         const sortedData = data.sort((a, b) => {
@@ -533,7 +532,6 @@ const MembersByStatusPage: React.FC = () => {
           const dateB = new Date(b.createdAt || 0).getTime();
           return dateB - dateA; // Azalan sıralama (yeni önce)
         });
-        console.log('[MembersByStatusPage] Received members:', sortedData);
         setRows(sortedData);
       } catch (error: unknown) {
         console.error('Üyeler alınırken hata:', error);

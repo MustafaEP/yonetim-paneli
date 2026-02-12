@@ -582,8 +582,7 @@ const MembersListPage: React.FC = () => {
       setLoading(true);
       try {
         setError(null);
-        console.log('[MembersListPage] Fetching members with status:', statusFilter);
-        
+
         let data: MemberListItem[] = [];
         
         if (statusFilter === 'ALL') {
@@ -598,7 +597,6 @@ const MembersListPage: React.FC = () => {
             const dateB = new Date(b.createdAt || 0).getTime();
             return dateB - dateA; // Azalan sıralama (yeni önce)
           });
-          console.log('[MembersListPage] Received all members:', data.length);
         } else {
           // Belirli bir durum seçildiğinde sadece o durumdaki üyeleri çek
           // Backend zaten sıralıyor ama yine de frontend'de sıralayalım
@@ -608,9 +606,8 @@ const MembersListPage: React.FC = () => {
             const dateB = new Date(b.createdAt || 0).getTime();
             return dateB - dateA; // Azalan sıralama (yeni önce)
           });
-          console.log('[MembersListPage] Received members:', data.length);
         }
-        
+
         setRows(data);
       } catch (error: unknown) {
         console.error('Üyeler alınırken hata:', error);
