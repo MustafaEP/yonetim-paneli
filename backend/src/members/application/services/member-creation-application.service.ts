@@ -137,30 +137,12 @@ export class MemberCreationApplicationService {
       districtId = dto.districtId;
     }
 
-    // 4. Basic validation (her zaman zorunlu alanlar)
+    // 4. Basic validation (entity için her zaman gerekli alanlar – kurum, doğum tarihi, ikamet il/ilçe)
     if (!dto.institutionId) {
       throw new BadRequestException('Kurum seçimi zorunludur');
     }
-    if (!dto.motherName || dto.motherName.trim() === '') {
-      throw new BadRequestException('Anne adı zorunludur');
-    }
-    if (!dto.fatherName || dto.fatherName.trim() === '') {
-      throw new BadRequestException('Baba adı zorunludur');
-    }
     if (!dto.birthDate) {
       throw new BadRequestException('Doğum tarihi zorunludur');
-    }
-    if (!dto.birthplace || dto.birthplace.trim() === '') {
-      throw new BadRequestException('Doğum yeri zorunludur');
-    }
-    if (!dto.gender) {
-      throw new BadRequestException('Cinsiyet seçimi zorunludur');
-    }
-    if (!dto.educationStatus) {
-      throw new BadRequestException('Öğrenim durumu zorunludur');
-    }
-    if (!dto.phone || dto.phone.trim() === '') {
-      throw new BadRequestException('Telefon numarası zorunludur');
     }
 
     const finalProvinceId = provinceId || dto.provinceId;
@@ -177,15 +159,15 @@ export class MemberCreationApplicationService {
       firstName: dto.firstName,
       lastName: dto.lastName,
       nationalId: dto.nationalId,
-      phone: dto.phone,
+      phone: dto.phone ?? '',
       email: dto.email,
       source,
-      motherName: dto.motherName,
-      fatherName: dto.fatherName,
+      motherName: dto.motherName ?? '',
+      fatherName: dto.fatherName ?? '',
       birthDate: dto.birthDate,
-      birthplace: dto.birthplace,
-      gender: dto.gender as GenderEnum,
-      educationStatus: dto.educationStatus as EducationStatusEnum,
+      birthplace: dto.birthplace ?? '',
+      gender: (dto.gender as GenderEnum) || GenderEnum.OTHER,
+      educationStatus: (dto.educationStatus as EducationStatusEnum) || EducationStatusEnum.PRIMARY,
       institutionId: dto.institutionId,
       provinceId: finalProvinceId,
       districtId: finalDistrictId,
@@ -208,6 +190,7 @@ export class MemberCreationApplicationService {
       previousCancelledMemberId,
     };
 
+    await this.registrationDomainService.validateMinAge(dto.birthDate);
     await this.registrationDomainService.validateRequiredFields(createData);
 
     // 6. Registration number generation (Domain Service)
@@ -244,10 +227,13 @@ export class MemberCreationApplicationService {
       await this.registrationDomainService.configAdapter.getDefaultStatus();
     const autoApprove =
       await this.registrationDomainService.configAdapter.getAutoApprove();
+    const requireApproval =
+      await this.registrationDomainService.configAdapter.getRequireApproval();
     const statusInfo =
       await this.registrationDomainService.determineInitialStatus(
         defaultStatus,
         autoApprove,
+        requireApproval,
       );
 
     // 9. Entity oluştur (Member.create() PENDING oluşturur, status'ü sonra set edeceğiz)

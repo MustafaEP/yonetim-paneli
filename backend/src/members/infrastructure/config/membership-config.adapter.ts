@@ -64,6 +64,13 @@ export class PrismaMembershipConfigAdapter implements MembershipConfigAdapter {
     );
   }
 
+  async getRequireApproval(): Promise<boolean> {
+    return this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_REQUIRE_APPROVAL',
+      true,
+    );
+  }
+
   async getRequireBoardDecision(): Promise<boolean> {
     return this.configService.getSystemSettingBoolean(
       'MEMBERSHIP_REQUIRE_BOARD_DECISION',
@@ -102,6 +109,62 @@ export class PrismaMembershipConfigAdapter implements MembershipConfigAdapter {
     return this.configService.getSystemSettingBoolean(
       'MEMBERSHIP_REQUIRE_WORK_UNIT',
       false,
+    );
+  }
+
+  async getRequireMotherName(): Promise<boolean> {
+    return this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_REQUIRE_MOTHER_NAME',
+      false,
+    );
+  }
+
+  async getRequireFatherName(): Promise<boolean> {
+    return this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_REQUIRE_FATHER_NAME',
+      false,
+    );
+  }
+
+  async getRequireBirthplace(): Promise<boolean> {
+    return this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_REQUIRE_BIRTHPLACE',
+      false,
+    );
+  }
+
+  async getRequireGender(): Promise<boolean> {
+    return this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_REQUIRE_GENDER',
+      false,
+    );
+  }
+
+  async getRequireEducation(): Promise<boolean> {
+    return this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_REQUIRE_EDUCATION',
+      false,
+    );
+  }
+
+  async getRequirePhone(): Promise<boolean> {
+    return this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_REQUIRE_PHONE',
+      false,
+    );
+  }
+
+  async getRequireProvinceDistrict(): Promise<boolean> {
+    return this.configService.getSystemSettingBoolean(
+      'MEMBERSHIP_REQUIRE_PROVINCE_DISTRICT',
+      false,
+    );
+  }
+
+  async getMinAge(): Promise<number> {
+    return this.configService.getSystemSettingNumber(
+      'MEMBERSHIP_MIN_AGE',
+      18,
     );
   }
 }

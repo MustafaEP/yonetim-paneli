@@ -24,7 +24,6 @@ import {
 } from '@mui/material';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import DownloadIcon from '@mui/icons-material/Download';
-import PeopleIcon from '@mui/icons-material/People';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -36,7 +35,6 @@ import PageLayout from '../../../shared/components/layout/PageLayout';
 import {
   validateMemberImport,
   downloadMemberImportTemplate,
-  downloadSampleMembersCsv,
   bulkImportMembers,
   type ValidateMemberImportResponse,
   type BulkImportResponse,
@@ -56,7 +54,6 @@ const BulkMemberRegistrationPage: React.FC = () => {
   const toast = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [templateLoading, setTemplateLoading] = useState(false);
-  const [sampleLoading, setSampleLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ValidateMemberImportResponse | null>(null);
@@ -73,19 +70,6 @@ const BulkMemberRegistrationPage: React.FC = () => {
       toast.showError(msg);
     } finally {
       setTemplateLoading(false);
-    }
-  }, [toast]);
-
-  const handleDownloadSample = useCallback(async () => {
-    setSampleLoading(true);
-    try {
-      await downloadSampleMembersCsv();
-      toast.showSuccess('10 rastgele üyeli örnek CSV indirildi.');
-    } catch (err) {
-      const msg = getApiErrorMessage(err, 'Örnek CSV indirilirken bir hata oluştu.');
-      toast.showError(msg);
-    } finally {
-      setSampleLoading(false);
     }
   }, [toast]);
 
@@ -201,19 +185,10 @@ const BulkMemberRegistrationPage: React.FC = () => {
                 variant="outlined"
                 startIcon={templateLoading ? <CircularProgress size={18} color="inherit" /> : <DownloadIcon />}
                 onClick={handleDownloadTemplate}
-                disabled={templateLoading || sampleLoading}
+                disabled={templateLoading}
                 size="medium"
               >
                 {templateLoading ? 'İndiriliyor…' : 'CSV şablonunu indir'}
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={sampleLoading ? <CircularProgress size={18} color="inherit" /> : <PeopleIcon />}
-                onClick={handleDownloadSample}
-                disabled={templateLoading || sampleLoading}
-                size="medium"
-              >
-                {sampleLoading ? 'İndiriliyor…' : '10 rastgele üye CSV indir'}
               </Button>
             </Box>
           </CardContent>

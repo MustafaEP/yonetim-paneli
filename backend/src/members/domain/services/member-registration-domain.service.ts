@@ -28,11 +28,20 @@ export interface MembershipConfigAdapter {
   getAutoGenerateRegistrationNumber(): Promise<boolean>;
   getDefaultStatus(): Promise<string>;
   getAutoApprove(): Promise<boolean>;
+  getRequireApproval(): Promise<boolean>;
   getRequireBoardDecision(): Promise<boolean>;
   getAllowedSources(): Promise<string[]>;
   getRequireEmail(): Promise<boolean>;
   getRequireInstitutionRegNo(): Promise<boolean>;
   getRequireWorkUnit(): Promise<boolean>;
+  getRequireMotherName(): Promise<boolean>;
+  getRequireFatherName(): Promise<boolean>;
+  getRequireBirthplace(): Promise<boolean>;
+  getRequireGender(): Promise<boolean>;
+  getRequireEducation(): Promise<boolean>;
+  getRequirePhone(): Promise<boolean>;
+  getRequireProvinceDistrict(): Promise<boolean>;
+  getMinAge(): Promise<number>;
 }
 
 @Injectable()
@@ -168,6 +177,54 @@ export class MemberRegistrationDomainService {
    * Domain rule: Sistem ayarlarına göre zorunlu alanları kontrol et
    */
   async validateRequiredFields(data: CreateMemberData): Promise<void> {
+    const requireMotherName = await this.configAdapter.getRequireMotherName();
+    if (
+      requireMotherName &&
+      (!data.motherName || String(data.motherName).trim() === '')
+    ) {
+      throw new BadRequestException('Anne adı alanı zorunludur');
+    }
+
+    const requireFatherName = await this.configAdapter.getRequireFatherName();
+    if (
+      requireFatherName &&
+      (!data.fatherName || String(data.fatherName).trim() === '')
+    ) {
+      throw new BadRequestException('Baba adı alanı zorunludur');
+    }
+
+    const requireBirthplace = await this.configAdapter.getRequireBirthplace();
+    if (
+      requireBirthplace &&
+      (!data.birthplace || data.birthplace.trim() === '')
+    ) {
+      throw new BadRequestException('Doğum yeri alanı zorunludur');
+    }
+
+    const requireGender = await this.configAdapter.getRequireGender();
+    if (requireGender && !data.gender) {
+      throw new BadRequestException('Cinsiyet seçimi zorunludur');
+    }
+
+    const requireEducation = await this.configAdapter.getRequireEducation();
+    if (requireEducation && !data.educationStatus) {
+      throw new BadRequestException('Öğrenim durumu zorunludur');
+    }
+
+    const requirePhone = await this.configAdapter.getRequirePhone();
+    if (requirePhone && (!data.phone || data.phone.trim() === '')) {
+      throw new BadRequestException('Telefon numarası zorunludur');
+    }
+
+    const requireProvinceDistrict =
+      await this.configAdapter.getRequireProvinceDistrict();
+    if (
+      requireProvinceDistrict &&
+      (!data.provinceId || !data.districtId)
+    ) {
+      throw new BadRequestException('İkamet il ve ilçe seçimi zorunludur');
+    }
+
     const requireEmail = await this.configAdapter.getRequireEmail();
     if (requireEmail && (!data.email || data.email.trim() === '')) {
       throw new BadRequestException('E-posta alanı zorunludur');
@@ -200,24 +257,56 @@ export class MemberRegistrationDomainService {
   }
 
   /**
+   * Business rule: Minimum age validation (config-based)
+   *
+   * Domain rule: MEMBERSHIP_MIN_AGE ayarına göre doğum tarihi kontrolü
+   */
+  async validateMinAge(birthDate: Date | string | undefined): Promise<void> {
+    if (!birthDate) return;
+    const minAge = await this.configAdapter.getMinAge();
+    if (minAge <= 0) return;
+    const birth = typeof birthDate === 'string' ? new Date(birthDate) : birthDate;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
+      age--;
+    }
+    if (age < minAge) {
+      throw new BadRequestException(
+        `Üyelik için minimum yaş ${minAge} olarak ayarlanmıştır. Başvuru kabul edilemez.`,
+      );
+    }
+  }
+
+  /**
    * Business rule: Determine initial status
    *
-   * Domain rule: Sistem ayarlarına göre başlangıç durumu belirle
+   * Domain rule: Sistem ayarlarına göre başlangıç durumu belirle.
+   * - getRequireApproval() true ise: Yeni üye mutlaka PENDING ile başlar (manuel onay gerekir).
+   *   Otomatik onay (autoApprove) açıksa yine de ACTIVE atanabilir.
+   * - getRequireApproval() false ise: MEMBERSHIP_DEFAULT_STATUS kullanılır.
    */
   async determineInitialStatus(
     defaultStatus: string,
     autoApprove: boolean,
+    requireApproval: boolean,
   ): Promise<{ status: string; approvedByUserId?: string; approvedAt?: Date }> {
-    let initialStatus = defaultStatus;
     const approvedByUserId: string | undefined = undefined;
     const approvedAt: Date | undefined = undefined;
 
-    if (autoApprove && defaultStatus === 'PENDING') {
-      // Otomatik onay aktifse ve varsayılan durum PENDING ise, ACTIVE yap
+    let initialStatus: string;
+    if (requireApproval && !autoApprove) {
+      // Onay zorunlu ve otomatik onay kapalı: her zaman PENDING
+      initialStatus = 'PENDING';
+    } else if (autoApprove && (defaultStatus === 'PENDING' || requireApproval)) {
+      // Otomatik onay açık: PENDING yerine ACTIVE yap
       initialStatus = 'ACTIVE';
-    } else if (autoApprove) {
-      // Otomatik onay aktifse varsayılan durumu kullan ama onay bilgilerini ekle
-      // approvedByUserId ve approvedAt dışarıdan set edilecek
+    } else {
+      initialStatus = defaultStatus;
     }
 
     return {

@@ -19,6 +19,8 @@ import {
   InputLabel,
   Stack,
   Chip,
+  Fade,
+  CircularProgress,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PeopleIcon from '@mui/icons-material/People';
@@ -35,6 +37,50 @@ interface MembershipSettingsProps {
   loading?: boolean;
   canManage?: boolean;
 }
+
+const cardSx = (theme: ReturnType<typeof useTheme>) => ({
+  borderRadius: 4,
+  border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+  background: `linear-gradient(145deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.default, 0.6)} 100%)`,
+  boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.06)}`,
+  overflow: 'hidden',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  '&:hover': {
+    boxShadow: `0 12px 48px ${alpha(theme.palette.common.black, 0.1)}`,
+    transform: 'translateY(-2px)',
+  },
+});
+
+const sectionHeaderSx = (
+  theme: ReturnType<typeof useTheme>,
+  color: string,
+  darkColor: string,
+) => ({
+  p: { xs: 2.5, sm: 3 },
+  pb: 2.5,
+  background: `linear-gradient(135deg, ${alpha(color, 0.08)} 0%, ${alpha(darkColor, 0.04)} 100%)`,
+  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+});
+
+const iconBoxSx = (
+  theme: ReturnType<typeof useTheme>,
+  color: string,
+  darkColor: string,
+) => ({
+  width: { xs: 40, sm: 44 },
+  height: { xs: 40, sm: 44 },
+  borderRadius: 2,
+  background: `linear-gradient(135deg, ${color} 0%, ${darkColor} 100%)`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxShadow: `0 4px 16px ${alpha(color, 0.35)}`,
+  transition: 'all 0.25s ease',
+  '&:hover': {
+    transform: 'scale(1.05)',
+    boxShadow: `0 6px 20px ${alpha(color, 0.45)}`,
+  },
+});
 
 const MembershipSettings: React.FC<MembershipSettingsProps> = ({
   settings,
@@ -129,75 +175,66 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
 
   const hasUnsavedChanges = Object.keys(localSettings).length > 0;
 
-  return (
-    <Stack spacing={3}>
-      {!canManage && (
-        <Alert severity="warning">
-          Bu ayarları değiştirmek için sistem ayarları yönetim yetkisine sahip olmanız gerekmektedir.
-        </Alert>
-      )}
-      {/* Üst Aksiyon Bölümü */}
-      {hasUnsavedChanges && onUpdate && canManage && (
-        <Alert 
-          severity="info"
-          action={
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<SaveIcon />}
-              onClick={handleSaveAll}
-              disabled={saving === 'all'}
-            >
-              {saving === 'all' ? 'Kaydediliyor...' : 'Tümünü Kaydet'}
-            </Button>
-          }
-        >
-          Kaydedilmemiş değişiklikler var
-        </Alert>
-      )}
-      {/* Başvuru Ayarları */}
-      <Card
-        elevation={0}
-        sx={{
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            p: 2.5,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 1.5,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <AssignmentIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                Başvuru Ayarları
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Üye başvuru süreçleri ve onay akışları
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 320 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-        <Box sx={{ p: 3 }}>
-          <Grid container spacing={2.5}>
+  return (
+    <Fade in timeout={500}>
+      <Grid container spacing={{ xs: 2, sm: 3 }}>
+        {!canManage && (
+          <Grid size={{ xs: 12 }}>
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+              Bu ayarları değiştirmek için sistem ayarları yönetim yetkisine sahip olmanız gerekmektedir.
+            </Alert>
+          </Grid>
+        )}
+        {hasUnsavedChanges && onUpdate && canManage && (
+          <Grid size={{ xs: 12 }}>
+            <Alert
+              severity="info"
+              sx={{ borderRadius: 2 }}
+              action={
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={saving === 'all' ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
+                  onClick={handleSaveAll}
+                  disabled={saving === 'all'}
+                  sx={{ borderRadius: 2 }}
+                >
+                  {saving === 'all' ? 'Kaydediliyor...' : 'Tümünü Kaydet'}
+                </Button>
+              }
+            >
+              Kaydedilmemiş değişiklikler var
+            </Alert>
+          </Grid>
+        )}
+        {/* Başvuru Ayarları */}
+        <Grid size={{ xs: 12 }}>
+          <Card elevation={0} sx={cardSx(theme)}>
+            <Box sx={sectionHeaderSx(theme, theme.palette.primary.main, theme.palette.primary.dark)}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={iconBoxSx(theme, theme.palette.primary.main, theme.palette.primary.dark)}>
+                  <AssignmentIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                    Başvuru Ayarları
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    Üye başvuru süreçleri ve onay akışları
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <Grid container spacing={3}>
             <Grid
               size={{
                 xs: 12,
@@ -258,7 +295,24 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid size={12}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label="Minimum üyelik yaşı"
+                value={getValue('MEMBERSHIP_MIN_AGE') || '18'}
+                onChange={(e) => handleChange('MEMBERSHIP_MIN_AGE', e.target.value)}
+                disabled={!canManage || loading}
+                inputProps={{ min: 0, max: 120 }}
+                helperText="Bu yaşın altındaki başvurular kabul edilmez. 0 = kontrol yok"
+              />
+              {localSettings['MEMBERSHIP_MIN_AGE'] !== undefined && (
+                <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
+              )}
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
               <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 500 }}>
                 İzin Verilen Başvuru Kaynakları
               </Typography>
@@ -311,52 +365,30 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                 <Chip label="Kaydedilmemiş" size="small" color="warning" />
               )}
             </Grid>
-          </Grid>
-        </Box>
-      </Card>
-      {/* Kayıt Numarası Ayarları */}
-      <Card
-        elevation={0}
-        sx={{
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            p: 2.5,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.03)} 0%, ${alpha(theme.palette.info.light, 0.02)} 100%)`,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 1.5,
-                background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <PeopleIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              </Grid>
             </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                Üye Kayıt Numarası Ayarları
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Kayıt numarası oluşturma ve formatlama
-              </Typography>
+          </Card>
+        </Grid>
+        {/* Kayıt Numarası Ayarları */}
+        <Grid size={{ xs: 12 }}>
+          <Card elevation={0} sx={cardSx(theme)}>
+            <Box sx={sectionHeaderSx(theme, theme.palette.info.main, theme.palette.info.dark)}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={iconBoxSx(theme, theme.palette.info.main, theme.palette.info.dark)}>
+                  <PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                    Üye Kayıt Numarası Ayarları
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    Kayıt numarası oluşturma ve formatlama
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
-          </Box>
-        </Box>
-
-        <Box sx={{ p: 3 }}>
-          <Grid container spacing={2.5}>
+            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <Grid container spacing={3}>
             <Grid
               size={{
                 xs: 12,
@@ -457,52 +489,30 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                 <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
               )}
             </Grid>
-          </Grid>
-        </Box>
-      </Card>
-      {/* Onay Akışı Ayarları */}
-      <Card
-        elevation={0}
-        sx={{
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            p: 2.5,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.03)} 0%, ${alpha(theme.palette.success.light, 0.02)} 100%)`,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 1.5,
-                background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <AccountTreeIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              </Grid>
             </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                Onay Akışı Ayarları
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Üyelik onay süreçleri ve gereksinimleri
-              </Typography>
+          </Card>
+        </Grid>
+        {/* Onay Akışı Ayarları */}
+        <Grid size={{ xs: 12 }}>
+          <Card elevation={0} sx={cardSx(theme)}>
+            <Box sx={sectionHeaderSx(theme, theme.palette.success.main, theme.palette.success.dark)}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={iconBoxSx(theme, theme.palette.success.main, theme.palette.success.dark)}>
+                  <AccountTreeIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                    Onay Akışı Ayarları
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    Üyelik onay süreçleri ve gereksinimleri
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
-          </Box>
-        </Box>
-
-        <Box sx={{ p: 3 }}>
-          <Stack spacing={2.5}>
+            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <Stack spacing={2.5}>
             <FormControlLabel
               control={
                 <Switch
@@ -560,55 +570,33 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ ml: 5 }} />
             )}
 
-            <Alert severity="info">
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
               Onay akışı aktif olduğunda, üye başvuruları onaylanana kadar PENDING durumunda kalır.
             </Alert>
-          </Stack>
-        </Box>
-      </Card>
-      {/* Üyelik Yaşam Döngüsü */}
-      <Card
-        elevation={0}
-        sx={{
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            p: 2.5,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.03)} 0%, ${alpha(theme.palette.warning.light, 0.02)} 100%)`,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 1.5,
-                background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <DescriptionIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              </Stack>
             </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                Üyelik Yaşam Döngüsü Ayarları
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Üyelik iptali ve yeniden kayıt ayarları
-              </Typography>
+          </Card>
+        </Grid>
+        {/* Üyelik Yaşam Döngüsü */}
+        <Grid size={{ xs: 12 }}>
+          <Card elevation={0} sx={cardSx(theme)}>
+            <Box sx={sectionHeaderSx(theme, theme.palette.warning.main, theme.palette.warning.dark)}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={iconBoxSx(theme, theme.palette.warning.main, theme.palette.warning.dark)}>
+                  <DescriptionIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                    Üyelik Yaşam Döngüsü Ayarları
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    Üyelik iptali ve yeniden kayıt ayarları
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
-          </Box>
-        </Box>
-
-        <Box sx={{ p: 3 }}>
-          <Stack spacing={2.5}>
+            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <Stack spacing={2.5}>
             <FormControlLabel
               control={
                 <Switch
@@ -682,52 +670,30 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
             {localSettings['MEMBERSHIP_DEFAULT_CANCELLATION_REASONS'] !== undefined && (
               <Chip label="Kaydedilmemiş" size="small" color="warning" />
             )}
-          </Stack>
-        </Box>
-      </Card>
-      {/* Zorunlu Alanlar */}
-      <Card
-        elevation={0}
-        sx={{
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            p: 2.5,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.03)} 0%, ${alpha(theme.palette.secondary.light, 0.02)} 100%)`,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 1.5,
-                background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <AssignmentIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              </Stack>
             </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                Başvuru Zorunlu Alanları
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Üye başvurusunda hangi alanların zorunlu olduğunu belirleyin
-              </Typography>
+          </Card>
+        </Grid>
+        {/* Zorunlu Alanlar */}
+        <Grid size={{ xs: 12 }}>
+          <Card elevation={0} sx={cardSx(theme)}>
+            <Box sx={sectionHeaderSx(theme, theme.palette.secondary.main, theme.palette.secondary.dark)}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={iconBoxSx(theme, theme.palette.secondary.main, theme.palette.secondary.dark)}>
+                  <AssignmentIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                    Başvuru Zorunlu Alanları
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    Üye başvurusunda hangi alanların zorunlu olduğunu belirleyin
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
-          </Box>
-        </Box>
-
-        <Box sx={{ p: 3 }}>
-          <Alert severity="info" sx={{ mb: 3 }}>
+            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
             Aşağıdaki alanlar üye başvurusu için her zaman zorunludur: TC Kimlik No, Ad, Soyad,
             Çalıştığı İl, Çalıştığı İlçe, Kurum, Kadro Ünvanı, Bağlı Olduğu Şube
           </Alert>
@@ -767,12 +733,16 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                 )}
               </Grid>
             ))}
-          </Grid>
-        </Box>
-      </Card>
-      {/* Üye Grupları Yönetimi */}
-      <MemberGroupsManagement canManage={canManage} />
-    </Stack>
+              </Grid>
+            </Box>
+          </Card>
+        </Grid>
+        {/* Üye Grupları Yönetimi */}
+        <Grid size={{ xs: 12 }}>
+          <MemberGroupsManagement canManage={canManage} />
+        </Grid>
+      </Grid>
+    </Fade>
   );
 };
 
