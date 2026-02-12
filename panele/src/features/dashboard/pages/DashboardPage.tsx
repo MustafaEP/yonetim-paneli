@@ -37,6 +37,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PaymentIcon from '@mui/icons-material/Payment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import BadgeIcon from '@mui/icons-material/Badge';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -250,6 +251,15 @@ const DashboardPage: React.FC = () => {
       path: '/members/applications',
       gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       color: '#667eea',
+    },
+    {
+      show: canListMembers,
+      title: 'Üyeler',
+      description: 'Beklemedeki üye başvurularını görüntüleyin ve yönetin',
+      icon: BadgeIcon,
+      path: '/members/waiting',
+      gradient: 'linear-gradient(135deg, #fa8bff 0%, #2bd2ff 100%)',
+      color: '#fa8bff',
     },
     {
       show: canManageRegions,
