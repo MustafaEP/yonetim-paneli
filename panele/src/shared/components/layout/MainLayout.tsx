@@ -25,6 +25,7 @@ import { useDocumentHead } from '../../hooks/useDocumentHead';
 import { Avatar } from '@mui/material';
 import { getMemberById } from '../../../features/members/services/membersApi';
 import type { MemberDetail } from '../../../types/member';
+import { DEFAULT_LOGO_PATH } from '../../constants/defaultLogo';
 
 const MainLayout: React.FC = () => {
   const theme = useTheme();
@@ -47,15 +48,17 @@ const MainLayout: React.FC = () => {
 
   // Üye bilgisi için state (breadcrumb'da kullanmak için)
   const [memberInfo, setMemberInfo] = useState<{ id: string; name: string } | null>(null);
+  // Logo yükleme hatası - veritabanı logosu yüklenemezse proje logosuna düş
+  const [logoLoadError, setLogoLoadError] = useState(false);
   
   // Footer text'i useMemo ile optimize et
   const footerText = useMemo(() => {
     return getSettingValue('FOOTER_TEXT', `© ${new Date().getFullYear()} Sendika Yönetim Sistemi. Tüm hakları saklıdır.`);
   }, [getSettingValue]);
 
-  // Logo URL'ini çözümle - environment variable veya window.location kullan
+  // Logo URL'ini çözümle - boşsa veya hata varsa proje dosyasından (public/yonetim.png)
   const resolvedLogoUrl = useMemo(() => {
-    if (!siteLogoUrl) return '';
+    if (logoLoadError || !siteLogoUrl) return DEFAULT_LOGO_PATH;
     
     // Eğer zaten tam URL ise (http:// veya https:// ile başlıyorsa) direkt kullan
     if (siteLogoUrl.startsWith('http://') || siteLogoUrl.startsWith('https://')) {
@@ -73,12 +76,17 @@ const MainLayout: React.FC = () => {
       // URL oluşturulamazsa, basit concatenation yap
       return `${API_BASE_URL}${siteLogoUrl.startsWith('/') ? '' : '/'}${siteLogoUrl}`;
     }
+  }, [siteLogoUrl, logoLoadError]);
+
+  // siteLogoUrl değişince logo hata bayrağını sıfırla
+  useEffect(() => {
+    setLogoLoadError(false);
   }, [siteLogoUrl]);
 
   // Document title ve favicon'u güncelle
   useDocumentHead(
     `${siteName} | Yönetim Paneli`,
-    siteLogoUrl || undefined
+    siteLogoUrl || DEFAULT_LOGO_PATH
   );
 
   // Token kontrolü - eğer token yoksa login'e yönlendir
@@ -208,51 +216,23 @@ const MainLayout: React.FC = () => {
           </IconButton>
 
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-            {resolvedLogoUrl ? (
-              <Avatar
-                key={resolvedLogoUrl}
-                src={resolvedLogoUrl}
-                alt="Logo"
-                sx={{
-                  width: { xs: 36, sm: 40 },
-                  height: { xs: 36, sm: 40 },
-                  borderRadius: 2,
-                  mr: { xs: 1.5, sm: 2 },
-                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                }}
-                imgProps={{
-                  onError: (e) => {
-                    const target = e.target as HTMLImageElement;
-                    console.error('Logo yüklenemedi:', siteLogoUrl, 'Attempted URL:', target.src);
-                    // Fallback: Logo yüklenemezse boş göster
-                  },
-                }}
-              />
-            ) : (
-              <Box
-                sx={{
-                  width: { xs: 36, sm: 40 },
-                  height: { xs: 36, sm: 40 },
-                  borderRadius: 2,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mr: { xs: 1.5, sm: 2 },
-                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                }}
-              >
-                <Typography
-                  sx={{
-                    color: '#fff',
-                    fontWeight: 700,
-                    fontSize: { xs: '1rem', sm: '1.2rem' },
-                  }}
-                >
-                  {siteName.charAt(0).toUpperCase()}
-                </Typography>
-              </Box>
-            )}
+            <Avatar
+              key={resolvedLogoUrl}
+              src={resolvedLogoUrl}
+              alt="Logo"
+              sx={{
+                width: { xs: 36, sm: 40 },
+                height: { xs: 36, sm: 40 },
+                borderRadius: 2,
+                mr: { xs: 1.5, sm: 2 },
+                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+              }}
+              imgProps={{
+                onError: () => {
+                  setLogoLoadError(true);
+                },
+              }}
+            />
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
               <Typography
                 variant="h6"

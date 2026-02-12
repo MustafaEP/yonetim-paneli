@@ -23,7 +23,6 @@ import {
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import UploadIcon from '@mui/icons-material/Upload';
-import ImageIcon from '@mui/icons-material/Image';
 import BusinessIcon from '@mui/icons-material/Business';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import BuildIcon from '@mui/icons-material/Build';
@@ -32,6 +31,7 @@ import { uploadLogo, uploadHeaderPaper } from '../services/systemApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
+import { DEFAULT_LOGO_PATH } from '../../../shared/constants/defaultLogo';
 
 interface GeneralSettingsProps {
   settings: SystemSetting[];
@@ -195,7 +195,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
 
         <Box sx={{ p: 3 }}>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Sistem Adı"
                 value={getValue('SITE_NAME')}
@@ -218,7 +222,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Sistem Kısa Adı"
                 value={getValue('SYSTEM_CODE')}
@@ -242,7 +250,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Sistem Versiyonu"
                 value={getValue('SYSTEM_VERSION')}
@@ -259,7 +271,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Ortam Bilgisi</InputLabel>
                 <Select
@@ -291,7 +307,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Varsayılan Dil</InputLabel>
                 <Select
@@ -322,7 +342,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Saat Dilimi"
                 value={getValue('TIMEZONE')}
@@ -346,7 +370,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Divider sx={{ my: 1 }} />
               <Typography variant="body2" sx={{ mb: 2, fontWeight: 600, color: theme.palette.text.secondary }}>
                 Logo
@@ -355,23 +379,24 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 <Box>
                   {(() => {
                     const logoUrl = getValue('SITE_LOGO_URL');
-                    let logoSrc: string | null = null;
-                    
+                    let logoSrc: string;
                     if (logoUrl) {
                       if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
                         logoSrc = logoUrl;
                       } else {
-                        // Relative path ise, API base URL'ini kullan
-                        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
-                          ? import.meta.env.VITE_API_BASE_URL 
+                        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+                          ? import.meta.env.VITE_API_BASE_URL
                           : (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
                         logoSrc = `${API_BASE_URL}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
                       }
+                    } else {
+                      // Veritabanında logo yoksa proje dosyasından (public/yonetim.png)
+                      logoSrc = DEFAULT_LOGO_PATH;
                     }
 
-                    return logoSrc ? (
+                    return (
                       <Avatar
-                        key={logoUrl}
+                        key={logoUrl ?? 'default'}
                         src={logoSrc}
                         alt="Logo"
                         variant="rounded"
@@ -383,22 +408,10 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                         }}
                         imgProps={{
                           onError: () => {
-                            console.error('Logo yüklenemedi:', logoUrl);
+                            console.error('Logo yüklenemedi:', logoUrl || logoSrc);
                           },
                         }}
                       />
-                    ) : (
-                      <Avatar
-                        variant="rounded"
-                        sx={{
-                          width: 72,
-                          height: 72,
-                          bgcolor: alpha(theme.palette.primary.main, 0.08),
-                          border: `2px dashed ${alpha(theme.palette.divider, 0.3)}`,
-                        }}
-                      >
-                        <ImageIcon sx={{ color: theme.palette.text.secondary, fontSize: '2rem' }} />
-                      </Avatar>
                     );
                   })()}
                 </Box>
@@ -431,7 +444,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               </Box>
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Divider sx={{ my: 1 }} />
               <Typography variant="body2" sx={{ mb: 2, fontWeight: 600, color: theme.palette.text.secondary }}>
                 Antetli Kağıt (PDF Arka Plan)
@@ -471,7 +484,6 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
           </Grid>
         </Box>
       </Card>
-
       {/* İletişim & Kurumsal Bilgiler */}
       <Card
         elevation={0}
@@ -515,7 +527,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
 
         <Box sx={{ p: 3 }}>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Kurumsal E-posta"
                 value={getValue('CONTACT_EMAIL')}
@@ -540,7 +556,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid
+              size={{
+                xs: 12,
+                md: 6
+              }}>
               <TextField
                 label="Telefon"
                 value={getValue('CONTACT_PHONE')}
@@ -564,7 +584,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 label="Adres"
                 value={getValue('CONTACT_ADDRESS')}
@@ -590,7 +610,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 label="Alt Bilgi (Footer) Metni"
                 value={getValue('FOOTER_TEXT')}
@@ -618,7 +638,6 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
           </Grid>
         </Box>
       </Card>
-
       {/* Bakım Modu */}
       <Card
         elevation={0}

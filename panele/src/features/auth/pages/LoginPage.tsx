@@ -31,6 +31,7 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { getPublicSystemInfo } from '../../system/services/systemApi';
 import { useDocumentHead } from '../../../shared/hooks/useDocumentHead';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
+import { DEFAULT_LOGO_PATH } from '../../../shared/constants/defaultLogo';
 
 // Güvenli clipboard kopyalama fonksiyonu
 const copyToClipboard = async (text: string): Promise<boolean> => {
@@ -65,6 +66,7 @@ const LoginPage: React.FC = () => {
   
   const [siteName, setSiteName] = useState('Sendika Yönetim Paneli');
   const [siteLogoUrl, setSiteLogoUrl] = useState('');
+  const [logoLoadError, setLogoLoadError] = useState(false);
   const [loadingInfo, setLoadingInfo] = useState(true);
 
   const [email, setEmail] = useState('');
@@ -93,10 +95,15 @@ const LoginPage: React.FC = () => {
     loadPublicInfo();
   }, []);
 
+  // Logo değişince hata bayrağını sıfırla
+  useEffect(() => {
+    setLogoLoadError(false);
+  }, [siteLogoUrl, loadingInfo]);
+
   // Document title ve favicon'u güncelle
   useDocumentHead(
     loadingInfo ? undefined : `${siteName} | Giriş`,
-    siteLogoUrl || undefined
+    siteLogoUrl || DEFAULT_LOGO_PATH
   );
 
   // Zaten login olmuşsa dashboard'a at
@@ -202,18 +209,20 @@ const LoginPage: React.FC = () => {
           }}
         >
           <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
-            {/* Logo & Header */}
+            {/* Logo & Header - veritabanı yoksa proje dosyasından (public/yonetim.png) */}
             <Box sx={{ mb: 4, textAlign: 'center' }}>
               {loadingInfo ? (
                 <CircularProgress size={40} sx={{ mb: 3 }} />
               ) : (
                 <>
-                  {siteLogoUrl ? (
+                  {!logoLoadError && (siteLogoUrl || DEFAULT_LOGO_PATH) ? (
                     <Avatar
                       src={
-                        siteLogoUrl.startsWith('http://') || siteLogoUrl.startsWith('https://')
-                          ? siteLogoUrl
-                          : `${import.meta.env.PROD ? window.location.origin : 'http://localhost:3000'}${siteLogoUrl.startsWith('/') ? '' : '/'}${siteLogoUrl}`
+                        siteLogoUrl
+                          ? (siteLogoUrl.startsWith('http://') || siteLogoUrl.startsWith('https://')
+                              ? siteLogoUrl
+                              : `${import.meta.env.PROD ? window.location.origin : 'http://localhost:3000'}${siteLogoUrl.startsWith('/') ? '' : '/'}${siteLogoUrl}`)
+                          : DEFAULT_LOGO_PATH
                       }
                       alt={siteName}
                       sx={{
@@ -226,8 +235,8 @@ const LoginPage: React.FC = () => {
                       }}
                       imgProps={{
                         onError: () => {
-                          // Logo yüklenemezse varsayılan ikonu göster
-                            setSiteLogoUrl('');
+                          if (siteLogoUrl) setSiteLogoUrl('');
+                          setLogoLoadError(true);
                         },
                       }}
                     />
