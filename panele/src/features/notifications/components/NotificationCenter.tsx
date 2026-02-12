@@ -54,6 +54,16 @@ const NotificationCenter: React.FC = () => {
     }
   }, [open, loadRecentNotifications, loadUnreadCount]);
 
+  // Popover açıkken listeyi periyodik yenile (yeni bildirimler hemen görünsün)
+  useEffect(() => {
+    if (!open) return;
+    const interval = setInterval(() => {
+      loadRecentNotifications({ isRead: false });
+      loadUnreadCount();
+    }, 15_000); // 15 saniye
+    return () => clearInterval(interval);
+  }, [open, loadRecentNotifications, loadUnreadCount]);
+
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };

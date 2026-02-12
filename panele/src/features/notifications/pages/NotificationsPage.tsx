@@ -1,5 +1,5 @@
 // src/pages/notifications/NotificationsPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Card,
@@ -63,6 +63,8 @@ const NotificationsPage: React.FC = () => {
     type: 'IN_APP' as 'EMAIL' | 'SMS' | 'IN_APP',
     targetType: 'USER' as 'ALL_MEMBERS' | 'REGION' | 'SCOPE' | 'USER',
   });
+
+  const firstDialogInputRef = useRef<HTMLInputElement>(null);
 
   const canNotifyAll = hasPermission('NOTIFY_ALL_MEMBERS');
   const canNotifyRegion = hasPermission('NOTIFY_REGION');
@@ -440,8 +442,18 @@ const NotificationsPage: React.FC = () => {
         />
       </Card>
 
-      {/* Send Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      {/* Send Dialog - Odağı dialog içine taşıyarak aria-hidden uyarısını önler */}
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        maxWidth="md"
+        fullWidth
+        TransitionProps={{
+          onEntered: () => {
+            firstDialogInputRef.current?.focus();
+          },
+        }}
+      >
         <DialogTitle>Yeni Bildirim Gönder</DialogTitle>
         <DialogContent>
           {error && (
@@ -451,11 +463,13 @@ const NotificationsPage: React.FC = () => {
           )}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <TextField
+              inputRef={firstDialogInputRef}
               label="Başlık"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               required
               fullWidth
+              autoFocus
             />
             <TextField
               label="Mesaj"

@@ -116,6 +116,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [isAuthenticated, loadUnreadCount]);
 
+  // Yeni bildirimlerde rozet/liste otomatik yenilensin (Socket kapalıyken polling)
+  const POLL_INTERVAL_MS = 45_000; // 45 saniye
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => {
+      loadUnreadCount();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, loadUnreadCount]);
+
   const value: NotificationContextValue = {
     unreadCount,
     recentNotifications,
