@@ -213,7 +213,7 @@ const LoginPage: React.FC = () => {
                       src={
                         siteLogoUrl.startsWith('http://') || siteLogoUrl.startsWith('https://')
                           ? siteLogoUrl
-                          : `http://localhost:3000${siteLogoUrl}`
+                          : `${import.meta.env.PROD ? window.location.origin : 'http://localhost:3000'}${siteLogoUrl.startsWith('/') ? '' : '/'}${siteLogoUrl}`
                       }
                       alt={siteName}
                       sx={{

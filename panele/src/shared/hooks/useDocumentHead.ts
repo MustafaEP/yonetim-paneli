@@ -22,10 +22,11 @@ export const useDocumentHead = (title?: string, faviconUrl?: string) => {
         document.head.appendChild(link);
       }
 
-      // URL'i düzelt (relative ise backend URL'si ekle)
+      // URL'i düzelt (relative ise backend URL'si ekle; production'da aynı origin kullanılır)
+      const baseUrl = import.meta.env.PROD ? window.location.origin : 'http://localhost:3000';
       const faviconSrc = faviconUrl.startsWith('http://') || faviconUrl.startsWith('https://')
         ? faviconUrl
-        : `http://localhost:3000${faviconUrl}`;
+        : `${baseUrl}${faviconUrl.startsWith('/') ? '' : '/'}${faviconUrl}`;
 
       link.href = faviconSrc;
       
