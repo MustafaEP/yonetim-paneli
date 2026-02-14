@@ -939,6 +939,7 @@ const MemberApplicationCreatePage: React.FC = () => {
     } catch (e: unknown) {
       console.error('Üye başvurusu oluşturulurken hata:', e);
       setError(getApiErrorMessage(e, 'Başvuru oluşturulurken bir hata oluştu.'));
+      setErrorDialogOpen(true);
     } finally {
       setSaving(false);
     }
@@ -2312,12 +2313,9 @@ const MemberApplicationCreatePage: React.FC = () => {
           </Stack>
         </DialogTitle>
         <DialogContent>
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error">
             {error || 'Bir hata oluştu.'}
           </Alert>
-          <Typography variant="body2" color="text.secondary">
-            Lütfen formu kontrol edip eksik veya hatalı alanları düzeltin.
-          </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2, pt: 1 }}>
           <Button 
