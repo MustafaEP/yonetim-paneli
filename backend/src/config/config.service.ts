@@ -22,7 +22,7 @@ export class ConfigService implements OnModuleInit {
     if (this.jwtSecret === defaultSecret) {
       this.logger.error(
         '⚠️  JWT_SECRET ortam değişkeni ayarlanmamış! Varsayılan secret kullanılıyor. ' +
-        'PRODUCTION ortamında bu ÇOK TEHLİKELİDİR. Lütfen güçlü bir secret belirleyin.',
+          'PRODUCTION ortamında bu ÇOK TEHLİKELİDİR. Lütfen güçlü bir secret belirleyin.',
       );
     }
     if (this.jwtSecret.length < 32) {

@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { parseCsvBuffer } from '../../utils/csv-parser';
 import {
@@ -130,7 +126,7 @@ export class MemberImportValidationService {
     }
     let institution = district
       ? await this.prisma.institution.findFirst({
-          where: { deletedAt: null, districtId: district!.id },
+          where: { deletedAt: null, districtId: district.id },
           orderBy: { name: 'asc' },
           select: { name: true },
         })
@@ -142,29 +138,33 @@ export class MemberImportValidationService {
         select: { name: true },
       });
     }
-    const [branch, tevkifatCenter, tevkifatTitle, memberGroup, profession] = await Promise.all([
-      this.prisma.branch.findFirst({
-        where: { isActive: true },
-        orderBy: { name: 'asc' },
-        select: { name: true },
-      }),
-      this.prisma.tevkifatCenter.findFirst({
-        where: { isActive: true },
-        orderBy: { name: 'asc' },
-        select: { name: true },
-      }),
-      this.prisma.tevkifatTitle.findFirst({
-        where: { isActive: true },
-        orderBy: { name: 'asc' },
-        select: { name: true },
-      }),
-      this.prisma.memberGroup.findFirst({ orderBy: { name: 'asc' }, select: { name: true } }),
-      this.prisma.profession.findFirst({
-        where: { isActive: true },
-        orderBy: { name: 'asc' },
-        select: { name: true },
-      }),
-    ]);
+    const [branch, tevkifatCenter, tevkifatTitle, memberGroup, profession] =
+      await Promise.all([
+        this.prisma.branch.findFirst({
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+          select: { name: true },
+        }),
+        this.prisma.tevkifatCenter.findFirst({
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+          select: { name: true },
+        }),
+        this.prisma.tevkifatTitle.findFirst({
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+          select: { name: true },
+        }),
+        this.prisma.memberGroup.findFirst({
+          orderBy: { name: 'asc' },
+          select: { name: true },
+        }),
+        this.prisma.profession.findFirst({
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+          select: { name: true },
+        }),
+      ]);
 
     const provinceName = province?.name ?? 'İl';
     const districtName = district?.name ?? 'İlçe';
@@ -245,9 +245,21 @@ export class MemberImportValidationService {
     const selected = shuffled.slice(0, count);
 
     const genderTr = (g: string | null) =>
-      g === 'MALE' ? 'Erkek' : g === 'FEMALE' ? 'Kadın' : g === 'OTHER' ? 'Diğer' : '';
+      g === 'MALE'
+        ? 'Erkek'
+        : g === 'FEMALE'
+          ? 'Kadın'
+          : g === 'OTHER'
+            ? 'Diğer'
+            : '';
     const educationTr = (e: string | null) =>
-      e === 'PRIMARY' ? 'İlkokul' : e === 'HIGH_SCHOOL' ? 'Lise' : e === 'COLLEGE' ? 'Üniversite' : '';
+      e === 'PRIMARY'
+        ? 'İlkokul'
+        : e === 'HIGH_SCHOOL'
+          ? 'Lise'
+          : e === 'COLLEGE'
+            ? 'Üniversite'
+            : '';
     const dateStr = (d: Date | null) =>
       d ? new Date(d).toISOString().slice(0, 10) : '';
 
@@ -278,7 +290,9 @@ export class MemberImportValidationService {
         m.profession?.name ?? '',
         m.institutionRegNo ?? '',
         m.staffTitleCode ?? '',
-      ].map((cell) => escapeCsvCell(String(cell))).join(sep),
+      ]
+        .map((cell) => escapeCsvCell(String(cell)))
+        .join(sep),
     );
 
     if (rows.length === 0) {
@@ -290,8 +304,11 @@ export class MemberImportValidationService {
     return csv;
   }
 
-  async validate(file: Express.Multer.File): Promise<ValidateMemberImportResult> {
-    const buffer = file?.buffer ?? (file as unknown as { buffer?: Buffer })?.buffer;
+  async validate(
+    file: Express.Multer.File,
+  ): Promise<ValidateMemberImportResult> {
+    const buffer =
+      file?.buffer ?? (file as unknown as { buffer?: Buffer })?.buffer;
     if (!buffer || !Buffer.isBuffer(buffer)) {
       throw new BadRequestException('Dosya yüklenmedi veya geçersiz.');
     }
@@ -316,7 +333,8 @@ export class MemberImportValidationService {
 
     const refs = await this.loadReferenceData();
     const previewRows: PreviewRow[] = [];
-    const allErrors: { rowIndex: number; column?: string; message: string }[] = [];
+    const allErrors: { rowIndex: number; column?: string; message: string }[] =
+      [];
     let valid = 0;
     let warning = 0;
     let error = 0;
@@ -370,7 +388,8 @@ export class MemberImportValidationService {
     userId: string,
     skipErrors: boolean,
   ): Promise<BulkImportResult> {
-    const buffer = file?.buffer ?? (file as unknown as { buffer?: Buffer })?.buffer;
+    const buffer =
+      file?.buffer ?? (file as unknown as { buffer?: Buffer })?.buffer;
     if (!buffer || !Buffer.isBuffer(buffer)) {
       throw new BadRequestException('Dosya yüklenmedi veya geçersiz.');
     }
@@ -393,7 +412,8 @@ export class MemberImportValidationService {
     }
 
     const refs = await this.loadReferenceData();
-    const allErrors: { rowIndex: number; column?: string; message: string }[] = [];
+    const allErrors: { rowIndex: number; column?: string; message: string }[] =
+      [];
     const duplicateNationalIds: string[] = [];
 
     // Mevcut nationalId'leri topla (duplicate kontrolü)
@@ -575,7 +595,10 @@ export class MemberImportValidationService {
         }
       });
     } catch (err: any) {
-      this.logger.error('Toplu üye kayıt transaction hatası', err?.stack ?? err);
+      this.logger.error(
+        'Toplu üye kayıt transaction hatası',
+        err?.stack ?? err,
+      );
       throw new BadRequestException(
         'Toplu kayıt sırasında bir hata oluştu. Hiçbir üye kaydedilmedi.',
       );
@@ -608,38 +631,48 @@ export class MemberImportValidationService {
   }
 
   private async loadReferenceData() {
-    const [provinces, districts, branches, institutions, professions, memberGroups, tevkifatCenters, tevkifatTitles] =
-      await Promise.all([
-        this.prisma.province.findMany({ select: { id: true, name: true } }),
-        this.prisma.district.findMany({
-          include: { province: { select: { name: true } } },
-        }),
-        this.prisma.branch.findMany({
-          where: { isActive: true },
-          select: { id: true, name: true },
-        }),
-        this.prisma.institution.findMany({
-          where: { deletedAt: null },
-          select: { id: true, name: true },
-        }),
-        this.prisma.profession.findMany({
-          where: { isActive: true },
-          select: { id: true, name: true },
-        }),
-        this.prisma.memberGroup.findMany({
-          select: { id: true, name: true },
-        }),
-        this.prisma.tevkifatCenter.findMany({
-          where: { isActive: true },
-          select: { id: true, name: true },
-        }),
-        this.prisma.tevkifatTitle.findMany({
-          where: { isActive: true },
-          select: { id: true, name: true },
-        }),
-      ]);
+    const [
+      provinces,
+      districts,
+      branches,
+      institutions,
+      professions,
+      memberGroups,
+      tevkifatCenters,
+      tevkifatTitles,
+    ] = await Promise.all([
+      this.prisma.province.findMany({ select: { id: true, name: true } }),
+      this.prisma.district.findMany({
+        include: { province: { select: { name: true } } },
+      }),
+      this.prisma.branch.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+      }),
+      this.prisma.institution.findMany({
+        where: { deletedAt: null },
+        select: { id: true, name: true },
+      }),
+      this.prisma.profession.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+      }),
+      this.prisma.memberGroup.findMany({
+        select: { id: true, name: true },
+      }),
+      this.prisma.tevkifatCenter.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+      }),
+      this.prisma.tevkifatTitle.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+      }),
+    ]);
 
-    const provinceByName = new Map(provinces.map((p) => [normalizeName(p.name), p.id]));
+    const provinceByName = new Map(
+      provinces.map((p) => [normalizeName(p.name), p.id]),
+    );
     const districtByName = new Map<string, string>();
     districts.forEach((d) => {
       const key = normalizeName(d.name);
@@ -694,7 +727,9 @@ export class MemberImportValidationService {
    */
   private resolveRow(
     data: Record<string, string>,
-    refs: Awaited<ReturnType<MemberImportValidationService['loadReferenceData']>>,
+    refs: Awaited<
+      ReturnType<MemberImportValidationService['loadReferenceData']>
+    >,
   ): {
     provinceId: string;
     districtId: string;
@@ -719,7 +754,11 @@ export class MemberImportValidationService {
       return nameMap.get(normalizeName(value)) ?? null;
     };
 
-    const provinceId = resolveId(get('provinceId'), refs.provinceIds, refs.provinceByName);
+    const provinceId = resolveId(
+      get('provinceId'),
+      refs.provinceIds,
+      refs.provinceByName,
+    );
     if (!provinceId) return null;
 
     // İlçe çözümü (il ile birlikte)
@@ -732,39 +771,76 @@ export class MemberImportValidationService {
         const key = normalizeName(districtVal);
         const prov = refs.provinces.get(provinceId);
         const keyWithProv = prov ? normalizeName(prov.name) + '|' + key : key;
-        districtId = refs.districtByName.get(keyWithProv) ?? refs.districtByName.get(key) ?? null;
+        districtId =
+          refs.districtByName.get(keyWithProv) ??
+          refs.districtByName.get(key) ??
+          null;
       }
     }
     if (!districtId) return null;
 
-    const institutionId = resolveId(get('institutionId'), refs.institutionIds, refs.institutionByName);
+    const institutionId = resolveId(
+      get('institutionId'),
+      refs.institutionIds,
+      refs.institutionByName,
+    );
     if (!institutionId) return null;
 
-    const branchId = resolveId(get('branchId'), refs.branchIds, refs.branchByName);
-    const tevkifatCenterId = resolveId(get('tevkifatCenterId'), refs.tevkifatCenterIds, refs.tevkifatCenterByName);
-    const tevkifatTitleId = resolveId(get('tevkifatTitleId'), refs.tevkifatTitleIds, refs.tevkifatTitleByName);
-    const memberGroupId = resolveId(get('memberGroupId'), refs.memberGroupIds, refs.memberGroupByName);
-    const institutionProvinceId = resolveId(get('institutionProvinceId'), refs.provinceIds, refs.provinceByName);
+    const branchId = resolveId(
+      get('branchId'),
+      refs.branchIds,
+      refs.branchByName,
+    );
+    const tevkifatCenterId = resolveId(
+      get('tevkifatCenterId'),
+      refs.tevkifatCenterIds,
+      refs.tevkifatCenterByName,
+    );
+    const tevkifatTitleId = resolveId(
+      get('tevkifatTitleId'),
+      refs.tevkifatTitleIds,
+      refs.tevkifatTitleByName,
+    );
+    const memberGroupId = resolveId(
+      get('memberGroupId'),
+      refs.memberGroupIds,
+      refs.memberGroupByName,
+    );
+    const institutionProvinceId = resolveId(
+      get('institutionProvinceId'),
+      refs.provinceIds,
+      refs.provinceByName,
+    );
 
     // Kurum ilçesi
     const instDistrictVal = get('institutionDistrictId');
     let institutionDistrictId: string | null = null;
     if (instDistrictVal) {
-      if (looksLikeId(instDistrictVal) && refs.districtIds.has(instDistrictVal)) {
+      if (
+        looksLikeId(instDistrictVal) &&
+        refs.districtIds.has(instDistrictVal)
+      ) {
         institutionDistrictId = instDistrictVal;
       } else {
         const key = normalizeName(instDistrictVal);
         if (institutionProvinceId) {
           const prov = refs.provinces.get(institutionProvinceId);
           const keyWithProv = prov ? normalizeName(prov.name) + '|' + key : key;
-          institutionDistrictId = refs.districtByName.get(keyWithProv) ?? refs.districtByName.get(key) ?? null;
+          institutionDistrictId =
+            refs.districtByName.get(keyWithProv) ??
+            refs.districtByName.get(key) ??
+            null;
         } else {
           institutionDistrictId = refs.districtByName.get(key) ?? null;
         }
       }
     }
 
-    const professionId = resolveId(get('professionId'), refs.professionIds, refs.professionByName);
+    const professionId = resolveId(
+      get('professionId'),
+      refs.professionIds,
+      refs.professionByName,
+    );
 
     return {
       provinceId,
@@ -782,7 +858,9 @@ export class MemberImportValidationService {
 
   private validateRow(
     data: Record<string, string>,
-    refs: Awaited<ReturnType<MemberImportValidationService['loadReferenceData']>>,
+    refs: Awaited<
+      ReturnType<MemberImportValidationService['loadReferenceData']>
+    >,
   ): { status: RowStatus; errors: RowError[] } {
     const errors: RowError[] = [];
 
@@ -802,10 +880,15 @@ export class MemberImportValidationService {
     const districtId = get('districtId');
     const institutionId = get('institutionId');
 
-    if (!firstName) errors.push({ column: 'firstName', message: 'Ad zorunludur.' });
-    if (!lastName) errors.push({ column: 'lastName', message: 'Soyad zorunludur.' });
+    if (!firstName)
+      errors.push({ column: 'firstName', message: 'Ad zorunludur.' });
+    if (!lastName)
+      errors.push({ column: 'lastName', message: 'Soyad zorunludur.' });
     if (!nationalId) {
-      errors.push({ column: 'nationalId', message: 'TC Kimlik No zorunludur.' });
+      errors.push({
+        column: 'nationalId',
+        message: 'TC Kimlik No zorunludur.',
+      });
     } else if (!/^\d{11}$/.test(nationalId)) {
       errors.push({
         column: 'nationalId',
@@ -826,41 +909,57 @@ export class MemberImportValidationService {
     }
     const email = get('email');
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.push({ column: 'email', message: 'Geçerli bir e-posta adresi giriniz.' });
+      errors.push({
+        column: 'email',
+        message: 'Geçerli bir e-posta adresi giriniz.',
+      });
     }
-    if (!motherName) errors.push({ column: 'motherName', message: 'Anne adı zorunludur.' });
-    if (!fatherName) errors.push({ column: 'fatherName', message: 'Baba adı zorunludur.' });
+    if (!motherName)
+      errors.push({ column: 'motherName', message: 'Anne adı zorunludur.' });
+    if (!fatherName)
+      errors.push({ column: 'fatherName', message: 'Baba adı zorunludur.' });
     if (!birthDate) {
-      errors.push({ column: 'birthDate', message: 'Doğum tarihi zorunludur (YYYY-MM-DD).' });
+      errors.push({
+        column: 'birthDate',
+        message: 'Doğum tarihi zorunludur (YYYY-MM-DD).',
+      });
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
       errors.push({
         column: 'birthDate',
         message: 'Doğum tarihi YYYY-MM-DD formatında olmalıdır.',
       });
     }
-    if (!birthplace) errors.push({ column: 'birthplace', message: 'Doğum yeri zorunludur.' });
+    if (!birthplace)
+      errors.push({ column: 'birthplace', message: 'Doğum yeri zorunludur.' });
     if (!gender) {
-      errors.push({ column: 'gender', message: 'Cinsiyet zorunludur (Erkek/Kadın/Diğer veya MALE/FEMALE/OTHER).' });
+      errors.push({
+        column: 'gender',
+        message:
+          'Cinsiyet zorunludur (Erkek/Kadın/Diğer veya MALE/FEMALE/OTHER).',
+      });
     } else {
       const g = this.normalizeGender(gender);
       if (!g) {
         errors.push({
           column: 'gender',
-          message: 'Cinsiyet: Erkek, Kadın, Diğer veya MALE, FEMALE, OTHER olmalıdır.',
+          message:
+            'Cinsiyet: Erkek, Kadın, Diğer veya MALE, FEMALE, OTHER olmalıdır.',
         });
       }
     }
     if (!educationStatus) {
       errors.push({
         column: 'educationStatus',
-        message: 'Öğrenim durumu zorunludur (İlkokul/Lise/Üniversite veya PRIMARY/HIGH_SCHOOL/COLLEGE).',
+        message:
+          'Öğrenim durumu zorunludur (İlkokul/Lise/Üniversite veya PRIMARY/HIGH_SCHOOL/COLLEGE).',
       });
     } else {
       const e = this.normalizeEducation(educationStatus);
       if (!e) {
         errors.push({
           column: 'educationStatus',
-          message: 'Öğrenim: İlkokul, Lise, Üniversite veya PRIMARY, HIGH_SCHOOL, COLLEGE olmalıdır.',
+          message:
+            'Öğrenim: İlkokul, Lise, Üniversite veya PRIMARY, HIGH_SCHOOL, COLLEGE olmalıdır.',
         });
       }
     }
@@ -872,7 +971,11 @@ export class MemberImportValidationService {
       } else {
         const found = refs.provinceByName.get(normalizeName(provinceId));
         if (found) resolvedProvinceId = found;
-        else errors.push({ column: 'provinceId', message: `İl bulunamadı: ${provinceId}` });
+        else
+          errors.push({
+            column: 'provinceId',
+            message: `İl bulunamadı: ${provinceId}`,
+          });
       }
     } else {
       errors.push({ column: 'provinceId', message: 'İl zorunludur.' });
@@ -885,11 +988,18 @@ export class MemberImportValidationService {
       } else {
         const key = normalizeName(districtId);
         const keyWithProv = resolvedProvinceId
-          ? normalizeName(refs.provinces.get(resolvedProvinceId)?.name ?? '') + '|' + key
+          ? normalizeName(refs.provinces.get(resolvedProvinceId)?.name ?? '') +
+            '|' +
+            key
           : key;
-        const found = refs.districtByName.get(keyWithProv) ?? refs.districtByName.get(key);
+        const found =
+          refs.districtByName.get(keyWithProv) ?? refs.districtByName.get(key);
         if (found) resolvedDistrictId = found;
-        else errors.push({ column: 'districtId', message: `İlçe bulunamadı: ${districtId}` });
+        else
+          errors.push({
+            column: 'districtId',
+            message: `İlçe bulunamadı: ${districtId}`,
+          });
       }
     } else {
       errors.push({ column: 'districtId', message: 'İlçe zorunludur.' });
@@ -897,12 +1007,19 @@ export class MemberImportValidationService {
 
     let resolvedInstitutionId: string | null = null;
     if (institutionId) {
-      if (looksLikeId(institutionId) && refs.institutionIds.has(institutionId)) {
+      if (
+        looksLikeId(institutionId) &&
+        refs.institutionIds.has(institutionId)
+      ) {
         resolvedInstitutionId = institutionId;
       } else {
         const found = refs.institutionByName.get(normalizeName(institutionId));
         if (found) resolvedInstitutionId = found;
-        else errors.push({ column: 'institutionId', message: `Kurum bulunamadı: ${institutionId}` });
+        else
+          errors.push({
+            column: 'institutionId',
+            message: `Kurum bulunamadı: ${institutionId}`,
+          });
       }
     } else {
       errors.push({ column: 'institutionId', message: 'Kurum zorunludur.' });
@@ -912,12 +1029,18 @@ export class MemberImportValidationService {
     if (branchId) {
       if (looksLikeId(branchId)) {
         if (!refs.branchIds.has(branchId)) {
-          errors.push({ column: 'branchId', message: `Şube bulunamadı: ${branchId}` });
+          errors.push({
+            column: 'branchId',
+            message: `Şube bulunamadı: ${branchId}`,
+          });
         }
       } else {
         const found = refs.branchByName.get(normalizeName(branchId));
         if (!found) {
-          errors.push({ column: 'branchId', message: `Şube bulunamadı: ${branchId}` });
+          errors.push({
+            column: 'branchId',
+            message: `Şube bulunamadı: ${branchId}`,
+          });
         }
       }
     }
@@ -927,12 +1050,20 @@ export class MemberImportValidationService {
     if (tevkifatCenterId) {
       if (looksLikeId(tevkifatCenterId)) {
         if (!refs.tevkifatCenterIds.has(tevkifatCenterId)) {
-          errors.push({ column: 'tevkifatCenterId', message: `Tevkifat Merkezi bulunamadı: ${tevkifatCenterId}` });
+          errors.push({
+            column: 'tevkifatCenterId',
+            message: `Tevkifat Merkezi bulunamadı: ${tevkifatCenterId}`,
+          });
         }
       } else {
-        const found = refs.tevkifatCenterByName.get(normalizeName(tevkifatCenterId));
+        const found = refs.tevkifatCenterByName.get(
+          normalizeName(tevkifatCenterId),
+        );
         if (!found) {
-          errors.push({ column: 'tevkifatCenterId', message: `Tevkifat Merkezi bulunamadı: ${tevkifatCenterId}` });
+          errors.push({
+            column: 'tevkifatCenterId',
+            message: `Tevkifat Merkezi bulunamadı: ${tevkifatCenterId}`,
+          });
         }
       }
     }
@@ -941,12 +1072,20 @@ export class MemberImportValidationService {
     if (tevkifatTitleId) {
       if (looksLikeId(tevkifatTitleId)) {
         if (!refs.tevkifatTitleIds.has(tevkifatTitleId)) {
-          errors.push({ column: 'tevkifatTitleId', message: `Tevkifat Ünvanı bulunamadı: ${tevkifatTitleId}` });
+          errors.push({
+            column: 'tevkifatTitleId',
+            message: `Tevkifat Ünvanı bulunamadı: ${tevkifatTitleId}`,
+          });
         }
       } else {
-        const found = refs.tevkifatTitleByName.get(normalizeName(tevkifatTitleId));
+        const found = refs.tevkifatTitleByName.get(
+          normalizeName(tevkifatTitleId),
+        );
         if (!found) {
-          errors.push({ column: 'tevkifatTitleId', message: `Tevkifat Ünvanı bulunamadı: ${tevkifatTitleId}` });
+          errors.push({
+            column: 'tevkifatTitleId',
+            message: `Tevkifat Ünvanı bulunamadı: ${tevkifatTitleId}`,
+          });
         }
       }
     }
@@ -955,12 +1094,18 @@ export class MemberImportValidationService {
     if (memberGroupId) {
       if (looksLikeId(memberGroupId)) {
         if (!refs.memberGroupIds.has(memberGroupId)) {
-          errors.push({ column: 'memberGroupId', message: `Üye Grubu bulunamadı: ${memberGroupId}` });
+          errors.push({
+            column: 'memberGroupId',
+            message: `Üye Grubu bulunamadı: ${memberGroupId}`,
+          });
         }
       } else {
         const found = refs.memberGroupByName.get(normalizeName(memberGroupId));
         if (!found) {
-          errors.push({ column: 'memberGroupId', message: `Üye Grubu bulunamadı: ${memberGroupId}` });
+          errors.push({
+            column: 'memberGroupId',
+            message: `Üye Grubu bulunamadı: ${memberGroupId}`,
+          });
         }
       }
     }
@@ -969,12 +1114,18 @@ export class MemberImportValidationService {
     if (professionVal) {
       if (looksLikeId(professionVal)) {
         if (!refs.professionIds.has(professionVal)) {
-          errors.push({ column: 'professionId', message: `Meslek bulunamadı: ${professionVal}` });
+          errors.push({
+            column: 'professionId',
+            message: `Meslek bulunamadı: ${professionVal}`,
+          });
         }
       } else {
         const found = refs.professionByName.get(normalizeName(professionVal));
         if (!found) {
-          errors.push({ column: 'professionId', message: `Meslek bulunamadı: ${professionVal}` });
+          errors.push({
+            column: 'professionId',
+            message: `Meslek bulunamadı: ${professionVal}`,
+          });
         }
       }
     }
@@ -993,8 +1144,10 @@ export class MemberImportValidationService {
 
   private normalizeEducation(val: string): EducationStatus | null {
     const v = val.trim().toLowerCase();
-    if (['primary', 'ilkokul', 'ilk'].includes(v)) return EducationStatus.PRIMARY;
-    if (['high_school', 'lise', 'l'].includes(v)) return EducationStatus.HIGH_SCHOOL;
+    if (['primary', 'ilkokul', 'ilk'].includes(v))
+      return EducationStatus.PRIMARY;
+    if (['high_school', 'lise', 'l'].includes(v))
+      return EducationStatus.HIGH_SCHOOL;
     if (['college', 'üniversite', 'universite', 'yüksek', 'yuksek'].includes(v))
       return EducationStatus.COLLEGE;
     return null;

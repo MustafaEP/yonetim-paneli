@@ -162,9 +162,6 @@ export class PrismaMembershipConfigAdapter implements MembershipConfigAdapter {
   }
 
   async getMinAge(): Promise<number> {
-    return this.configService.getSystemSettingNumber(
-      'MEMBERSHIP_MIN_AGE',
-      18,
-    );
+    return this.configService.getSystemSettingNumber('MEMBERSHIP_MIN_AGE', 18);
   }
 }

@@ -47,7 +47,9 @@ export class TokenService {
   async verifyRefresh(token: string): Promise<RefreshPayload> {
     const payload = await this.jwtService.verifyAsync<RefreshPayload>(token);
     if (payload.type !== TOKEN_TYPE_REFRESH) {
-      throw new UnauthorizedException('Invalid token type: expected refresh token');
+      throw new UnauthorizedException(
+        'Invalid token type: expected refresh token',
+      );
     }
     return payload;
   }

@@ -120,7 +120,10 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Geçersiz veya süresi dolmuş token' })
+  @ApiResponse({
+    status: 401,
+    description: 'Geçersiz veya süresi dolmuş token',
+  })
   me(@CurrentUser() user: CurrentUserData) {
     return {
       userId: user.userId,

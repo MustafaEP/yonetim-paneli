@@ -2,7 +2,10 @@
  * CSV satır parser'ı. Tırnak içindeki ayırıcıları korur.
  * Hem virgül (,) hem noktalı virgül (;) desteklenir (Türkçe Excel uyumu).
  */
-export function parseCsvLine(line: string, delimiter: ',' | ';' = ','): string[] {
+export function parseCsvLine(
+  line: string,
+  delimiter: ',' | ';' = ',',
+): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -36,7 +39,10 @@ function detectDelimiter(firstLine: string): ',' | ';' {
  * BOM ve \r\n / \n farklarını normalize eder.
  * Virgül ve noktalı virgül ayırıcıyı otomatik tespit eder.
  */
-export function parseCsvBuffer(buffer: Buffer): { headers: string[]; rows: string[][] } {
+export function parseCsvBuffer(buffer: Buffer): {
+  headers: string[];
+  rows: string[][];
+} {
   const text = buffer.toString('utf-8').replace(/^\uFEFF/, '');
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (lines.length === 0) {

@@ -26,7 +26,12 @@ import type { CurrentUserData } from '../../../auth/decorators/current-user.deco
 import { MemberImportValidationService } from '../../application/services/member-import-validation.service';
 import { MAX_IMPORT_FILE_BYTES } from '../../constants/member-import-schema';
 
-const allowedMimes = ['text/csv', 'application/csv', 'text/plain', 'application/vnd.ms-excel'];
+const allowedMimes = [
+  'text/csv',
+  'application/csv',
+  'text/plain',
+  'application/vnd.ms-excel',
+];
 
 @ApiTags('Imports')
 @ApiBearerAuth('JWT-auth')
@@ -59,7 +64,8 @@ export class MemberImportController {
   @Get('members/sample-csv')
   @ApiOperation({
     summary: '10 rastgele üyeli örnek CSV indir',
-    description: 'Sistemdeki üyelerden 10 tanesi rastgele seçilip aynı CSV formatında döner. Test için kullanılabilir.',
+    description:
+      'Sistemdeki üyelerden 10 tanesi rastgele seçilip aynı CSV formatında döner. Test için kullanılabilir.',
   })
   @ApiResponse({ status: 200, description: 'CSV dosyası' })
   async getSampleMembersCsv(
@@ -96,7 +102,10 @@ export class MemberImportController {
       required: ['file'],
     },
   })
-  @ApiResponse({ status: 200, description: 'Doğrulama sonucu (preview + hatalar)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Doğrulama sonucu (preview + hatalar)',
+  })
   @ApiResponse({ status: 400, description: 'Geçersiz dosya veya format' })
   async validateMemberImport(
     @UploadedFile() file: Express.Multer.File,
@@ -138,7 +147,10 @@ export class MemberImportController {
     },
   })
   @ApiResponse({ status: 200, description: 'İçe aktarma sonucu' })
-  @ApiResponse({ status: 400, description: 'Geçersiz dosya veya doğrulama hatası' })
+  @ApiResponse({
+    status: 400,
+    description: 'Geçersiz dosya veya doğrulama hatası',
+  })
   async importMembers(
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: CurrentUserData,

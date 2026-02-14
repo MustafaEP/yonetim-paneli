@@ -43,7 +43,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // Refresh token'ın access token olarak kullanılmasını engelle.
     // type claim'i olmayan eski token'lar da kabul edilir (geriye uyumluluk).
     if (payload?.type && payload.type !== TOKEN_TYPE_ACCESS) {
-      throw new UnauthorizedException('Invalid token type: expected access token');
+      throw new UnauthorizedException(
+        'Invalid token type: expected access token',
+      );
     }
 
     const userId = payload?.sub;
