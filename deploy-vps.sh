@@ -38,7 +38,11 @@ for i in $(seq 1 30); do
     sleep 1
 done
 
-# 6. Logları göster
+# 6. Reverse proxy'yi yeniden başlat (502 hatasını önlemek için)
+echo "🔄 Reverse proxy yeniden başlatılıyor..."
+docker restart reverse-proxy 2>/dev/null && echo "✅ Reverse proxy yeniden başlatıldı" || echo "⚠️  reverse-proxy container bulunamadı veya yeniden başlatılamadı"
+
+# 7. Logları göster
 echo ""
 echo "📋 Backend logları (son 30 satır):"
 docker compose logs --tail=30 backend

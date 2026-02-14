@@ -142,7 +142,11 @@ if [ -n "$PROXY_CONTAINER" ]; then
     fi
 fi
 
-# 11. Sonuç ve durum
+# 11. Reverse proxy'yi yeniden başlat (502 hatasını önlemek için)
+echo -e "${YELLOW}🔄 Reverse proxy yeniden başlatılıyor...${NC}"
+docker restart reverse-proxy 2>/dev/null && echo -e "${GREEN}✅ Reverse proxy yeniden başlatıldı${NC}" || echo -e "${YELLOW}⚠️  reverse-proxy container bulunamadı veya yeniden başlatılamadı${NC}"
+
+# 12. Sonuç ve durum
 END_TIME=$(date +%s)
 TOTAL_TIME=$(( END_TIME - START_TIME ))
 
