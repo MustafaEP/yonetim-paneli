@@ -167,7 +167,9 @@ export class MemberCreationApplicationService {
       birthDate: dto.birthDate,
       birthplace: dto.birthplace ?? '',
       gender: (dto.gender as GenderEnum) || GenderEnum.OTHER,
-      educationStatus: (dto.educationStatus as EducationStatusEnum) || EducationStatusEnum.PRIMARY,
+      educationStatus:
+        (dto.educationStatus as EducationStatusEnum) ||
+        EducationStatusEnum.PRIMARY,
       institutionId: dto.institutionId,
       provinceId: finalProvinceId,
       districtId: finalDistrictId,

@@ -218,10 +218,7 @@ export class MemberRegistrationDomainService {
 
     const requireProvinceDistrict =
       await this.configAdapter.getRequireProvinceDistrict();
-    if (
-      requireProvinceDistrict &&
-      (!data.provinceId || !data.districtId)
-    ) {
+    if (requireProvinceDistrict && (!data.provinceId || !data.districtId)) {
       throw new BadRequestException('İkamet il ve ilçe seçimi zorunludur');
     }
 
@@ -265,7 +262,8 @@ export class MemberRegistrationDomainService {
     if (!birthDate) return;
     const minAge = await this.configAdapter.getMinAge();
     if (minAge <= 0) return;
-    const birth = typeof birthDate === 'string' ? new Date(birthDate) : birthDate;
+    const birth =
+      typeof birthDate === 'string' ? new Date(birthDate) : birthDate;
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
@@ -302,7 +300,10 @@ export class MemberRegistrationDomainService {
     if (requireApproval && !autoApprove) {
       // Onay zorunlu ve otomatik onay kapalı: her zaman PENDING
       initialStatus = 'PENDING';
-    } else if (autoApprove && (defaultStatus === 'PENDING' || requireApproval)) {
+    } else if (
+      autoApprove &&
+      (defaultStatus === 'PENDING' || requireApproval)
+    ) {
       // Otomatik onay açık: PENDING yerine ACTIVE yap
       initialStatus = 'ACTIVE';
     } else {
