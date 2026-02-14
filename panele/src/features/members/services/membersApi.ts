@@ -38,6 +38,9 @@ export const getMemberApplications = async (): Promise<MemberApplicationRow[]> =
 };
 
 // 🔹 Başvuruyu onayla: POST /members/:id/approve
+export interface ApproveMemberResponse {
+  emptyOptionalFields?: string[];
+}
 export const approveMember = async (
   id: string,
   data?: {
@@ -49,8 +52,9 @@ export const approveMember = async (
     branchId?: string;
     memberGroupId?: string;
   },
-): Promise<void> => {
-  await httpClient.post(`/members/${id}/approve`, data || {});
+): Promise<ApproveMemberResponse> => {
+  const res = await httpClient.post<ApproveMemberResponse>(`/members/${id}/approve`, data || {});
+  return res.data;
 };
 
 // 🔹 Başvuruyu reddet: POST /members/:id/reject

@@ -17,6 +17,11 @@ import {
   InputAdornment,
   Button,
   Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -63,7 +68,8 @@ const MembersApplicationsPage: React.FC = () => {
     type: null,
     memberId: null,
   });
-
+  const [emptyFieldsInfoDialogOpen, setEmptyFieldsInfoDialogOpen] = useState(false);
+  const [emptyFieldsList, setEmptyFieldsList] = useState<string[]>([]);
 
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -255,9 +261,15 @@ const MembersApplicationsPage: React.FC = () => {
         memberGroupId: data.memberGroupId,
       };
 
-      await approveMember(id, approveData);
+      const response = await approveMember(id, approveData);
       await loadApplications();
       toast.showSuccess('Başvuru başarıyla onaylandı. Üye bekleyen üyeler listesine eklendi.');
+
+      // Boş alanlar varsa bilgilendirme pop-up'ı göster
+      if (response?.emptyOptionalFields?.length) {
+        setEmptyFieldsList(response.emptyOptionalFields);
+        setEmptyFieldsInfoDialogOpen(true);
+      }
     } catch (e) {
       console.error('Başvuru onaylanırken hata:', e);
       toast.showError(getApiErrorMessage(e, 'Başvuru onaylanırken bir hata oluştu. Eksik bilgileri tamamlayıp tekrar deneyin.'));
@@ -1100,6 +1112,37 @@ const MembersApplicationsPage: React.FC = () => {
           successMessage="Bu başvuruyu onaylamak istediğinize emin misiniz? Onaylandıktan sonra üye aktif hale gelecektir."
         />
       )}
+
+      {/* Boş Alanlar Bilgilendirme Dialog'u */}
+      <Dialog
+        open={emptyFieldsInfoDialogOpen}
+        onClose={() => setEmptyFieldsInfoDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.12)}`,
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>Bilgilendirme</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Üye başvurusu başarıyla onaylandı. Aşağıdaki alanlar boş olarak kaydedildi. İsterseniz üye düzenleme sayfasından bu bilgileri ekleyebilirsiniz:
+          </Alert>
+          <Typography variant="body2" component="ul" sx={{ pl: 2 }}>
+            {emptyFieldsList.map((field) => (
+              <li key={field}>{field}</li>
+            ))}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="contained" onClick={() => setEmptyFieldsInfoDialogOpen(false)}>
+            Tamam
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Reddetme Dialog'u */}
       {confirmDialog.type === 'reject' && (

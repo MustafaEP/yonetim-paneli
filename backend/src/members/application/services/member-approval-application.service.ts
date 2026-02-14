@@ -43,6 +43,14 @@ export interface ApproveMemberCommand {
   memberGroupId?: string;
 }
 
+/**
+ * Onay sonucu - member ve boş bırakılmış alanlar (bilgilendirme için)
+ */
+export interface ApproveMemberResult {
+  member: Member;
+  emptyOptionalFields: string[];
+}
+
 @Injectable()
 export class MemberApprovalApplicationService {
   private readonly logger = new Logger(MemberApprovalApplicationService.name);
@@ -66,7 +74,9 @@ export class MemberApprovalApplicationService {
    * 4. History log
    * 5. Document file name update (optional, non-blocking)
    */
-  async approveMember(command: ApproveMemberCommand): Promise<Member> {
+  async approveMember(
+    command: ApproveMemberCommand,
+  ): Promise<ApproveMemberResult> {
     // 1. Member'ı bul
     const member = await this.memberRepository.findById(command.memberId);
     if (!member) {
@@ -137,7 +147,10 @@ export class MemberApprovalApplicationService {
         }
       }
 
-      return member;
+      // 7. Boş bırakılmış başvuru alanlarını bilgilendirme için döndür
+      const emptyOptionalFields = member.getEmptyApplicationDataFields();
+
+      return { member, emptyOptionalFields };
     } catch (error) {
       // Domain exception'ları HTTP exception'a çevir
       if (error instanceof MemberCannotBeApprovedException) {

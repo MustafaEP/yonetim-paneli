@@ -174,6 +174,8 @@ const MemberDetailPage = () => {
   // Üye başvurusu onaylama dialog state
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [initialApproveFormData, setInitialApproveFormData] = useState<Partial<ApproveFormData> | undefined>(undefined);
+  const [emptyFieldsInfoDialogOpen, setEmptyFieldsInfoDialogOpen] = useState(false);
+  const [emptyFieldsList, setEmptyFieldsList] = useState<string[]>([]);
 
   // Reddetme dialog state'i
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -769,10 +771,16 @@ const MemberDetailPage = () => {
         memberGroupId: data.memberGroupId,
       };
 
-      await approveMember(id, approveData);
+      const response = await approveMember(id, approveData);
       toast.showSuccess('Üye başvurusu başarıyla onaylandı. Üye bekleyen üyeler listesine eklendi.');
       setApproveDialogOpen(false);
       setInitialApproveFormData(undefined);
+
+      // Boş alanlar varsa bilgilendirme pop-up'ı göster
+      if (response?.emptyOptionalFields?.length) {
+        setEmptyFieldsList(response.emptyOptionalFields);
+        setEmptyFieldsInfoDialogOpen(true);
+      }
 
       // Üye bilgilerini yeniden yükle
       const updatedMember = await getMemberById(id);
@@ -3618,6 +3626,37 @@ const MemberDetailPage = () => {
           successMessage="Bu başvuruyu onaylamak istediğinize emin misiniz? Onaylandıktan sonra üye bekleyen üyeler listesine eklenecektir."
         />
       )}
+
+      {/* Boş Alanlar Bilgilendirme Dialog'u */}
+      <Dialog
+        open={emptyFieldsInfoDialogOpen}
+        onClose={() => setEmptyFieldsInfoDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.12)}`,
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>Bilgilendirme</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Üye başvurusu başarıyla onaylandı. Aşağıdaki alanlar boş olarak kaydedildi. İsterseniz üye düzenleme sayfasından bu bilgileri ekleyebilirsiniz:
+          </Alert>
+          <Typography variant="body2" component="ul" sx={{ pl: 2 }}>
+            {emptyFieldsList.map((field) => (
+              <li key={field}>{field}</li>
+            ))}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="contained" onClick={() => setEmptyFieldsInfoDialogOpen(false)}>
+            Tamam
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Başvuru Reddetme Onay Dialog'u */}
       {member && (

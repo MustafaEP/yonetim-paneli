@@ -478,20 +478,22 @@ export class MembersService {
       throw new BadRequestException('Onaylayan kullanıcı ID zorunludur');
     }
 
-    const member = await this.memberApprovalApplicationService.approveMember({
-      memberId: id,
-      approvedByUserId,
-      registrationNumber: dto?.registrationNumber,
-      boardDecisionDate: dto?.boardDecisionDate,
-      boardDecisionBookNo: dto?.boardDecisionBookNo,
-      tevkifatCenterId: dto?.tevkifatCenterId,
-      tevkifatTitleId: dto?.tevkifatTitleId,
-      branchId: dto?.branchId,
-      memberGroupId: dto?.memberGroupId,
-    });
+    const { member, emptyOptionalFields } =
+      await this.memberApprovalApplicationService.approveMember({
+        memberId: id,
+        approvedByUserId,
+        registrationNumber: dto?.registrationNumber,
+        boardDecisionDate: dto?.boardDecisionDate,
+        boardDecisionBookNo: dto?.boardDecisionBookNo,
+        tevkifatCenterId: dto?.tevkifatCenterId,
+        tevkifatTitleId: dto?.tevkifatTitleId,
+        branchId: dto?.branchId,
+        memberGroupId: dto?.memberGroupId,
+      });
 
-    // Domain Entity → Prisma model'e dönüştür
-    return await this.getById(member.id);
+    // Domain Entity → Prisma model'e dönüştür, emptyOptionalFields ekle
+    const prismaMember = await this.getById(member.id);
+    return { ...prismaMember, emptyOptionalFields };
   }
 
   /**
