@@ -290,8 +290,14 @@ export class AccountingService {
   async listTevkifatCenters(filters?: {
     provinceId?: string;
     districtId?: string;
+    activeOnly?: boolean;
   }) {
     const where: any = {};
+
+    // Sadece aktif (kaldırılmamış) tevkifat merkezlerini getir
+    if (filters?.activeOnly === true) {
+      where.isActive = true;
+    }
 
     // Eğer districtId verilmişse, sadece o ilçeye bağlı olanları göster
     if (filters?.districtId) {

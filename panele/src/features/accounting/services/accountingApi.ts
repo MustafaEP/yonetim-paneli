@@ -157,9 +157,15 @@ export interface UpdateTevkifatCenterDto {
 export const getTevkifatCenters = async (filters?: {
   provinceId?: string;
   districtId?: string;
+  /** true ise sadece aktif (kaldırılmamış) tevkifat merkezleri döner */
+  activeOnly?: boolean;
 }): Promise<TevkifatCenter[]> => {
+  const params: Record<string, string | undefined> = {};
+  if (filters?.provinceId) params.provinceId = filters.provinceId;
+  if (filters?.districtId) params.districtId = filters.districtId;
+  if (filters?.activeOnly === true) params.activeOnly = 'true';
   const res = await httpClient.get<TevkifatCenter[]>('/accounting/tevkifat-centers', {
-    params: filters,
+    params,
   });
   return Array.isArray(res.data) ? res.data : [];
 };

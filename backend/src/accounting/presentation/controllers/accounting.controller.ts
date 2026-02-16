@@ -179,19 +179,21 @@ export class AccountingController {
     required: false,
     description: 'İlçe ID (filtreleme için)',
   })
+  @ApiQuery({
+    name: 'activeOnly',
+    required: false,
+    description: 'true ise sadece aktif (kaldırılmamış) tevkifat merkezleri döner',
+  })
   @ApiResponse({ status: 200, description: 'Tevkifat merkezleri listesi' })
   async listTevkifatCenters(
     @Query('provinceId') provinceId?: string,
     @Query('districtId') districtId?: string,
+    @Query('activeOnly') activeOnly?: string,
   ) {
-    const centers = await this.tevkifatCenterApplicationService.listCenters({
-      provinceId,
-      districtId,
-    });
-    // Map to response format (include counts, etc.)
     return this.accountingService.listTevkifatCenters({
       provinceId,
       districtId,
+      activeOnly: activeOnly === 'true',
     });
   }
 

@@ -145,18 +145,28 @@ const QuickPaymentEntryPage: React.FC = () => {
   const [duplicateDialogTevkifatCenters, setDuplicateDialogTevkifatCenters] = useState<Array<{ id: string; name: string }>>([]);
   const [duplicateDialogSaving, setDuplicateDialogSaving] = useState(false);
 
-  // Aynı ay ödeme dialog'u açıldığında formu doldur ve tevkifat merkezlerini yükle
+  // Aynı ay ödeme dialog'u açıldığında formu doldur ve tevkifat merkezlerini yükle (sadece aktif merkezler)
   useEffect(() => {
     if (!duplicatePaymentDialog.open || !duplicatePaymentDialog.existingPayment) return;
     const p = duplicatePaymentDialog.existingPayment;
+    const existingCenterId = p.tevkifatCenterId || p.tevkifatCenter?.id || '';
     setDuplicateDialogEditForm({
       amount: p.amount || '',
       paymentType: (p.paymentType as PaymentType) || 'TEVKIFAT',
-      tevkifatCenterId: p.tevkifatCenterId || p.tevkifatCenter?.id || '',
+      tevkifatCenterId: existingCenterId,
       description: p.description || '',
     });
-    getTevkifatCenters()
-      .then((data) => setDuplicateDialogTevkifatCenters(data))
+    getTevkifatCenters({ activeOnly: true })
+      .then((data) => {
+        setDuplicateDialogTevkifatCenters(data);
+        // Mevcut ödemenin tevkifat merkezi kaldırılmışsa seçimi sıfırla
+        if (existingCenterId && !data.some((c) => c.id === existingCenterId)) {
+          setDuplicateDialogEditForm((prev) => ({
+            ...prev,
+            tevkifatCenterId: data[0]?.id ?? '',
+          }));
+        }
+      })
       .catch(() => setDuplicateDialogTevkifatCenters([]));
   }, [duplicatePaymentDialog.open, duplicatePaymentDialog.existingPayment]);
 
@@ -181,8 +191,8 @@ const QuickPaymentEntryPage: React.FC = () => {
 
   const loadTevkifatCenters = async () => {
     try {
-      const data = await getTevkifatCenters();
-      setTevkifatCenters(data.filter((c) => c.isActive));
+      const data = await getTevkifatCenters({ activeOnly: true });
+      setTevkifatCenters(data);
     } catch (e) {
       console.error('Tevkifat merkezleri yüklenirken hata:', e);
       toast.showError('Tevkifat merkezleri yüklenirken bir hata oluştu');
