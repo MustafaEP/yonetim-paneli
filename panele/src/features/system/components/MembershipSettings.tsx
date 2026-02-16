@@ -723,7 +723,7 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                 { key: 'MEMBERSHIP_REQUIRE_EMAIL', label: 'E-posta' },
                 { key: 'MEMBERSHIP_REQUIRE_PROVINCE_DISTRICT', label: 'İkamet İl/İlçe' },
                 { key: 'MEMBERSHIP_REQUIRE_INSTITUTION_REG_NO', label: 'Kurum Sicil No' },
-                { key: 'MEMBERSHIP_REQUIRE_WORK_UNIT', label: 'Görev Yaptığı Birim' },
+                { key: 'MEMBERSHIP_REQUIRE_WORK_UNIT', label: 'Görev Birimi' },
             ].map((field) => (
               <Grid
                 key={field.key}

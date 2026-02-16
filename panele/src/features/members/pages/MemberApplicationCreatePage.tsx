@@ -85,6 +85,8 @@ const MemberApplicationCreatePage: React.FC = () => {
   const requireEducation = getSettingValue('MEMBERSHIP_REQUIRE_EDUCATION') === 'true';
   const requirePhone = getSettingValue('MEMBERSHIP_REQUIRE_PHONE') === 'true';
   const requireEmail = getSettingValue('MEMBERSHIP_REQUIRE_EMAIL') === 'true';
+  const requireWorkUnit = getSettingValue('MEMBERSHIP_REQUIRE_WORK_UNIT') === 'true';
+  const requireInstitutionRegNo = getSettingValue('MEMBERSHIP_REQUIRE_INSTITUTION_REG_NO') === 'true';
 
   const canCreateApplication = hasPermission('MEMBER_CREATE_APPLICATION');
   const hasMemberListByProvince = hasPermission('MEMBER_LIST_BY_PROVINCE');
@@ -831,6 +833,16 @@ const MemberApplicationCreatePage: React.FC = () => {
     }
     if (!form.institutionId) {
       setError('Kurum seçimi zorunludur.');
+      setErrorDialogOpen(true);
+      return false;
+    }
+    if (requireWorkUnit && !form.dutyUnit.trim()) {
+      setError('Görev birimi zorunludur.');
+      setErrorDialogOpen(true);
+      return false;
+    }
+    if (requireInstitutionRegNo && !form.institutionRegNo.trim()) {
+      setError('Kurum sicil no zorunludur.');
       setErrorDialogOpen(true);
       return false;
     }
@@ -1659,9 +1671,10 @@ const MemberApplicationCreatePage: React.FC = () => {
                 md: 6
               }}>
               <TextField
-                label="Görev Birimi"
+                label={requireWorkUnit ? 'Görev Birimi *' : 'Görev Birimi'}
                 value={form.dutyUnit}
                 onChange={(e) => handleChange('dutyUnit', e.target.value)}
+                required={requireWorkUnit}
                 fullWidth
                 InputProps={{
                   startAdornment: (
@@ -1677,7 +1690,9 @@ const MemberApplicationCreatePage: React.FC = () => {
                   },
                 }}
               />
-              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
+              {!requireWorkUnit && (
+                <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Opsiyonel</FormHelperText>
+              )}
             </Grid>
 
             {/* Meslek(Unvan) */}
@@ -1717,7 +1732,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                 )}
                 fullWidth
               />
-              <FormHelperText>Zorunlu değildir</FormHelperText>
+              <FormHelperText>Opsiyonel</FormHelperText>
             </Grid>
 
             {/* Kurum Adresi */}
@@ -1743,7 +1758,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                   },
                 }}
               />
-              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
+              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Opsiyonel</FormHelperText>
             </Grid>
 
             {/* Kurum İli - Kurum İlçesi */}
@@ -1787,7 +1802,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                 )}
                 fullWidth
               />
-              <FormHelperText>Zorunlu değildir</FormHelperText>
+              <FormHelperText>Opsiyonel</FormHelperText>
             </Grid>
 
             <Grid
@@ -1827,7 +1842,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                 )}
                 fullWidth
               />
-              <FormHelperText>Zorunlu değildir</FormHelperText>
+              <FormHelperText>Opsiyonel</FormHelperText>
             </Grid>
 
             {/* Kurum Sicil No - Kadro Unvan Kodu */}
@@ -1837,9 +1852,10 @@ const MemberApplicationCreatePage: React.FC = () => {
                 md: 6
               }}>
               <TextField
-                label="Kurum Sicil No"
+                label={requireInstitutionRegNo ? 'Kurum Sicil No *' : 'Kurum Sicil No'}
                 value={form.institutionRegNo}
                 onChange={(e) => handleChange('institutionRegNo', e.target.value)}
+                required={requireInstitutionRegNo}
                 fullWidth
                 InputProps={{
                   startAdornment: (
@@ -1855,7 +1871,9 @@ const MemberApplicationCreatePage: React.FC = () => {
                   },
                 }}
               />
-              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
+              {!requireInstitutionRegNo && (
+                <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Opsiyonel</FormHelperText>
+              )}
             </Grid>
 
             <Grid
@@ -1882,7 +1900,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                   },
                 }}
               />
-              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Zorunlu değildir</FormHelperText>
+              <FormHelperText sx={{ mt: 0.5, ml: 0 }}>Opsiyonel</FormHelperText>
             </Grid>
           </Grid>
 

@@ -2294,7 +2294,7 @@ async function main() {
     {
       key: 'MEMBERSHIP_REQUIRE_WORK_UNIT',
       value: 'false',
-      description: 'Görev Yaptığı Birim zorunlu mu?',
+      description: 'Görev Birimi zorunlu mu?',
       category: SystemSettingCategory.MEMBERSHIP,
       isEditable: true,
     },

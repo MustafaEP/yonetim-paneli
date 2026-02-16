@@ -902,7 +902,7 @@ export class Member {
       emptyFields.push('Kurum Sicil No');
     }
     if (!this._dutyUnit || this._dutyUnit.trim() === '') {
-      emptyFields.push('Görev Yaptığı Birim');
+      emptyFields.push('Görev Birimi');
     }
 
     return emptyFields;
