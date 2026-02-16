@@ -495,7 +495,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                       {getValue('SITE_LOGO_URL') && (
                         <Box
                           component="img"
-                          src={`${apiBaseUrl}${getValue('SITE_LOGO_URL')}`}
+                          src={getValue('SITE_LOGO_URL').startsWith('http') ? getValue('SITE_LOGO_URL') : `${apiBaseUrl}${getValue('SITE_LOGO_URL')}`}
                           alt="Logo"
                           sx={{
                             maxHeight: 60,
