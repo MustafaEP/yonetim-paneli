@@ -89,8 +89,8 @@ COPY --from=builder /app/dist ./dist
 # Verify dist directory exists in production stage
 RUN ls -la /app/dist/ || (echo "dist directory not found in production stage" && exit 1)
 
-# Create uploads directory
-RUN mkdir -p uploads/documents uploads/logos && \
+# Create uploads directory with all necessary subdirectories
+RUN mkdir -p uploads/documents uploads/logos uploads/header-paper && \
     chmod -R 755 uploads
 
 # Set environment variables

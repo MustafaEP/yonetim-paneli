@@ -12,7 +12,6 @@ import {
   useTheme,
   alpha,
   Alert,
-  Avatar,
   CircularProgress,
   Select,
   MenuItem,
@@ -35,11 +34,10 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
 import type { SystemSetting } from '../services/systemApi';
-import { uploadLogo, uploadHeaderPaper } from '../services/systemApi';
+import { uploadHeaderPaper, uploadLogo } from '../services/systemApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
-import { DEFAULT_LOGO_PATH } from '../../../shared/constants/defaultLogo';
 
 interface GeneralSettingsProps {
   settings: SystemSetting[];
@@ -101,10 +99,10 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
   const { refreshSettings } = useSystemSettings();
   const [localSettings, setLocalSettings] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHeaderPaper, setUploadingHeaderPaper] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const headerPaperInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   // Antetli kağıt görüntüleme (PDF/resim - diğer sayfalardaki blob + embed/img mantığı)
   const [headerPaperViewerOpen, setHeaderPaperViewerOpen] = useState(false);
   const [headerPaperBlobUrl, setHeaderPaperBlobUrl] = useState<string | null>(null);
@@ -142,32 +140,6 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
     }
   };
 
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Lütfen bir resim dosyası seçin');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Dosya boyutu 5MB\'dan küçük olmalıdır');
-      return;
-    }
-    setUploadingLogo(true);
-    try {
-      const logoUrl = await uploadLogo(file);
-      await onUpdate('SITE_LOGO_URL', logoUrl);
-      await refreshSettings();
-      toast.success('Logo başarıyla yüklendi');
-    } catch (error: unknown) {
-      console.error('Logo yüklenirken hata:', error);
-      toast.error(getApiErrorMessage(error, 'Logo yüklenirken bir hata oluştu'));
-    } finally {
-      setUploadingLogo(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const handleHeaderPaperUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -191,6 +163,32 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
     } finally {
       setUploadingHeaderPaper(false);
       if (headerPaperInputRef.current) headerPaperInputRef.current.value = '';
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.match(/(png|jpg|jpeg|gif|svg|webp)$/) && !file.name.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)) {
+      toast.error('Lütfen bir resim dosyası seçin (PNG, JPG, SVG, vb.)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Dosya boyutu 5MB\'dan küçük olmalıdır');
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const logoUrl = await uploadLogo(file);
+      await onUpdate('SITE_LOGO_URL', logoUrl);
+      await refreshSettings();
+      toast.success('Logo başarıyla yüklendi');
+    } catch (error: unknown) {
+      console.error('Logo yüklenirken hata:', error);
+      toast.error(getApiErrorMessage(error, 'Logo yüklenirken bir hata oluştu'));
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
     }
   };
 
@@ -242,15 +240,6 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
   };
 
   const envValue = getValue('ENVIRONMENT') || 'Production';
-
-  const logoSrc = (() => {
-    const logoUrl = getValue('SITE_LOGO_URL');
-    if (!logoUrl) return DEFAULT_LOGO_PATH;
-    if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) return logoUrl;
-    const base = import.meta.env.VITE_API_BASE_URL
-      || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
-    return `${base}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
-  })();
 
   if (loading) {
     return (
@@ -421,60 +410,6 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                   )}
                 </Grid>
 
-                {/* Logo */}
-                <Grid size={{ xs: 12 }}>
-                  <Box
-                    sx={{
-                      p: 2.5,
-                      borderRadius: 2,
-                      border: `1px dashed ${alpha(theme.palette.divider, 0.4)}`,
-                      backgroundColor: alpha(theme.palette.grey[500], 0.04),
-                      transition: 'all 0.2s ease',
-                      '&:hover': { borderColor: alpha(theme.palette.primary.main, 0.4), backgroundColor: alpha(theme.palette.primary.main, 0.02) },
-                    }}
-                  >
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: 'text.secondary' }}>
-                      Logo
-                    </Typography>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ xs: 'flex-start', sm: 'center' }}>
-                      <Avatar
-                        key={getValue('SITE_LOGO_URL') || 'default'}
-                        src={logoSrc}
-                        alt="Logo"
-                        variant="rounded"
-                        sx={{
-                          width: 80,
-                          height: 80,
-                          border: `2px solid ${alpha(theme.palette.divider, 0.15)}`,
-                          boxShadow: `0 4px 16px ${alpha(theme.palette.common.black, 0.08)}`,
-                        }}
-                        imgProps={{ onError: () => {} }}
-                      />
-                      <Box>
-                        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
-                        <Button
-                          variant="outlined"
-                          startIcon={uploadingLogo ? <CircularProgress size={18} color="inherit" /> : <UploadIcon />}
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploadingLogo}
-                          size="small"
-                          sx={{ borderRadius: 2 }}
-                        >
-                          {uploadingLogo ? 'Yükleniyor...' : 'Logo Yükle'}
-                        </Button>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-                          PNG, JPG veya SVG · Maks. 5MB
-                        </Typography>
-                        {getValue('SITE_LOGO_URL') && (
-                          <Typography variant="caption" sx={{ mt: 0.5, color: 'success.main', fontWeight: 600 }}>
-                            ✓ Yüklendi
-                          </Typography>
-                        )}
-                      </Box>
-                    </Stack>
-                  </Box>
-                </Grid>
-
                 {/* Antetli kağıt */}
                 <Grid size={{ xs: 12 }}>
                   <Box
@@ -520,6 +455,63 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                       PNG, JPG veya PDF · Maks. 10MB (PNG/JPG önerilir)
                     </Typography>
                     {getValue('DOCUMENT_HEADER_PAPER_PATH') && (
+                      <Typography variant="caption" sx={{ mt: 0.5, color: 'success.main', fontWeight: 600 }}>
+                        ✓ Yüklendi
+                      </Typography>
+                    )}
+                  </Box>
+                </Grid>
+
+                {/* Logo */}
+                <Grid size={{ xs: 12 }}>
+                  <Box
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 2,
+                      border: `1px dashed ${alpha(theme.palette.divider, 0.4)}`,
+                      backgroundColor: alpha(theme.palette.grey[500], 0.04),
+                      transition: 'all 0.2s ease',
+                      '&:hover': { borderColor: alpha(theme.palette.primary.main, 0.4), backgroundColor: alpha(theme.palette.primary.main, 0.02) },
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'text.secondary' }}>
+                      Sistem Logosu
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Sistemin ana logosu. Login sayfası, raporlar ve e-postalar gibi yerlerde kullanılır.
+                    </Typography>
+                    <input ref={logoInputRef} type="file" accept=".png,.jpg,.jpeg,.gif,.svg,.webp,image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
+                    <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1.5}>
+                      <Button
+                        variant="outlined"
+                        startIcon={uploadingLogo ? <CircularProgress size={18} color="inherit" /> : <UploadIcon />}
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={uploadingLogo}
+                        size="small"
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {uploadingLogo ? 'Yükleniyor...' : 'Logo Yükle'}
+                      </Button>
+                      {getValue('SITE_LOGO_URL') && (
+                        <Box
+                          component="img"
+                          src={`${apiBaseUrl}${getValue('SITE_LOGO_URL')}`}
+                          alt="Logo"
+                          sx={{
+                            maxHeight: 60,
+                            maxWidth: 200,
+                            objectFit: 'contain',
+                            border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                            borderRadius: 1,
+                            p: 0.5,
+                          }}
+                        />
+                      )}
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                      PNG, JPG, SVG, WebP · Maks. 5MB
+                    </Typography>
+                    {getValue('SITE_LOGO_URL') && (
                       <Typography variant="caption" sx={{ mt: 0.5, color: 'success.main', fontWeight: 600 }}>
                         ✓ Yüklendi
                       </Typography>

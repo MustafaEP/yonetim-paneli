@@ -5,6 +5,12 @@ echo "========================================="
 echo "  Backend Entrypoint - $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================="
 
+# ─── 0. Uploads Klasörlerini Oluştur ───
+echo "[0/3] Uploads klasörleri kontrol ediliyor..."
+mkdir -p uploads/documents uploads/logos uploads/header-paper
+chmod -R 755 uploads
+echo "✅ Uploads klasörleri hazır"
+
 # ─── 1. Veritabanı Hazırlık Kontrolü ───
 echo "[1/3] Veritabanı bağlantısı kontrol ediliyor..."
 
