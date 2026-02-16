@@ -29,6 +29,7 @@ import {
   CreateBranchDto,
   UpdateBranchDto,
   DeleteBranchDto,
+  DeleteInstitutionDto,
   AssignBranchPresidentDto,
   CreateInstitutionDto,
   UpdateInstitutionDto,
@@ -527,17 +528,22 @@ export class RegionsController {
   @Delete('institutions/:id')
   @ApiOperation({
     summary: 'Kurum sil',
-    description: 'Mevcut kurumu siler (soft delete)',
+    description:
+      'Mevcut kurumu siler (soft delete). Üyelere ne yapılacağını belirtmek için body içinde memberActionType ve targetInstitutionId gönderilmelidir.',
   })
   @ApiParam({
     name: 'id',
     description: 'Kurum ID',
     example: 'institution-uuid-123',
   })
+  @ApiBody({ type: DeleteInstitutionDto })
   @ApiResponse({ status: 200, description: 'Kurum başarıyla silindi' })
   @ApiResponse({ status: 404, description: 'Kurum bulunamadı' })
-  async deleteInstitution(@Param('id') id: string) {
-    await this.regionsService.deleteInstitution(id);
+  async deleteInstitution(
+    @Param('id') id: string,
+    @Body() dto: DeleteInstitutionDto,
+  ) {
+    await this.regionsService.deleteInstitution(id, dto);
     return { message: 'Kurum başarıyla silindi' };
   }
 }

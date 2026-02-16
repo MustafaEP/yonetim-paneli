@@ -7,7 +7,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './auth/guards/permissions.guard';
 import { MembersModule } from './members/members.module';
 import { RegionsModule } from './regions/regions.module';
-import { ConfigModule } from './config/config.module';
+import { ConfigModule } from './config/config.module.js';
 import { RolesModule } from './roles/roles.module';
 import { ContentModule } from './content/content.module';
 import { SystemModule } from './system/system.module';

@@ -13,6 +13,8 @@ import {
   AssignBranchPresidentDto,
   DeleteBranchDto,
   MemberActionOnBranchDelete,
+  DeleteInstitutionDto,
+  MemberActionOnInstitutionDelete,
   CreateInstitutionDto,
   UpdateInstitutionDto,
 } from './dto';
@@ -814,24 +816,148 @@ export class RegionsService {
     });
   }
 
-  async deleteInstitution(id: string) {
-    const existing = await this.prisma.institution.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-    });
+  async deleteInstitution(id: string, dto: DeleteInstitutionDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.institution.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+        },
+      });
 
-    if (!existing) {
-      throw new NotFoundException('Kurum bulunamadı');
-    }
+      if (!existing) {
+        throw new NotFoundException('Kurum bulunamadı');
+      }
 
-    // Soft delete
-    return this.prisma.institution.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-      },
+      // Üyelere göre işlem yap
+      switch (dto.memberActionType) {
+        case MemberActionOnInstitutionDelete.REMOVE_INSTITUTION: {
+          // Kurum bilgisini kaldır - institutionId zorunlu olduğundan başka bir kuruma taşı
+          const fallback = await tx.institution.findFirst({
+            where: {
+              id: { not: id },
+              deletedAt: null,
+              isActive: true,
+            },
+          });
+          if (!fallback) {
+            throw new BadRequestException(
+              'Başka aktif kurum bulunamadığı için kurum bilgisi kaldırılamaz. Önce başka bir kurum oluşturun veya "Başka Bir Kuruma Taşı" seçeneğini kullanın.',
+            );
+          }
+          await tx.member.updateMany({
+            where: { institutionId: id },
+            data: { institutionId: fallback.id },
+          });
+          break;
+        }
+
+        case MemberActionOnInstitutionDelete.TRANSFER_TO_INSTITUTION: {
+          if (!dto.targetInstitutionId) {
+            throw new BadRequestException(
+              'TRANSFER_TO_INSTITUTION seçeneği için targetInstitutionId gereklidir',
+            );
+          }
+          const target = await tx.institution.findFirst({
+            where: { id: dto.targetInstitutionId, deletedAt: null },
+          });
+          if (!target) {
+            throw new NotFoundException('Hedef kurum bulunamadı');
+          }
+          if (target.id === id) {
+            throw new BadRequestException('Hedef kurum, silinen kurum ile aynı olamaz');
+          }
+          await tx.member.updateMany({
+            where: { institutionId: id },
+            data: { institutionId: dto.targetInstitutionId },
+          });
+          break;
+        }
+
+        case MemberActionOnInstitutionDelete.REMOVE_AND_DEACTIVATE: {
+          const fallback = await tx.institution.findFirst({
+            where: {
+              id: { not: id },
+              deletedAt: null,
+              isActive: true,
+            },
+          });
+          if (!fallback) {
+            throw new BadRequestException(
+              'Başka aktif kurum bulunamadığı için bu işlem yapılamaz. Önce başka bir kurum oluşturun veya "Başka Bir Kuruma Taşı" seçeneğini kullanın.',
+            );
+          }
+          await tx.member.updateMany({
+            where: { institutionId: id },
+            data: {
+              institutionId: fallback.id,
+              status: 'INACTIVE',
+              isActive: false,
+            },
+          });
+          break;
+        }
+
+        case MemberActionOnInstitutionDelete.TRANSFER_AND_DEACTIVATE: {
+          if (!dto.targetInstitutionId) {
+            throw new BadRequestException(
+              'TRANSFER_AND_DEACTIVATE seçeneği için targetInstitutionId gereklidir',
+            );
+          }
+          const target2 = await tx.institution.findFirst({
+            where: { id: dto.targetInstitutionId, deletedAt: null },
+          });
+          if (!target2) {
+            throw new NotFoundException('Hedef kurum bulunamadı');
+          }
+          if (target2.id === id) {
+            throw new BadRequestException('Hedef kurum, silinen kurum ile aynı olamaz');
+          }
+          await tx.member.updateMany({
+            where: { institutionId: id },
+            data: {
+              institutionId: dto.targetInstitutionId,
+              status: 'INACTIVE',
+              isActive: false,
+            },
+          });
+          break;
+        }
+
+        case MemberActionOnInstitutionDelete.TRANSFER_AND_CANCEL: {
+          if (!dto.targetInstitutionId) {
+            throw new BadRequestException(
+              'TRANSFER_AND_CANCEL seçeneği için targetInstitutionId gereklidir',
+            );
+          }
+          const target3 = await tx.institution.findFirst({
+            where: { id: dto.targetInstitutionId, deletedAt: null },
+          });
+          if (!target3) {
+            throw new NotFoundException('Hedef kurum bulunamadı');
+          }
+          if (target3.id === id) {
+            throw new BadRequestException('Hedef kurum, silinen kurum ile aynı olamaz');
+          }
+          await tx.member.updateMany({
+            where: { institutionId: id },
+            data: {
+              institutionId: dto.targetInstitutionId,
+              status: 'RESIGNED',
+            },
+          });
+          break;
+        }
+
+        default:
+          throw new BadRequestException('Geçersiz memberActionType');
+      }
+
+      // Kurumu soft delete
+      return tx.institution.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
     });
   }
 }

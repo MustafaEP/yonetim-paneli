@@ -17,11 +17,21 @@ export function isNetworkOrServerError(error: unknown): boolean {
  * Catch bloklarında tekrarlayan cast ve fallback mantığını merkezileştirir.
  * NestJS bazen message'ı string[] döndürür; birleştirilir.
  * Network/server hatalarında kullanıcı dostu bir mesaj döner.
+ * 413 (Request Entity Too Large) için özellikle VPS/nginx dosya boyutu limiti mesajı verir.
  */
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (error == null) return fallback;
   if (isNetworkOrServerError(error)) return NETWORK_SERVER_FALLBACK;
-  const err = error as { response?: { data?: { message?: string | string[]; error?: string } } };
+  const err = error as {
+    response?: {
+      status?: number;
+      data?: { message?: string | string[]; error?: string };
+    };
+  };
+  // 413: VPS'te nginx client_max_body_size varsayılan 1MB; logo/antet yükleme başarısız olabilir
+  if (err?.response?.status === 413) {
+    return 'Dosya boyutu sunucu limitini aşıyor. Daha küçük bir dosya seçin veya sunucuda client_max_body_size artırılmalı (örn. 10m).';
+  }
   const raw = err?.response?.data?.message ?? err?.response?.data?.error;
   if (typeof raw === 'string' && raw.trim()) return raw.trim();
   if (Array.isArray(raw) && raw.length > 0) {

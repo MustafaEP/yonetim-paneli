@@ -3,7 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './presentation/controllers/notifications.controller';
 import { PrismaModule } from '../prisma/prisma.module';
-import { ConfigModule } from '../config/config.module';
+import { ConfigModule } from '../config/config.module.js';
 import { MembersModule } from '../members/members.module';
 import { NotificationProcessor } from './processors/notification.processor';
 import {
@@ -12,7 +12,7 @@ import {
 } from './queues/notification.queue';
 import { EmailService } from './services/email.service';
 import { SmsService } from './services/sms.service';
-import { ConfigService } from '../config/config.service';
+import { ConfigService } from '../config/config.service.js';
 import { NotificationApplicationService } from './application/services/notification-application.service';
 import { PrismaNotificationRepository } from './infrastructure/persistence/prisma-notification.repository';
 import { NotificationRepository } from './domain/repositories/notification.repository.interface';

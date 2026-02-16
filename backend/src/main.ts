@@ -1,30 +1,41 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { ConfigService } from './config/config.service';
+import { ConfigService } from './config/config.service.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import * as bodyParser from 'body-parser';
+import { existsSync, mkdirSync } from 'fs';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
 
-  // 🔹 Static file serving - uploads klasörünü serve et
-  // process.cwd() kullanarak hem development hem production'da çalışmasını sağla
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads',
-  });
-
-  // 🔹 CORS ayarları
+  // 🔹 CORS ayarları - static dosya yanıtlarına da uygulanması için useStaticAssets'tan ÖNCE
   app.enableCors({
     origin: configService.corsOrigin,
     credentials: configService.corsCredentials,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization',
+  });
+
+  // 🔹 Uploads dizinleri - VPS/Docker'da yazma izni ve yol tutarlılığı için startup'ta oluştur
+  const uploadsRoot = join(process.cwd(), 'uploads');
+  for (const sub of ['logos', 'header-paper']) {
+    const dir = join(uploadsRoot, sub);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+      console.log(`📁 Upload dizini oluşturuldu: ${dir}`);
+    }
+  }
+
+  // 🔹 Static file serving - uploads klasörünü serve et
+  // process.cwd() kullanarak hem development hem production'da çalışmasını sağla
+  app.useStaticAssets(uploadsRoot, {
+    prefix: '/uploads',
   });
 
   // 🔹 JSON body limit (base64 image gibi büyük payload'lar için)

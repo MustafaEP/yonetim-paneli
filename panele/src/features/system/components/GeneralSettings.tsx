@@ -20,12 +20,20 @@ import {
   InputLabel,
   Stack,
   Fade,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import UploadIcon from '@mui/icons-material/Upload';
 import BusinessIcon from '@mui/icons-material/Business';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import BuildIcon from '@mui/icons-material/Build';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import ImageIcon from '@mui/icons-material/Image';
+import CloseIcon from '@mui/icons-material/Close';
 import type { SystemSetting } from '../services/systemApi';
 import { uploadLogo, uploadHeaderPaper } from '../services/systemApi';
 import { useToast } from '../../../shared/hooks/useToast';
@@ -97,6 +105,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
   const [uploadingHeaderPaper, setUploadingHeaderPaper] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const headerPaperInputRef = useRef<HTMLInputElement>(null);
+  // Antetli kağıt görüntüleme (PDF/resim - diğer sayfalardaki blob + embed/img mantığı)
+  const [headerPaperViewerOpen, setHeaderPaperViewerOpen] = useState(false);
+  const [headerPaperBlobUrl, setHeaderPaperBlobUrl] = useState<string | null>(null);
+  const [headerPaperLoading, setHeaderPaperLoading] = useState(false);
+  const [headerPaperIsPdf, setHeaderPaperIsPdf] = useState(true);
 
   const getSetting = (key: string): SystemSetting | undefined =>
     settings.find((s) => s.key === key);
@@ -181,6 +194,53 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
     }
   };
 
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
+
+  const handleShowHeaderPaper = async () => {
+    const path = getValue('DOCUMENT_HEADER_PAPER_PATH');
+    if (!path?.trim()) {
+      toast.error('Önce antetli kağıt yükleyin');
+      return;
+    }
+    const fullUrl = path.startsWith('http://') || path.startsWith('https://')
+      ? path
+      : `${apiBaseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+    setHeaderPaperLoading(true);
+    setHeaderPaperViewerOpen(true);
+    setHeaderPaperBlobUrl(null);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        throw new Error(response.statusText || 'Dosya yüklenemedi');
+      }
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      setHeaderPaperBlobUrl(blobUrl);
+      const lower = (path || '').toLowerCase();
+      setHeaderPaperIsPdf(lower.endsWith('.pdf'));
+    } catch (e) {
+      console.error('Antetli kağıt yüklenirken hata:', e);
+      toast.error(getApiErrorMessage(e, 'Antetli kağıt görüntülenemedi'));
+      setHeaderPaperViewerOpen(false);
+    } finally {
+      setHeaderPaperLoading(false);
+    }
+  };
+
+  const closeHeaderPaperViewer = () => {
+    setHeaderPaperViewerOpen(false);
+    if (headerPaperBlobUrl) {
+      window.URL.revokeObjectURL(headerPaperBlobUrl);
+      setHeaderPaperBlobUrl(null);
+    }
+  };
+
   const envValue = getValue('ENVIRONMENT') || 'Production';
 
   const logoSrc = (() => {
@@ -202,6 +262,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
 
   return (
     <Fade in timeout={500}>
+      <Box>
       <Grid container spacing={{ xs: 2, sm: 3 }}>
         {/* Sistem Kimliği */}
         <Grid size={{ xs: 12 }}>
@@ -433,16 +494,28 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                       Üye dökümanları için kullanılacak antetli kağıt. Tüm üye dökümanlarının arka planı olarak kullanılır.
                     </Typography>
                     <input ref={headerPaperInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={handleHeaderPaperUpload} style={{ display: 'none' }} />
-                    <Button
-                      variant="outlined"
-                      startIcon={uploadingHeaderPaper ? <CircularProgress size={18} color="inherit" /> : <UploadIcon />}
-                      onClick={() => headerPaperInputRef.current?.click()}
-                      disabled={uploadingHeaderPaper}
-                      size="small"
-                      sx={{ borderRadius: 2 }}
-                    >
-                      {uploadingHeaderPaper ? 'Yükleniyor...' : 'Antetli Kağıt Yükle'}
-                    </Button>
+                    <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1.5}>
+                      <Button
+                        variant="outlined"
+                        startIcon={uploadingHeaderPaper ? <CircularProgress size={18} color="inherit" /> : <UploadIcon />}
+                        onClick={() => headerPaperInputRef.current?.click()}
+                        disabled={uploadingHeaderPaper}
+                        size="small"
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {uploadingHeaderPaper ? 'Yükleniyor...' : 'Antetli Kağıt Yükle'}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        startIcon={<VisibilityIcon />}
+                        onClick={handleShowHeaderPaper}
+                        disabled={!getValue('DOCUMENT_HEADER_PAPER_PATH')}
+                        size="small"
+                        sx={{ borderRadius: 2 }}
+                      >
+                        Antetli Kağıt Göster
+                      </Button>
+                    </Stack>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
                       PNG, JPG veya PDF · Maks. 10MB (PNG/JPG önerilir)
                     </Typography>
@@ -616,6 +689,89 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
           </Card>
         </Grid>
       </Grid>
+
+      {/* Antetli kağıt görüntüleme dialog (PDF/resim - diğer sayfalardaki mantık) */}
+      <Dialog
+        open={headerPaperViewerOpen}
+        onClose={closeHeaderPaperViewer}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: { height: '90vh', maxHeight: '90vh' },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {headerPaperIsPdf ? (
+              <PictureAsPdfIcon sx={{ color: theme.palette.error.main }} />
+            ) : (
+              <ImageIcon sx={{ color: theme.palette.primary.main }} />
+            )}
+            <Typography variant="h6">Antetli Kağıt</Typography>
+          </Box>
+          <IconButton
+            onClick={closeHeaderPaperViewer}
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.error.main, 0.1),
+                color: theme.palette.error.main,
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            p: 0,
+            height: 'calc(90vh - 80px)',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {headerPaperLoading ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <CircularProgress size={48} />
+              <Typography variant="body2" color="text.secondary">
+                Yükleniyor...
+              </Typography>
+            </Box>
+          ) : headerPaperBlobUrl ? (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+                overflow: 'auto',
+                '& iframe': { width: '100%', height: '100%', border: 'none' },
+                '& embed': { width: '100%', height: '100%' },
+                '& img': { maxWidth: '100%', height: 'auto', display: 'block' },
+              }}
+            >
+              {headerPaperIsPdf ? (
+                <embed
+                  src={`${headerPaperBlobUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                  type="application/pdf"
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              ) : (
+                <img src={headerPaperBlobUrl} alt="Antetli kağıt" style={{ width: '100%', height: 'auto' }} />
+              )}
+            </Box>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+      </Box>
     </Fade>
   );
 };

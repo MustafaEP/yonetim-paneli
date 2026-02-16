@@ -240,6 +240,7 @@ npm run lint
 
 5. **Nginx reverse proxy ayarlarını yapın**
    - `nginx-proxy-config/yonetim.conf` dosyasını reverse proxy'nize ekleyin
+   - **Sistem ayarları logo yükleme:** VPS'te logo güncelleme çalışmıyorsa nginx'te `client_max_body_size 10m;` olduğundan emin olun (varsayılan 1MB 413 hatası verir). Bu projedeki `yonetim.conf` ve `panele/nginx.conf` dosyalarında zaten tanımlıdır.
 
 ### Environment Değişkenleri
 

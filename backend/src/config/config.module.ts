@@ -1,8 +1,8 @@
 import { Module, Global } from '@nestjs/common';
-import { ConfigService } from './config.service';
-import { JwtConfigService } from './jwt.config';
-import { DatabaseConfigService } from './database.config';
-import { PrismaModule } from '../prisma/prisma.module';
+import { ConfigService } from './config.service.js';
+import { JwtConfigService } from './jwt.config.js';
+import { DatabaseConfigService } from './database.config.js';
+import { PrismaModule } from '../prisma/prisma.module.js';
 
 @Global()
 @Module({
