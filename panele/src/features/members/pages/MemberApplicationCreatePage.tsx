@@ -290,9 +290,8 @@ const MemberApplicationCreatePage: React.FC = () => {
   useEffect(() => {
     const loadTevkifatCenters = async () => {
       try {
-        const data = await getTevkifatCenters();
-        const activeCenters = data.filter(c => c.isActive).map(c => ({ id: c.id, name: c.name, title: c.title }));
-        setTevkifatCenters(activeCenters);
+        const data = await getTevkifatCenters({ activeOnly: true });
+        setTevkifatCenters(data.map(c => ({ id: c.id, name: c.name, title: (c as any).title ?? null })));
       } catch (e) {
         console.error('Tevkifat merkezleri yüklenirken hata:', e);
       }

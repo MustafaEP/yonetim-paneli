@@ -1,5 +1,5 @@
 // src/pages/members/MemberUpdatePage.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -138,6 +138,21 @@ const MemberUpdatePage: React.FC = () => {
   const [tevkifatCenters, setTevkifatCenters] = useState<TevkifatCenter[]>([]);
   const [tevkifatTitles, setTevkifatTitles] = useState<TevkifatTitle[]>([]);
   const [memberGroups, setMemberGroups] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Dropdown'da: sadece aktif merkezler + üyenin mevcut merkezi (kaldırılmışsa " (Kaldırılmış)" ile)
+  const tevkifatCentersForSelect = useMemo(() => {
+    const list = [...tevkifatCenters];
+    const current = (member as any)?.tevkifatCenter;
+    if (current?.id && !list.some((c) => c.id === current.id)) {
+      list.push({
+        ...current,
+        id: current.id,
+        name: `${current.name} (Kaldırılmış)`,
+        isActive: false,
+      } as TevkifatCenter);
+    }
+    return list;
+  }, [tevkifatCenters, member]);
 
   // Member verisini yükle
   useEffect(() => {
@@ -280,11 +295,11 @@ const MemberUpdatePage: React.FC = () => {
     loadProfessions();
   }, []);
 
-  // Tevkifat merkezlerini yükle
+  // Tevkifat merkezlerini yükle (sadece aktif olanlar; kaldırılmış merkezler listede görünmez)
   useEffect(() => {
     const loadTevkifatCenters = async () => {
       try {
-        const data = await getTevkifatCenters();
+        const data = await getTevkifatCenters({ activeOnly: true });
         setTevkifatCenters(data);
       } catch (e) {
         console.error('Tevkifat merkezleri yüklenirken hata:', e);
@@ -1737,7 +1752,7 @@ const MemberUpdatePage: React.FC = () => {
                   }}
                 >
                   <MenuItem value="">Seçiniz</MenuItem>
-                  {tevkifatCenters.map((center) => (
+                  {tevkifatCentersForSelect.map((center) => (
                     <MenuItem key={center.id} value={center.id}>
                       {center.name}
                     </MenuItem>
