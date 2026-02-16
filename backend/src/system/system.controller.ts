@@ -159,7 +159,9 @@ export class SystemController {
         },
       }),
       fileFilter: (req, file, cb) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|svg|webp)$/)) {
+        const extOk = /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(file.originalname);
+        const mimeOk = /(jpg|jpeg|png|gif|svg|webp|x-png)$/.test(file.mimetype.split('/').pop() || '');
+        if (!extOk && !mimeOk) {
           return cb(
             new BadRequestException('Sadece resim dosyaları yüklenebilir'),
             false,
@@ -216,8 +218,11 @@ export class SystemController {
         },
       }),
       fileFilter: (req, file, cb) => {
-        // PDF, PNG, JPG kabul et
-        if (!file.mimetype.match(/\/(pdf|png|jpg|jpeg)$/)) {
+        // PDF, PNG, JPG kabul et (image/x-png bazı sistemlerde PNG için gönderilir)
+        const allowed =
+          /\.(pdf|png|jpg|jpeg)$/i.test(file.originalname) ||
+          /(pdf|png|jpg|jpeg|x-png)$/.test(file.mimetype.split('/').pop() || '');
+        if (!allowed) {
           return cb(
             new BadRequestException(
               'Sadece PDF, PNG veya JPG dosyaları yüklenebilir',
