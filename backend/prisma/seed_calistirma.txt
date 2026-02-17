@@ -1,14 +1,1 @@
-VPS/Docker üzerinde seed çalıştırma (önerilen):
-
-  cd /opt/yonetim
-  chmod +x seed.sh
-
-  # seed 1
-  ./seed.sh --seed 1 --mode ts --yes
-
-  # seed 2
-  ./seed.sh --seed 2 --mode ts --yes
-
-Not:
-- Seed işlemi birçok tabloyu temizler (deleteMany). Prod veriniz varsa yedek alın.
-- --mode prod kullanacaksanız dist/prisma/seed*.js dosyalarının image içinde var olması gerekir.
+docker exec yonetim-backend npm run prisma:seed
