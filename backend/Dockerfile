@@ -79,6 +79,9 @@ COPY prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
+# Copy TypeScript config files for seed operations
+COPY tsconfig.json tsconfig.prisma.json ./
+
 # Runtime'da migration çalıştırmak için prisma CLI gerekli
 # package.json'daki sürümü kullan (hardcoded versiyon değil!)
 RUN npx prisma generate
