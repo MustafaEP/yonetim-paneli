@@ -281,16 +281,20 @@ async function main() {
   // 10. MembershipInfoOption (3)
   console.log('📋 Üyelik bilgi seçenekleri ekleniyor...');
   await Promise.all([
-    prisma.membershipInfoOption.create({ data: { label: 'Üye', value: 'UYE', isActive: true, order: 1 } }),
+    prisma.membershipInfoOption.create({ data: { label: 'Normal Üye', value: 'NORMAL', isActive: true, order: 1 } }),
+    prisma.membershipInfoOption.create({ data: { label: 'Fahri Üye', value: 'FAHRI', isActive: true, order: 2 } }),
+    prisma.membershipInfoOption.create({ data: { label: 'Onursal Üye', value: 'ONURSAL', isActive: true, order: 3 } }),
   ]);
-  console.log('   ✅ 1 üyelik bilgi seçeneği eklendi');
+  console.log('   ✅ 3 üyelik bilgi seçeneği eklendi');
 
   // 11. MemberGroup (3)
   console.log('📋 Üye grupları ekleniyor...');
   const memberGroups = await Promise.all([
     prisma.memberGroup.create({ data: { name: 'Üye', isActive: true, order: 1 } }),
+    prisma.memberGroup.create({ data: { name: 'Fahri Üye', isActive: true, order: 2 } }),
+    prisma.memberGroup.create({ data: { name: 'Onursal Üye', isActive: true, order: 3 } }),
   ]);
-  console.log('   ✅ 1 üye grubu eklendi');
+  console.log('   ✅ 3 üye grubu eklendi');
 
   // 12. Profession (3)
   console.log('📋 Meslekler ekleniyor...');
