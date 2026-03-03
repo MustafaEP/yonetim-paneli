@@ -160,9 +160,9 @@ const AccountingMembersPage: React.FC = () => {
       minWidth: 200,
       valueGetter: (_value, row) => {
         const payments = row.duesPayments || [];
-        if (payments.length === 0) return 'Ödeme yok';
+        if (payments.length === 0) return 'Kesinti yok';
         const total = payments.reduce((sum, p) => sum + (typeof p.amount === 'string' ? parseFloat(p.amount) : p.amount), 0);
-        return `${payments.length} ödeme, Toplam: ${total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL`;
+        return `${payments.length} Kesinti, Toplam: ${total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL`;
       },
     },
   ];

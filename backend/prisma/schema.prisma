@@ -70,7 +70,7 @@ model User {
   uploadedTevkifatFiles TevkifatFile[] @relation("TevkifatFileUploadedBy")
   approvedTevkifatFiles TevkifatFile[] @relation("TevkifatFileApprovedBy")
 
-  // 🔹 Üye ödeme ilişkileri
+  // 🔹 Üye Kesinti ilişkileri
   createdMemberPayments  MemberPayment[] @relation("MemberPaymentCreatedBy")
   approvedMemberPayments MemberPayment[] @relation("MemberPaymentApprovedBy")
 
@@ -233,7 +233,7 @@ model Member {
   // 🔹 Üye güncelleme geçmişi
   history MemberHistory[]
 
-  // 🔹 Ödeme ilişkileri
+  // 🔹 Kesinti ilişkileri
   payments MemberPayment[]
 
   // 🔹 Panel kullanıcı ilişkisi
@@ -893,9 +893,9 @@ enum ApprovalEntityType {
 }
 
 enum PaymentType {
-  TEVKIFAT // Kurumdan gelen toplu ödeme
-  ELDEN // Elden ödeme
-  HAVALE // Havale/EFT ödemesi
+  TEVKIFAT // Kurumdan gelen toplu Kesinti
+  ELDEN // Elden Kesinti
+  HAVALE // Havale/EFT Kesintisi
 }
 
 model Approval {
@@ -946,7 +946,7 @@ model TevkifatFile {
   approvedByUser   User?           @relation("TevkifatFileApprovedBy", fields: [approvedBy], references: [id])
   approvedAt        DateTime?
 
-  // 🔹 Tevkifat dosyasına bağlı ödemeler
+  // 🔹 Tevkifat dosyasına bağlı Kesintiler
   payments MemberPayment[]
 
   createdAt DateTime @default(now())
@@ -959,13 +959,13 @@ model TevkifatFile {
   @@index([uploadedBy])
 }
 
-// 🔹 Üye Ödemeleri
+// 🔹 Üye Kesintileri
 model MemberPayment {
   id                 String          @id @default(cuid())
   memberId           String
   member             Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
   registrationNumber String? // Üye kayıt numarası (member'dan kopyalanır, hızlı erişim için)
-  paymentDate        DateTime        @default(now()) // Ödemenin sisteme işlendiği tarih
+  paymentDate        DateTime        @default(now()) // Kesintinin sisteme işlendiği tarih
   paymentPeriodMonth Int // Ay (1-12)
   paymentPeriodYear  Int // Yıl
   amount             Decimal         @db.Decimal(10, 2) // Ödenen tutar

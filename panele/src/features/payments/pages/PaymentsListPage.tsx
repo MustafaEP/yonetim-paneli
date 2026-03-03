@@ -74,7 +74,7 @@ const PaymentsListPage: React.FC = () => {
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [selectedInstitutionId, setSelectedInstitutionId] = useState<string>('');
   
-  // Ödeme ekleme dialog state
+  // Kesinti ekleme dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [paymentForm, setPaymentForm] = useState<{
@@ -124,7 +124,7 @@ const PaymentsListPage: React.FC = () => {
       // Kurum filtresi ekle
       if (selectedInstitutionId) {
         // Backend'de institutionId filtresi yok, bu yüzden frontend'de filtreleyeceğiz
-        // Ama önce tüm ödemeleri yükleyelim
+        // Ama önce tüm Kesintileri yükleyelim
       }
       
       const data = await getPayments(requestFilters);
@@ -139,8 +139,8 @@ const PaymentsListPage: React.FC = () => {
       
       setRows(filteredData);
     } catch (e: unknown) {
-      console.error('Ödemeler yüklenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödemeler yüklenirken bir hata oluştu'));
+      console.error('Kesintiler yüklenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesintiler yüklenirken bir hata oluştu'));
     } finally {
       setLoading(false);
     }
@@ -213,7 +213,7 @@ const PaymentsListPage: React.FC = () => {
           width: col.width || (col.flex ? (col.flex as number) * 10 : 15),
           valueGetter: col.valueGetter,
         }));
-      const title = `Ödemeler - ${filters.year}${filters.month ? ` ${monthNames[filters.month - 1]}` : ' (Tüm Yıl)'}`;
+      const title = `Kesintiler - ${filters.year}${filters.month ? ` ${monthNames[filters.month - 1]}` : ' (Tüm Yıl)'}`;
         exportToPDF(filteredRows, exportColumns, `odemeler_${filters.year}${filters.month ? `_${filters.month}` : ''}`, title, toast.showInfo);
     } catch (error) {
       console.error('PDF export hatası:', error);
@@ -276,7 +276,7 @@ const PaymentsListPage: React.FC = () => {
       };
 
       await createPayment(payload);
-      toast.showSuccess('Ödeme başarıyla eklendi');
+      toast.showSuccess('Kesinti başarıyla eklendi');
       
       // Formu sıfırla
       setPaymentForm({
@@ -296,8 +296,8 @@ const PaymentsListPage: React.FC = () => {
       // Listeyi yenile
       await loadPayments();
     } catch (e: unknown) {
-      console.error('Ödeme eklenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödeme eklenirken bir hata oluştu'));
+      console.error('Kesinti eklenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti eklenirken bir hata oluştu'));
     } finally {
       setSubmittingPayment(false);
     }
@@ -423,8 +423,8 @@ const PaymentsListPage: React.FC = () => {
     <PageLayout>
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
-        title="Ödeme Sorgulama"
-        description="Üye bazlı gerçek ödeme kayıtlarının takibi"
+        title="Kesinti Sorgulama"
+        description="Üye bazlı gerçek Kesinti kayıtlarının takibi"
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
@@ -452,7 +452,7 @@ const PaymentsListPage: React.FC = () => {
                 },
               }}
             >
-              Yeni Ödeme Ekle
+              Yeni Kesinti Ekle
             </Button>
           ) : undefined
         }
@@ -474,7 +474,7 @@ const PaymentsListPage: React.FC = () => {
                 boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
               }}
             >
-              Yeni Ödeme Ekle
+              Yeni Kesinti Ekle
             </Button>
           ) : undefined
         }
@@ -518,7 +518,7 @@ const PaymentsListPage: React.FC = () => {
                 Filtrele ve Ara
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
-                Ödemeleri hızlıca bulun ve filtreleyin
+                Kesintileri hızlıca bulun ve filtreleyin
               </Typography>
             </Box>
           </Box>
@@ -706,8 +706,8 @@ const PaymentsListPage: React.FC = () => {
                 }}
               >
                 <PaymentIcon fontSize="small" />
-                {filteredRows.length} ödeme listeleniyor
-                {filteredRows.length !== rows.length && ` (Toplam ${rows.length} ödemeden)`}
+                {filteredRows.length} Kesinti listeleniyor
+                {filteredRows.length !== rows.length && ` (Toplam ${rows.length} Kesintiden)`}
               </Typography>
             </Box>
           )}
@@ -835,13 +835,13 @@ const PaymentsListPage: React.FC = () => {
                 },
               }}
               localeText={{
-                noRowsLabel: 'Ödeme bulunamadı',
+                noRowsLabel: 'Kesinti bulunamadı',
               }}
             />
           </Box>
         </Box>
       </Card>
-      {/* Ödeme Ekleme Dialog */}
+      {/* Kesinti Ekleme Dialog */}
       <Dialog 
         open={paymentDialogOpen} 
         onClose={() => !submittingPayment && setPaymentDialogOpen(false)}
@@ -864,7 +864,7 @@ const PaymentsListPage: React.FC = () => {
         }}>
           <PaymentIcon />
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Yeni Ödeme Ekle
+            Yeni Kesinti Ekle
           </Typography>
         </DialogTitle>
         <DialogContent>
@@ -914,7 +914,7 @@ const PaymentsListPage: React.FC = () => {
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
                 <FormControl fullWidth required sx={{ minWidth: 200 }}>
-                  <InputLabel>Ödeme Dönemi Ay</InputLabel>
+                  <InputLabel>Kesinti Dönemi Ay</InputLabel>
                   <Select
                     value={paymentForm.paymentPeriodMonth}
                     onChange={(e) => {
@@ -940,7 +940,7 @@ const PaymentsListPage: React.FC = () => {
                       }
                       setPaymentForm({ ...paymentForm, paymentPeriodMonth: newMonth, documentFileName: newFileName });
                     }}
-                    label="Ödeme Dönemi Ay"
+                    label="Kesinti Dönemi Ay"
                     disabled={submittingPayment}
                   >
                     {monthNames.map((month, index) => (
@@ -954,7 +954,7 @@ const PaymentsListPage: React.FC = () => {
             <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
                   fullWidth
-                  label="Ödeme Dönemi Yıl"
+                  label="Kesinti Dönemi Yıl"
                   type="number"
                   value={paymentForm.paymentPeriodYear}
                   onChange={(e) => {
@@ -1136,7 +1136,7 @@ const PaymentsListPage: React.FC = () => {
                   value={paymentForm.description}
                   onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
                   disabled={submittingPayment}
-                  placeholder="Ödeme açıklaması (opsiyonel)"
+                  placeholder="Kesinti açıklaması (opsiyonel)"
                   sx={{ minWidth: 250 }}
                 />
             </Box>
@@ -1177,7 +1177,7 @@ const PaymentsListPage: React.FC = () => {
               }
             }}
           >
-            {submittingPayment ? 'Ekleniyor...' : 'Ödeme Ekle'}
+            {submittingPayment ? 'Ekleniyor...' : 'Kesinti Ekle'}
           </Button>
         </DialogActions>
       </Dialog>

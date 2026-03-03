@@ -33,7 +33,7 @@ export class PaymentsService {
   ) {}
 
   /**
-   * Üye ödemesi oluştur
+   * Üye Kesintisi oluştur
    */
   async createPayment(
     dto: CreateMemberPaymentDto,
@@ -58,7 +58,7 @@ export class PaymentsService {
       throw new NotFoundException('Üye bulunamadı');
     }
 
-    // ACTIVE veya APPROVED durumundaki üyelere ödeme kabul edilir
+    // ACTIVE veya APPROVED durumundaki üyelere Kesinti kabul edilir
     if (
       (member.status !== MemberStatus.ACTIVE &&
         member.status !== MemberStatus.APPROVED) ||
@@ -66,14 +66,14 @@ export class PaymentsService {
       member.deletedAt
     ) {
       throw new BadRequestException(
-        'Aktif veya onaylanmış olmayan üye için ödeme kaydedilemez',
+        'Aktif veya onaylanmış olmayan üye için Kesinti kaydedilemez',
       );
     }
 
     // TEVKIFAT tipinde tevkifatCenterId zorunlu
     if (dto.paymentType === PaymentType.TEVKIFAT && !dto.tevkifatCenterId) {
       throw new BadRequestException(
-        'Tevkifat ödemesi için tevkifat merkezi seçilmelidir',
+        'Tevkifat Kesintisi için tevkifat merkezi seçilmelidir',
       );
     }
 
@@ -150,14 +150,14 @@ export class PaymentsService {
       },
     });
 
-    // APPROVED durumundaki üyeye ödeme geldiğinde adminlere bildirim gönder
+    // APPROVED durumundaki üyeye Kesinti geldiğinde adminlere bildirim gönder
     if (payment.member.status === MemberStatus.APPROVED) {
       try {
         await this.notifyAdminsAboutApprovedMemberPayment(payment);
       } catch (error) {
-        // Bildirim gönderme hatası ödeme kaydını engellemez, sadece log'lanır
+        // Bildirim gönderme hatası Kesinti kaydını engellemez, sadece log'lanır
         this.logger.error(
-          `Beklemedeki üye (${payment.member.registrationNumber}) için ödeme bildirimi gönderilirken hata: ${error.message}`,
+          `Beklemedeki üye (${payment.member.registrationNumber}) için Kesinti bildirimi gönderilirken hata: ${error.message}`,
           error.stack,
         );
       }
@@ -167,7 +167,7 @@ export class PaymentsService {
   }
 
   /**
-   * APPROVED durumundaki üyeye ödeme geldiğinde adminlere bildirim gönder
+   * APPROVED durumundaki üyeye Kesinti geldiğinde adminlere bildirim gönder
    */
   private async notifyAdminsAboutApprovedMemberPayment(payment: any) {
     try {
@@ -208,8 +208,8 @@ export class PaymentsService {
       const senderUserId = adminUsers[0].id;
       const notification = await this.notificationsService.create(
         {
-          title: 'Beklemedeki Üyeye Ödeme Geldi',
-          message: `${member.firstName} ${member.lastName} (${member.registrationNumber}) isimli beklemedeki üyeye ${amount} tutarında ödeme kaydedildi. Üyeyi aktifleştirmek için Üyelik Kabul Ekranı'nı kontrol edebilirsiniz.`,
+          title: 'Beklemedeki Üyeye Kesinti Geldi',
+          message: `${member.firstName} ${member.lastName} (${member.registrationNumber}) isimli beklemedeki üyeye ${amount} tutarında Kesinti kaydedildi. Üyeyi aktifleştirmek için Üyelik Kabul Ekranı'nı kontrol edebilirsiniz.`,
           type: NotificationType.IN_APP,
           targetType: NotificationTargetType.USER,
           metadata: {
@@ -228,7 +228,7 @@ export class PaymentsService {
       }
 
       this.logger.log(
-        `Beklemedeki üye (${member.registrationNumber}) için ödeme bildirimi ${adminUsers.length} admin kullanıcıya gönderildi`,
+        `Beklemedeki üye (${member.registrationNumber}) için Kesinti bildirimi ${adminUsers.length} admin kullanıcıya gönderildi`,
       );
     } catch (error) {
       this.logger.error(
@@ -240,7 +240,7 @@ export class PaymentsService {
   }
 
   /**
-   * Ödeme listesi (filtreleme ile)
+   * Kesinti listesi (filtreleme ile)
    */
   async listPayments(filters?: {
     memberId?: string;
@@ -373,7 +373,7 @@ export class PaymentsService {
   }
 
   /**
-   * Üye ödemelerini listele (memberId'ye göre)
+   * Üye Kesintilerini listele (memberId'ye göre)
    */
   async getMemberPayments(memberId: string) {
     const member = await this.prisma.member.findUnique({
@@ -411,7 +411,7 @@ export class PaymentsService {
   }
 
   /**
-   * Ödeme detayı
+   * Kesinti detayı
    */
   async getPaymentById(id: string) {
     const payment = await this.prisma.memberPayment.findUnique({
@@ -488,14 +488,14 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Ödeme kaydı bulunamadı');
+      throw new NotFoundException('Kesinti kaydı bulunamadı');
     }
 
     return payment;
   }
 
   /**
-   * Ödemeyi onayla (Admin)
+   * Kesintiyi onayla (Admin)
    */
   async approvePayment(id: string, approvedBy: string) {
     const payment = await this.prisma.memberPayment.findUnique({
@@ -503,11 +503,11 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Ödeme kaydı bulunamadı');
+      throw new NotFoundException('Kesinti kaydı bulunamadı');
     }
 
     if (payment.isApproved) {
-      throw new BadRequestException('Bu ödeme zaten onaylanmış');
+      throw new BadRequestException('Bu Kesinti zaten onaylanmış');
     }
 
     return this.prisma.memberPayment.update({
@@ -539,7 +539,7 @@ export class PaymentsService {
   }
 
   /**
-   * Ödemeyi güncelle
+   * Kesintiyi güncelle
    */
   async updatePayment(
     id: string,
@@ -548,7 +548,7 @@ export class PaymentsService {
     ipAddress?: string,
     userAgent?: string,
   ) {
-    // Ödeme kaydını bul
+    // Kesinti kaydını bul
     const payment = await this.prisma.memberPayment.findUnique({
       where: { id },
       include: {
@@ -565,11 +565,11 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Ödeme kaydı bulunamadı');
+      throw new NotFoundException('Kesinti kaydı bulunamadı');
     }
 
-    // Onaylı ödemeler güncellenebilir (hızlı ödeme sayfasından düzenleme için)
-    // Not: Onaylı ödemelerin güncellenmesi iş mantığı açısından uygun olabilir
+    // Onaylı Kesintiler güncellenebilir (hızlı Kesinti sayfasından düzenleme için)
+    // Not: Onaylı Kesintilerin güncellenmesi iş mantığı açısından uygun olabilir
     // Eğer ileride sadece belirli alanların güncellenmesine izin verilmesi gerekiyorsa,
     // bu kontrol tekrar eklenebilir veya daha detaylı hale getirilebilir
 
@@ -591,7 +591,7 @@ export class PaymentsService {
         throw new NotFoundException('Üye bulunamadı');
       }
 
-      // ACTIVE veya APPROVED durumundaki üyelere ödeme kabul edilir
+      // ACTIVE veya APPROVED durumundaki üyelere Kesinti kabul edilir
       if (
         (member.status !== MemberStatus.ACTIVE &&
           member.status !== MemberStatus.APPROVED) ||
@@ -599,18 +599,18 @@ export class PaymentsService {
         member.deletedAt
       ) {
         throw new BadRequestException(
-          'Aktif veya onaylanmış olmayan üye için ödeme kaydedilemez',
+          'Aktif veya onaylanmış olmayan üye için Kesinti kaydedilemez',
         );
       }
     }
 
-    // Ödeme türü ve tevkifat merkezi kontrolü
+    // Kesinti türü ve tevkifat merkezi kontrolü
     const paymentType = dto.paymentType ?? payment.paymentType;
     const tevkifatCenterId = dto.tevkifatCenterId ?? payment.tevkifatCenterId;
 
     if (paymentType === PaymentType.TEVKIFAT && !tevkifatCenterId) {
       throw new BadRequestException(
-        'Tevkifat ödemesi için tevkifat merkezi seçilmelidir',
+        'Tevkifat Kesintisi için tevkifat merkezi seçilmelidir',
       );
     }
 
@@ -658,7 +658,7 @@ export class PaymentsService {
     if (ipAddress) updateData.ipAddress = ipAddress;
     if (userAgent) updateData.userAgent = userAgent;
 
-    // Ödemeyi güncelle
+    // Kesintiyi güncelle
     const updatedPayment = await this.prisma.memberPayment.update({
       where: { id },
       data: updateData,
@@ -711,7 +711,7 @@ export class PaymentsService {
   }
 
   /**
-   * Ödemeyi iptal et / sil (Admin)
+   * Kesintiyi iptal et / sil (Admin)
    */
   async deletePayment(id: string) {
     const payment = await this.prisma.memberPayment.findUnique({
@@ -719,11 +719,11 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Ödeme kaydı bulunamadı');
+      throw new NotFoundException('Kesinti kaydı bulunamadı');
     }
 
-    // Onaylı ödemeler de silinebilir (hızlı ödeme sayfasından düzenleme/silme için)
-    // Not: Onaylı ödemelerin silinmesi iş mantığı açısından uygun olabilir
+    // Onaylı Kesintiler de silinebilir (hızlı Kesinti sayfasından düzenleme/silme için)
+    // Not: Onaylı Kesintilerin silinmesi iş mantığı açısından uygun olabilir
     // Eğer ileride sadece belirli durumlarda silinmesine izin verilmesi gerekiyorsa,
     // bu kontrol tekrar eklenebilir veya daha detaylı hale getirilebilir
 
@@ -733,7 +733,7 @@ export class PaymentsService {
   }
 
   /**
-   * Muhasebe için ödeme listesi (Excel/PDF export için)
+   * Muhasebe için Kesinti listesi (Excel/PDF export için)
    */
   async getPaymentsForAccounting(filters?: {
     branchId?: string;
@@ -814,7 +814,7 @@ export class PaymentsService {
   }
 
   /**
-   * Ödeme için dosya yükle
+   * Kesinti için dosya yükle
    */
   async uploadPaymentDocument(
     file: Express.Multer.File,
@@ -914,7 +914,7 @@ export class PaymentsService {
   }
 
   /**
-   * Ödeme belgesi görüntüle (inline)
+   * Kesinti belgesi görüntüle (inline)
    */
   async viewPaymentDocument(paymentId: string, res: Response): Promise<void> {
     const payment = await this.prisma.memberPayment.findUnique({
@@ -927,7 +927,7 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException(`Ödeme kaydı bulunamadı: ${paymentId}`);
+      throw new NotFoundException(`Kesinti kaydı bulunamadı: ${paymentId}`);
     }
 
     let filePath: string;
@@ -946,7 +946,7 @@ export class PaymentsService {
         const defaultPdfPath = path.join(process.cwd(), 'prisma', 'Odeme.pdf');
         if (fs.existsSync(defaultPdfPath)) {
           this.logger.warn(
-            `Ödeme belgesi bulunamadı: ${fileName}, varsayılan Odeme.pdf kullanılıyor`,
+            `Kesinti belgesi bulunamadı: ${fileName}, varsayılan Odeme.pdf kullanılıyor`,
           );
           filePath = defaultPdfPath;
           fileName = 'Odeme.pdf';
@@ -959,13 +959,13 @@ export class PaymentsService {
       const defaultPdfPath = path.join(process.cwd(), 'prisma', 'Odeme.pdf');
       if (fs.existsSync(defaultPdfPath)) {
         this.logger.warn(
-          `Ödeme için belge URL'i yok, varsayılan Odeme.pdf kullanılıyor`,
+          `Kesinti için belge URL'i yok, varsayılan Odeme.pdf kullanılıyor`,
         );
         filePath = defaultPdfPath;
         fileName = 'Odeme.pdf';
       } else {
         throw new NotFoundException(
-          'Bu ödeme için belge bulunamadı ve varsayılan belge de mevcut değil',
+          'Bu Kesinti için belge bulunamadı ve varsayılan belge de mevcut değil',
         );
       }
     }
@@ -1009,7 +1009,7 @@ export class PaymentsService {
   }
 
   /**
-   * Ödeme belgesi indir
+   * Kesinti belgesi indir
    */
   async downloadPaymentDocument(
     paymentId: string,
@@ -1025,11 +1025,11 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException(`Ödeme kaydı bulunamadı: ${paymentId}`);
+      throw new NotFoundException(`Kesinti kaydı bulunamadı: ${paymentId}`);
     }
 
     if (!payment.documentUrl) {
-      throw new NotFoundException('Bu ödeme için belge bulunamadı');
+      throw new NotFoundException('Bu Kesinti için belge bulunamadı');
     }
 
     // documentUrl formatı: /uploads/payments/fileName.pdf veya uploads/payments/fileName.pdf

@@ -21,7 +21,7 @@ Modern, ölçeklenebilir ve güvenli bir sendika yönetim sistemi. Hiyerarşik r
 - 🔐 **Güvenli Kimlik Doğrulama**: JWT tabanlı authentication sistemi
 - 👥 **Hiyerarşik Rol Yönetimi**: 9 farklı rol seviyesi ile esnek yetkilendirme
 - 📊 **Kapsamlı Üye Yönetimi**: Kayıt, onay, güncelleme ve durum takibi
-- 💰 **Mali İşler Modülü**: Aidat yönetimi, ödeme takibi ve raporlama
+- 💰 **Mali İşler Modülü**: Aidat yönetimi, Kesinti takibi ve raporlama
 - 📄 **Doküman Yönetimi**: PDF şablonları ve otomatik doküman üretimi
 - 📢 **İçerik Yönetimi**: Haber, duyuru ve etkinlik yönetimi
 - 🔔 **Bildirim Sistemi**: Email, SMS ve WhatsApp entegrasyonu
@@ -72,7 +72,7 @@ yonetim-paneli/
 │   │   ├── documents/      # Doküman yönetimi
 │   │   ├── members/        # Üye yönetimi
 │   │   ├── notifications/  # Bildirim sistemi
-│   │   ├── payments/       # Ödeme yönetimi
+│   │   ├── payments/       # Kesinti yönetimi
 │   │   ├── regions/        # Bölgesel yönetim
 │   │   ├── roles/          # Rol ve yetki yönetimi
 │   │   └── users/          # Kullanıcı yönetimi
@@ -317,7 +317,7 @@ Detaylı yetki matrisi için [RBAC Dokümantasyonu](README.md#-rol-bazlı-yetki-
 
 ### 3. Mali İşler
 - Aidat planı tanımlama
-- Ödeme kayıt yönetimi
+- Kesinti kayıt yönetimi
 - Borç/gecikme raporları
 - Excel/PDF raporlama
 

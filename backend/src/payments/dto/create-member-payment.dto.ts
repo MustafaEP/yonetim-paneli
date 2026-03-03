@@ -24,7 +24,7 @@ export class CreateMemberPaymentDto {
   memberId: string;
 
   @ApiProperty({
-    description: 'Ödeme tarihi (sisteme işlendiği tarih)',
+    description: 'Kesinti tarihi (sisteme işlendiği tarih)',
     example: '2025-01-15T10:00:00Z',
     type: String,
     required: false,
@@ -34,7 +34,7 @@ export class CreateMemberPaymentDto {
   paymentDate?: string;
 
   @ApiProperty({
-    description: 'Ödeme dönemi ay (1-12)',
+    description: 'Kesinti dönemi ay (1-12)',
     example: 1,
     type: Number,
     minimum: 1,
@@ -46,7 +46,7 @@ export class CreateMemberPaymentDto {
   paymentPeriodMonth: number;
 
   @ApiProperty({
-    description: 'Ödeme dönemi yıl',
+    description: 'Kesinti dönemi yıl',
     example: 2025,
     type: Number,
     minimum: 2020,
@@ -70,7 +70,7 @@ export class CreateMemberPaymentDto {
   amount: string;
 
   @ApiProperty({
-    description: 'Ödeme türü',
+    description: 'Kesinti türü',
     example: PaymentType.ELDEN,
     enum: PaymentType,
   })
@@ -99,7 +99,7 @@ export class CreateMemberPaymentDto {
 
   @ApiProperty({
     description: 'Açıklama',
-    example: 'Ocak ayı ödemesi',
+    example: 'Ocak ayı Kesintisi',
     type: String,
     required: false,
   })
@@ -108,7 +108,7 @@ export class CreateMemberPaymentDto {
   description?: string;
 
   @ApiProperty({
-    description: 'Ödeme belgesi URL (PDF/dekont)',
+    description: 'Kesinti belgesi URL (PDF/dekont)',
     example: 'uploads/payments/payment-123.pdf',
     type: String,
     required: false,

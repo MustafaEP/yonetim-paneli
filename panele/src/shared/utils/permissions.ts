@@ -44,7 +44,7 @@ export const canViewSensitiveMemberFields = (
   return hasPermission(user, 'MEMBER_VIEW');
 };
 
-// 💰 Üye ödeme detaylarını görebilecek roller
+// 💰 Üye Kesinti detaylarını görebilecek roller
 export const canViewMemberPayments = (
   user: BackendUser | null,
 ): boolean => {

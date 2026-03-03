@@ -306,7 +306,7 @@ export class ReportsService {
       where.paymentPeriodMonth = params.month;
     }
 
-    // Toplam ödemeler
+    // Toplam Kesintiler
     const totalPaymentsResult = await this.prisma.memberPayment.aggregate({
       where,
       _sum: {
@@ -314,7 +314,7 @@ export class ReportsService {
       },
     });
 
-    // Ödeme yapan ve yapmayan üye sayıları
+    // Kesinti yapan ve yapmayan üye sayıları
     const memberWhere: any = {};
     if (scopeIds.provinceId) {
       memberWhere.provinceId = scopeIds.provinceId;
@@ -344,7 +344,7 @@ export class ReportsService {
       }),
     ]);
 
-    // Aylık ödemeler
+    // Aylık Kesintiler
     const byMonthData = await this.prisma.memberPayment.groupBy({
       by: ['paymentPeriodYear', 'paymentPeriodMonth'],
       where,
@@ -364,7 +364,7 @@ export class ReportsService {
       count: item._count.id,
     }));
 
-    // Plan bazlı ödemeler (DuesPlan modeli yok, bu yüzden boş array döndürüyoruz)
+    // Plan bazlı Kesintiler (DuesPlan modeli yok, bu yüzden boş array döndürüyoruz)
     const byPlan: Array<{
       planId: string;
       planName: string;
@@ -439,7 +439,7 @@ export class ReportsService {
 
   /**
    * Üye bazlı borç hesapla
-   * Son 12 ay içinde ödeme yapılmamış aylar için borç hesaplar
+   * Son 12 ay içinde Kesinti yapılmamış aylar için borç hesaplar
    */
   async calculateMemberDebt(
     memberId: string,
@@ -472,7 +472,7 @@ export class ReportsService {
     const membershipStartYear = membershipStartDate.getFullYear();
     const membershipStartMonth = membershipStartDate.getMonth() + 1;
 
-    // Son 12 ay içindeki ödemeleri al
+    // Son 12 ay içindeki Kesintileri al
     const payments = await this.prisma.memberPayment.findMany({
       where: {
         memberId,
@@ -661,7 +661,7 @@ export class ReportsService {
       }),
     ]);
 
-    // Son 30 gün ödeme artışı
+    // Son 30 gün Kesinti artışı
     const [currentPayments, previousPayments] = await Promise.all([
       this.prisma.memberPayment.aggregate({
         where: {
@@ -754,7 +754,7 @@ export class ReportsService {
     const now = new Date();
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-    // 60 gündür ödeme yapmayan aktif üyeler
+    // 60 gündür Kesinti yapmayan aktif üyeler
     const membersWithoutPayment = await this.prisma.member.count({
       where: {
         ...where,

@@ -488,7 +488,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                     <ReceiptLongIcon />
                   </ListItemIcon>
                   <ListItemText
-                    primary="Ödeme Sorgulama"
+                    primary="Kesinti Sorgulama"
                     primaryTypographyProps={{
                       fontSize: '0.9rem',
                       fontWeight: 500,

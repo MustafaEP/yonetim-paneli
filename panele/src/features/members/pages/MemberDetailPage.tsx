@@ -246,7 +246,7 @@ const MemberDetailPage = () => {
     }
   };
 
-  // Ödemeleri yükle
+  // Kesintileri yükle
   useEffect(() => {
     if (!id) return;
 
@@ -256,7 +256,7 @@ const MemberDetailPage = () => {
         const data = await getMemberPayments(id);
         setPayments(data);
       } catch (error) {
-        console.error('Ödemeler alınırken hata:', error);
+        console.error('Kesintiler alınırken hata:', error);
       } finally {
         setLoadingPayments(false);
       }
@@ -2762,8 +2762,8 @@ const MemberDetailPage = () => {
           )}
         </SectionCard>
 
-        {/* Ödemeler */}
-        <SectionCard title="Aidat / Ödeme Geçmişi" icon={<PaymentIcon />}>
+        {/* Kesintiler */}
+        <SectionCard title="Aidat / Kesinti Geçmişi" icon={<PaymentIcon />}>
             {loadingPayments ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
@@ -2777,7 +2777,7 @@ const MemberDetailPage = () => {
                   bgcolor: alpha(theme.palette.info.main, 0.05),
                 }}
               >
-                Bu üye için henüz ödeme kaydı bulunmamaktadır.
+                Bu üye için henüz Kesinti kaydı bulunmamaktadır.
               </Alert>
             ) : (
               <TableContainer 
@@ -2813,7 +2813,7 @@ const MemberDetailPage = () => {
                     >
                       <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap', textAlign: 'center', verticalAlign: 'middle' }}>Dönem</TableCell>
                       <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap', textAlign: 'center', verticalAlign: 'middle' }}>Tutar</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap', display: { xs: 'none', sm: 'table-cell' }, textAlign: 'center', verticalAlign: 'middle' }}>Ödeme Türü</TableCell>
+                      <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap', display: { xs: 'none', sm: 'table-cell' }, textAlign: 'center', verticalAlign: 'middle' }}>Kesinti Türü</TableCell>
                       <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap', textAlign: 'center', verticalAlign: 'middle' }}>Durum</TableCell>
                       <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap', display: { xs: 'none', md: 'table-cell' }, textAlign: 'center', verticalAlign: 'middle' }}>Belge</TableCell>
                     </TableRow>
@@ -2919,7 +2919,7 @@ const MemberDetailPage = () => {
                                         const errorText = await response.text();
                                         console.error('PDF görüntüleme hatası:', response.status, errorText);
                                         if (response.status === 404) {
-                                          throw new Error('Ödeme belgesi bulunamadı. Belge yüklenmemiş olabilir.');
+                                          throw new Error('Kesinti belgesi bulunamadı. Belge yüklenmemiş olabilir.');
                                         }
                                         throw new Error(errorText || 'Dosya görüntülenemedi');
                                       }
@@ -2927,7 +2927,7 @@ const MemberDetailPage = () => {
                                       const blob = await response.blob();
                                       const blobUrl = window.URL.createObjectURL(blob);
                                       const urlParts = payment.documentUrl!.split('/');
-                                      const fileName = urlParts[urlParts.length - 1] || 'Ödeme Belgesi';
+                                      const fileName = urlParts[urlParts.length - 1] || 'Kesinti Belgesi';
                                       setPdfUrl(blobUrl);
                                       setPdfTitle(fileName);
                                       setPdfViewerOpen(true);

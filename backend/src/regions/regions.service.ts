@@ -407,7 +407,7 @@ export class RegionsService {
       },
     });
 
-    // Tevkifat merkezlerinden gelen toplam gelir (onaylı ödemeler)
+    // Tevkifat merkezlerinden gelen toplam gelir (onaylı Kesintiler)
     const totalRevenue = await this.prisma.memberPayment.aggregate({
       where: {
         member: {

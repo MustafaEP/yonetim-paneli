@@ -1480,7 +1480,7 @@ const MembersByStatusPage: React.FC = () => {
 
           <Box sx={{ mb: 3 }}>
             <FormLabel sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.95rem', display: 'block' }}>
-              Ödemeler
+              Kesintiler
             </FormLabel>
             <RadioGroup
               value={deletePayments ? 'delete' : 'keep'}
@@ -1493,10 +1493,10 @@ const MembersByStatusPage: React.FC = () => {
                 label={
                   <Box>
                     <Typography variant="body1" fontWeight={600}>
-                      Ödemeleri Koru
+                      Kesintileri Koru
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Ödeme kayıtları silinmeyecek, üye silinse bile kayıtlarda kalacak
+                      Kesinti kayıtları silinmeyecek, üye silinse bile kayıtlarda kalacak
                     </Typography>
                   </Box>
                 }
@@ -1516,10 +1516,10 @@ const MembersByStatusPage: React.FC = () => {
                 label={
                   <Box>
                     <Typography variant="body1" fontWeight={600}>
-                      Ödemeleri Sil
+                      Kesintileri Sil
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Tüm ödeme kayıtları silinecek
+                      Tüm Kesinti kayıtları silinecek
                     </Typography>
                   </Box>
                 }

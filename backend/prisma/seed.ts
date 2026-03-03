@@ -646,7 +646,7 @@ async function main() {
   // Şu anki tarih
   const now = new Date();
   
-  // Özel üye: Burcu Doğan - Haziran 2025'te kayıt olmuş, Haziran'da ödeme yapmış
+  // Özel üye: Burcu Doğan - Haziran 2025'te kayıt olmuş, Haziran'da Kesinti yapmış
   const burcuCreatedAt = new Date(2025, 5, 1); // 1 Haziran 2025
 
   // İlk önce Burcu Doğan'ı oluştur
@@ -836,7 +836,7 @@ async function main() {
         
         const cancellationReasons = [
           'İstifa talebi',
-          'Üyelik aidatını ödememe',
+          'Üyelik aidatını Kesintime',
           'Sendika tüzüğüne aykırı davranış',
           'Kendi isteği ile ayrılma',
           'İşyerinden ayrılma',
@@ -989,7 +989,7 @@ async function main() {
       
       const cancellationReasons = [
         'İstifa talebi',
-        'Üyelik aidatını ödememe',
+        'Üyelik aidatını Kesintime',
         'Sendika tüzüğüne aykırı davranış',
         'Kendi isteği ile ayrılma',
         'İşyerinden ayrılma',
@@ -1035,7 +1035,7 @@ async function main() {
       
       const cancellationReasons = [
         'İstifa talebi',
-        'Üyelik aidatını ödememe',
+        'Üyelik aidatını Kesintime',
         'Sendika tüzüğüne aykırı davranış',
         'Kendi isteği ile ayrılma',
         'İşyerinden ayrılma',
@@ -1266,8 +1266,8 @@ async function main() {
         authorId: activeUsers[1]?.id || activeUsers[0].id,
       },
       {
-        title: 'Aidat Ödemeleri Hakkında',
-        content: 'Aidat ödemelerinizi zamanında yapmanız önemlidir. Ödeme tarihleri ve yöntemleri hakkında bilgi.',
+        title: 'Aidat Kesintileri Hakkında',
+        content: 'Aidat Kesintilerinizi zamanında yapmanız önemlidir. Kesinti tarihleri ve yöntemleri hakkında bilgi.',
         type: ContentType.ANNOUNCEMENT,
         status: ContentStatus.PUBLISHED,
         authorId: activeUsers[0].id,
@@ -2309,7 +2309,7 @@ async function main() {
     {
       key: 'DUES_DEFAULT_PERIOD',
       value: 'MONTHLY',
-      description: 'Varsayılan ödeme periyodu (MONTHLY, YEARLY)',
+      description: 'Varsayılan Kesinti periyodu (MONTHLY, YEARLY)',
       category: SystemSettingCategory.DUES,
       isEditable: true,
     },
@@ -2323,14 +2323,14 @@ async function main() {
     {
       key: 'DUES_REMINDER_DAYS',
       value: '7',
-      description: 'Borç hatırlatma gün sayısı (ödeme tarihinden önce)',
+      description: 'Borç hatırlatma gün sayısı (Kesinti tarihinden önce)',
       category: SystemSettingCategory.DUES,
       isEditable: true,
     },
     {
       key: 'DUES_GRACE_PERIOD_DAYS',
       value: '15',
-      description: 'Ödeme erteleme süresi (gün)',
+      description: 'Kesinti erteleme süresi (gün)',
       category: SystemSettingCategory.DUES,
       isEditable: true,
     },
@@ -2517,21 +2517,21 @@ async function main() {
     {
       key: 'PAYMENT_GATEWAY',
       value: 'iyzico',
-      description: 'Ödeme gateway',
+      description: 'Kesinti gateway',
       category: SystemSettingCategory.INTEGRATION,
       isEditable: true,
     },
     {
       key: 'PAYMENT_GATEWAY_API_KEY',
       value: '',
-      description: 'Ödeme gateway API anahtarı',
+      description: 'Kesinti gateway API anahtarı',
       category: SystemSettingCategory.INTEGRATION,
       isEditable: true,
     },
     {
       key: 'PAYMENT_GATEWAY_SECRET_KEY',
       value: '',
-      description: 'Ödeme gateway gizli anahtarı',
+      description: 'Kesinti gateway gizli anahtarı',
       category: SystemSettingCategory.INTEGRATION,
       isEditable: true,
     },
@@ -2569,7 +2569,7 @@ async function main() {
       },
       {
         title: 'Aidat Hatırlatması',
-        message: 'Aidat ödemelerinizi zamanında yapmanızı rica ederiz.',
+        message: 'Aidat Kesintilerinizi zamanında yapmanızı rica ederiz.',
         category: NotificationCategory.FINANCIAL,
         typeCategory: NotificationTypeCategory.DUES_OVERDUE,
         channels: [NotificationChannel.EMAIL],
@@ -3477,8 +3477,8 @@ async function main() {
   }
   console.log(`   - ${applicationCount} panel kullanıcı başvurusu eklendi`);
 
-  // 🔹 Üye Ödemeleri
-  console.log('💳 Üye ödemeleri ekleniyor...');
+  // 🔹 Üye Kesintileri
+  console.log('💳 Üye Kesintileri ekleniyor...');
   const activeMembers = await prisma.member.findMany({
     where: {
       status: MemberStatus.ACTIVE,
@@ -3521,9 +3521,9 @@ async function main() {
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
 
-    // Her aktif üye için son 3-12 ay arası rastgele ödemeler oluştur (3 üye için toplam 3-9 ödeme)
+    // Her aktif üye için son 3-12 ay arası rastgele Kesintiler oluştur (3 üye için toplam 3-9 Kesinti)
     activeMembers.forEach((member, index) => {
-      // Üye başına 1-3 arası ödeme oluştur
+      // Üye başına 1-3 arası Kesinti oluştur
       const paymentCount = 1 + Math.floor(Math.random() * 3);
       
       for (let i = 0; i < paymentCount; i++) {
@@ -3538,25 +3538,25 @@ async function main() {
           paymentYear -= 1;
         }
 
-        // Ödeme türü sadece TEVKIFAT olabilir
+        // Kesinti türü sadece TEVKIFAT olabilir
         let paymentType: PaymentType;
         let tevkifatCenterId: string | null = null;
         let description: string | null = null;
 
-        // Tevkifat ödemesi (sadece tevkifatCenterId varsa)
+        // Tevkifat Kesintisi (sadece tevkifatCenterId varsa)
         if (member.tevkifatCenterId) {
           paymentType = PaymentType.TEVKIFAT;
           tevkifatCenterId = member.tevkifatCenterId;
-          description = `${paymentMonth}/${paymentYear} tevkifat ödemesi`;
+          description = `${paymentMonth}/${paymentYear} tevkifat Kesintisi`;
         } else {
-          // Eğer üyenin tevkifatCenterId'si yoksa bu ödemeyi atla
+          // Eğer üyenin tevkifatCenterId'si yoksa bu Kesintiyi atla
           continue;
         }
 
         // Tutar (100-250 TL arası rastgele)
         const amount = (100 + Math.random() * 150).toFixed(2);
 
-        // Ödeme tarihi (dönem ayının rastgele bir günü, son 12 ay içinde rastgele)
+        // Kesinti tarihi (dönem ayının rastgele bir günü, son 12 ay içinde rastgele)
         const daysInMonth = new Date(paymentYear, paymentMonth, 0).getDate();
         const paymentDate = new Date(paymentYear, paymentMonth - 1, 1 + Math.floor(Math.random() * daysInMonth));
 
@@ -3577,7 +3577,7 @@ async function main() {
           documentUrl: isApproved ? `uploads/payments/payment-${member.id}-${paymentYear}-${paymentMonth}.pdf` : null,
           isApproved,
           approvedByUserId: isApproved ? approvedByUserId : null,
-          approvedAt: isApproved ? new Date(paymentDate.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000) : null, // Ödeme tarihinden sonraki 7 gün içinde onaylandı
+          approvedAt: isApproved ? new Date(paymentDate.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000) : null, // Kesinti tarihinden sonraki 7 gün içinde onaylandı
           createdByUserId,
           ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
           userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -3585,7 +3585,7 @@ async function main() {
       }
     });
 
-    // Ödemeleri gruplara ayırıp toplu ekleme yap (performans için)
+    // Kesintileri gruplara ayırıp toplu ekleme yap (performans için)
     const batchSize = 100;
     for (let i = 0; i < payments.length; i += batchSize) {
       const batch = payments.slice(i, i + batchSize);
@@ -3595,19 +3595,19 @@ async function main() {
       });
     }
 
-    console.log(`   - ${payments.length} ödeme kaydı eklendi (tümü tevkifat)`);
+    console.log(`   - ${payments.length} Kesinti kaydı eklendi (tümü tevkifat)`);
     console.log(`   - Onaylı: ${payments.filter(p => p.isApproved).length}`);
     console.log(`   - Onaysız: ${payments.filter(p => !p.isApproved).length}`);
 
-    // 🔹 Ek 100 ödeme daha ekle (aynı kurallarla)
-    console.log('💳 Ek 100 ödeme daha ekleniyor...');
+    // 🔹 Ek 100 Kesinti daha ekle (aynı kurallarla)
+    console.log('💳 Ek 100 Kesinti daha ekleniyor...');
     const additionalPayments: typeof payments = [];
     
     // Tevkifat merkezi olan üyeleri filtrele
     const membersWithTevkifat = activeMembers.filter(m => m.tevkifatCenterId);
     
     if (membersWithTevkifat.length === 0) {
-      console.log('   ⚠️  Tevkifat merkezi olan üye bulunamadı, ek ödeme eklenemedi');
+      console.log('   ⚠️  Tevkifat merkezi olan üye bulunamadı, ek Kesinti eklenemedi');
     } else {
       for (let i = 0; i < 100; i++) {
         // Rastgele bir aktif üye seç (tevkifat merkezi olan)
@@ -3627,7 +3627,7 @@ async function main() {
         // Tutar (100-250 TL arası rastgele)
         const amount = (100 + Math.random() * 150).toFixed(2);
         
-        // Ödeme tarihi (dönem ayının rastgele bir günü)
+        // Kesinti tarihi (dönem ayının rastgele bir günü)
         const daysInMonth = new Date(paymentYear, paymentMonth, 0).getDate();
         const paymentDate = new Date(paymentYear, paymentMonth - 1, 1 + Math.floor(Math.random() * daysInMonth));
         
@@ -3644,7 +3644,7 @@ async function main() {
           paymentType: PaymentType.TEVKIFAT,
           tevkifatCenterId: randomMember.tevkifatCenterId,
           tevkifatFileId: null,
-          description: `${paymentMonth}/${paymentYear} tevkifat ödemesi`,
+          description: `${paymentMonth}/${paymentYear} tevkifat Kesintisi`,
           documentUrl: isApproved ? `uploads/payments/payment-${randomMember.id}-${paymentYear}-${paymentMonth}-${i}.pdf` : null,
           isApproved,
           approvedByUserId: isApproved ? approvedByUserId : null,
@@ -3656,7 +3656,7 @@ async function main() {
       }
     }
     
-    // Ek ödemeleri toplu ekle
+    // Ek Kesintileri toplu ekle
     if (additionalPayments.length > 0) {
       for (let i = 0; i < additionalPayments.length; i += batchSize) {
         const batch = additionalPayments.slice(i, i + batchSize);
@@ -3665,13 +3665,13 @@ async function main() {
           skipDuplicates: true,
         });
       }
-      console.log(`   - ${additionalPayments.length} ek ödeme kaydı eklendi`);
+      console.log(`   - ${additionalPayments.length} ek Kesinti kaydı eklendi`);
       console.log(`   - Onaylı: ${additionalPayments.filter(p => p.isApproved).length}`);
       console.log(`   - Onaysız: ${additionalPayments.filter(p => !p.isApproved).length}`);
     }
 
-    // 🔹 Onaylı ödemeler için PDF dosyaları oluştur
-    console.log('📄 Ödeme belgesi PDF dosyaları oluşturuluyor...');
+    // 🔹 Onaylı Kesintiler için PDF dosyaları oluştur
+    console.log('📄 Kesinti belgesi PDF dosyaları oluşturuluyor...');
     const sourcePaymentPdfPath = path.join(prismaDir, 'Odeme.pdf');
     const paymentsUploadsDir = isProduction 
       ? path.join(process.cwd(), 'uploads', 'payments')
@@ -3684,10 +3684,10 @@ async function main() {
 
     // Kaynak PDF dosyasının var olup olmadığını kontrol et
     if (!fs.existsSync(sourcePaymentPdfPath)) {
-      console.warn(`   ⚠️  Kaynak ödeme PDF dosyası bulunamadı: ${sourcePaymentPdfPath}`);
-      console.warn(`   ⚠️  Ödeme belgesi PDF dosyaları oluşturulamadı`);
+      console.warn(`   ⚠️  Kaynak Kesinti PDF dosyası bulunamadı: ${sourcePaymentPdfPath}`);
+      console.warn(`   ⚠️  Kesinti belgesi PDF dosyaları oluşturulamadı`);
     } else {
-      // Onaylı ödemeleri al (documentUrl'i olanlar)
+      // Onaylı Kesintileri al (documentUrl'i olanlar)
       const approvedPayments = await prisma.memberPayment.findMany({
         where: {
           documentUrl: { not: null },
@@ -3716,13 +3716,13 @@ async function main() {
             fs.copyFileSync(sourcePaymentPdfPath, targetFilePath);
             paymentDocumentCount++;
           } catch (error) {
-            console.error(`   ⚠️  Ödeme ${payment.id} için PDF oluşturulurken hata:`, error);
+            console.error(`   ⚠️  Kesinti ${payment.id} için PDF oluşturulurken hata:`, error);
           }
         }
 
-        console.log(`   - ${paymentDocumentCount} ödeme belgesi PDF dosyası oluşturuldu`);
+        console.log(`   - ${paymentDocumentCount} Kesinti belgesi PDF dosyası oluşturuldu`);
       } else {
-        console.log('   ⚠️  Onaylı ödeme bulunamadı, PDF dosyaları oluşturulamadı');
+        console.log('   ⚠️  Onaylı Kesinti bulunamadı, PDF dosyaları oluşturulamadı');
       }
     }
 
@@ -3751,7 +3751,7 @@ async function main() {
             fileYear -= 1;
           }
           
-          // Bu merkeze ait tevkifat ödemelerini veritabanından bul
+          // Bu merkeze ait tevkifat Kesintilerini veritabanından bul
           const centerPayments = await prisma.memberPayment.findMany({
             where: {
               tevkifatCenterId: centerId,
@@ -3783,7 +3783,7 @@ async function main() {
               },
             });
             
-            // Bu dosyaya ait ödemeleri güncelle
+            // Bu dosyaya ait Kesintileri güncelle
             await prisma.memberPayment.updateMany({
               where: {
                 id: { in: centerPayments.map(p => p.id) },
@@ -3808,7 +3808,7 @@ async function main() {
       }
     }
   } else {
-    console.log('   ⚠️  Ödeme eklenemedi (aktif üye veya kullanıcı bulunamadı)');
+    console.log('   ⚠️  Kesinti eklenemedi (aktif üye veya kullanıcı bulunamadı)');
   }
 
   // 🔹 Örnek Sistem Logları (3 üye için azaltılmış - sadece 10 log)

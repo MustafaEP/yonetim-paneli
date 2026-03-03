@@ -57,8 +57,8 @@ const PaymentDetailPage: React.FC = () => {
       const data = await getPaymentById(id);
       setPayment(data);
     } catch (e: unknown) {
-      console.error('Ödeme detayı alınırken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödeme detayı alınamadı'));
+      console.error('Kesinti detayı alınırken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti detayı alınamadı'));
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ const PaymentDetailPage: React.FC = () => {
   if (!payment) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">Ödeme bulunamadı</Alert>
+        <Alert severity="error">Kesinti bulunamadı</Alert>
       </Box>
     );
   }
@@ -131,8 +131,8 @@ const PaymentDetailPage: React.FC = () => {
       {/* Modern Header Card */}
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
-        title="Ödeme Detayı"
-        description={payment ? `${payment.member.firstName} ${payment.member.lastName} - ${paymentTypeLabels[payment.type]} - ${payment.amount} TL` : 'Ödeme detay bilgileri'}
+        title="Kesinti Detayı"
+        description={payment ? `${payment.member.firstName} ${payment.member.lastName} - ${paymentTypeLabels[payment.type]} - ${payment.amount} TL` : 'Kesinti detay bilgileri'}
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
@@ -244,7 +244,7 @@ const PaymentDetailPage: React.FC = () => {
           </Card>
         </Grid>
 
-        {/* Ödeme Bilgileri */}
+        {/* Kesinti Bilgileri */}
         <Grid
           size={{
             xs: 12,
@@ -304,7 +304,7 @@ const PaymentDetailPage: React.FC = () => {
                   letterSpacing: 0.2,
                 }}
               >
-                Ödeme Bilgileri
+                Kesinti Bilgileri
               </Typography>
             </Box>
             <Box sx={{ p: 2.5 }}>
@@ -330,7 +330,7 @@ const PaymentDetailPage: React.FC = () => {
               </Box>
               <Box>
                 <Typography variant="body2" color="text.secondary">
-                  Ödeme Türü
+                  Kesinti Türü
                 </Typography>
                 <Typography variant="body1">
                   {paymentTypeLabels[payment.paymentType]}
@@ -427,7 +427,7 @@ const PaymentDetailPage: React.FC = () => {
                     <PictureAsPdfIcon color="error" sx={{ fontSize: '2rem' }} />
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Ödeme Evrakı (PDF)
+                        Kesinti Evrakı (PDF)
                       </Typography>
                       <Button
                         variant="contained"
@@ -462,7 +462,7 @@ const PaymentDetailPage: React.FC = () => {
                 }}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
-                    Ödeme Yapan
+                    Kesinti Yapan
                   </Typography>
                   <Typography variant="body1" fontWeight={600}>
                     {payment.createdByUser

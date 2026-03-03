@@ -136,8 +136,8 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
   },
   {
     id: 'PAYMENTS',
-    label: 'Üye Ödemeleri',
-    description: 'Ödeme girişi ve onaylama yetkileri',
+    label: 'Üye Kesintileri',
+    description: 'Kesinti girişi ve onaylama yetkileri',
     permissions: [
       'MEMBER_PAYMENT_ADD',
       'MEMBER_PAYMENT_APPROVE',

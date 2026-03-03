@@ -45,7 +45,7 @@ const ENTITY_TYPES = [
   { value: 'BRANCH', label: 'Şube' },
   { value: 'CONTENT', label: 'İçerik' },
   { value: 'NOTIFICATION', label: 'Bildirim' },
-  { value: 'PAYMENT', label: 'Ödeme' },
+  { value: 'PAYMENT', label: 'Kesinti' },
   { value: 'DOCUMENT', label: 'Döküman' },
   { value: 'INSTITUTION', label: 'Kurum' },
   { value: 'APPROVAL', label: 'Onay' },

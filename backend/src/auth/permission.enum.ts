@@ -69,11 +69,11 @@ export enum Permission {
   TEVKIFAT_FILE_UPLOAD = 'TEVKIFAT_FILE_UPLOAD',
   TEVKIFAT_FILE_APPROVE = 'TEVKIFAT_FILE_APPROVE',
 
-  // Üye Ödemeleri
-  MEMBER_PAYMENT_ADD = 'MEMBER_PAYMENT_ADD', // Ödeme girişi (Muhasebe)
-  MEMBER_PAYMENT_APPROVE = 'MEMBER_PAYMENT_APPROVE', // Ödeme onaylama (Admin)
-  MEMBER_PAYMENT_LIST = 'MEMBER_PAYMENT_LIST', // Ödeme listesi görüntüleme
-  MEMBER_PAYMENT_VIEW = 'MEMBER_PAYMENT_VIEW', // Ödeme detay görüntüleme
+  // Üye Kesintileri
+  MEMBER_PAYMENT_ADD = 'MEMBER_PAYMENT_ADD', // Kesinti girişi (Muhasebe)
+  MEMBER_PAYMENT_APPROVE = 'MEMBER_PAYMENT_APPROVE', // Kesinti onaylama (Admin)
+  MEMBER_PAYMENT_LIST = 'MEMBER_PAYMENT_LIST', // Kesinti listesi görüntüleme
+  MEMBER_PAYMENT_VIEW = 'MEMBER_PAYMENT_VIEW', // Kesinti detay görüntüleme
 
   // Onay Süreçleri
   APPROVAL_VIEW = 'APPROVAL_VIEW',

@@ -44,7 +44,7 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
 
   // Aidat Yönetimi
   DUES_PLAN_MANAGE: [],
-  DUES_PAYMENT_ADD: ['MEMBER_VIEW'], // Ödeme eklemek için üye bilgisi gerekir
+  DUES_PAYMENT_ADD: ['MEMBER_VIEW'], // Kesinti eklemek için üye bilgisi gerekir
   DUES_REPORT_VIEW: [],
   DUES_DEBT_LIST_VIEW: ['MEMBER_LIST'], // Borçlu listesi için üye listesi gerekir
   DUES_EXPORT: ['DUES_REPORT_VIEW'], // Dışa aktarmak için rapor görüntüleme gerekir
@@ -93,7 +93,7 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   TEVKIFAT_FILE_UPLOAD: [],
   TEVKIFAT_FILE_APPROVE: ['TEVKIFAT_FILE_UPLOAD'],
 
-  // Üye Ödemeleri - Frontend'de eksik, ekleyeceğiz
+  // Üye Kesintileri - Frontend'de eksik, ekleyeceğiz
   MEMBER_PAYMENT_ADD: ['MEMBER_VIEW'],
   MEMBER_PAYMENT_APPROVE: ['MEMBER_PAYMENT_VIEW'],
   MEMBER_PAYMENT_LIST: ['MEMBER_LIST'],

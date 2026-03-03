@@ -66,7 +66,7 @@ const MemberPaymentsPage: React.FC = () => {
       const filters: any = {
         year: yearFilter,
         month: monthFilter,
-        isApproved: true, // Sadece onaylı ödemeleri göster
+        isApproved: true, // Sadece onaylı Kesintileri göster
       };
       if (branchFilter !== 'ALL') {
         filters.branchId = branchFilter;
@@ -74,8 +74,8 @@ const MemberPaymentsPage: React.FC = () => {
       const data = await getPaymentsForAccounting(filters);
       setPayments(data);
     } catch (e: unknown) {
-      console.error('Ödemeler yüklenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödemeler yüklenirken bir hata oluştu'));
+      console.error('Kesintiler yüklenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesintiler yüklenirken bir hata oluştu'));
     } finally {
       setLoading(false);
     }
@@ -107,7 +107,7 @@ const MemberPaymentsPage: React.FC = () => {
         valueGetter: col.valueGetter,
       }));
       const filename = `uye-odemeleri-${yearFilter}-${monthNames[monthFilter - 1]}-${new Date().getTime()}`;
-      const title = `Üye Ödemeleri - ${monthNames[monthFilter - 1]} ${yearFilter}`;
+      const title = `Üye Kesintileri - ${monthNames[monthFilter - 1]} ${yearFilter}`;
       exportToPDF(payments, exportColumns, filename, title, toast.showInfo);
     } catch (error: unknown) {
       console.error('PDF export hatası:', error);
@@ -192,7 +192,7 @@ const MemberPaymentsPage: React.FC = () => {
     },
     {
       field: 'paymentType',
-      headerName: 'Ödeme Türü',
+      headerName: 'Kesinti Türü',
       flex: 1,
       minWidth: 130,
       renderCell: (params) => (
@@ -309,7 +309,7 @@ const MemberPaymentsPage: React.FC = () => {
                     mb: 1,
                   }}
                 >
-                  Üye Ödemeleri
+                  Üye Kesintileri
                 </Typography>
                 <Typography
                   variant="body1"
@@ -318,7 +318,7 @@ const MemberPaymentsPage: React.FC = () => {
                     fontSize: { xs: '0.875rem', md: '1rem' },
                   }}
                 >
-                  Muhasebe için ödeme listesi - Excel ve PDF export mevcut
+                  Muhasebe için Kesinti listesi - Excel ve PDF export mevcut
                 </Typography>
               </Box>
             </Box>
@@ -544,7 +544,7 @@ const MemberPaymentsPage: React.FC = () => {
                   }}
                 >
                   <ReceiptIcon fontSize="small" />
-                  Toplam {payments.length} ödeme bulundu
+                  Toplam {payments.length} Kesinti bulundu
                 </Typography>
               </Paper>
             </Box>

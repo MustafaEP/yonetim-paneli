@@ -46,7 +46,7 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
   MEMBER_STATUS_CHANGE: 'Üye Durum Değiştir',
 
   DUES_PLAN_MANAGE: 'Aidat Planı Yönetimi',
-  DUES_PAYMENT_ADD: 'Aidat Ödemesi Ekle',
+  DUES_PAYMENT_ADD: 'Aidat Kesintisi Ekle',
   DUES_REPORT_VIEW: 'Aidat Raporu Görüntüle',
   DUES_DEBT_LIST_VIEW: 'Borçlu Üye Listesi',
   DUES_EXPORT: 'Aidat Verisi Dışa Aktar',

@@ -41,10 +41,10 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_ADD)
   @Post()
   @ApiOperation({
-    summary: 'Üye ödemesi oluştur',
-    description: 'Muhasebe tarafından ödeme girişi yapılır',
+    summary: 'Üye Kesintisi oluştur',
+    description: 'Muhasebe tarafından Kesinti girişi yapılır',
   })
-  @ApiResponse({ status: 201, description: 'Ödeme kaydı oluşturuldu' })
+  @ApiResponse({ status: 201, description: 'Kesinti kaydı oluşturuldu' })
   async createPayment(
     @Body() dto: CreateMemberPaymentDto,
     @CurrentUser() user: CurrentUserData,
@@ -65,10 +65,10 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_LIST)
   @Get()
   @ApiOperation({
-    summary: 'Ödeme listesi',
-    description: 'Filtreleme ile ödeme listesi',
+    summary: 'Kesinti listesi',
+    description: 'Filtreleme ile Kesinti listesi',
   })
-  @ApiResponse({ status: 200, description: 'Ödeme listesi' })
+  @ApiResponse({ status: 200, description: 'Kesinti listesi' })
   async listPayments(
     @Query('memberId') memberId?: string,
     @Query('year') year?: number,
@@ -98,10 +98,10 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_LIST)
   @Get('member/:memberId')
   @ApiOperation({
-    summary: 'Üye ödemeleri',
-    description: 'Belirli bir üyenin ödemeleri',
+    summary: 'Üye Kesintileri',
+    description: 'Belirli bir üyenin Kesintileri',
   })
-  @ApiResponse({ status: 200, description: 'Üye ödemeleri' })
+  @ApiResponse({ status: 200, description: 'Üye Kesintileri' })
   async getMemberPayments(@Param('memberId') memberId: string) {
     return this.paymentsService.getMemberPayments(memberId);
   }
@@ -109,12 +109,12 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_VIEW)
   @Get(':id/document/view')
   @ApiOperation({
-    summary: 'Ödeme belgesi görüntüle',
-    description: 'Ödeme belgesini yeni sekmede aç',
+    summary: 'Kesinti belgesi görüntüle',
+    description: 'Kesinti belgesini yeni sekmede aç',
   })
-  @ApiParam({ name: 'id', description: 'Ödeme ID' })
+  @ApiParam({ name: 'id', description: 'Kesinti ID' })
   @ApiResponse({ status: 200, description: 'Dosya görüntüleniyor' })
-  @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
+  @ApiResponse({ status: 404, description: 'Kesinti veya belge bulunamadı' })
   async viewPaymentDocument(@Param('id') id: string, @Res() res: Response) {
     await this.paymentsService.viewPaymentDocument(id, res);
   }
@@ -122,12 +122,12 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_VIEW)
   @Get(':id/document/download')
   @ApiOperation({
-    summary: 'Ödeme belgesi indir',
-    description: 'Ödeme belgesini indir',
+    summary: 'Kesinti belgesi indir',
+    description: 'Kesinti belgesini indir',
   })
-  @ApiParam({ name: 'id', description: 'Ödeme ID' })
+  @ApiParam({ name: 'id', description: 'Kesinti ID' })
   @ApiResponse({ status: 200, description: 'Dosya indiriliyor' })
-  @ApiResponse({ status: 404, description: 'Ödeme veya belge bulunamadı' })
+  @ApiResponse({ status: 404, description: 'Kesinti veya belge bulunamadı' })
   async downloadPaymentDocument(@Param('id') id: string, @Res() res: Response) {
     await this.paymentsService.downloadPaymentDocument(id, res);
   }
@@ -135,10 +135,10 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_VIEW)
   @Get(':id')
   @ApiOperation({
-    summary: 'Ödeme detayı',
-    description: 'Ödeme kaydı detayları',
+    summary: 'Kesinti detayı',
+    description: 'Kesinti kaydı detayları',
   })
-  @ApiResponse({ status: 200, description: 'Ödeme detayı' })
+  @ApiResponse({ status: 200, description: 'Kesinti detayı' })
   async getPaymentById(@Param('id') id: string) {
     return this.paymentsService.getPaymentById(id);
   }
@@ -146,10 +146,10 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_ADD)
   @Patch(':id')
   @ApiOperation({
-    summary: 'Ödemeyi güncelle',
-    description: 'Mevcut ödeme kaydını güncelle',
+    summary: 'Kesintiyi güncelle',
+    description: 'Mevcut Kesinti kaydını güncelle',
   })
-  @ApiResponse({ status: 200, description: 'Ödeme güncellendi' })
+  @ApiResponse({ status: 200, description: 'Kesinti güncellendi' })
   async updatePayment(
     @Param('id') id: string,
     @Body() dto: UpdateMemberPaymentDto,
@@ -172,10 +172,10 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_APPROVE)
   @Post(':id/approve')
   @ApiOperation({
-    summary: 'Ödemeyi onayla',
-    description: 'Admin tarafından ödeme onayı',
+    summary: 'Kesintiyi onayla',
+    description: 'Admin tarafından Kesinti onayı',
   })
-  @ApiResponse({ status: 200, description: 'Ödeme onaylandı' })
+  @ApiResponse({ status: 200, description: 'Kesinti onaylandı' })
   async approvePayment(
     @Param('id') id: string,
     @CurrentUser() user: CurrentUserData,
@@ -186,10 +186,10 @@ export class PaymentsController {
   @Permissions(Permission.MEMBER_PAYMENT_APPROVE)
   @Delete(':id')
   @ApiOperation({
-    summary: 'Ödemeyi sil',
-    description: 'Onaysız ödemeleri silme (Admin)',
+    summary: 'Kesintiyi sil',
+    description: 'Onaysız Kesintileri silme (Admin)',
   })
-  @ApiResponse({ status: 200, description: 'Ödeme silindi' })
+  @ApiResponse({ status: 200, description: 'Kesinti silindi' })
   async deletePayment(@Param('id') id: string) {
     return this.paymentsService.deletePayment(id);
   }
@@ -197,10 +197,10 @@ export class PaymentsController {
   @Permissions(Permission.ACCOUNTING_VIEW)
   @Get('accounting/list')
   @ApiOperation({
-    summary: 'Muhasebe ödeme listesi',
-    description: 'Excel/PDF export için ödeme listesi',
+    summary: 'Muhasebe Kesinti listesi',
+    description: 'Excel/PDF export için Kesinti listesi',
   })
-  @ApiResponse({ status: 200, description: 'Muhasebe ödeme listesi' })
+  @ApiResponse({ status: 200, description: 'Muhasebe Kesinti listesi' })
   async getPaymentsForAccounting(
     @Query('branchId') branchId?: string,
     @Query('tevkifatCenterId') tevkifatCenterId?: string,
@@ -222,8 +222,8 @@ export class PaymentsController {
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Ödeme evrakı yükle',
-    description: 'Ödeme için PDF evrak yükleme',
+    summary: 'Kesinti evrakı yükle',
+    description: 'Kesinti için PDF evrak yükleme',
   })
   @ApiBody({
     schema: {

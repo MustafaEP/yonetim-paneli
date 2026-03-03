@@ -176,25 +176,25 @@ const DashboardPage: React.FC = () => {
         const data = await getPayments();
         const payments = Array.isArray(data) ? data : [];
         
-        // Son 5 ödeme
+        // Son 5 Kesinti
         const sortedPayments = [...payments].sort((a, b) => {
           return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         });
         setRecentPayments(sortedPayments.slice(0, 5));
 
-        // Toplam ödeme tutarı
+        // Toplam Kesinti tutarı
         const total = payments.reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
         setTotalPaymentsAmount(total);
 
-        // Onaylanmış ödemeler tutarı
+        // Onaylanmış Kesintiler tutarı
         const approved = payments.filter(p => p.isApproved).reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
         setApprovedPaymentsAmount(approved);
 
-        // Bekleyen ödemeler sayısı
+        // Bekleyen Kesintiler sayısı
         const pending = payments.filter(p => !p.isApproved).length;
         setPendingPaymentsCount(pending);
 
-        // Bu ay yapılan ödemeler
+        // Bu ay yapılan Kesintiler
         const now = new Date();
         const thisMonth = payments.filter(p => {
           const paymentDate = new Date(p.createdAt);
@@ -202,13 +202,13 @@ const DashboardPage: React.FC = () => {
         }).reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
         setThisMonthPaymentsAmount(thisMonth);
       } catch (e: unknown) {
-        console.error('Ödemeler alınırken hata:', e);
+        console.error('Kesintiler alınırken hata:', e);
         setRecentPayments([]);
         setTotalPaymentsAmount(0);
         setApprovedPaymentsAmount(0);
         setPendingPaymentsCount(0);
         setThisMonthPaymentsAmount(0);
-        toast.showError(getApiErrorMessage(e, 'Ödemeler alınırken bir hata oluştu.'));
+        toast.showError(getApiErrorMessage(e, 'Kesintiler alınırken bir hata oluştu.'));
       } finally {
         setPaymentsLoading(false);
       }
@@ -597,7 +597,7 @@ const DashboardPage: React.FC = () => {
                     <Stack direction="row" alignItems="center" spacing={0.5}>
                       <CheckCircleIcon sx={{ fontSize: 14, opacity: 0.8 }} />
                       <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.7rem' }}>
-                        Onaylı Ödemeler
+                        Onaylı Kesintiler
                       </Typography>
                     </Stack>
                   </Box>
@@ -849,11 +849,11 @@ const DashboardPage: React.FC = () => {
                       <PaymentIcon sx={{ color: theme.palette.success.main, fontSize: 20 }} />
                     </Avatar>
                     <Typography variant="h6" fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.15rem' } }}>
-                      Son Ödemeler
+                      Son Kesintiler
                     </Typography>
                   </Stack>
                   <Chip 
-                    label={`${recentPayments.length} Ödeme`} 
+                    label={`${recentPayments.length} Kesinti`} 
                     size="small" 
                     color="success" 
                     variant="outlined"
@@ -868,7 +868,7 @@ const DashboardPage: React.FC = () => {
                 ) : recentPayments.length === 0 ? (
                   <Box sx={{ textAlign: 'center', py: 4 }}>
                     <PaymentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                    <Typography color="text.secondary">Henüz ödeme bulunmuyor</Typography>
+                    <Typography color="text.secondary">Henüz Kesinti bulunmuyor</Typography>
                   </Box>
                 ) : (
                   <List sx={{ p: 0 }}>
@@ -979,7 +979,7 @@ const DashboardPage: React.FC = () => {
                   endIcon={<ArrowForwardIcon />}
                   color="success"
                 >
-                  Tüm Ödemeleri Görüntüle
+                  Tüm Kesintileri Görüntüle
                 </Button>
               </CardContent>
             </Card>
@@ -1007,7 +1007,7 @@ const DashboardPage: React.FC = () => {
                     <AccountBalanceWalletIcon sx={{ color: theme.palette.info.main, fontSize: 20 }} />
                   </Avatar>
                   <Typography variant="h6" fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.15rem' } }}>
-                    Ödeme İstatistikleri
+                    Kesinti İstatistikleri
                   </Typography>
                 </Stack>
                 <Divider sx={{ mb: 3 }} />
@@ -1052,7 +1052,7 @@ const DashboardPage: React.FC = () => {
                         <Stack direction="row" alignItems="center" spacing={1}>
                           <CheckCircleIcon sx={{ fontSize: 18, color: 'success.main' }} />
                           <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
-                            Onaylı Ödemeler
+                            Onaylı Kesintiler
                           </Typography>
                         </Stack>
                         <Typography variant="body1" fontWeight={700} color="success.main" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
@@ -1069,7 +1069,7 @@ const DashboardPage: React.FC = () => {
                         <Stack direction="row" alignItems="center" spacing={1}>
                           <AccessTimeIcon sx={{ fontSize: 18, color: 'warning.main' }} />
                           <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
-                            Bekleyen Ödemeler
+                            Bekleyen Kesintiler
                           </Typography>
                         </Stack>
                         <Chip

@@ -106,14 +106,14 @@ const RecentPaymentsPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await getPayments();
-      // Son eklenen 50 ödemeyi al (createdAt'e göre sırala)
+      // Son eklenen 50 Kesintiyi al (createdAt'e göre sırala)
       const sortedData = [...data]
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 50);
       setRows(sortedData);
     } catch (e: unknown) {
-      console.error('Ödemeler yüklenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödemeler yüklenirken bir hata oluştu'));
+      console.error('Kesintiler yüklenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesintiler yüklenirken bir hata oluştu'));
     } finally {
       setLoading(false);
     }
@@ -166,7 +166,7 @@ const RecentPaymentsPage: React.FC = () => {
 
   const handleViewPdf = async (payment: MemberPayment) => {
     if (!payment.documentUrl) {
-      toast.showError('Bu ödeme için belge bulunmamaktadır');
+      toast.showError('Bu Kesinti için belge bulunmamaktadır');
       return;
     }
 
@@ -187,7 +187,7 @@ const RecentPaymentsPage: React.FC = () => {
         const errorText = await response.text();
         console.error('PDF görüntüleme hatası:', response.status, errorText);
         if (response.status === 404) {
-          throw new Error('Ödeme belgesi bulunamadı. Belge yüklenmemiş olabilir.');
+          throw new Error('Kesinti belgesi bulunamadı. Belge yüklenmemiş olabilir.');
         }
         throw new Error(errorText || 'Dosya görüntülenemedi');
       }
@@ -195,7 +195,7 @@ const RecentPaymentsPage: React.FC = () => {
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const urlParts = payment.documentUrl.split('/');
-      const fileName = urlParts[urlParts.length - 1] || 'Ödeme Belgesi';
+      const fileName = urlParts[urlParts.length - 1] || 'Kesinti Belgesi';
       setPdfUrl(blobUrl);
       setPdfTitle(fileName);
       setPdfViewerOpen(true);
@@ -238,14 +238,14 @@ const RecentPaymentsPage: React.FC = () => {
       }
 
       await updatePayment(selectedPayment.id, updatedForm);
-      toast.showSuccess('Ödeme başarıyla güncellendi');
+      toast.showSuccess('Kesinti başarıyla güncellendi');
       setEditDialogOpen(false);
       setSelectedPayment(null);
       setDocumentFile(null);
       loadRecentPayments();
     } catch (e: unknown) {
-      console.error('Ödeme güncellenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödeme güncellenirken bir hata oluştu'));
+      console.error('Kesinti güncellenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti güncellenirken bir hata oluştu'));
     } finally {
       setSaving(false);
     }
@@ -262,13 +262,13 @@ const RecentPaymentsPage: React.FC = () => {
     setDeleting(true);
     try {
       await deletePayment(selectedPayment.id);
-      toast.showSuccess('Ödeme başarıyla silindi');
+      toast.showSuccess('Kesinti başarıyla silindi');
       setDeleteDialogOpen(false);
       setSelectedPayment(null);
       loadRecentPayments();
     } catch (e: unknown) {
-      console.error('Ödeme silinirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödeme silinirken bir hata oluştu'));
+      console.error('Kesinti silinirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti silinirken bir hata oluştu'));
     } finally {
       setDeleting(false);
     }
@@ -375,7 +375,7 @@ const RecentPaymentsPage: React.FC = () => {
       cellClassName: 'recent-payments-actions-cell',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
-          <Tooltip title="Ödeme Detayları">
+          <Tooltip title="Kesinti Detayları">
             <IconButton
               size="small"
               onClick={() => navigate(`/payments/${params.row.id}`)}
@@ -434,8 +434,8 @@ const RecentPaymentsPage: React.FC = () => {
     <PageLayout>
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
-        title="Son Ödemeler"
-        description="Son eklenen 50 ödeme kaydı"
+        title="Son Kesintiler"
+        description="Son eklenen 50 Kesinti kaydı"
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
@@ -514,7 +514,7 @@ const RecentPaymentsPage: React.FC = () => {
 
       {/* Düzenleme Dialog */}
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Ödeme Düzenle</DialogTitle>
+        <DialogTitle>Kesinti Düzenle</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
             <TextField
@@ -556,10 +556,10 @@ const RecentPaymentsPage: React.FC = () => {
               </Select>
             </FormControl>
             <FormControl fullWidth>
-              <InputLabel>Ödeme Tipi</InputLabel>
+              <InputLabel>Kesinti Tipi</InputLabel>
               <Select
                 value={editForm.paymentType}
-                label="Ödeme Tipi"
+                label="Kesinti Tipi"
                 onChange={(e) => setEditForm({ ...editForm, paymentType: e.target.value as PaymentType })}
               >
                 <MenuItem value="TEVKIFAT">Tevkifat</MenuItem>
@@ -656,10 +656,10 @@ const RecentPaymentsPage: React.FC = () => {
 
       {/* Silme Onay Dialog */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Ödeme Sil</DialogTitle>
+        <DialogTitle>Kesinti Sil</DialogTitle>
         <DialogContent>
           <Typography>
-            Bu ödemeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            Bu Kesintiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
           </Typography>
           {selectedPayment && (
             <Box sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.error.main, 0.1), borderRadius: 1 }}>

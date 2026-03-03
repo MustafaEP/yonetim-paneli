@@ -755,8 +755,8 @@ async function main() {
           tevkifatFileId: paymentTypes[i] === PaymentType.TEVKIFAT && tevkifatFiles.length > 0 
             ? tevkifatFiles[i % tevkifatFiles.length].id 
             : null,
-          description: `${paymentTypes[i]} ödemesi`,
-          isApproved: i > 0, // İlk ödeme onaylanmamış
+          description: `${paymentTypes[i]} Kesintisi`,
+          isApproved: i > 0, // İlk Kesinti onaylanmamış
           approvedByUserId: i > 0 ? adminUser.id : null,
           approvedAt: i > 0 ? new Date() : null,
           createdByUserId: adminUser.id,

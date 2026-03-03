@@ -66,7 +66,7 @@ const DuesSettings: React.FC<DuesSettingsProps> = ({
                   Aidat & Finans Ayarları
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Aidat planları, ödeme periyotları ve finansal ayarlar
+                  Aidat planları, Kesinti periyotları ve finansal ayarlar
                 </Typography>
               </Box>
             </Box>

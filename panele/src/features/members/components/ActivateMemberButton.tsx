@@ -96,9 +96,9 @@ export const ActivateMemberButton: React.FC<ActivateMemberButtonProps> = ({
       const paymentsData = await getMemberPayments(memberId);
       setPayments(paymentsData);
     } catch (error: unknown) {
-      console.error('Ödeme bilgileri alınırken hata:', error);
+      console.error('Kesinti bilgileri alınırken hata:', error);
       setPayments([]);
-      toast.showError(getApiErrorMessage(error, 'Ödeme bilgileri yüklenirken bir hata oluştu'));
+      toast.showError(getApiErrorMessage(error, 'Kesinti bilgileri yüklenirken bir hata oluştu'));
     } finally {
       setLoadingPayments(false);
     }
@@ -132,7 +132,7 @@ export const ActivateMemberButton: React.FC<ActivateMemberButtonProps> = ({
     return sum + amount;
   }, 0);
 
-  // Onaylanmış ödemeler
+  // Onaylanmış Kesintiler
   const approvedPayments = payments.filter(p => p.isApproved);
   const pendingPayments = payments.filter(p => !p.isApproved);
 
@@ -282,7 +282,7 @@ export const ActivateMemberButton: React.FC<ActivateMemberButtonProps> = ({
             Aktifleştirildikten sonra üye <strong>aktif</strong> hale gelecek ve <strong>ana üye listesinde</strong> görünecektir.
           </Typography>
 
-          {/* Ödeme Bilgileri - Detaylandırılmış */}
+          {/* Kesinti Bilgileri - Detaylandırılmış */}
           <Box
             sx={{
               p: 3,
@@ -308,7 +308,7 @@ export const ActivateMemberButton: React.FC<ActivateMemberButtonProps> = ({
                 <PaymentIcon sx={{ color: '#fff', fontSize: '1.2rem' }} />
               </Box>
               <Typography variant="subtitle1" fontWeight={700} sx={{ color: theme.palette.info.dark }}>
-                Ödeme Bilgileri
+                Kesinti Bilgileri
               </Typography>
             </Box>
 
@@ -328,10 +328,10 @@ export const ActivateMemberButton: React.FC<ActivateMemberButtonProps> = ({
                 }}
               >
                 <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-                  Bu üye henüz hiç ödeme yapmamıştır
+                  Bu üye henüz hiç Kesinti yapmamıştır
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Üyeyi aktifleştirmeden önce ödeme durumunu kontrol etmeniz önerilir.
+                  Üyeyi aktifleştirmeden önce Kesinti durumunu kontrol etmeniz önerilir.
                 </Typography>
               </Alert>
             ) : (
@@ -354,7 +354,7 @@ export const ActivateMemberButton: React.FC<ActivateMemberButtonProps> = ({
                     }}
                   >
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                      Toplam Ödeme
+                      Toplam Kesinti
                     </Typography>
                     <Typography variant="h6" fontWeight={700} sx={{ color: theme.palette.success.main }}>
                       ₺{totalAmount.toFixed(2)}
@@ -394,9 +394,9 @@ export const ActivateMemberButton: React.FC<ActivateMemberButtonProps> = ({
 
                 <Divider sx={{ my: 2 }} />
 
-                {/* Ödeme Listesi */}
+                {/* Kesinti Listesi */}
                 <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: theme.palette.text.primary }}>
-                  Ödeme Detayları ({payments.length} ödeme)
+                  Kesinti Detayları ({payments.length} Kesinti)
                 </Typography>
                 <TableContainer
                   component={Paper}

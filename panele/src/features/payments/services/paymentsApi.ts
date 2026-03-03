@@ -108,48 +108,48 @@ export interface PaymentListFilters {
   registrationNumber?: string;
 }
 
-// 🔹 Ödeme oluştur: POST /payments
+// 🔹 Kesinti oluştur: POST /payments
 export const createPayment = async (data: CreateMemberPaymentDto): Promise<MemberPayment> => {
   const res = await httpClient.post<MemberPayment>('/payments', data);
   return res.data;
 };
 
-// 🔹 Ödeme güncelle: PATCH /payments/:id
+// 🔹 Kesinti güncelle: PATCH /payments/:id
 export const updatePayment = async (id: string, data: UpdateMemberPaymentDto): Promise<MemberPayment> => {
   const res = await httpClient.patch<MemberPayment>(`/payments/${id}`, data);
   return res.data;
 };
 
-// 🔹 Ödeme listesi: GET /payments
+// 🔹 Kesinti listesi: GET /payments
 export const getPayments = async (filters?: PaymentListFilters): Promise<MemberPayment[]> => {
   const res = await httpClient.get<MemberPayment[]>('/payments', { params: filters });
   return Array.isArray(res.data) ? res.data : [];
 };
 
-// 🔹 Üye ödemeleri: GET /payments/member/:memberId
+// 🔹 Üye Kesintileri: GET /payments/member/:memberId
 export const getMemberPayments = async (memberId: string): Promise<MemberPayment[]> => {
   const res = await httpClient.get<MemberPayment[]>(`/payments/member/${memberId}`);
   return Array.isArray(res.data) ? res.data : [];
 };
 
-// 🔹 Ödeme detayı: GET /payments/:id
+// 🔹 Kesinti detayı: GET /payments/:id
 export const getPaymentById = async (id: string): Promise<MemberPayment> => {
   const res = await httpClient.get<MemberPayment>(`/payments/${id}`);
   return res.data;
 };
 
-// 🔹 Ödemeyi onayla: POST /payments/:id/approve
+// 🔹 Kesintiyi onayla: POST /payments/:id/approve
 export const approvePayment = async (id: string): Promise<MemberPayment> => {
   const res = await httpClient.post<MemberPayment>(`/payments/${id}/approve`, {});
   return res.data;
 };
 
-// 🔹 Ödemeyi sil: DELETE /payments/:id
+// 🔹 Kesintiyi sil: DELETE /payments/:id
 export const deletePayment = async (id: string): Promise<void> => {
   await httpClient.delete(`/payments/${id}`);
 };
 
-// 🔹 Muhasebe ödeme listesi: GET /payments/accounting/list
+// 🔹 Muhasebe Kesinti listesi: GET /payments/accounting/list
 export const getPaymentsForAccounting = async (filters?: {
   branchId?: string;
   tevkifatCenterId?: string;
@@ -161,7 +161,7 @@ export const getPaymentsForAccounting = async (filters?: {
   return Array.isArray(res.data) ? res.data : [];
 };
 
-// 🔹 Ödeme evrakı yükle: POST /payments/upload-document
+// 🔹 Kesinti evrakı yükle: POST /payments/upload-document
 export const uploadPaymentDocument = async (
   file: File,
   memberId: string,
@@ -190,7 +190,7 @@ export const uploadPaymentDocument = async (
   return res.data;
 };
 
-// 🔹 Ödeme belgesi görüntüle (yeni sekmede aç)
+// 🔹 Kesinti belgesi görüntüle (yeni sekmede aç)
 export const viewPaymentDocument = async (paymentId: string): Promise<void> => {
   const token = localStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
@@ -227,7 +227,7 @@ export const viewPaymentDocument = async (paymentId: string): Promise<void> => {
   });
 };
 
-// 🔹 Ödeme belgesi indir
+// 🔹 Kesinti belgesi indir
 export const downloadPaymentDocument = async (paymentId: string, fileName?: string): Promise<void> => {
   const token = localStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';

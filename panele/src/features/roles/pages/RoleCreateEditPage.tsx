@@ -250,7 +250,7 @@ const RoleCreateEditPage: React.FC = () => {
     SYSTEM: 'Sistem',
     INSTITUTION_MANAGEMENT: 'Kurum Yönetimi',
     ACCOUNTING: 'Muhasebe',
-    MEMBER_PAYMENTS: 'Üye Ödemeleri',
+    MEMBER_PAYMENTS: 'Üye Kesintileri',
     APPROVALS: 'Onay Süreçleri',
     PANEL_USER_APPLICATIONS: 'Panel Kullanıcı Başvuruları',
   };

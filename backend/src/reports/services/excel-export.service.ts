@@ -112,7 +112,7 @@ export class ExcelExportService {
       { A: 'İptal Edilmiş Üye', B: data.cancelledMembers },
       { A: 'Toplam Kullanıcı', B: data.totalUsers },
       { A: 'Toplam Rol', B: data.totalRoles },
-      { A: 'Toplam Ödeme', B: data.totalPayments },
+      { A: 'Toplam Kesinti', B: data.totalPayments },
       { A: 'Toplam Borç', B: data.totalDebt },
       { A: '', B: '' },
       { A: 'İl Bazlı Dağılım', B: '' },
@@ -136,7 +136,7 @@ export class ExcelExportService {
           B: 'Üye Sayısı',
           C: 'Aktif Üye',
           D: 'İptal Edilmiş',
-          E: 'Toplam Ödeme',
+          E: 'Toplam Kesinti',
           F: 'Toplam Borç',
         },
       ];
@@ -161,7 +161,7 @@ export class ExcelExportService {
         { A: 'Üye Sayısı', B: data.memberCount },
         { A: 'Aktif Üye', B: data.activeMembers },
         { A: 'İptal Edilmiş', B: data.cancelledMembers },
-        { A: 'Toplam Ödeme', B: data.totalPayments },
+        { A: 'Toplam Kesinti', B: data.totalPayments },
         { A: 'Toplam Borç', B: data.totalDebt },
       ];
     }
@@ -170,12 +170,12 @@ export class ExcelExportService {
   private formatDuesReportForExcel(data: any): any[] {
     const rows: any[] = [
       { A: 'Metrik', B: 'Değer' },
-      { A: 'Toplam Ödeme', B: data.totalPayments },
+      { A: 'Toplam Kesinti', B: data.totalPayments },
       { A: 'Toplam Borç', B: data.totalDebt },
-      { A: 'Ödeme Yapan Üye', B: data.paidMembers },
-      { A: 'Ödeme Yapmayan Üye', B: data.unpaidMembers },
+      { A: 'Kesinti Yapan Üye', B: data.paidMembers },
+      { A: 'Kesinti Yapmayan Üye', B: data.unpaidMembers },
       { A: '', B: '' },
-      { A: 'Aylık Ödemeler', B: '' },
+      { A: 'Aylık Kesintiler', B: '' },
       { A: 'Yıl', B: 'Ay', C: 'Toplam', D: 'Adet' },
     ];
 

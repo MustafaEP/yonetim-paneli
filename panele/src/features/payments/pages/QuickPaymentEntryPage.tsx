@@ -56,7 +56,7 @@ import PageLayout from '../../../shared/components/layout/PageLayout';
 
 interface PaymentRow {
   id: string;
-  paymentId?: string; // Mevcut ödeme ID'si (düzenleme için)
+  paymentId?: string; // Mevcut Kesinti ID'si (düzenleme için)
   memberId: string | null;
   registrationNumber: string;
   firstName: string;
@@ -120,7 +120,7 @@ const QuickPaymentEntryPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50); // Sayfa başına 50 satır
   
-  // Aynı ay ödeme mevcut: mevcut ödemeyi göster ve güncelle
+  // Aynı ay Kesinti mevcut: mevcut Kesintiyi göster ve güncelle
   const [duplicatePaymentDialog, setDuplicatePaymentDialog] = useState<{
     open: boolean;
     memberName: string;
@@ -145,7 +145,7 @@ const QuickPaymentEntryPage: React.FC = () => {
   const [duplicateDialogTevkifatCenters, setDuplicateDialogTevkifatCenters] = useState<Array<{ id: string; name: string }>>([]);
   const [duplicateDialogSaving, setDuplicateDialogSaving] = useState(false);
 
-  // Aynı ay ödeme dialog'u açıldığında formu doldur ve tevkifat merkezlerini yükle (sadece aktif merkezler)
+  // Aynı ay Kesinti dialog'u açıldığında formu doldur ve tevkifat merkezlerini yükle (sadece aktif merkezler)
   useEffect(() => {
     if (!duplicatePaymentDialog.open || !duplicatePaymentDialog.existingPayment) return;
     const p = duplicatePaymentDialog.existingPayment;
@@ -159,7 +159,7 @@ const QuickPaymentEntryPage: React.FC = () => {
     getTevkifatCenters({ activeOnly: true })
       .then((data) => {
         setDuplicateDialogTevkifatCenters(data);
-        // Mevcut ödemenin tevkifat merkezi kaldırılmışsa seçimi sıfırla
+        // Mevcut Kesintinin tevkifat merkezi kaldırılmışsa seçimi sıfırla
         if (existingCenterId && !data.some((c) => c.id === existingCenterId)) {
           setDuplicateDialogEditForm((prev) => ({
             ...prev,
@@ -235,23 +235,23 @@ const QuickPaymentEntryPage: React.FC = () => {
 
       // İl filtresi backend'de provinceId parametresi ile uygulanıyor (getMembers'a gönderildi)
 
-      // Eğer "Sadece bu ay ödeme yapmayan üyeleri göster" seçiliyse, bu ay ödeme yapmış üyeleri filtrele
+      // Eğer "Sadece bu ay Kesinti yapmayan üyeleri göster" seçiliyse, bu ay Kesinti yapmış üyeleri filtrele
       if (excludePaidMembers) {
         try {
-          // Bu ay/yıl için ödemeleri getir
+          // Bu ay/yıl için Kesintileri getir
           const payments = await getPayments({
             year: filters.year,
             month: filters.month,
             isApproved: true,
           });
 
-          // Ödeme yapmış üye ID'lerini topla
+          // Kesinti yapmış üye ID'lerini topla
           const paidMemberIds = new Set(payments.map((p) => p.memberId));
 
-          // Ödeme yapmamış üyeleri filtrele
+          // Kesinti yapmamış üyeleri filtrele
           filteredMembers = filteredMembers.filter((m) => !paidMemberIds.has(m.id));
         } catch (e) {
-          console.error('Ödemeler yüklenirken hata:', e);
+          console.error('Kesintiler yüklenirken hata:', e);
           // Hata durumunda tüm üyeleri göster
         }
       }
@@ -269,7 +269,7 @@ const QuickPaymentEntryPage: React.FC = () => {
         
         if (membersToAdd.length === 0) {
           const statusLabel = status === 'ACTIVE' ? 'aktif' : status === 'PENDING' ? 'bekleyen' : 'başvurusu yapılan';
-          const filterLabel = showOnlyUnpaidMembers ? ' (bu ay ödeme yapmayan)' : '';
+          const filterLabel = showOnlyUnpaidMembers ? ' (bu ay Kesinti yapmayan)' : '';
           const centerLabel = 'Seçilen tevkifat merkezi için';
           if (filteredMembers.length === 0) {
             toast.showInfo(`${centerLabel} ${statusLabel} üye bulunamadı${filterLabel}`);
@@ -368,7 +368,7 @@ const QuickPaymentEntryPage: React.FC = () => {
         }
 
         const statusLabel = status === 'ACTIVE' ? 'aktif' : status === 'PENDING' ? 'bekleyen' : 'başvurusu yapılan';
-          const filterLabel = showOnlyUnpaidMembers ? ' (bu ay ödeme yapmayan)' : '';
+          const filterLabel = showOnlyUnpaidMembers ? ' (bu ay Kesinti yapmayan)' : '';
         const centerLabel = 'Seçilen tevkifat merkezi için';
 
         // Başarı mesajını state güncellemesi dışında, bir kez göstermek için
@@ -452,7 +452,7 @@ const QuickPaymentEntryPage: React.FC = () => {
     );
 
     if (rowsToSave.length === 0) {
-      toast.showError('Kaydedilecek ödeme bulunamadı. Lütfen en az bir üye için tutar girin.');
+      toast.showError('Kaydedilecek Kesinti bulunamadı. Lütfen en az bir üye için tutar girin.');
       return;
     }
 
@@ -502,7 +502,7 @@ const QuickPaymentEntryPage: React.FC = () => {
         return;
       }
 
-      // Yeni ödemeler için aynı ay/yıl kontrolü yap; mevcut ödemeyi göster/güncelle dialog'u aç
+      // Yeni Kesintiler için aynı ay/yıl kontrolü yap; mevcut Kesintiyi göster/güncelle dialog'u aç
       const newPaymentRows = rowsToSave.filter((r) => !r.paymentId);
       const rowsWithExistingPayments: Array<{ row: PaymentRow; existingPayment: MemberPayment }> = [];
       
@@ -523,7 +523,7 @@ const QuickPaymentEntryPage: React.FC = () => {
             }
           }
         } catch (e) {
-          console.error('Ödemeler kontrol edilirken hata:', e);
+          console.error('Kesintiler kontrol edilirken hata:', e);
         }
       }
 
@@ -618,10 +618,10 @@ const QuickPaymentEntryPage: React.FC = () => {
         })
       );
 
-      toast.showSuccess(`${finalRowsToSave.length} ödeme başarıyla kaydedildi`);
+      toast.showSuccess(`${finalRowsToSave.length} Kesinti başarıyla kaydedildi`);
     } catch (e: unknown) {
-      console.error('Ödemeler kaydedilirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödemeler kaydedilirken bir hata oluştu'));
+      console.error('Kesintiler kaydedilirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesintiler kaydedilirken bir hata oluştu'));
     } finally {
       setSaving(false);
     }
@@ -780,7 +780,7 @@ const QuickPaymentEntryPage: React.FC = () => {
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Kesinti Girişi"
-        description={`Toplu ödeme girişi ve yönetimi • ${rows.length} satır (${draftRows.length} taslak, ${savedRows.length} kaydedildi)`}
+        description={`Toplu Kesinti girişi ve yönetimi • ${rows.length} satır (${draftRows.length} taslak, ${savedRows.length} kaydedildi)`}
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
@@ -820,7 +820,7 @@ const QuickPaymentEntryPage: React.FC = () => {
                 Filtreler ve Üye Seçimi
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8125rem' }}>
-                Ödeme dönemi ve tevkifat merkezi seçimi yapın
+                Kesinti dönemi ve tevkifat merkezi seçimi yapın
               </Typography>
             </Box>
           </Box>
@@ -931,10 +931,10 @@ const QuickPaymentEntryPage: React.FC = () => {
               label={
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                    Sadece bu ay ödeme yapmayan üyeleri göster
+                    Sadece bu ay Kesinti yapmayan üyeleri göster
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25, fontSize: '0.75rem' }}>
-                    {monthNames[filters.month - 1]} {filters.year} döneminde ödeme yapmamış üyeler
+                    {monthNames[filters.month - 1]} {filters.year} döneminde Kesinti yapmamış üyeler
                   </Typography>
                 </Box>
               }
@@ -1474,14 +1474,14 @@ const QuickPaymentEntryPage: React.FC = () => {
                   minWidth: 180,
                 }}
               >
-                {saving ? 'Kaydediliyor...' : `Kaydet (${rowsWithAmount.length} ödeme)`}
+                {saving ? 'Kaydediliyor...' : `Kaydet (${rowsWithAmount.length} Kesinti)`}
               </Button>
             </Box>
           </Box>
         </Card>
       )}
 
-      {/* Aynı Ay Ödeme Mevcut: Ödeme bilgilerini göster ve güncelle */}
+      {/* Aynı Ay Kesinti Mevcut: Kesinti bilgilerini göster ve güncelle */}
       <Dialog
         open={duplicatePaymentDialog.open}
         onClose={() => {
@@ -1512,7 +1512,7 @@ const QuickPaymentEntryPage: React.FC = () => {
             </Box>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                Mevcut Ödeme Bilgisi
+                Mevcut Kesinti Bilgisi
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8125rem' }}>
                 <strong>{duplicatePaymentDialog.memberName}</strong> — {filters.year} yılı {monthNames[filters.month - 1]} ayı
@@ -1522,7 +1522,7 @@ const QuickPaymentEntryPage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Bu dönem için kayıtlı ödeme aşağıdadır. Bilgileri güncelleyip kaydedebilir veya iptal edebilirsiniz.
+            Bu dönem için kayıtlı Kesinti aşağıdadır. Bilgileri güncelleyip kaydedebilir veya iptal edebilirsiniz.
           </Alert>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
@@ -1537,10 +1537,10 @@ const QuickPaymentEntryPage: React.FC = () => {
               size="small"
             />
             <FormControl fullWidth size="small">
-              <InputLabel>Ödeme Türü</InputLabel>
+              <InputLabel>Kesinti Türü</InputLabel>
               <Select
                 value={duplicateDialogEditForm.paymentType}
-                label="Ödeme Türü"
+                label="Kesinti Türü"
                 onChange={(e) =>
                   setDuplicateDialogEditForm((prev) => ({
                     ...prev,
@@ -1638,10 +1638,10 @@ const QuickPaymentEntryPage: React.FC = () => {
                       : r
                   )
                 );
-                toast.showSuccess('Ödeme bilgisi güncellendi.');
+                toast.showSuccess('Kesinti bilgisi güncellendi.');
                 duplicatePaymentDialog.onCancel?.();
               } catch (e: unknown) {
-                toast.showError(getApiErrorMessage(e, 'Ödeme güncellenirken bir hata oluştu'));
+                toast.showError(getApiErrorMessage(e, 'Kesinti güncellenirken bir hata oluştu'));
               } finally {
                 setDuplicateDialogSaving(false);
               }

@@ -34,7 +34,7 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   MEMBERSHIP_APPLICATION: 'Üyelik Başvurusu',
   TRANSFER_CERTIFICATE: 'Nakil Belgesi',
   // Diğer kullanılan tipler
-  PAYMENT_RECEIPT: 'Ödeme Makbuzu',
+  PAYMENT_RECEIPT: 'Kesinti Makbuzu',
   DOCUMENT: 'Doküman',
 };
 

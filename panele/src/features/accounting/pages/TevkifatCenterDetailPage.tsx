@@ -525,7 +525,7 @@ const TevkifatCenterDetailPage: React.FC = () => {
               </Box>
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 500 }}>
-                  Toplam Ödeme Sayısı
+                  Toplam Kesinti Sayısı
                 </Typography>
                 <Typography variant="h5" fontWeight={700} color="success.main">
                   {center._count.payments}
@@ -563,7 +563,7 @@ const TevkifatCenterDetailPage: React.FC = () => {
                         <TableCell sx={{ fontWeight: 700 }}>Yıl</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700 }}>Toplam Gelir</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700 }}>Ortalama Aylık Gelir</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>Ödeme Yapan Üye Sayısı</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Kesinti Yapan Üye Sayısı</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -621,7 +621,7 @@ const TevkifatCenterDetailPage: React.FC = () => {
                         <TableCell sx={{ fontWeight: 700 }}>Ay</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Yıl</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700 }}>Gelen Toplam Tutar</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>Ödeme Yapan Üye Sayısı</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Kesinti Yapan Üye Sayısı</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -684,7 +684,7 @@ const TevkifatCenterDetailPage: React.FC = () => {
                 </Box>
                 
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Gelen tevkifat ödemesi, şube payı (%40) ve genel merkeze giden tutar
+                  Gelen tevkifat Kesintisi, şube payı (%40) ve genel merkeze giden tutar
                 </Typography>
 
                 <ResponsiveContainer width="100%" height={400}>

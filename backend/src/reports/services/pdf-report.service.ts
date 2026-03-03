@@ -199,7 +199,7 @@ export class PdfReportService {
             <span class="metric-value">${data.totalUsers}</span>
           </div>
           <div class="metric-row">
-            <span class="metric-label">Toplam Ödeme:</span>
+            <span class="metric-label">Toplam Kesinti:</span>
             <span class="metric-value">${data.totalPayments.toLocaleString('tr-TR')} ₺</span>
           </div>
           <div class="metric-row">
@@ -282,7 +282,7 @@ export class PdfReportService {
                 <th>Üye Sayısı</th>
                 <th>Aktif Üye</th>
                 <th>İptal Edilmiş</th>
-                <th>Toplam Ödeme</th>
+                <th>Toplam Kesinti</th>
                 <th>Toplam Borç</th>
               </tr>
             </thead>
@@ -324,7 +324,7 @@ export class PdfReportService {
               <span class="metric-value">${data.cancelledMembers}</span>
             </div>
             <div class="metric-row">
-              <span class="metric-label">Toplam Ödeme:</span>
+              <span class="metric-label">Toplam Kesinti:</span>
               <span class="metric-value">${data.totalPayments.toLocaleString('tr-TR')} ₺</span>
             </div>
             <div class="metric-row">
@@ -343,7 +343,7 @@ export class PdfReportService {
         <div class="section-title">Aidat Raporu</div>
         <div class="summary-box">
           <div class="metric-row">
-            <span class="metric-label">Toplam Ödeme:</span>
+            <span class="metric-label">Toplam Kesinti:</span>
             <span class="metric-value">${data.totalPayments.toLocaleString('tr-TR')} ₺</span>
           </div>
           <div class="metric-row">
@@ -351,11 +351,11 @@ export class PdfReportService {
             <span class="metric-value">${data.totalDebt.toLocaleString('tr-TR')} ₺</span>
           </div>
           <div class="metric-row">
-            <span class="metric-label">Ödeme Yapan Üye:</span>
+            <span class="metric-label">Kesinti Yapan Üye:</span>
             <span class="metric-value">${data.paidMembers}</span>
           </div>
           <div class="metric-row">
-            <span class="metric-label">Ödeme Yapmayan Üye:</span>
+            <span class="metric-label">Kesinti Yapmayan Üye:</span>
             <span class="metric-value">${data.unpaidMembers}</span>
           </div>
         </div>
@@ -364,7 +364,7 @@ export class PdfReportService {
         data.byMonth && data.byMonth.length > 0
           ? `
         <div class="section">
-          <div class="section-title">Aylık Ödemeler</div>
+          <div class="section-title">Aylık Kesintiler</div>
           <table>
             <thead>
               <tr>

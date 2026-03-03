@@ -101,13 +101,13 @@ const PaymentInquiryPage: React.FC = () => {
       setRows(data);
       
       if (data.length === 0) {
-        toast.showInfo('Sorgu kriterlerine uygun ödeme bulunamadı');
+        toast.showInfo('Sorgu kriterlerine uygun Kesinti bulunamadı');
       } else {
-        toast.showSuccess(`${data.length} ödeme bulundu`);
+        toast.showSuccess(`${data.length} Kesinti bulundu`);
       }
     } catch (e: unknown) {
-      console.error('Ödeme sorgulama hatası:', e);
-      toast.showError(getApiErrorMessage(e, 'Ödeme sorgulanırken bir hata oluştu'));
+      console.error('Kesinti sorgulama hatası:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti sorgulanırken bir hata oluştu'));
       setRows([]);
     } finally {
       setLoading(false);
@@ -157,7 +157,7 @@ const PaymentInquiryPage: React.FC = () => {
           width: col.width || (col.flex ? (col.flex as number) * 10 : 15),
           valueGetter: col.valueGetter,
         }));
-      const title = 'Ödeme Sorgulama Sonuçları';
+      const title = 'Kesinti Sorgulama Sonuçları';
       const filename = `odeme-sorgulama-${new Date().getTime()}`;
       exportToPDF(rows, exportColumns, filename, title, toast.showInfo);
     } catch (error: unknown) {
@@ -226,7 +226,7 @@ const PaymentInquiryPage: React.FC = () => {
     },
     {
       field: 'amount',
-      headerName: 'Ödeme',
+      headerName: 'Kesinti',
       width: 150,
       align: 'right',
       valueGetter: (value) =>
@@ -237,7 +237,7 @@ const PaymentInquiryPage: React.FC = () => {
     },
     {
       field: 'paymentDate',
-      headerName: 'Ödeme Tarihi',
+      headerName: 'Kesinti Tarihi',
       width: 150,
       valueGetter: (value) => {
         if (!value) return '-';
@@ -280,8 +280,8 @@ const PaymentInquiryPage: React.FC = () => {
     <PageLayout>
       <PageHeader
         icon={<SearchIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
-        title="Özel Ödeme Sorgulama"
-        description="Üye kayıt numarası veya ad-soyad ile ödeme sorgulama"
+        title="Özel Kesinti Sorgulama"
+        description="Üye kayıt numarası veya ad-soyad ile Kesinti sorgulama"
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
@@ -325,7 +325,7 @@ const PaymentInquiryPage: React.FC = () => {
                 Sorgulama Kriterleri
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
-                Üye bilgileri ile ödeme kayıtlarını sorgulayın
+                Üye bilgileri ile Kesinti kayıtlarını sorgulayın
               </Typography>
             </Box>
           </Box>
@@ -558,8 +558,8 @@ const PaymentInquiryPage: React.FC = () => {
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
                     {rows.length > 0 
-                      ? `${rows.length} ödeme kaydı bulundu`
-                      : 'Sorgu kriterlerine uygun ödeme bulunamadı'}
+                      ? `${rows.length} Kesinti kaydı bulundu`
+                      : 'Sorgu kriterlerine uygun Kesinti bulunamadı'}
                   </Typography>
                 </Box>
               </Box>
@@ -682,7 +682,7 @@ const PaymentInquiryPage: React.FC = () => {
                     },
                   }}
                   localeText={{
-                    noRowsLabel: 'Ödeme bulunamadı',
+                    noRowsLabel: 'Kesinti bulunamadı',
                   }}
                 />
               </Box>
@@ -690,7 +690,7 @@ const PaymentInquiryPage: React.FC = () => {
           ) : (
             <Box sx={{ p: 4, textAlign: 'center' }}>
               <Alert severity="info" sx={{ borderRadius: 2 }}>
-                Sorgu kriterlerine uygun ödeme kaydı bulunamadı. Lütfen farklı bir kriter deneyin.
+                Sorgu kriterlerine uygun Kesinti kaydı bulunamadı. Lütfen farklı bir kriter deneyin.
               </Alert>
             </Box>
           )}

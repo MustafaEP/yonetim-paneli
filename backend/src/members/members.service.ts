@@ -749,7 +749,7 @@ export class MembersService {
       throw new NotFoundException('Üye bulunamadı');
     }
 
-    // Ödemeleri sil (eğer istenirse)
+    // Kesintileri sil (eğer istenirse)
     if (dto?.deletePayments) {
       await this.prisma.memberPayment.updateMany({
         where: { memberId: id },
