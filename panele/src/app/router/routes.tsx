@@ -16,6 +16,7 @@ import ApprovedMembersPage from '../../features/members/pages/ApprovedMembersPag
 import ActiveWaitingMembersPage from '../../features/members/pages/ActiveWaitingMembersPage';
 import MemberApplicationCreatePage from '../../features/members/pages/MemberApplicationCreatePage';
 import BulkMemberRegistrationPage from '../../features/members/pages/BulkMemberRegistrationPage';
+import MemberHistoryPage from '../../features/members/pages/MemberHistoryPage';
 import UsersListPage from '../../features/users/pages/UsersListPage';
 import PanelUserApplicationsPage from '../../features/users/pages/PanelUserApplicationsPage';
 import RolesListPage from '../../features/roles/pages/RolesListPage';
@@ -64,6 +65,10 @@ const AppRoutes: React.FC = () => (
 
         <Route element={<ProtectedRoute requiredPermission="MEMBER_UPDATE" />}>
           <Route path="/members/:id/edit" element={<MemberUpdatePage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute requiredPermission="MEMBER_VIEW" alternativePermission="MEMBER_LIST" />}>
+          <Route path="/members/status" element={<MemberHistoryPage />} />
         </Route>
 
         <Route element={<ProtectedRoute requiredPermission="MEMBER_APPROVE" />}>

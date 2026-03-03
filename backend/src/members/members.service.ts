@@ -265,6 +265,150 @@ export class MembersService {
     });
   }
 
+  /**
+   * Üye hareket geçmişi (MemberHistory) listesini getir.
+   *
+   * Not:
+   * - Kullanıcının üye görüntüleme scope'una göre filtrelenir
+   * - İsteğe bağlı olarak üye, aksiyon ve tarih aralığına göre filtrelenebilir
+   * - Basit sayfalama desteği sağlar
+   */
+  async listMemberHistoryForUser(options: {
+    user: CurrentUserData;
+    memberId?: string;
+    action?: string;
+    from?: Date;
+    to?: Date;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const {
+      user,
+      memberId,
+      action,
+      from,
+      to,
+      search,
+      page = 1,
+      pageSize = 50,
+    } = options;
+
+    const effectivePage = page < 1 ? 1 : page;
+    const effectivePageSize = pageSize > 200 ? 200 : pageSize;
+
+    const whereScope = await this.scopeService.buildMemberWhereForUser(user);
+
+    const where: Prisma.MemberHistoryWhereInput = {
+      member: {
+        ...whereScope,
+      },
+    };
+
+    if (memberId) {
+      where.memberId = memberId;
+    }
+
+    if (action) {
+      where.action = action.toUpperCase();
+    }
+
+    if (from || to) {
+      where.createdAt = {};
+      if (from) {
+        (where.createdAt as Prisma.DateTimeFilter).gte = from;
+      }
+      if (to) {
+        (where.createdAt as Prisma.DateTimeFilter).lte = to;
+      }
+    }
+
+    if (search && search.trim() !== '') {
+      const term = search.trim();
+      where.OR = [
+        {
+          member: {
+            firstName: { contains: term, mode: 'insensitive' },
+          },
+        },
+        {
+          member: {
+            lastName: { contains: term, mode: 'insensitive' },
+          },
+        },
+        {
+          member: {
+            nationalId: { contains: term },
+          },
+        },
+        {
+          changedByUser: {
+            OR: [
+              { firstName: { contains: term, mode: 'insensitive' } },
+              { lastName: { contains: term, mode: 'insensitive' } },
+              { email: { contains: term, mode: 'insensitive' } },
+            ],
+          },
+        },
+      ];
+    }
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.memberHistory.findMany({
+        where,
+        include: {
+          member: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              nationalId: true,
+              registrationNumber: true,
+            },
+          },
+          changedByUser: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (effectivePage - 1) * effectivePageSize,
+        take: effectivePageSize,
+      }),
+      this.prisma.memberHistory.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page: effectivePage,
+      pageSize: effectivePageSize,
+    };
+  }
+
+  /**
+   * Tek bir üye hareket geçmişi kaydını sil.
+   */
+  async deleteMemberHistory(id: string) {
+    const existing = await this.prisma.memberHistory.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Üye hareket kaydı bulunamadı');
+    }
+
+    await this.prisma.memberHistory.delete({
+      where: { id },
+    });
+
+    return { success: true };
+  }
+
   // Reddedilen üyeler: scope'a göre
   async listRejectedMembersForUser(user: CurrentUserData) {
     const whereScope = await this.scopeService.buildMemberWhereForUser(user);

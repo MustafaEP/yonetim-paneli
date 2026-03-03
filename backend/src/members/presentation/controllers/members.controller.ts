@@ -191,6 +191,93 @@ export class MembersController {
     return members;
   }
 
+  @Permissions(Permission.MEMBER_VIEW, Permission.MEMBER_LIST)
+  @Get('history')
+  @ApiOperation({
+    summary: 'Üye hareket geçmişi listesini getir',
+    description:
+      'Üyeler üzerinde yapılan CREATE / UPDATE / DELETE işlemlerinin log kayıtlarını listeler. Kullanıcının yetki alanındaki üyeler için sonuç döner.',
+  })
+  @ApiQuery({
+    name: 'memberId',
+    required: false,
+    description: 'Belirli bir üyenin geçmişini filtrelemek için üye ID',
+  })
+  @ApiQuery({
+    name: 'action',
+    required: false,
+    description: 'İşlem tipi filtresi (CREATE, UPDATE, DELETE)',
+  })
+  @ApiQuery({
+    name: 'from',
+    required: false,
+    description: 'Başlangıç tarihi (ISO string)',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: false,
+    description: 'Bitiş tarihi (ISO string)',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description:
+      'Üye adı, soyadı, TC kimlik numarası veya işlemi yapan kullanıcının adı/soyadı/e-postasına göre arama',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Sayfa numarası (1 tabanlı)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    description: 'Sayfa başına kayıt sayısı (maksimum 200)',
+  })
+  async listMemberHistory(
+    @CurrentUser() user: CurrentUserData,
+    @Query('memberId') memberId?: string,
+    @Query('action') action?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+
+    const pageNumber = page ? parseInt(page, 10) || 1 : 1;
+    const pageSizeNumber = pageSize ? parseInt(pageSize, 10) || 50 : 50;
+
+    return this.membersService.listMemberHistoryForUser({
+      user,
+      memberId,
+      action,
+      from: fromDate,
+      to: toDate,
+      search,
+      page: pageNumber,
+      pageSize: pageSizeNumber,
+    });
+  }
+
+  @Permissions(Permission.LOG_VIEW_ALL)
+  @Delete('history/:id')
+  @ApiOperation({
+    summary: 'Üye hareket geçmişi kaydını sil',
+    description:
+      'Belirli bir üye hareketi (MemberHistory) kaydını siler. Bu işlem sadece tam log yetkisine sahip admin kullanıcılar tarafından yapılmalıdır.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Silinecek log kaydının ID bilgisi',
+  })
+  @ApiResponse({ status: 200, description: 'Kayıt başarıyla silindi' })
+  async deleteMemberHistory(@Param('id') id: string) {
+    return this.membersService.deleteMemberHistory(id);
+  }
+
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get('rejected')
   @ApiOperation({

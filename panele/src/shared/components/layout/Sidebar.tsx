@@ -7,23 +7,21 @@ import {
   ListItemIcon,
   ListItemText,
   Toolbar,
-  Divider,
   Box,
   Typography,
   useTheme,
   alpha,
   useMediaQuery,
   IconButton,
+  Collapse,
 } from '@mui/material';
 import GridViewIcon from '@mui/icons-material/GridView';
 import GroupsIcon from '@mui/icons-material/Groups';
-import PeopleIcon from '@mui/icons-material/People';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -35,16 +33,11 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SendIcon from '@mui/icons-material/Send';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import WorkIcon from '@mui/icons-material/Work';
 import BadgeIcon from '@mui/icons-material/Badge';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
-import ExitToAppIcon from '@mui/icons-material/ExitToApp';
-import PauseCircleIcon from '@mui/icons-material/PauseCircle';
-import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
-import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import HistoryIcon from '@mui/icons-material/History';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthContext';
 import type { SxProps, Theme } from '@mui/material';
@@ -116,8 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   const showPayments = hasPermission('MEMBER_PAYMENT_LIST');
   const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
   const showInstitutions = hasPermission('INSTITUTION_LIST');
-  const showProfessions = hasPermission('MEMBER_CREATE_APPLICATION') || hasPermission('MEMBER_UPDATE');
-  const showBulkMemberRegistration = hasPermission('MEMBER_CREATE_APPLICATION');
+
+  const [openSection, setOpenSection] = React.useState<string | null>(null);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -126,6 +119,44 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
       onDrawerToggle();
     }
   };
+
+  const handleSectionToggle = (section: string) => {
+    setOpenSection((prev) => (prev === section ? null : section));
+  };
+
+  React.useEffect(() => {
+    const path = location.pathname;
+
+    if (path.startsWith('/members')) {
+      setOpenSection('members');
+    } else if (
+      path.startsWith('/regions') ||
+      path.startsWith('/institutions') ||
+      path.startsWith('/accounting/tevkifat-centers')
+    ) {
+      setOpenSection('region');
+    } else if (path.startsWith('/payments')) {
+      setOpenSection('deductions');
+    } else if (path.startsWith('/content') || path.startsWith('/documents')) {
+      setOpenSection('content-docs');
+    } else if (path.startsWith('/notifications')) {
+      setOpenSection('notifications');
+    } else if (path.startsWith('/users') || path.startsWith('/roles')) {
+      setOpenSection('user-management');
+    } else if (path.startsWith('/system')) {
+      setOpenSection('system');
+    } else {
+      setOpenSection(null);
+    }
+  }, [location.pathname]);
+
+  const hasRegionGroup =
+    showRegions || showBranches || showInstitutions || showAccounting;
+  const hasDeductionsGroup = showPayments || canAddPayment;
+  const hasMembersGroup = showMembers;
+  const hasContentGroup = showContent || showDocuments;
+  const hasUserManagementGroup = showUsers || showRoles || showPanelUserApplications;
+  const hasSystemGroup = showSystemSettings || showSystemLogs;
 
   const drawerContent = (
     <>
@@ -148,21 +179,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
       
       {!isMobile && <Toolbar />}
       
-      <Box sx={{ px: 2, py: isMobile ? 2 : 3 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.08em',
-            px: 2,
-          }}
-        >
-          ANA MENÜ
-        </Typography>
-      </Box>
-
       <List sx={{ px: 1 }}>
         <ListItemButton
           component={Link}
@@ -184,502 +200,398 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
         </ListItemButton>
       </List>
 
-      <Divider sx={{ my: 2, mx: 2 }} />
-
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.08em',
-            px: 2,
-          }}
+      <List sx={{ px: 1, pt: 0, mb: 1.5 }}>
+        <ListItemButton
+          component={Link}
+          to="/members/applications/new"
+          selected={location.pathname === '/members/applications/new'}
+          onClick={handleLinkClick}
+          sx={getNavItemSx(theme, 'success')}
         >
-          KULLANICI İŞLEMLERİ
-        </Typography>
-      </Box>
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            <PersonAddIcon />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Yeni Üye Başvurusu" 
+            primaryTypographyProps={{
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              color: theme.palette.success.main,
+            }}
+          />
+        </ListItemButton>
+      </List>
 
-      <List sx={{ px: 1 }}>
-        {showUsers && (
-          <>
-            <ListItemButton
-              component={Link}
-              to="/users"
-              selected={location.pathname === '/users' || (location.pathname.startsWith('/users/') && !location.pathname.startsWith('/users/applications'))}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <SupervisorAccountIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Panel Kullanıcıları" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            {showPanelUserApplications && (
-              <ListItemButton
-                component={Link}
-                to="/users/applications"
-                selected={location.pathname === '/users/applications'}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <BadgeIcon />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Panel Kullanıcı Başvuruları" 
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
-            )}
-          </>
-        )}
-
-        {showRoles && (
+      {/* 3. Üyeler */}
+      {hasMembersGroup && (
+        <List sx={{ px: 1 }}>
           <ListItemButton
-            component={Link}
-            to="/roles"
-            selected={location.pathname.startsWith('/roles')}
-            onClick={handleLinkClick}
+            onClick={() => handleSectionToggle('members')}
             sx={getNavItemSx(theme)}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
-              <AdminPanelSettingsIcon />
+              <GroupsIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Roller" 
+            <ListItemText
+              primary="Üyeler"
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
               }}
             />
+            {openSection === 'members' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </ListItemButton>
-        )}
-      </List>
 
-      <Divider sx={{ my: 2, mx: 2 }} />
-
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.08em',
-            px: 2,
-          }}
-        >
-          ÜYELER
-        </Typography>
-      </Box>
-
-      <List sx={{ px: 1 }}>
-        {showMembers && (
-          <>
-            {showMemberApplications && (
-              <>
+          <Collapse in={openSection === 'members'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              {showMemberApplications && (
                 <ListItemButton
                   component={Link}
                   to="/members/applications"
-                  selected={location.pathname.startsWith('/members/applications') && !location.pathname.startsWith('/members/waiting')}
+                  selected={
+                    location.pathname.startsWith('/members/applications') &&
+                    !location.pathname.startsWith('/members/waiting')
+                  }
                   onClick={handleLinkClick}
                   sx={getNavItemSx(theme)}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>
                     <AssignmentIcon />
                   </ListItemIcon>
-                  <ListItemText 
-                    primary="Üye Başvuruları" 
+                  <ListItemText
+                    primary="Üye Başvuruları"
                     primaryTypographyProps={{
                       fontSize: '0.9rem',
                       fontWeight: 500,
                     }}
                   />
                 </ListItemButton>
-                <ListItemButton
-                  component={Link}
-                  to="/members/waiting"
-                  selected={location.pathname === '/members/waiting'}
-                  onClick={handleLinkClick}
-                  sx={getNavItemSx(theme)}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <BadgeIcon />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Üyeler" 
-                    primaryTypographyProps={{
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-              </>
-            )}
-            {showBulkMemberRegistration && (
+              )}
+
               <ListItemButton
                 component={Link}
-                to="/members/bulk-registration"
-                selected={location.pathname === '/members/bulk-registration'}
+                to="/members/waiting"
+                selected={
+                  location.pathname === '/members/waiting' ||
+                  (location.pathname.startsWith('/members/waiting') &&
+                    !location.pathname.startsWith('/members/applications') &&
+                    !location.pathname.startsWith('/members/waiting') &&
+                    !location.pathname.startsWith('/members/bulk-registration') &&
+                    !location.pathname.startsWith('/members/status') &&
+                    /^\/members\/[^/]+$/.test(location.pathname))
+                }
                 onClick={handleLinkClick}
                 sx={getNavItemSx(theme)}
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>
-                  <GroupAddIcon />
+                  <GroupsIcon />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="Toplu Üye Kayıt" 
+                <ListItemText
+                  primary="Üyeler"
                   primaryTypographyProps={{
                     fontSize: '0.9rem',
                     fontWeight: 500,
                   }}
                 />
               </ListItemButton>
-            )}
-            <ListItemButton
-              component={Link}
-              to="/members"
-              selected={
-                location.pathname === '/members' ||
-                (location.pathname.startsWith('/members/') &&
-                 !location.pathname.startsWith('/members/applications') &&
-                 !location.pathname.startsWith('/members/waiting') &&
-                 !location.pathname.startsWith('/members/bulk-registration') &&
-                 !location.pathname.startsWith('/members/status') &&
-                 /^\/members\/[^/]+$/.test(location.pathname))
-              }
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <GroupsIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Tüm Üyeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-          </>
-        )}
-      </List>
 
-      <Divider sx={{ my: 2, mx: 2 }} />
-
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.08em',
-            px: 2,
-          }}
-        >
-          LOKASYON
-        </Typography>
-      </Box>
-
-      <List sx={{ px: 1 }}>
-        {showRegions && (
-          <>
-            <ListItemButton
-              component={Link}
-              to="/regions/provinces"
-              selected={location.pathname.startsWith('/regions/provinces')}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <LocationCityIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="İller & İlçeler" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            
-            {showBranches && (
               <ListItemButton
                 component={Link}
-                to="/regions/branches"
-                selected={location.pathname.startsWith('/regions/branches')}
+                to="/members/status"
+                selected={location.pathname.startsWith('/members/status')}
                 onClick={handleLinkClick}
                 sx={getNavItemSx(theme)}
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>
-                  <BusinessIcon />
+                  <HistoryIcon />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="Şubeler" 
+                <ListItemText
+                  primary="Üye Hareketleri"
                   primaryTypographyProps={{
                     fontSize: '0.9rem',
                     fontWeight: 500,
                   }}
                 />
               </ListItemButton>
-            )}
+            </List>
+          </Collapse>
+        </List>
+      )}
 
-            {showInstitutions && (
-              <ListItemButton
-                component={Link}
-                to="/institutions"
-                selected={location.pathname.startsWith('/institutions')}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <BusinessIcon />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Kurumlar" 
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
-            )}
-
-            {showAccounting && (
-              <ListItemButton
-                component={Link}
-                to="/accounting/tevkifat-centers"
-                selected={location.pathname.startsWith('/accounting/tevkifat-centers')}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <AccountBalanceIcon />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Tevkifat Merkezleri" 
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
-            )}
-          </>
-        )}
-      </List>
-
-      <Divider sx={{ my: 2, mx: 2 }} />
-
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.08em',
-            px: 2,
-          }}
-        >
-          İÇERİK & DOKÜMAN
-        </Typography>
-      </Box>
-
-      <List sx={{ px: 1 }}>
-        {showContent && (
+      {/* 4. Bölge ve Kurum Bilgileri */}
+      {hasRegionGroup && (
+        <List sx={{ px: 1 }}>
           <ListItemButton
-            component={Link}
-            to="/content"
-            selected={location.pathname.startsWith('/content')}
-            onClick={handleLinkClick}
+            onClick={() => handleSectionToggle('region')}
             sx={getNavItemSx(theme)}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
-              <ArticleIcon />
+              <LocationCityIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="İçerik Yönetimi" 
+            <ListItemText
+              primary="Bölge ve Kurum Bilgileri"
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
               }}
             />
+            {openSection === 'region' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </ListItemButton>
-        )}
 
-        {showDocuments && (
-          <>
-            <ListItemButton
-              component={Link}
-              to="/documents/templates"
-              selected={location.pathname.startsWith('/documents/templates')}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <DescriptionIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Doküman Şablonları" 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            {hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW') && (
-              <ListItemButton
-                component={Link}
-                to="/documents/members"
-                selected={location.pathname.startsWith('/documents/members')}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <DescriptionIcon />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Üye Doküman Geçmişi" 
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
-            )}
-          </>
-        )}
-      </List>
+          <Collapse in={openSection === 'region'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              {showRegions && (
+                <ListItemButton
+                  component={Link}
+                  to="/regions/provinces"
+                  selected={location.pathname.startsWith('/regions/provinces')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <LocationCityIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="İller & İlçeler"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
 
-      <Divider sx={{ my: 2, mx: 2 }} />
+              {showInstitutions && (
+                <ListItemButton
+                  component={Link}
+                  to="/institutions"
+                  selected={location.pathname.startsWith('/institutions')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <BusinessIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Kurumlar"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
 
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.08em',
-            px: 2,
-          }}
-        >
-          ÖDEMELER
-        </Typography>
-      </Box>
+              {showAccounting && (
+                <ListItemButton
+                  component={Link}
+                  to="/accounting/tevkifat-centers"
+                  selected={location.pathname.startsWith('/accounting/tevkifat-centers')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <AccountBalanceIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Tevkifat Merkezleri"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
 
-      <List sx={{ px: 1 }}>
-        {showPayments && (
-          <>
-            <ListItemButton
-              component={Link}
-              to="/payments"
-              selected={location.pathname === '/payments' || (location.pathname.startsWith('/payments/') && !location.pathname.startsWith('/payments/inquiry') && !location.pathname.startsWith('/payments/quick-entry') && !/^\/payments\/[^/]+$/.test(location.pathname))}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <ReceiptLongIcon />
-              </ListItemIcon>
-              <ListItemText
-                primary="Ödeme Sorgulama"
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            <ListItemButton
-              component={Link}
-              to="/payments/inquiry"
-              selected={location.pathname === '/payments/inquiry'}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <ManageSearchIcon />
-              </ListItemIcon>
-              <ListItemText
-                primary="Özel Ödeme Sorgulama"
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            <ListItemButton
-              component={Link}
-              to="/payments/recent"
-              selected={location.pathname === '/payments/recent'}
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <HistoryIcon />
-              </ListItemIcon>
-              <ListItemText
-                primary="Son Ödemeler"
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-            {canAddPayment && (
-              <ListItemButton
-                component={Link}
-                to="/payments/quick-entry"
-                selected={location.pathname === '/payments/quick-entry'}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <CreditCardIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Hızlı Ödeme Girişi"
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
-            )}
-          </>
-        )}
-      </List>
+              {showBranches && (
+                <ListItemButton
+                  component={Link}
+                  to="/regions/branches"
+                  selected={location.pathname.startsWith('/regions/branches')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <BusinessIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Şubeler"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+            </List>
+          </Collapse>
+        </List>
+      )}
 
-      <Divider sx={{ my: 2, mx: 2 }} />
+      {/* 5. Kesintiler */}
+      {hasDeductionsGroup && (
+        <List sx={{ px: 1 }}>
+          <ListItemButton
+            onClick={() => handleSectionToggle('deductions')}
+            sx={getNavItemSx(theme)}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <ReceiptLongIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Kesintiler"
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            />
+            {openSection === 'deductions' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </ListItemButton>
 
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.08em',
-            px: 2,
-          }}
-        >
-          RAPORLAR & BİLDİRİMLER
-        </Typography>
-      </Box>
+          <Collapse in={openSection === 'deductions'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              {canAddPayment && (
+                <ListItemButton
+                  component={Link}
+                  to="/payments/quick-entry"
+                  selected={location.pathname === '/payments/quick-entry'}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <CreditCardIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Kesinti Girişi"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
 
+              {showPayments && (
+                <ListItemButton
+                  component={Link}
+                  to="/payments"
+                  selected={
+                    location.pathname === '/payments' ||
+                    (location.pathname.startsWith('/payments/') &&
+                      !location.pathname.startsWith('/payments/quick-entry') &&
+                      !/^\/payments\/[^/]+$/.test(location.pathname))
+                  }
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <ReceiptLongIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Ödeme Sorgulama"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+            </List>
+          </Collapse>
+        </List>
+      )}
+
+      {/* 6. İçerik ve Doküman Sistemi */}
+      {hasContentGroup && (
+        <List sx={{ px: 1 }}>
+          <ListItemButton
+            onClick={() => handleSectionToggle('content-docs')}
+            sx={getNavItemSx(theme)}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <ArticleIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="İçerik ve Doküman Sistemi"
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            />
+            {openSection === 'content-docs' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </ListItemButton>
+
+          <Collapse in={openSection === 'content-docs'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              {showContent && (
+                <ListItemButton
+                  component={Link}
+                  to="/content"
+                  selected={location.pathname.startsWith('/content')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <ArticleIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="İçerik Yönetimi"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+
+              {showDocuments && (
+                <>
+                  <ListItemButton
+                    component={Link}
+                    to="/documents/templates"
+                    selected={location.pathname.startsWith('/documents/templates')}
+                    onClick={handleLinkClick}
+                    sx={getNavItemSx(theme)}
+                  >
+                    <ListItemIcon sx={{ minWidth: 40 }}>
+                      <DescriptionIcon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="PDF Şablonları"
+                      primaryTypographyProps={{
+                        fontSize: '0.9rem',
+                        fontWeight: 500,
+                      }}
+                    />
+                  </ListItemButton>
+                  {hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW') && (
+                    <ListItemButton
+                      component={Link}
+                      to="/documents/members"
+                      selected={location.pathname.startsWith('/documents/members')}
+                      onClick={handleLinkClick}
+                      sx={getNavItemSx(theme)}
+                    >
+                      <ListItemIcon sx={{ minWidth: 40 }}>
+                        <DescriptionIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="PDF Oluşturma Geçmişi"
+                        primaryTypographyProps={{
+                          fontSize: '0.9rem',
+                          fontWeight: 500,
+                        }}
+                      />
+                    </ListItemButton>
+                  )}
+                </>
+              )}
+            </List>
+          </Collapse>
+        </List>
+      )}
+
+      {/* 7. Raporlar */}
       <List sx={{ px: 1 }}>
         {showReports && (
           <ListItemButton
@@ -701,134 +613,235 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
             />
           </ListItemButton>
         )}
+      </List>
 
-        {/* Bildirimler - Herkes erişebilir (kendi bildirimlerini görüntülemek için) */}
+      {/* 8. Bildirim Sistemi */}
+      <List sx={{ px: 1 }}>
         <ListItemButton
-          component={Link}
-          to="/notifications"
-          selected={location.pathname.startsWith('/notifications') && !location.pathname.startsWith('/notifications/send')}
-          onClick={handleLinkClick}
+          onClick={() => handleSectionToggle('notifications')}
           sx={getNavItemSx(theme)}
         >
           <ListItemIcon sx={{ minWidth: 40 }}>
             <NotificationsActiveIcon />
           </ListItemIcon>
-          <ListItemText 
-            primary="Bildirimlerim" 
+          <ListItemText
+            primary="Bildirim Sistemi"
             primaryTypographyProps={{
               fontSize: '0.9rem',
               fontWeight: 500,
             }}
           />
+          {openSection === 'notifications' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </ListItemButton>
 
-        {/* Bildirim Gönder - Yetki gerektirir */}
-        {showNotifications && (
+        <Collapse in={openSection === 'notifications'} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding sx={{ pl: 4 }}>
+            <ListItemButton
+              component={Link}
+              to="/notifications"
+              selected={
+                location.pathname.startsWith('/notifications') &&
+                !location.pathname.startsWith('/notifications/send')
+              }
+              onClick={handleLinkClick}
+              sx={getNavItemSx(theme)}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <NotificationsActiveIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary="Bildirimlerim"
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }}
+              />
+            </ListItemButton>
+
+            {showNotifications && (
+              <ListItemButton
+                component={Link}
+                to="/notifications/send"
+                selected={location.pathname === '/notifications/send'}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <SendIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Bildirim Gönder"
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            )}
+          </List>
+        </Collapse>
+      </List>
+
+      {/* 9. Kullanıcı İşlemleri */}
+      {hasUserManagementGroup && (
+        <List sx={{ px: 1 }}>
           <ListItemButton
-            component={Link}
-            to="/notifications/send"
-            selected={location.pathname === '/notifications/send'}
-            onClick={handleLinkClick}
+            onClick={() => handleSectionToggle('user-management')}
             sx={getNavItemSx(theme)}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
-              <SendIcon />
+              <SupervisorAccountIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Bildirim Gönder" 
+            <ListItemText
+              primary="Kullanıcı İşlemleri"
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
               }}
             />
+            {openSection === 'user-management' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </ListItemButton>
-        )}
-      </List>
 
-      <Divider sx={{ my: 2, mx: 2 }} />
+          <Collapse in={openSection === 'user-management'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              {showUsers && (
+                <ListItemButton
+                  component={Link}
+                  to="/users"
+                  selected={
+                    location.pathname === '/users' ||
+                    (location.pathname.startsWith('/users/') &&
+                      !location.pathname.startsWith('/users/applications'))
+                  }
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <SupervisorAccountIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Panel Kullanıcıları"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
 
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.08em',
-            px: 2,
-          }}
-        >
-          SİSTEM
-        </Typography>
-      </Box>
+              {showPanelUserApplications && (
+                <ListItemButton
+                  component={Link}
+                  to="/users/applications"
+                  selected={location.pathname === '/users/applications'}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <BadgeIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Panel Kullanıcı Başvuruları"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
 
-      <List sx={{ px: 1 }}>
-        {showSystemSettings && (
+              {showRoles && (
+                <ListItemButton
+                  component={Link}
+                  to="/roles"
+                  selected={location.pathname.startsWith('/roles')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <AdminPanelSettingsIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Roller"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+            </List>
+          </Collapse>
+        </List>
+      )}
+
+      {/* 10. Sistem Ayarları */}
+      {hasSystemGroup && (
+        <List sx={{ px: 1, pb: 2 }}>
           <ListItemButton
-            component={Link}
-            to="/system/settings"
-            selected={location.pathname.startsWith('/system/settings')}
-            onClick={handleLinkClick}
+            onClick={() => handleSectionToggle('system')}
             sx={getNavItemSx(theme)}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
               <SettingsIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Sistem Ayarları" 
+            <ListItemText
+              primary="Sistem Ayarları"
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
               }}
             />
+            {openSection === 'system' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </ListItemButton>
-        )}
 
-        {showSystemLogs && (
-          <ListItemButton
-            component={Link}
-            to="/system/logs"
-            selected={location.pathname.startsWith('/system/logs')}
-            onClick={handleLinkClick}
-            sx={getNavItemSx(theme)}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>
-              <ListAltIcon />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Sistem Logları" 
-              primaryTypographyProps={{
-                fontSize: '0.9rem',
-                fontWeight: 500,
-              }}
-            />
-          </ListItemButton>
-        )}
-      </List>
+          <Collapse in={openSection === 'system'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              {showSystemSettings && (
+                <ListItemButton
+                  component={Link}
+                  to="/system/settings"
+                  selected={location.pathname.startsWith('/system/settings')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <SettingsIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Sistem Ayarları"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
 
-      <Divider sx={{ my: 2, mx: 2 }} />
-
-      <List sx={{ px: 1, pb: 2 }}>
-        <ListItemButton
-          component={Link}
-          to="/members/applications/new"
-          selected={location.pathname === '/members/applications/new'}
-          onClick={handleLinkClick}
-          sx={getNavItemSx(theme, 'success')}
-        >
-          <ListItemIcon sx={{ minWidth: 40 }}>
-            <PersonAddIcon />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Yeni Üye Başvurusu" 
-            primaryTypographyProps={{
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              color: theme.palette.success.main,
-            }}
-          />
-        </ListItemButton>
-      </List>
+              {showSystemLogs && (
+                <ListItemButton
+                  component={Link}
+                  to="/system/logs"
+                  selected={location.pathname.startsWith('/system/logs')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <ListAltIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Sistem Logları"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+            </List>
+          </Collapse>
+        </List>
+      )}
     </>
   );
 

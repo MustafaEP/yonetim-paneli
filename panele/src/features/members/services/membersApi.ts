@@ -5,6 +5,7 @@ import type {
   MemberDetail,
   MemberApplicationRow,
   MemberStatus,
+  MemberHistory,
 } from '../../../types/member';
 
 // 🔹 Üyeleri listele: GET /members?status=ACTIVE&provinceId=...
@@ -206,6 +207,48 @@ export const updateMember = async (
 export const getMemberHistory = async (memberId: string) => {
   const res = await httpClient.get(`/members/${memberId}/history`);
   return res.data;
+};
+
+// 🔹 Üye hareketleri listesini getir: GET /members/history
+export interface MemberHistoryListResponse {
+  items: Array<
+    MemberHistory & {
+      member?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        nationalId: string;
+        registrationNumber?: string | null;
+      } | null;
+    }
+  >;
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface MemberHistoryListParams {
+  memberId?: string;
+  action?: 'CREATE' | 'UPDATE' | 'DELETE';
+  from?: string;
+  to?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export const getMemberHistoryList = async (
+  params: MemberHistoryListParams,
+): Promise<MemberHistoryListResponse> => {
+  const res = await httpClient.get<MemberHistoryListResponse>('/members/history', {
+    params,
+  });
+  return res.data;
+};
+
+// 🔹 Tek bir üye hareketi kaydını sil: DELETE /members/history/:id
+export const deleteMemberHistory = async (id: string): Promise<void> => {
+  await httpClient.delete(`/members/history/${id}`);
 };
 
 // 🔹 Üyeleri PDF olarak export et: GET /members/export/pdf
