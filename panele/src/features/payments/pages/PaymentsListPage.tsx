@@ -41,10 +41,13 @@ import {
   getPayments,
   createPayment,
   uploadPaymentDocument,
+  updatePayment,
+  deletePayment,
   type MemberPayment,
   type PaymentListFilters,
   type PaymentType,
   type CreateMemberPaymentDto,
+  type UpdateMemberPaymentDto,
 } from '../services/paymentsApi';
 import { getTevkifatCenters } from '../../accounting/services/accountingApi';
 import { getMembers } from '../../members/services/membersApi';
@@ -99,9 +102,26 @@ const PaymentsListPage: React.FC = () => {
     documentFileName: '',
   });
 
+  // Düzenleme / silme dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<MemberPayment | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [editForm, setEditForm] = useState<UpdateMemberPaymentDto>({
+    amount: '',
+    paymentPeriodMonth: new Date().getMonth() + 1,
+    paymentPeriodYear: new Date().getFullYear(),
+    paymentType: 'TEVKIFAT',
+    tevkifatCenterId: '',
+    description: '',
+  });
+
   const canView = hasPermission('MEMBER_PAYMENT_LIST');
   const canExport = hasPermission('ACCOUNTING_EXPORT');
   const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
+  const canEdit = hasPermission('MEMBER_PAYMENT_UPDATE') || hasPermission('MEMBER_PAYMENT_ADD');
+  const canDelete = hasPermission('MEMBER_PAYMENT_DELETE') || hasPermission('MEMBER_PAYMENT_ADD');
 
   useEffect(() => {
     if (canView) {
@@ -333,6 +353,69 @@ const PaymentsListPage: React.FC = () => {
     return matchesSearch;
   });
 
+  const handleOpenEdit = (payment: MemberPayment) => {
+    setSelectedPayment(payment);
+    setEditForm({
+      amount: payment.amount,
+      paymentPeriodMonth: payment.paymentPeriodMonth,
+      paymentPeriodYear: payment.paymentPeriodYear,
+      paymentType: payment.paymentType,
+      tevkifatCenterId: payment.tevkifatCenterId || '',
+      description: payment.description || '',
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedPayment) return;
+
+    if (!editForm.amount || Number(editForm.amount) <= 0) {
+      toast.showWarning('Lütfen geçerli bir tutar girin.');
+      return;
+    }
+
+    if (editForm.paymentType === 'TEVKIFAT' && !editForm.tevkifatCenterId) {
+      toast.showWarning('Lütfen tevkifat merkezi seçin.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await updatePayment(selectedPayment.id, editForm);
+      toast.showSuccess('Kesinti başarıyla güncellendi');
+      setEditDialogOpen(false);
+      setSelectedPayment(null);
+      await loadPayments();
+    } catch (e: unknown) {
+      console.error('Kesinti güncellenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti güncellenirken bir hata oluştu'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOpenDelete = (payment: MemberPayment) => {
+    setSelectedPayment(payment);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedPayment) return;
+    setDeleting(true);
+    try {
+      await deletePayment(selectedPayment.id);
+      toast.showSuccess('Kesinti başarıyla silindi');
+      setDeleteDialogOpen(false);
+      setSelectedPayment(null);
+      await loadPayments();
+    } catch (e: unknown) {
+      console.error('Kesinti silinirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti silinirken bir hata oluştu'));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const columns: GridColDef<MemberPayment>[] = [
     {
       field: 'registrationNumber',
@@ -390,7 +473,7 @@ const PaymentsListPage: React.FC = () => {
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 150,
+      width: 200,
       sortable: false,
       renderCell: (params) => {
         const payment = params.row as MemberPayment;
@@ -405,6 +488,28 @@ const PaymentsListPage: React.FC = () => {
                 <VisibilityIcon fontSize="small" />
               </IconButton>
             </Tooltip>
+            {canEdit && (
+              <Tooltip title="Düzenle">
+                <IconButton
+                  size="small"
+                  onClick={() => handleOpenEdit(payment)}
+                  sx={{ color: theme.palette.warning.main }}
+                >
+                  <PaymentIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {canDelete && (
+              <Tooltip title="Sil">
+                <IconButton
+                  size="small"
+                  onClick={() => handleOpenDelete(payment)}
+                  sx={{ color: theme.palette.error.main }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         );
       },
@@ -841,6 +946,186 @@ const PaymentsListPage: React.FC = () => {
           </Box>
         </Box>
       </Card>
+      {/* Kesinti Düzenleme Dialog */}
+      {canEdit && (
+        <Dialog
+          open={editDialogOpen}
+          onClose={() => !saving && setEditDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Kesinti Düzenle</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+              <TextField
+                label="Tutar"
+                type="number"
+                value={editForm.amount ?? ''}
+                onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                fullWidth
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">TL</InputAdornment>,
+                }}
+              />
+              <FormControl fullWidth>
+                <InputLabel>Yıl</InputLabel>
+                <Select
+                  value={editForm.paymentPeriodYear ?? new Date().getFullYear()}
+                  label="Yıl"
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      paymentPeriodYear: Number(e.target.value),
+                    })
+                  }
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                    <MenuItem key={year} value={year}>
+                      {year}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Ay</InputLabel>
+                <Select
+                  value={editForm.paymentPeriodMonth ?? new Date().getMonth() + 1}
+                  label="Ay"
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      paymentPeriodMonth: Number(e.target.value),
+                    })
+                  }
+                >
+                  {monthNames.map((month, index) => (
+                    <MenuItem key={month} value={index + 1}>
+                      {month}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Kesinti Tipi</InputLabel>
+                <Select
+                  value={editForm.paymentType ?? 'TEVKIFAT'}
+                  label="Kesinti Tipi"
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      paymentType: e.target.value as PaymentType,
+                    })
+                  }
+                >
+                  <MenuItem value="TEVKIFAT">Tevkifat</MenuItem>
+                  <MenuItem value="ELDEN">Elden</MenuItem>
+                  <MenuItem value="HAVALE">Havale</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Tevkifat Merkezi</InputLabel>
+                <Select
+                  value={editForm.tevkifatCenterId || ''}
+                  label="Tevkifat Merkezi"
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      tevkifatCenterId: e.target.value || undefined,
+                    })
+                  }
+                >
+                  <MenuItem value="">
+                    <em>Seçiniz</em>
+                  </MenuItem>
+                  {tevkifatCenters.map((center) => (
+                    <MenuItem key={center.id} value={center.id}>
+                      {center.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Açıklama"
+                value={editForm.description ?? ''}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                fullWidth
+                multiline
+                rows={3}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditDialogOpen(false)} disabled={saving}>
+              İptal
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              variant="contained"
+              disabled={saving || !editForm.amount || Number(editForm.amount) <= 0}
+            >
+              {saving ? <CircularProgress size={24} /> : 'Kaydet'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Kesinti Silme Dialog */}
+      {canDelete && (
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => !deleting && setDeleteDialogOpen(false)}
+        >
+          <DialogTitle>Kesinti Sil</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Bu Kesintiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            </Typography>
+            {selectedPayment && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  bgcolor: alpha(theme.palette.error.main, 0.1),
+                  borderRadius: 1,
+                }}
+              >
+                <Typography variant="body2">
+                  <strong>Üye:</strong>{' '}
+                  {selectedPayment.member
+                    ? `${selectedPayment.member.firstName} ${selectedPayment.member.lastName}`
+                    : `${selectedPayment.createdByUser.firstName} ${selectedPayment.createdByUser.lastName}`}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Tutar:</strong>{' '}
+                  {Number(selectedPayment.amount).toLocaleString('tr-TR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  TL
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Dönem:</strong>{' '}
+                  {monthNames[selectedPayment.paymentPeriodMonth - 1]}{' '}
+                  {selectedPayment.paymentPeriodYear}
+                </Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+              İptal
+            </Button>
+            <Button
+              onClick={handleConfirmDelete}
+              variant="contained"
+              color="error"
+              disabled={deleting}
+            >
+              {deleting ? <CircularProgress size={24} /> : 'Sil'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
       {/* Kesinti Ekleme Dialog */}
       <Dialog 
         open={paymentDialogOpen} 

@@ -16,18 +16,37 @@ import {
   Divider,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  InputAdornment,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PaymentIcon from '@mui/icons-material/Payment';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import {
   getPaymentById,
+  updatePayment,
+  deletePayment,
+  uploadPaymentDocument,
   type MemberPayment,
   type PaymentType,
+  type UpdateMemberPaymentDto,
 } from '../services/paymentsApi';
+import { getTevkifatCenters } from '../../accounting/services/accountingApi';
 import httpClient from '../../../shared/services/httpClient';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
@@ -42,7 +61,25 @@ const PaymentDetailPage: React.FC = () => {
   const [payment, setPayment] = useState<MemberPayment | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [tevkifatCenters, setTevkifatCenters] = useState<Array<{ id: string; name: string }>>([]);
+  const [editForm, setEditForm] = useState<UpdateMemberPaymentDto>({
+    amount: '',
+    paymentPeriodMonth: new Date().getMonth() + 1,
+    paymentPeriodYear: new Date().getFullYear(),
+    paymentType: 'TEVKIFAT',
+    tevkifatCenterId: '',
+    description: '',
+  });
+
   const canView = hasPermission('MEMBER_PAYMENT_VIEW');
+  const canEdit = hasPermission('MEMBER_PAYMENT_UPDATE') || hasPermission('MEMBER_PAYMENT_ADD');
+  const canDelete = hasPermission('MEMBER_PAYMENT_DELETE') || hasPermission('MEMBER_PAYMENT_ADD');
 
   useEffect(() => {
     if (id && canView) {
@@ -50,17 +87,124 @@ const PaymentDetailPage: React.FC = () => {
     }
   }, [id, canView]);
 
+  useEffect(() => {
+    if (canEdit) {
+      loadTevkifatCenters();
+    }
+  }, [canEdit]);
+
   const loadPayment = async () => {
     if (!id) return;
     setLoading(true);
     try {
       const data = await getPaymentById(id);
       setPayment(data);
+      if (canEdit) {
+        setEditForm({
+          amount: data.amount,
+          paymentPeriodMonth: data.paymentPeriodMonth,
+          paymentPeriodYear: data.paymentPeriodYear,
+          paymentType: data.paymentType,
+          tevkifatCenterId: data.tevkifatCenterId || '',
+          description: data.description || '',
+        });
+      }
     } catch (e: unknown) {
       console.error('Kesinti detayı alınırken hata:', e);
       toast.showError(getApiErrorMessage(e, 'Kesinti detayı alınamadı'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTevkifatCenters = async () => {
+    try {
+      const data = await getTevkifatCenters({ activeOnly: true });
+      setTevkifatCenters(data.map((c) => ({ id: c.id, name: c.name })));
+    } catch (e) {
+      console.error('Tevkifat merkezleri yüklenirken hata:', e);
+    }
+  };
+
+  const handleOpenEdit = () => {
+    if (!payment) return;
+    setEditForm({
+      amount: payment.amount,
+      paymentPeriodMonth: payment.paymentPeriodMonth,
+      paymentPeriodYear: payment.paymentPeriodYear,
+      paymentType: payment.paymentType,
+      tevkifatCenterId: payment.tevkifatCenterId || '',
+      description: payment.description || '',
+    });
+    setDocumentFile(null);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!payment) return;
+
+    if (!editForm.amount || Number(editForm.amount) <= 0) {
+      toast.showWarning('Lütfen geçerli bir tutar girin.');
+      return;
+    }
+
+    if (editForm.paymentType === 'TEVKIFAT' && !editForm.tevkifatCenterId) {
+      toast.showWarning('Lütfen tevkifat merkezi seçin.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      let updatedForm: UpdateMemberPaymentDto = { ...editForm };
+
+      if (documentFile && payment.memberId) {
+        setUploadingDocument(true);
+        try {
+          const uploadResult = await uploadPaymentDocument(
+            documentFile,
+            payment.memberId,
+            editForm.paymentPeriodMonth || payment.paymentPeriodMonth,
+            editForm.paymentPeriodYear || payment.paymentPeriodYear,
+            documentFile.name,
+          );
+          updatedForm.documentUrl = uploadResult.fileUrl;
+        } catch (uploadError: unknown) {
+          console.error('PDF yüklenirken hata:', uploadError);
+          toast.showError(getApiErrorMessage(uploadError, 'PDF yüklenirken bir hata oluştu'));
+          setUploadingDocument(false);
+          setSaving(false);
+          return;
+        } finally {
+          setUploadingDocument(false);
+        }
+      }
+
+      await updatePayment(payment.id, updatedForm);
+      toast.showSuccess('Kesinti başarıyla güncellendi');
+      setEditDialogOpen(false);
+      setDocumentFile(null);
+      await loadPayment();
+    } catch (e: unknown) {
+      console.error('Kesinti güncellenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti güncellenirken bir hata oluştu'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!payment) return;
+    setDeleting(true);
+    try {
+      await deletePayment(payment.id);
+      toast.showSuccess('Kesinti başarıyla silindi');
+      setDeleteDialogOpen(false);
+      navigate('/payments');
+    } catch (e: unknown) {
+      console.error('Kesinti silinirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Kesinti silinirken bir hata oluştu'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -85,6 +229,13 @@ const PaymentDetailPage: React.FC = () => {
     ELDEN: 'Elden',
     HAVALE: 'Havale',
   };
+
+  const memberFullName =
+    payment?.member?.firstName && payment?.member?.lastName
+      ? `${payment.member.firstName} ${payment.member.lastName}`
+      : payment?.createdByUser
+      ? `${payment.createdByUser.firstName} ${payment.createdByUser.lastName}`
+      : '-';
 
   if (!canView) {
     return (
@@ -132,10 +283,51 @@ const PaymentDetailPage: React.FC = () => {
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Kesinti Detayı"
-        description={payment ? `${payment.member.firstName} ${payment.member.lastName} - ${paymentTypeLabels[payment.type]} - ${payment.amount} TL` : 'Kesinti detay bilgileri'}
+        description={
+          payment
+            ? `${memberFullName} - ${paymentTypeLabels[payment.paymentType]} - ${payment.amount} TL`
+            : 'Kesinti detay bilgileri'
+        }
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
+        rightContent={
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {canEdit && (
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                startIcon={<EditIcon />}
+                onClick={handleOpenEdit}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                Düzenle
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                startIcon={<DeleteIcon />}
+                onClick={() => setDeleteDialogOpen(true)}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  backgroundColor: '#fff',
+                }}
+              >
+                Sil
+              </Button>
+            )}
+          </Box>
+        }
       />
       <Grid container spacing={3}>
         {/* Üye Bilgisi */}
@@ -523,6 +715,245 @@ const PaymentDetailPage: React.FC = () => {
         </Grid>
 
       </Grid>
+
+      {/* Düzenleme Dialog */}
+      {canEdit && (
+        <Dialog open={editDialogOpen} onClose={() => !saving && !uploadingDocument && setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Kesinti Düzenle</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+              <TextField
+                label="Tutar"
+                type="number"
+                value={editForm.amount ?? ''}
+                onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                fullWidth
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">TL</InputAdornment>,
+                }}
+              />
+              <FormControl fullWidth>
+                <InputLabel>Yıl</InputLabel>
+                <Select
+                  value={editForm.paymentPeriodYear ?? new Date().getFullYear()}
+                  label="Yıl"
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      paymentPeriodYear: Number(e.target.value),
+                    })
+                  }
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                    <MenuItem key={year} value={year}>
+                      {year}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Ay</InputLabel>
+                <Select
+                  value={editForm.paymentPeriodMonth ?? new Date().getMonth() + 1}
+                  label="Ay"
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      paymentPeriodMonth: Number(e.target.value),
+                    })
+                  }
+                >
+                  {monthNames.map((month, index) => (
+                    <MenuItem key={month} value={index + 1}>
+                      {month}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Kesinti Tipi</InputLabel>
+                <Select
+                  value={editForm.paymentType ?? 'TEVKIFAT'}
+                  label="Kesinti Tipi"
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      paymentType: e.target.value as PaymentType,
+                    })
+                  }
+                >
+                  <MenuItem value="TEVKIFAT">Tevkifat</MenuItem>
+                  <MenuItem value="ELDEN">Elden</MenuItem>
+                  <MenuItem value="HAVALE">Havale</MenuItem>
+                </Select>
+              </FormControl>
+              {editForm.paymentType === 'TEVKIFAT' && (
+                <FormControl fullWidth>
+                  <InputLabel>Tevkifat Merkezi</InputLabel>
+                  <Select
+                    value={editForm.tevkifatCenterId || ''}
+                    label="Tevkifat Merkezi"
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        tevkifatCenterId: e.target.value || undefined,
+                      })
+                    }
+                  >
+                    {tevkifatCenters.map((center) => (
+                      <MenuItem key={center.id} value={center.id}>
+                        {center.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+              <TextField
+                label="Açıklama"
+                value={editForm.description ?? ''}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                fullWidth
+                multiline
+                rows={3}
+              />
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                  PDF Belgesi
+                </Typography>
+                {payment.documentUrl && !documentFile && (
+                  <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PictureAsPdfIcon sx={{ color: theme.palette.error.main, fontSize: 20 }} />
+                    <Typography variant="body2" sx={{ flex: 1 }}>
+                      Mevcut belge var
+                    </Typography>
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon />}
+                      onClick={() => {
+                        const baseURL = httpClient.defaults.baseURL || 'http://localhost:3000';
+                        const fileUrl = payment.documentUrl?.startsWith('/')
+                          ? `${baseURL}${payment.documentUrl}`
+                          : payment.documentUrl;
+                        if (fileUrl) {
+                          window.open(fileUrl, '_blank');
+                        }
+                      }}
+                      sx={{ fontSize: '0.75rem' }}
+                    >
+                      Görüntüle
+                    </Button>
+                  </Box>
+                )}
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<UploadFileIcon />}
+                  fullWidth
+                  size="medium"
+                >
+                  {documentFile
+                    ? documentFile.name
+                    : payment.documentUrl
+                    ? 'Belgeyi Değiştir'
+                    : 'PDF Yükle'}
+                  <input
+                    type="file"
+                    hidden
+                    accept="application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setDocumentFile(file);
+                      }
+                    }}
+                  />
+                </Button>
+                {documentFile && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 0.5, display: 'block' }}
+                  >
+                    Seçilen: {documentFile.name}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                if (saving || uploadingDocument) return;
+                setEditDialogOpen(false);
+                setDocumentFile(null);
+              }}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              variant="contained"
+              disabled={
+                saving ||
+                uploadingDocument ||
+                !editForm.amount ||
+                Number(editForm.amount) <= 0
+              }
+            >
+              {saving || uploadingDocument ? <CircularProgress size={24} /> : 'Kaydet'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Silme Onay Dialog */}
+      {canDelete && (
+        <Dialog open={deleteDialogOpen} onClose={() => !deleting && setDeleteDialogOpen(false)}>
+          <DialogTitle>Kesinti Sil</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Bu Kesintiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            </Typography>
+            {payment && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  bgcolor: alpha(theme.palette.error.main, 0.1),
+                  borderRadius: 1,
+                }}
+              >
+                <Typography variant="body2">
+                  <strong>Üye:</strong> {memberFullName}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Tutar:</strong>{' '}
+                  {Number(payment.amount).toLocaleString('tr-TR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  TL
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Dönem:</strong>{' '}
+                  {monthNames[payment.paymentPeriodMonth - 1]} {payment.paymentPeriodYear}
+                </Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>İptal</Button>
+            <Button
+              onClick={handleConfirmDelete}
+              variant="contained"
+              color="error"
+              disabled={deleting}
+            >
+              {deleting ? <CircularProgress size={24} /> : 'Sil'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </PageLayout>
   );
 };
