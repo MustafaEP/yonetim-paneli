@@ -241,10 +241,10 @@ const RegionsPage: React.FC = () => {
     setSelectedInstitutionIds([]);
     setInstitutionDialogOpen(true);
     
-    // Tüm kurumları yükle (hiçbir ile/ilçeye bağlı olmayanlar)
+    // Tüm aktif kurumları yükle (hiçbir ile/ilçeye bağlı olmayanlar)
     setLoadingAllInstitutions(true);
     try {
-      const allData = await getInstitutions();
+      const allData = await getInstitutions({ isActive: true });
       // Sadece hiçbir ile bağlı olmayanları göster (bir ile/ilçeye bağlı olanlar başka bir ile/ilçeye bağlanamaz)
       const filtered = allData.filter(
         inst => !inst.provinceId
@@ -263,10 +263,10 @@ const RegionsPage: React.FC = () => {
     setSelectedTevkifatIds([]);
     setTevkifatDialogOpen(true);
     
-    // Tüm tevkifat merkezlerini yükle (hiçbir ile/ilçeye bağlı olmayanlar)
+    // Tüm aktif tevkifat merkezlerini yükle (hiçbir ile/ilçeye bağlı olmayanlar)
     setLoadingAllTevkifatCenters(true);
     try {
-      const allData = await getTevkifatCenters();
+      const allData = await getTevkifatCenters({ activeOnly: true });
       // Sadece hiçbir ile bağlı olmayanları göster (bir ile/ilçeye bağlı olanlar başka bir ile/ilçeye bağlanamaz)
       const filtered = allData.filter(
         center => !center.provinceId
@@ -285,10 +285,10 @@ const RegionsPage: React.FC = () => {
     setSelectedBranchIds([]);
     setBranchDialogOpen(true);
     
-    // Tüm şubeleri yükle (hiçbir ile/ilçeye bağlı olmayanlar)
+    // Tüm aktif şubeleri yükle (hiçbir ile/ilçeye bağlı olmayanlar)
     setLoadingAllBranches(true);
     try {
-      const allData = await getBranches();
+      const allData = await getBranches({ isActive: true });
       // Sadece hiçbir ile bağlı olmayanları göster (bir ile/ilçeye bağlı olanlar başka bir ile/ilçeye bağlanamaz)
       const filtered = allData.filter(
         branch => !branch.provinceId
