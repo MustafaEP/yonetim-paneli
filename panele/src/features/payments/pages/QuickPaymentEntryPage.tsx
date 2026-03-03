@@ -779,7 +779,7 @@ const QuickPaymentEntryPage: React.FC = () => {
     <PageLayout>
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
-        title="Hızlı Ödeme Girişi"
+        title="Kesinti Girişi"
         description={`Toplu ödeme girişi ve yönetimi • ${rows.length} satır (${draftRows.length} taslak, ${savedRows.length} kaydedildi)`}
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}

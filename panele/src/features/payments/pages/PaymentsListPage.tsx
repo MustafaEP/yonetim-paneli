@@ -423,7 +423,7 @@ const PaymentsListPage: React.FC = () => {
     <PageLayout>
       <PageHeader
         icon={<PaymentIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
-        title="Ödeme Sorgulama Sayfası"
+        title="Ödeme Sorgulama"
         description="Üye bazlı gerçek ödeme kayıtlarının takibi"
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}

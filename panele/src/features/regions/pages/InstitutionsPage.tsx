@@ -28,6 +28,7 @@ import {
   Divider,
   Tabs,
   Tab,
+  InputAdornment,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +42,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
 import CancelIcon from '@mui/icons-material/Cancel';
+import SearchIcon from '@mui/icons-material/Search';
 import Tooltip from '@mui/material/Tooltip';
 import Switch from '@mui/material/Switch';
 import Table from '@mui/material/Table';
@@ -83,6 +85,7 @@ const InstitutionsPage: React.FC = () => {
 
   const [rows, setRows] = useState<Institution[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -505,6 +508,10 @@ const InstitutionsPage: React.FC = () => {
     },
   ];
 
+  const filteredRows = rows.filter((row) =>
+    row.name.toLowerCase().includes(searchText.toLowerCase())
+  );
+
   if (!canListInstitution) {
     return (
       <Card
@@ -648,6 +655,77 @@ const InstitutionsPage: React.FC = () => {
           <>
             {/* İçerik Bölümü */}
             <Box sx={{ p: { xs: 2, sm: 3 } }}>
+              {/* Filtrele ve Ara */}
+              <Box
+                sx={{
+                  mb: 3,
+                  p: { xs: 2.5, sm: 3 },
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.02)} 0%, ${alpha(theme.palette.success.light, 0.01)} 100%)`,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5 }}>
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 2,
+                      background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                    }}
+                  >
+                    <SearchIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      Filtrele ve Ara
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                      Kurumları hızlıca bulun ve filtreleyin
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
+                  <TextField
+                    placeholder="Ara (kurum adı)..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    size="medium"
+                    sx={{
+                      flexGrow: 1,
+                      minWidth: { xs: '100%', sm: 300 },
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#fff',
+                        borderRadius: 2.5,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.12)}`,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: theme.palette.success.main,
+                            borderWidth: '2px',
+                          },
+                        },
+                        '&.Mui-focused': {
+                          boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.2)}`,
+                        },
+                      },
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ color: 'text.secondary', fontSize: '1.4rem' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Box>
+              </Box>
+
               {/* Sonuç Sayısı */}
               {!loading && (
                 <Paper
@@ -671,7 +749,8 @@ const InstitutionsPage: React.FC = () => {
                     }}
                   >
                     <BusinessIcon fontSize="small" />
-                    Toplam {rows.length} kurum bulundu
+                        {filteredRows.length} kurum listeleniyor
+                        {filteredRows.length !== rows.length && ` (Toplam ${rows.length} kurumdan)`}
                   </Typography>
                 </Paper>
               )}
@@ -713,7 +792,7 @@ const InstitutionsPage: React.FC = () => {
                 }}
               >
                 <DataGrid
-                  rows={rows}
+                  rows={filteredRows}
                   columns={columns}
                   getRowId={(row) => row.id}
                   loading={loading}
