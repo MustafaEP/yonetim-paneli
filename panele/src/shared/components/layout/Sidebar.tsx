@@ -36,6 +36,7 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import BadgeIcon from '@mui/icons-material/Badge';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import HistoryIcon from '@mui/icons-material/History';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Link, useLocation } from 'react-router-dom';
@@ -133,11 +134,14 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
     } else if (
       path.startsWith('/regions') ||
       path.startsWith('/institutions') ||
-      path.startsWith('/accounting/tevkifat-centers') ||
-      path.startsWith('/accounting/advances')
+      path.startsWith('/accounting/tevkifat-centers')
     ) {
       setOpenSection('region');
-    } else if (path.startsWith('/payments')) {
+    } else if (
+      path.startsWith('/payments') ||
+      path.startsWith('/accounting/advances') ||
+      path.startsWith('/invoices')
+    ) {
       setOpenSection('deductions');
     } else if (path.startsWith('/content') || path.startsWith('/documents')) {
       setOpenSection('content-docs');
@@ -151,8 +155,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   }, [location.pathname]);
 
   const hasRegionGroup =
-    showRegions || showBranches || showInstitutions || showAccounting || showAdvances;
-  const hasDeductionsGroup = showPayments || canAddPayment;
+    showRegions || showBranches || showInstitutions || showAccounting;
+  const hasDeductionsGroup = showPayments || canAddPayment || showAdvances;
   const hasMembersGroup = showMembers;
   const hasContentGroup = showContent || showDocuments;
   const hasUserManagementGroup = showUsers || showRoles || showPanelUserApplications;
@@ -403,27 +407,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                 </ListItemButton>
               )}
 
-              {showAdvances && (
-                <ListItemButton
-                  component={Link}
-                  to="/accounting/advances"
-                  selected={location.pathname.startsWith('/accounting/advances')}
-                  onClick={handleLinkClick}
-                  sx={getNavItemSx(theme)}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <MonetizationOnIcon />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Avans Sistemi"
-                    primaryTypographyProps={{
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-              )}
-
               {showBranches && (
                 <ListItemButton
                   component={Link}
@@ -517,6 +500,46 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                   />
                 </ListItemButton>
               )}
+
+              {showAdvances && (
+                <ListItemButton
+                  component={Link}
+                  to="/accounting/advances"
+                  selected={location.pathname.startsWith('/accounting/advances')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <MonetizationOnIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Avans Sistemi"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+
+              <ListItemButton
+                component={Link}
+                to="/invoices"
+                selected={location.pathname.startsWith('/invoices')}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <RequestQuoteIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Fatura Sistemi"
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
             </List>
           </Collapse>
         </List>

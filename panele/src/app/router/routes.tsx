@@ -47,6 +47,7 @@ import PaymentInquiryPage from '../../features/payments/pages/PaymentInquiryPage
 import QuickPaymentEntryPage from '../../features/payments/pages/QuickPaymentEntryPage';
 import RecentPaymentsPage from '../../features/payments/pages/RecentPaymentsPage';
 import ProfilePage from '../../features/profile/pages/ProfilePage';
+import InvoicesPage from '../../features/invoices/pages/InvoicesPage';
 
 const AppRoutes: React.FC = () => (
   <Routes>
@@ -164,6 +165,8 @@ const AppRoutes: React.FC = () => (
         <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_VIEW" />}>
           <Route path="/payments/:id" element={<PaymentDetailPage />} />
         </Route>
+
+        <Route path="/invoices" element={<InvoicesPage />} />
 
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/forbidden" element={<ForbiddenPage />} />
