@@ -20,6 +20,32 @@ export const getMembers = async (
   return Array.isArray(res.data) ? res.data : [];
 };
 
+export interface SearchMembersParams {
+  query: string;
+  limit?: number;
+}
+
+export interface MemberSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  nationalId?: string;
+  registrationNumber?: string | null;
+}
+
+// 🔹 Üye arama: GET /members/search?query=...&limit=20
+export const searchMembers = async (
+  params: SearchMembersParams,
+): Promise<MemberSummary[]> => {
+  const res = await httpClient.get<MemberSummary[]>('/members/search', {
+    params: {
+      query: params.query,
+      limit: params.limit ?? 20,
+    },
+  });
+  return Array.isArray(res.data) ? res.data : [];
+};
+
 // 🔹 Reddedilen üyeleri listele: GET /members/rejected
 export const getRejectedMembers = async (): Promise<MemberListItem[]> => {
   const res = await httpClient.get<MemberListItem[]>('/members/rejected');
@@ -113,7 +139,7 @@ export const createMemberApplication = async (payload: {
   return res.data;
 };
 
-// 🔹 Üye aidat planını güncelle: PATCH /members/:id/dues-plan
+// 🔹 Üye Kesinti planını güncelle: PATCH /members/:id/dues-plan
 export const updateMemberDuesPlan = async (
   memberId: string,
   duesPlanId: string,

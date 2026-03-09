@@ -21,8 +21,6 @@ import SaveIcon from '@mui/icons-material/Save';
 import SecurityIcon from '@mui/icons-material/Security';
 import LockIcon from '@mui/icons-material/Lock';
 import TimerIcon from '@mui/icons-material/Timer';
-import BlockIcon from '@mui/icons-material/Block';
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import type { SystemSetting } from '../services/systemApi';
 
 interface SecuritySettingsProps {
@@ -386,87 +384,6 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
                 />
                 {localSettings['SECURITY_LOCKOUT_DURATION'] !== undefined && (
                   <Chip label="Kaydedilmemiş" size="small" color="warning" />
-                )}
-              </Stack>
-            </Box>
-          </Card>
-        </Grid>
-
-        {/* İki Faktörlü Kimlik Doğrulama */}
-        <Grid size={12}>
-          <Card
-            elevation={0}
-            sx={{
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              borderRadius: 2,
-              overflow: 'hidden',
-            }}
-          >
-            <Box
-              sx={{
-                p: 2.5,
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.03)} 0%, ${alpha(theme.palette.success.light, 0.02)} 100%)`,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 1.5,
-                    background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <VerifiedUserIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    İki Faktörlü Kimlik Doğrulama (2FA)
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Ek güvenlik katmanı için 2FA ayarları
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-
-            <Box sx={{ p: 3 }}>
-
-              <Stack spacing={2.5}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={getValue('SECURITY_2FA_ENABLED') === 'true'}
-                      onChange={(e) =>
-                        handleChange('SECURITY_2FA_ENABLED', e.target.checked ? 'true' : 'false')
-                      }
-                      disabled={!onUpdate || loading}
-                    />
-                  }
-                  label={
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        İki Faktörlü Kimlik Doğrulamayı Etkinleştir
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {getSetting('SECURITY_2FA_ENABLED')?.description}
-                      </Typography>
-                    </Box>
-                  }
-                  sx={{ m: 0, width: '100%' }}
-                />
-                {localSettings['SECURITY_2FA_ENABLED'] !== undefined && (
-                  <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ ml: 5 }} />
-                )}
-
-                {getValue('SECURITY_2FA_ENABLED') === 'true' && (
-                  <Alert severity="info">
-                    İki faktörlü kimlik doğrulama aktif edildiğinde, kullanıcılar giriş yaparken ek bir doğrulama kodu girmeleri gerekecektir.
-                  </Alert>
                 )}
               </Stack>
             </Box>

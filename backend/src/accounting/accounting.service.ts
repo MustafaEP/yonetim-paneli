@@ -19,6 +19,8 @@ import { CreateTevkifatTitleDto } from './dto/create-tevkifat-title.dto';
 import { UpdateTevkifatTitleDto } from './dto/update-tevkifat-title.dto';
 import { ApprovalStatus, MemberStatus } from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
+import { CreateAdvanceDto } from './dto/create-advance.dto';
+import { UpdateAdvanceDto } from './dto/update-advance.dto';
 
 @Injectable()
 export class AccountingService {
@@ -831,5 +833,287 @@ export class AccountingService {
     );
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
+  }
+
+  /**
+   * Avans oluştur
+   */
+  async createAdvance(dto: CreateAdvanceDto, createdBy: string) {
+    const member = await this.prisma.member.findUnique({
+      where: { id: dto.memberId },
+      select: {
+        id: true,
+        registrationNumber: true,
+        status: true,
+        isActive: true,
+        deletedAt: true,
+        provinceId: true,
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Üye bulunamadı');
+    }
+
+    if (
+      (member.status !== MemberStatus.ACTIVE &&
+        member.status !== MemberStatus.APPROVED) ||
+      !member.isActive ||
+      member.deletedAt
+    ) {
+      throw new BadRequestException(
+        'Aktif veya onaylanmış olmayan üye için avans kaydedilemez',
+      );
+    }
+
+    const advanceDate = dto.advanceDate
+      ? new Date(dto.advanceDate)
+      : new Date();
+
+    return this.prisma.memberAdvance.create({
+      data: {
+        memberId: dto.memberId,
+        registrationNumber: member.registrationNumber,
+        advanceDate,
+        month: dto.month,
+        year: dto.year,
+        amount: dto.amount,
+        description: dto.description || null,
+        createdByUserId: createdBy,
+      },
+      include: {
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+            province: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        createdByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Avansları listele (filtre + arama)
+   */
+  async listAdvances(filters?: {
+    search?: string;
+    year?: number;
+    month?: number;
+    provinceId?: string;
+  }) {
+    const where: any = {
+      deletedAt: null,
+    };
+
+    if (filters?.year) {
+      where.year = filters.year;
+    }
+
+    if (filters?.month) {
+      where.month = filters.month;
+    }
+
+    const memberWhere: any = {};
+
+    if (filters?.provinceId) {
+      memberWhere.provinceId = filters.provinceId;
+    }
+
+    if (filters?.search) {
+      const search = filters.search.trim();
+      memberWhere.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        {
+          registrationNumber: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    if (Object.keys(memberWhere).length > 0) {
+      where.member = memberWhere;
+    }
+
+    try {
+      return await this.prisma.memberAdvance.findMany({
+        where,
+        include: {
+          member: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              registrationNumber: true,
+              province: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          createdByUser: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' },
+          { advanceDate: 'desc' },
+        ],
+      });
+    } catch (error: any) {
+      // Eğer MemberAdvance tablosu henüz migrate edilmemişse, boş liste döndür
+      if (error.code === 'P2021' || error.message?.includes('MemberAdvance')) {
+        this.logger.warn(
+          'MemberAdvance tablosu bulunamadı, avans listesi boş döndürülüyor.',
+        );
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Avans detayı
+   */
+  async getAdvanceById(id: string) {
+    const advance = await this.prisma.memberAdvance.findUnique({
+      where: { id },
+      include: {
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+            province: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        createdByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!advance) {
+      throw new NotFoundException('Avans kaydı bulunamadı');
+    }
+
+    return advance;
+  }
+
+  /**
+   * Avans güncelle
+   */
+  async updateAdvance(id: string, dto: UpdateAdvanceDto) {
+    const advance = await this.prisma.memberAdvance.findUnique({
+      where: { id },
+    });
+
+    if (!advance || advance.deletedAt) {
+      throw new NotFoundException('Avans kaydı bulunamadı');
+    }
+
+    const data: any = {};
+
+    if (dto.advanceDate) {
+      data.advanceDate = new Date(dto.advanceDate);
+    }
+    if (dto.month !== undefined) {
+      data.month = dto.month;
+    }
+    if (dto.year !== undefined) {
+      data.year = dto.year;
+    }
+    if (dto.amount !== undefined) {
+      data.amount = dto.amount;
+    }
+    if (dto.description !== undefined) {
+      data.description = dto.description;
+    }
+
+    return this.prisma.memberAdvance.update({
+      where: { id },
+      data,
+      include: {
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+            province: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        createdByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Avansı sil (soft delete)
+   */
+  async deleteAdvance(id: string) {
+    const advance = await this.prisma.memberAdvance.findUnique({
+      where: { id },
+    });
+
+    if (!advance || advance.deletedAt) {
+      throw new NotFoundException('Avans kaydı bulunamadı');
+    }
+
+    return this.prisma.memberAdvance.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
   }
 }

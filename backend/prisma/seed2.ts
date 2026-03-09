@@ -50,6 +50,15 @@ async function main() {
   console.log('🗑️  Mevcut veriler temizleniyor...');
   // Foreign key sırasına dikkat ederek, önce child sonra parent tablolar silinir
   await prisma.memberPayment.deleteMany();
+  try {
+    await prisma.memberAdvance.deleteMany();
+  } catch (error: any) {
+    if (error.code === 'P2021' || error.message?.includes('MemberAdvance')) {
+      console.log('   ⚠️  MemberAdvance tablosu bulunamadı, atlanıyor...');
+    } else {
+      throw error;
+    }
+  }
   await prisma.userNotification.deleteMany();
   // NotificationRecipient tablosu yoksa hata vermeden devam et
   try {

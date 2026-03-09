@@ -42,13 +42,6 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   MEMBER_STATUS_CHANGE: ['MEMBER_VIEW'], // Durum değiştirmek için üye detayı gerekir
   MEMBER_LIST_BY_PROVINCE: [],
 
-  // Aidat Yönetimi
-  DUES_PLAN_MANAGE: [],
-  DUES_PAYMENT_ADD: ['MEMBER_VIEW'], // Kesinti eklemek için üye bilgisi gerekir
-  DUES_REPORT_VIEW: [],
-  DUES_DEBT_LIST_VIEW: ['MEMBER_LIST'], // Borçlu listesi için üye listesi gerekir
-  DUES_EXPORT: ['DUES_REPORT_VIEW'], // Dışa aktarmak için rapor görüntüleme gerekir
-
   // Şube / İl / İlçe Yönetimi
   REGION_LIST: [],
   BRANCH_MANAGE: ['REGION_LIST'], // Şube yönetmek için bölge listesi gerekir
@@ -67,7 +60,7 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   REPORT_GLOBAL_VIEW: [],
   REPORT_REGION_VIEW: ['REGION_LIST'], // Bölge raporu için bölge listesi gerekir
   REPORT_MEMBER_STATUS_VIEW: ['MEMBER_LIST'], // Üye durum raporu için üye listesi gerekir
-  REPORT_DUES_VIEW: ['DUES_REPORT_VIEW'], // Aidat raporu için aidat rapor görüntüleme gerekir
+  REPORT_DUES_VIEW: ['ACCOUNTING_VIEW'], // Kesinti raporu için muhasebe görüntüleme gerekir
 
   // Bildirim & İletişim
   NOTIFY_ALL_MEMBERS: ['MEMBER_LIST'], // Tüm üyelere bildirim için üye listesi gerekir
@@ -99,10 +92,21 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   MEMBER_PAYMENT_LIST: ['MEMBER_LIST'],
   MEMBER_PAYMENT_VIEW: ['MEMBER_VIEW'],
 
-  // Onay Süreçleri - Frontend'de eksik, ekleyeceğiz
+  // Onay Süreçleri
   APPROVAL_VIEW: [],
   APPROVAL_APPROVE: ['APPROVAL_VIEW'],
   APPROVAL_REJECT: ['APPROVAL_VIEW'],
+
+  // Panel Kullanıcı Başvuruları
+  PANEL_USER_APPLICATION_CREATE: ['ROLE_LIST'], // Başvuru oluştururken rol seçimi gerekir
+  PANEL_USER_APPLICATION_LIST: [],
+  PANEL_USER_APPLICATION_VIEW: ['PANEL_USER_APPLICATION_LIST'],
+  PANEL_USER_APPLICATION_APPROVE: ['PANEL_USER_APPLICATION_VIEW', 'USER_CREATE'], // Onaylarken kullanıcı oluşturulur
+  PANEL_USER_APPLICATION_REJECT: ['PANEL_USER_APPLICATION_VIEW'],
+
+  // Avans Sistemi
+  ADVANCE_VIEW: [],
+  ADVANCE_ADD: ['ADVANCE_VIEW', 'MEMBER_VIEW'], // Avans oluşturmak için üye detayı ve liste görüntüleme gerekir
 };
 
 /**

@@ -7,7 +7,7 @@ import { MemberStatus } from '@prisma/client';
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
-  // Varsayılan aylık aidat miktarı (TL) - Sistem ayarlarından alınabilir
+  // Varsayılan aylık Kesinti miktarı (TL) - Sistem ayarlarından alınabilir
   private readonly DEFAULT_MONTHLY_DUES = 50;
 
   constructor(

@@ -22,11 +22,24 @@ export class TokenService {
   ) {}
 
   /**
-   * Access token üretir. Süre JwtModule config'ten (access) gelir.
+   * Access token üretir.
+   * Süre: önce SECURITY_SESSION_TIMEOUT (dakika cinsinden DB ayarı), yoksa env değişkeni.
    * type: 'access' claim'i ile refresh token'dan ayırt edilir.
    */
   signAccess(payload: Omit<AccessPayload, 'type'>): Promise<string> {
-    return this.jwtService.signAsync({ ...payload, type: TOKEN_TYPE_ACCESS });
+    const sessionTimeoutMinutes = this.configService.getSystemSettingNumber(
+      'SECURITY_SESSION_TIMEOUT',
+      0,
+    );
+    const expiresIn =
+      sessionTimeoutMinutes > 0
+        ? `${sessionTimeoutMinutes}m`
+        : this.configService.jwtAccessExpiresIn;
+
+    return this.jwtService.signAsync(
+      { ...payload, type: TOKEN_TYPE_ACCESS },
+      { expiresIn } as any,
+    );
   }
 
   /**

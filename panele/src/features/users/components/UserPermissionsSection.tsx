@@ -25,18 +25,22 @@ interface GroupedPerms {
     | 'warning';
 }
 
-/**
- * Permission key → Türkçe kısa label eşlemesi
- * İstersen burayı zamanla genişletebilirsin.
- */
 const PERMISSION_LABEL_MAP: Record<string, string> = {
+  // Kullanıcı Yönetimi
   USER_LIST: 'Kullanıcı Listele',
   USER_VIEW: 'Kullanıcı Görüntüle',
   USER_CREATE: 'Kullanıcı Oluştur',
   USER_UPDATE: 'Kullanıcı Güncelle',
-  USER_SOFT_DELETE: 'Kullanıcı Sil (Soft)',
+  USER_SOFT_DELETE: 'Kullanıcı Sil',
   USER_ASSIGN_ROLE: 'Rol Atama',
-
+  // Rol Yönetimi
+  ROLE_LIST: 'Rolleri Listele',
+  ROLE_VIEW: 'Rol Detayı Görüntüle',
+  ROLE_CREATE: 'Rol Oluştur',
+  ROLE_UPDATE: 'Rol Güncelle',
+  ROLE_DELETE: 'Rol Sil',
+  ROLE_MANAGE_PERMISSIONS: 'Rol İzinlerini Yönet',
+  // Üye Yönetimi
   MEMBER_LIST: 'Üye Listele',
   MEMBER_VIEW: 'Üye Görüntüle',
   MEMBER_CREATE_APPLICATION: 'Üye Başvurusu Oluştur',
@@ -44,51 +48,106 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
   MEMBER_REJECT: 'Başvuru Reddet',
   MEMBER_UPDATE: 'Üye Güncelle',
   MEMBER_STATUS_CHANGE: 'Üye Durum Değiştir',
-
-  DUES_PLAN_MANAGE: 'Aidat Planı Yönetimi',
-  DUES_PAYMENT_ADD: 'Aidat Kesintisi Ekle',
-  DUES_REPORT_VIEW: 'Aidat Raporu Görüntüle',
-  DUES_DEBT_LIST_VIEW: 'Borçlu Üye Listesi',
-  DUES_EXPORT: 'Aidat Verisi Dışa Aktar',
-
+  MEMBER_LIST_BY_PROVINCE: 'İle Göre Üye Listele',
+  // Bölge / Şube
   REGION_LIST: 'Bölgeleri Listele',
-  BRANCH_MANAGE: 'Şube/İl/İlçe Yönetimi',
+  BRANCH_MANAGE: 'Şube Yönetimi',
+  BRANCH_ASSIGN_PRESIDENT: 'Şube Başkanı Ata',
+  // İçerik
+  CONTENT_MANAGE: 'İçerik Yönet',
+  CONTENT_PUBLISH: 'İçerik Yayınla',
+  // Doküman
+  DOCUMENT_TEMPLATE_MANAGE: 'PDF Şablonu Yönet',
+  DOCUMENT_MEMBER_HISTORY_VIEW: 'Doküman Geçmişi Görüntüle',
+  DOCUMENT_GENERATE_PDF: 'PDF Oluştur',
+  // Raporlar
+  REPORT_GLOBAL_VIEW: 'Genel Rapor',
+  REPORT_REGION_VIEW: 'Bölge Raporu',
+  REPORT_MEMBER_STATUS_VIEW: 'Üye Durum Raporu',
+  REPORT_DUES_VIEW: 'Kesinti Raporu',
+  // Bildirimler
+  NOTIFY_ALL_MEMBERS: 'Tüm Üyelere Bildirim',
+  NOTIFY_REGION: 'Bölgeye Bildirim',
+  NOTIFY_OWN_SCOPE: 'Kapsama Bildirim',
+  // Sistem
+  SYSTEM_SETTINGS_VIEW: 'Sistem Ayarlarını Görüntüle',
+  SYSTEM_SETTINGS_MANAGE: 'Sistem Ayarlarını Yönet',
+  LOG_VIEW_ALL: 'Tüm Logları Görüntüle',
+  LOG_VIEW_OWN_SCOPE: 'Kapsam Loglarını Görüntüle',
+  // Kurumlar
+  INSTITUTION_LIST: 'Kurumları Listele',
+  INSTITUTION_VIEW: 'Kurum Görüntüle',
+  INSTITUTION_CREATE: 'Kurum Oluştur',
+  INSTITUTION_UPDATE: 'Kurum Güncelle',
+  INSTITUTION_APPROVE: 'Kurum Onayla',
+  // Muhasebe
+  ACCOUNTING_VIEW: 'Muhasebe Görüntüle',
+  ACCOUNTING_EXPORT: 'Muhasebe Dışa Aktar',
+  TEVKIFAT_FILE_UPLOAD: 'Tevkifat Dosyası Yükle',
+  TEVKIFAT_FILE_APPROVE: 'Tevkifat Dosyası Onayla',
+  // Üye Kesintileri
+  MEMBER_PAYMENT_ADD: 'Kesinti Girişi',
+  MEMBER_PAYMENT_APPROVE: 'Kesinti Onayla',
+  MEMBER_PAYMENT_LIST: 'Kesinti Listele',
+  MEMBER_PAYMENT_VIEW: 'Kesinti Detayı Görüntüle',
+  // Onay
+  APPROVAL_VIEW: 'Onay Görüntüle',
+  APPROVAL_APPROVE: 'Onayla',
+  APPROVAL_REJECT: 'Reddet',
+  // Panel Başvuruları
+  PANEL_USER_APPLICATION_CREATE: 'Panel Başvurusu Oluştur',
+  PANEL_USER_APPLICATION_LIST: 'Panel Başvurularını Listele',
+  PANEL_USER_APPLICATION_VIEW: 'Panel Başvurusu Görüntüle',
+  PANEL_USER_APPLICATION_APPROVE: 'Panel Başvurusu Onayla',
+  PANEL_USER_APPLICATION_REJECT: 'Panel Başvurusu Reddet',
+  // Avans
+  ADVANCE_VIEW: 'Avansları Görüntüle',
+  ADVANCE_ADD: 'Avans Ekle / Güncelle / Sil',
 };
 
 const getLabelForPermission = (perm: string) =>
   PERMISSION_LABEL_MAP[perm] ?? perm;
 
-/**
- * Permission'ları mantıksal gruplara ayır
- */
 const groupPermissions = (permissions: string[]): GroupedPerms[] => {
   const groups: GroupedPerms[] = [
-    { label: 'Kullanıcı Yönetimi', items: [], color: 'primary' },
+    { label: 'Kullanıcı & Rol Yönetimi', items: [], color: 'primary' },
     { label: 'Üye Yönetimi', items: [], color: 'success' },
-    { label: 'Aidat Yönetimi', items: [], color: 'warning' },
-    { label: 'Bölge / Şube Yönetimi', items: [], color: 'info' },
-    { label: 'Diğer', items: [], color: 'default' },
+    { label: 'Muhasebe & Avans', items: [], color: 'warning' },
+    { label: 'Bölge / Şube / Kurum', items: [], color: 'info' },
+    { label: 'Raporlar & Bildirimler', items: [], color: 'secondary' },
+    { label: 'Sistem & Diğer', items: [], color: 'default' },
   ];
 
   for (const perm of permissions) {
-    if (perm.startsWith('USER_')) {
+    if (perm.startsWith('USER_') || perm.startsWith('ROLE_') || perm.startsWith('PANEL_USER_APPLICATION_')) {
       groups[0].items.push(perm);
     } else if (perm.startsWith('MEMBER_')) {
       groups[1].items.push(perm);
-    } else if (perm.startsWith('DUES_')) {
+    } else if (
+      perm.startsWith('ACCOUNTING_') ||
+      perm.startsWith('TEVKIFAT_') ||
+      perm.startsWith('ADVANCE_') ||
+      perm.startsWith('APPROVAL_')
+    ) {
       groups[2].items.push(perm);
     } else if (
       perm.startsWith('REGION_') ||
       perm.startsWith('BRANCH_') ||
-      perm.startsWith('DEALER_')
+      perm.startsWith('INSTITUTION_')
     ) {
       groups[3].items.push(perm);
-    } else {
+    } else if (
+      perm.startsWith('REPORT_') ||
+      perm.startsWith('NOTIFY_') ||
+      perm.startsWith('CONTENT_') ||
+      perm.startsWith('DOCUMENT_')
+    ) {
       groups[4].items.push(perm);
+    } else {
+      groups[5].items.push(perm);
     }
   }
 
-  // Boş grupları gösterme
   return groups.filter((g) => g.items.length > 0);
 };
 

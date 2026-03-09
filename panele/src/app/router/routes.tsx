@@ -32,7 +32,6 @@ import ContentListPage from '../../features/content/pages/ContentListPage';
 import DocumentTemplatesPage from '../../features/documents/pages/DocumentTemplatesPage';
 import MemberDocumentsPage from '../../features/documents/pages/MemberDocumentsPage';
 import ReportsPage from '../../features/reports/pages/ReportsPage';
-import NotificationsPage from '../../features/notifications/pages/NotificationsPage';
 import MyNotificationsPage from '../../features/notifications/pages/MyNotificationsPage';
 import NotificationSettingsPage from '../../features/notifications/pages/NotificationSettingsPage';
 import SystemSettingsPage from '../../features/system/pages/SystemSettingsPage';
@@ -41,6 +40,7 @@ import TevkifatCentersPage from '../../features/accounting/pages/TevkifatCenters
 import TevkifatCenterDetailPage from '../../features/accounting/pages/TevkifatCenterDetailPage';
 import TevkifatCenterCreatePage from '../../features/accounting/pages/TevkifatCenterCreatePage';
 import TevkifatTitlesPage from '../../features/accounting/pages/TevkifatTitlesPage';
+import AdvancesPage from '../../features/accounting/pages/AdvancesPage';
 import PaymentsListPage from '../../features/payments/pages/PaymentsListPage';
 import PaymentDetailPage from '../../features/payments/pages/PaymentDetailPage';
 import PaymentInquiryPage from '../../features/payments/pages/PaymentInquiryPage';
@@ -133,11 +133,8 @@ const AppRoutes: React.FC = () => (
           <Route path="/reports" element={<ReportsPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="NOTIFY_ALL_MEMBERS" alternativePermission="NOTIFY_REGION" alternativePermission2="NOTIFY_OWN_SCOPE" />}>
-          <Route path="/notifications/send" element={<NotificationsPage />} />
-        </Route>
-
         <Route path="/notifications" element={<MyNotificationsPage />} />
+        <Route path="/notifications/send" element={<Navigate to="/notifications" replace />} />
         <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
 
         <Route element={<ProtectedRoute requiredPermission="SYSTEM_SETTINGS_VIEW" />}>
@@ -154,6 +151,7 @@ const AppRoutes: React.FC = () => (
           <Route path="/accounting/tevkifat-centers/:id" element={<TevkifatCenterDetailPage />} />
           <Route path="/accounting/tevkifat-centers" element={<TevkifatCentersPage />} />
           <Route path="/accounting/tevkifat-titles" element={<TevkifatTitlesPage />} />
+          <Route path="/accounting/advances" element={<AdvancesPage />} />
         </Route>
 
         <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_LIST" />}>

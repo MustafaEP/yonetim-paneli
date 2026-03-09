@@ -90,6 +90,32 @@ function generateEmail(firstName: string, lastName: string): string {
   return `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randomNum}@${domain}`;
 }
 
+function normalizeEmailPart(value: string): string {
+  return value
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ş/g, 's')
+    .replace(/ü/g, 'u')
+    .replace(/[^a-z0-9]+/g, '.')
+    .replace(/^\.+|\.+$/g, '')
+    .replace(/\.{2,}/g, '.');
+}
+
+function buildPanelUserSeedEmail(
+  firstName: string,
+  lastName: string,
+  memberId: string,
+): string {
+  const base = `${normalizeEmailPart(firstName)}.${normalizeEmailPart(lastName)}`.replace(
+    /^\.+|\.+$/g,
+    '',
+  );
+  return `${base || 'panel.user'}.${memberId.slice(-6)}@sendika.local`;
+}
+
 // Doğum tarihi üretici (25-60 yaş arası)
 function generateBirthDate(): Date {
   const now = new Date();
@@ -159,6 +185,16 @@ async function main() {
   // Önce child tabloları, sonra parent tabloları silmeliyiz
   console.log('🗑️  Mevcut veriler temizleniyor...');
   await prisma.memberPayment.deleteMany();
+  // MemberAdvance tablosu henüz migrate edilmemiş olabilir, o yüzden güvenli şekilde sil
+  try {
+    await prisma.memberAdvance.deleteMany();
+  } catch (error: any) {
+    if (error.code === 'P2021' || error.message?.includes('MemberAdvance')) {
+      console.log('   ⚠️  MemberAdvance tablosu bulunamadı, atlanıyor...');
+    } else {
+      throw error;
+    }
+  }
   await prisma.userNotification.deleteMany();
   await prisma.notificationRecipient.deleteMany(); // Notification'a bağlı
   await prisma.notificationLog.deleteMany(); // Notification'a bağlı
@@ -836,7 +872,7 @@ async function main() {
         
         const cancellationReasons = [
           'İstifa talebi',
-          'Üyelik aidatını Kesintime',
+          'Üyelik Kesintiını Kesintime',
           'Sendika tüzüğüne aykırı davranış',
           'Kendi isteği ile ayrılma',
           'İşyerinden ayrılma',
@@ -989,7 +1025,7 @@ async function main() {
       
       const cancellationReasons = [
         'İstifa talebi',
-        'Üyelik aidatını Kesintime',
+        'Üyelik Kesintiını Kesintime',
         'Sendika tüzüğüne aykırı davranış',
         'Kendi isteği ile ayrılma',
         'İşyerinden ayrılma',
@@ -1035,7 +1071,7 @@ async function main() {
       
       const cancellationReasons = [
         'İstifa talebi',
-        'Üyelik aidatını Kesintime',
+        'Üyelik Kesintiını Kesintime',
         'Sendika tüzüğüne aykırı davranış',
         'Kendi isteği ile ayrılma',
         'İşyerinden ayrılma',
@@ -1266,8 +1302,8 @@ async function main() {
         authorId: activeUsers[1]?.id || activeUsers[0].id,
       },
       {
-        title: 'Aidat Kesintileri Hakkında',
-        content: 'Aidat Kesintilerinizi zamanında yapmanız önemlidir. Kesinti tarihleri ve yöntemleri hakkında bilgi.',
+        title: 'Kesinti Kesintileri Hakkında',
+        content: 'Kesinti Kesintilerinizi zamanında yapmanız önemlidir. Kesinti tarihleri ve yöntemleri hakkında bilgi.',
         type: ContentType.ANNOUNCEMENT,
         status: ContentStatus.PUBLISHED,
         authorId: activeUsers[0].id,
@@ -2302,7 +2338,7 @@ async function main() {
     {
       key: 'DUES_DEFAULT_AMOUNT',
       value: '100',
-      description: 'Varsayılan aidat tutarı (TL)',
+      description: 'Varsayılan Kesinti tutarı (TL)',
       category: SystemSettingCategory.DUES,
       isEditable: true,
     },
@@ -2423,7 +2459,7 @@ async function main() {
     {
       key: 'NOTIFICATION_DUES_REMINDER_ENABLED',
       value: 'true',
-      description: 'Aidat hatırlatma bildirimleri aktif mi?',
+      description: 'Kesinti hatırlatma bildirimleri aktif mi?',
       category: SystemSettingCategory.NOTIFICATION,
       isEditable: true,
     },
@@ -2568,8 +2604,8 @@ async function main() {
         failedCount: 0,
       },
       {
-        title: 'Aidat Hatırlatması',
-        message: 'Aidat Kesintilerinizi zamanında yapmanızı rica ederiz.',
+        title: 'Kesinti Hatırlatması',
+        message: 'Kesinti Kesintilerinizi zamanında yapmanızı rica ederiz.',
         category: NotificationCategory.FINANCIAL,
         typeCategory: NotificationTypeCategory.DUES_OVERDUE,
         channels: [NotificationChannel.EMAIL],
@@ -3470,6 +3506,49 @@ async function main() {
             },
           });
         }
+      }
+
+      if (status === PanelUserApplicationStatus.APPROVED) {
+        const createdUser = await prisma.user.create({
+          data: {
+            email: buildPanelUserSeedEmail(member.firstName, member.lastName, member.id),
+            passwordHash,
+            firstName: member.firstName,
+            lastName: member.lastName,
+            customRoles: {
+              connect: [{ id: requestedRole.id }],
+            },
+          },
+        });
+
+        if (requestedRole.hasScopeRestriction) {
+          const applicationScopes = await prisma.panelUserApplicationScope.findMany({
+            where: {
+              applicationId: application.id,
+              deletedAt: null,
+            },
+          });
+
+          if (applicationScopes.length > 0) {
+            await prisma.userScope.createMany({
+              data: applicationScopes.map((scope) => ({
+                userId: createdUser.id,
+                provinceId: scope.provinceId,
+                districtId: scope.districtId,
+              })),
+            });
+          }
+        }
+
+        await prisma.member.update({
+          where: { id: member.id },
+          data: { userId: createdUser.id },
+        });
+
+        await prisma.panelUserApplication.update({
+          where: { id: application.id },
+          data: { createdUserId: createdUser.id },
+        });
       }
       
       applicationCount++;

@@ -151,9 +151,12 @@ export class AuthService {
 
   async login(dto: LoginDto, meta?: AuthRequestMeta): Promise<LoginResult> {
     if (meta?.ipAddress && this.bruteForceService.isLocked(meta.ipAddress)) {
+      const remaining = this.bruteForceService.getLockoutRemainingMinutes(
+        meta.ipAddress,
+      );
       throw new HttpException(
         {
-          message: 'Çok fazla başarısız giriş. 15 dakika sonra tekrar deneyin.',
+          message: `Çok fazla başarısız giriş. ${remaining} dakika sonra tekrar deneyin.`,
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );

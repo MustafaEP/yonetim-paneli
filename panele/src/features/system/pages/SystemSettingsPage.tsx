@@ -22,7 +22,10 @@ import type { SystemSetting } from '../services/systemApi';
 import SettingsSidebar, { type SettingsCategory } from '../components/SettingsSidebar';
 import GeneralSettings from '../components/GeneralSettings';
 import MembershipSettings from '../components/MembershipSettings';
-import ComingSoonPlaceholder from '../components/ComingSoonPlaceholder';
+import DuesSettings from '../components/DuesSettings';
+import SecuritySettings from '../components/SecuritySettings';
+import AuditSettings from '../components/AuditSettings';
+import MaintenanceSettings from '../components/MaintenanceSettings';
 
 const SystemSettingsPage: React.FC = () => {
   const theme = useTheme();
@@ -162,19 +165,33 @@ const SystemSettingsPage: React.FC = () => {
                 />
               )}
               {selectedCategory === 'DUES' && (
-                <ComingSoonPlaceholder title="Aidat" />
+                <DuesSettings
+                  settings={settings}
+                  onUpdate={handleUpdate}
+                  loading={false}
+                  canManage={canManage}
+                />
               )}
               {selectedCategory === 'SECURITY' && (
-                <ComingSoonPlaceholder title="Güvenlik" />
+                <SecuritySettings
+                  settings={settings}
+                  onUpdate={canManage ? handleUpdate : undefined}
+                  loading={false}
+                />
               )}
               {selectedCategory === 'AUDIT' && (
-                <ComingSoonPlaceholder title="Loglama" />
-              )}
-              {selectedCategory === 'INTEGRATION' && (
-                <ComingSoonPlaceholder title="Entegrasyon" />
+                <AuditSettings
+                  settings={settings}
+                  onUpdate={canManage ? handleUpdate : undefined}
+                  loading={false}
+                />
               )}
               {selectedCategory === 'MAINTENANCE' && (
-                <ComingSoonPlaceholder title="Bakım" />
+                <MaintenanceSettings
+                  settings={settings}
+                  onUpdate={canManage ? handleUpdate : undefined}
+                  loading={false}
+                />
               )}
             </Box>
           )}

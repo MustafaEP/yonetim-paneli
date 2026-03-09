@@ -21,7 +21,7 @@ Modern, ölçeklenebilir ve güvenli bir sendika yönetim sistemi. Hiyerarşik r
 - 🔐 **Güvenli Kimlik Doğrulama**: JWT tabanlı authentication sistemi
 - 👥 **Hiyerarşik Rol Yönetimi**: 9 farklı rol seviyesi ile esnek yetkilendirme
 - 📊 **Kapsamlı Üye Yönetimi**: Kayıt, onay, güncelleme ve durum takibi
-- 💰 **Mali İşler Modülü**: Aidat yönetimi, Kesinti takibi ve raporlama
+- 💰 **Mali İşler Modülü**: Kesinti yönetimi, Kesinti takibi ve raporlama
 - 📄 **Doküman Yönetimi**: PDF şablonları ve otomatik doküman üretimi
 - 📢 **İçerik Yönetimi**: Haber, duyuru ve etkinlik yönetimi
 - 🔔 **Bildirim Sistemi**: Email, SMS ve WhatsApp entegrasyonu
@@ -298,7 +298,7 @@ ADMIN (Süper Kullanıcı)
 | **IL_BASKANI** | İl bazlı | İl bazlı üye yönetimi, temsilci atama |
 | **ILCE_TEMSILCISI** | İlçe bazlı | İlçe üye listesi, başvuru oluşturma |
 | **ISYERI_TEMSILCISI** | İş yeri bazlı | İş yeri üyeleri, başvuru formu |
-| **UYE** | Kişisel | Profil görüntüleme, aidat geçmişi |
+| **UYE** | Kişisel | Profil görüntüleme, Kesinti geçmişi |
 
 Detaylı yetki matrisi için [RBAC Dokümantasyonu](README.md#-rol-bazlı-yetki-matrisi) bölümüne bakın.
 
@@ -316,7 +316,7 @@ Detaylı yetki matrisi için [RBAC Dokümantasyonu](README.md#-rol-bazlı-yetki-
 - İstifa/ihraç/pasifleştirme işlemleri
 
 ### 3. Mali İşler
-- Aidat planı tanımlama
+- Kesinti planı tanımlama
 - Kesinti kayıt yönetimi
 - Borç/gecikme raporları
 - Excel/PDF raporlama

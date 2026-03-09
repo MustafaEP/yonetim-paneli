@@ -77,6 +77,14 @@ const MemberDocumentsPage: React.FC = () => {
   const [pdfTitle, setPdfTitle] = useState<string>('');
   const [loadingPdf, setLoadingPdf] = useState(false);
 
+  const [bulkGenerateDialogOpen, setBulkGenerateDialogOpen] = useState(false);
+  const [bulkSelectedMembers, setBulkSelectedMembers] = useState<MemberListItem[]>([]);
+  const [bulkSelectedTemplate, setBulkSelectedTemplate] = useState<DocumentTemplate | null>(null);
+  const [bulkExtraVariables, setBulkExtraVariables] = useState<Record<string, string>>({});
+  const [bulkPdfFileName, setBulkPdfFileName] = useState<string>('');
+  const [bulkPhotoPreview, setBulkPhotoPreview] = useState<string>('');
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+
   const canView = hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
   const canUpload = hasPermission('DOCUMENT_GENERATE_PDF');
   const canGenerate = hasPermission('DOCUMENT_GENERATE_PDF');
@@ -188,6 +196,16 @@ const MemberDocumentsPage: React.FC = () => {
     setExtraVariables({});
       setPdfFileName('');
       setPhotoPreview('');
+    loadTemplates();
+  };
+
+  const handleOpenBulkGenerateDialog = () => {
+    setBulkGenerateDialogOpen(true);
+    setBulkSelectedTemplate(null);
+    setBulkSelectedMembers([]);
+    setBulkExtraVariables({});
+    setBulkPdfFileName('');
+    setBulkPhotoPreview('');
     loadTemplates();
   };
 
@@ -312,6 +330,54 @@ const MemberDocumentsPage: React.FC = () => {
       toast.showError(getApiErrorMessage(e, 'PDF oluşturulurken bir hata oluştu'));
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleBulkGenerate = async () => {
+    if (!bulkSelectedTemplate || bulkSelectedMembers.length === 0) {
+      toast.showError('Lütfen en az bir üye ve bir şablon seçin');
+      return;
+    }
+
+    const emptyVars = Object.entries(bulkExtraVariables).filter(([key, value]) => {
+      if (key === 'photoDataUrl') return !value;
+      return !value || value.trim() === '';
+    });
+    if (emptyVars.length > 0) {
+      toast.showError(`Lütfen tüm alanları doldurun: ${emptyVars.map(([k]) => getVariableLabel(k)).join(', ')}`);
+      return;
+    }
+
+    setBulkGenerating(true);
+    try {
+      for (const member of bulkSelectedMembers) {
+        const payload: GenerateDocumentDto = {
+          memberId: member.id,
+          templateId: bulkSelectedTemplate.id,
+          variables: Object.keys(bulkExtraVariables).length > 0 ? bulkExtraVariables : undefined,
+          fileName: bulkPdfFileName
+            ? `${bulkPdfFileName}_${member.firstName || ''}_${member.lastName || ''}`.trim()
+            : undefined,
+        };
+        await generateDocument(payload);
+      }
+
+      toast.showSuccess(`${bulkSelectedMembers.length} üye için PDF dokümanları başarıyla oluşturuldu`);
+      setBulkGenerateDialogOpen(false);
+      setBulkSelectedTemplate(null);
+      setBulkSelectedMembers([]);
+      setBulkExtraVariables({});
+      setBulkPdfFileName('');
+      setBulkPhotoPreview('');
+
+      if (selectedMember && bulkSelectedMembers.some((m) => m.id === selectedMember.id)) {
+        loadDocuments();
+      }
+    } catch (e: unknown) {
+      console.error('Toplu PDF oluşturulurken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Toplu PDF oluşturulurken bir hata oluştu'));
+    } finally {
+      setBulkGenerating(false);
     }
   };
 
@@ -565,6 +631,21 @@ const MemberDocumentsPage: React.FC = () => {
                 Doküman Yükle
               </Button>
             </>
+          )}
+          {canUpload && (
+            <Button
+              variant="outlined"
+              startIcon={<PictureAsPdfIcon />}
+              onClick={handleOpenBulkGenerateDialog}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+              }}
+            >
+              Toplu PDF Oluştur
+            </Button>
           )}
         </Box>
 
@@ -1282,6 +1363,314 @@ const MemberDocumentsPage: React.FC = () => {
             }}
           >
             {generating ? 'Oluşturuluyor...' : 'PDF Oluştur'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Generate PDF Dialog */}
+      <Dialog
+        open={bulkGenerateDialogOpen}
+        onClose={() => {
+          if (!bulkGenerating) {
+            setBulkGenerateDialogOpen(false);
+            setBulkSelectedTemplate(null);
+            setBulkSelectedMembers([]);
+            setBulkExtraVariables({});
+            setBulkPdfFileName('');
+            setBulkPhotoPreview('');
+          }
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            pb: 2,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.error.main, 0.1),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <PictureAsPdfIcon sx={{ color: theme.palette.error.main }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Toplu PDF Doküman Oluştur
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Birden fazla üye ve şablon seçerek toplu PDF oluşturun
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
+            <Autocomplete
+              multiple
+              options={members}
+              getOptionLabel={(option) =>
+                `${option.firstName} ${option.lastName}${
+                  option.registrationNumber ? ` (${option.registrationNumber})` : ''
+                }`
+              }
+              value={bulkSelectedMembers}
+              onChange={(_, newValue) => {
+                setBulkSelectedMembers(newValue);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Üyeleri Seçin"
+                  placeholder="Toplu PDF oluşturulacak üyeleri seçin"
+                />
+              )}
+            />
+
+            {loadingTemplates ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <FormControl fullWidth>
+                <InputLabel>Şablon Seç</InputLabel>
+                <Select
+                  value={bulkSelectedTemplate?.id || ''}
+                  onChange={(e) => {
+                    const template = templates.find((t) => t.id === e.target.value);
+                    setBulkSelectedTemplate(template || null);
+
+                    if (template) {
+                      const extraVars = getExtraVariablesFromTemplate(template);
+                      const newExtraVariables: Record<string, string> = {};
+                      extraVars.forEach((varName) => {
+                        newExtraVariables[varName] = '';
+                      });
+                      setBulkExtraVariables(newExtraVariables);
+                      setBulkPhotoPreview('');
+                      setBulkPdfFileName(template.name);
+                    } else {
+                      setBulkExtraVariables({});
+                      setBulkPhotoPreview('');
+                      setBulkPdfFileName('');
+                    }
+                  }}
+                  label="Şablon Seç"
+                >
+                  {templates.map((template) => (
+                    <MenuItem key={template.id} value={template.id}>
+                      {template.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {templates.length === 0 && (
+                  <FormHelperText>
+                    Aktif şablon bulunamadı. Önce bir şablon oluşturun.
+                  </FormHelperText>
+                )}
+              </FormControl>
+            )}
+
+            {bulkSelectedTemplate && (
+              <>
+                <Alert
+                  severity="success"
+                  icon={<PictureAsPdfIcon />}
+                  sx={{
+                    borderRadius: 2,
+                    '& .MuiAlert-message': {
+                      width: '100%',
+                    },
+                  }}
+                >
+                  <Box>
+                    <Typography variant="body2" fontWeight={600} gutterBottom>
+                      Seçilen Şablon: {bulkSelectedTemplate.name}
+                    </Typography>
+                    {bulkSelectedTemplate.description && (
+                      <Typography variant="body2" color="text.secondary">
+                        {bulkSelectedTemplate.description}
+                      </Typography>
+                    )}
+                  </Box>
+                </Alert>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <TextField
+                    label="PDF Dosya Adı (Önek)"
+                    value={bulkPdfFileName}
+                    onChange={(e) => setBulkPdfFileName(e.target.value)}
+                    fullWidth
+                    size="small"
+                    disabled={bulkGenerating}
+                    placeholder="Örn: DavetMektubu"
+                    helperText="Her üye için bu ada üyenin adı otomatik eklenecektir. Uzantı (.pdf) otomatik eklenir."
+                    sx={{ borderRadius: 2 }}
+                  />
+
+                  {Object.keys(bulkExtraVariables).length > 0 && (
+                    <>
+                      <Typography variant="body2" fontWeight={600} color="text.secondary">
+                        Lütfen aşağıdaki bilgileri doldurun (tüm üyeler için ortak kullanılacaktır):
+                      </Typography>
+                      {Object.keys(bulkExtraVariables).map((varName) => {
+                        const isMulti =
+                          varName.toLowerCase().includes('reason') ||
+                          varName.toLowerCase().includes('description');
+
+                        const value = bulkExtraVariables[varName] || '';
+                        const isEmpty = value.trim() === '';
+
+                        if (varName === 'photoDataUrl') {
+                          return (
+                            <Box key={varName} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600, color: theme.palette.text.secondary }}
+                              >
+                                {getVariableLabel(varName)}
+                              </Typography>
+                              <Button
+                                component="label"
+                                variant="outlined"
+                                disabled={bulkGenerating}
+                                sx={{ borderRadius: 2, alignSelf: 'flex-start' }}
+                              >
+                                Fotoğraf Seç
+                                <input
+                                  hidden
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const dataUrl = await toDataUrl(file);
+                                    setBulkExtraVariables((prev) => ({ ...prev, photoDataUrl: dataUrl }));
+                                    setBulkPhotoPreview(dataUrl);
+                                  }}
+                                />
+                              </Button>
+                              {bulkPhotoPreview && (
+                                <Box
+                                  sx={{
+                                    width: 96,
+                                    height: 128,
+                                    borderRadius: 2,
+                                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  <img
+                                    src={bulkPhotoPreview}
+                                    alt="Fotoğraf Önizleme"
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover',
+                                      display: 'block',
+                                    }}
+                                  />
+                                </Box>
+                              )}
+                              {!bulkPhotoPreview && (
+                                <Typography variant="caption" color="text.secondary">
+                                  Bu alan zorunludur
+                                </Typography>
+                              )}
+                            </Box>
+                          );
+                        }
+
+                        return (
+                          <TextField
+                            key={varName}
+                            label={getVariableLabel(varName)}
+                            value={value}
+                            onChange={(e) =>
+                              setBulkExtraVariables((prev) => ({
+                                ...prev,
+                                [varName]: e.target.value,
+                              }))
+                            }
+                            fullWidth
+                            size="small"
+                            required
+                            disabled={bulkGenerating}
+                            placeholder={`${getVariableLabel(varName)} girin`}
+                            error={isEmpty}
+                            helperText={isEmpty ? 'Bu alan zorunludur' : ''}
+                            multiline={isMulti}
+                            rows={isMulti ? 3 : 1}
+                            sx={{ borderRadius: 2 }}
+                          />
+                        );
+                      })}
+                    </>
+                  )}
+                </Box>
+              </>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            gap: 1.5,
+          }}
+        >
+          <Button
+            onClick={() => {
+              setBulkGenerateDialogOpen(false);
+              setBulkSelectedTemplate(null);
+              setBulkSelectedMembers([]);
+              setBulkExtraVariables({});
+              setBulkPdfFileName('');
+              setBulkPhotoPreview('');
+            }}
+            disabled={bulkGenerating}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+            }}
+          >
+            İptal
+          </Button>
+          <Button
+            onClick={handleBulkGenerate}
+            variant="contained"
+            disabled={!bulkSelectedTemplate || bulkSelectedMembers.length === 0 || bulkGenerating}
+            startIcon={bulkGenerating ? <CircularProgress size={16} /> : <PictureAsPdfIcon />}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+              fontWeight: 600,
+              bgcolor: theme.palette.error.main,
+              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.error.main, 0.3)}`,
+              '&:hover': {
+                bgcolor: theme.palette.error.dark,
+              },
+            }}
+          >
+            {bulkGenerating ? 'Oluşturuluyor...' : 'Toplu PDF Oluştur'}
           </Button>
         </DialogActions>
       </Dialog>

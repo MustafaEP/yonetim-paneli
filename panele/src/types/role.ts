@@ -21,11 +21,6 @@ export type Permission =
   | 'MEMBER_UPDATE'
   | 'MEMBER_STATUS_CHANGE'
   | 'MEMBER_LIST_BY_PROVINCE'
-  | 'DUES_PLAN_MANAGE'
-  | 'DUES_PAYMENT_ADD'
-  | 'DUES_REPORT_VIEW'
-  | 'DUES_DEBT_LIST_VIEW'
-  | 'DUES_EXPORT'
   | 'REGION_LIST'
   | 'BRANCH_MANAGE'
   | 'BRANCH_ASSIGN_PRESIDENT'
@@ -65,7 +60,9 @@ export type Permission =
   | 'PANEL_USER_APPLICATION_LIST'
   | 'PANEL_USER_APPLICATION_VIEW'
   | 'PANEL_USER_APPLICATION_APPROVE'
-  | 'PANEL_USER_APPLICATION_REJECT';
+  | 'PANEL_USER_APPLICATION_REJECT'
+  | 'ADVANCE_VIEW'
+  | 'ADVANCE_ADD';
 
 export interface RoleScope {
   id?: string;
@@ -176,13 +173,6 @@ export const PERMISSION_GROUPS = {
     // MEMBER_LIST_BY_PROVINCE artık checkbox'ta gösterilmeyecek, yerine yetki alanı seçimi kullanılacak
     // 'MEMBER_LIST_BY_PROVINCE',
   ] as Permission[],
-  DUES_MANAGEMENT: [
-    'DUES_PLAN_MANAGE',
-    'DUES_PAYMENT_ADD',
-    'DUES_REPORT_VIEW',
-    'DUES_DEBT_LIST_VIEW',
-    'DUES_EXPORT',
-  ] as Permission[],
   REGION_MANAGEMENT: [
     'REGION_LIST',
     'BRANCH_MANAGE',
@@ -245,6 +235,10 @@ export const PERMISSION_GROUPS = {
     'PANEL_USER_APPLICATION_APPROVE',
     'PANEL_USER_APPLICATION_REJECT',
   ] as Permission[],
+  ADVANCES: [
+    'ADVANCE_VIEW',
+    'ADVANCE_ADD',
+  ] as Permission[],
 };
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -268,11 +262,6 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   MEMBER_UPDATE: 'Üye Güncelle',
   MEMBER_STATUS_CHANGE: 'Üye Durumu Değiştir',
   MEMBER_LIST_BY_PROVINCE: 'Belirli İldeki Üyeleri Görüntüleme',
-  DUES_PLAN_MANAGE: 'Aidat Planı Yönet',
-  DUES_PAYMENT_ADD: 'Aidat Kesintisi Ekle',
-  DUES_REPORT_VIEW: 'Aidat Raporu Görüntüle',
-  DUES_DEBT_LIST_VIEW: 'Borçlu Üyeleri Görüntüle',
-  DUES_EXPORT: 'Aidat Verilerini Dışa Aktar',
   REGION_LIST: 'Bölgeleri Listele',
   BRANCH_MANAGE: 'Şube Yönet',
   BRANCH_ASSIGN_PRESIDENT: 'Şube Başkanı Ata',
@@ -284,7 +273,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   REPORT_GLOBAL_VIEW: 'Genel Rapor Görüntüle',
   REPORT_REGION_VIEW: 'Bölge Raporu Görüntüle',
   REPORT_MEMBER_STATUS_VIEW: 'Üye Durum Raporu Görüntüle',
-  REPORT_DUES_VIEW: 'Aidat Raporu Görüntüle',
+  REPORT_DUES_VIEW: 'Kesinti Raporu Görüntüle',
   NOTIFY_ALL_MEMBERS: 'Tüm Üyelere Bildirim Gönder',
   NOTIFY_REGION: 'Bölgeye Bildirim Gönder',
   NOTIFY_OWN_SCOPE: 'Kendi Kapsamına Bildirim Gönder',
@@ -313,5 +302,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   PANEL_USER_APPLICATION_VIEW: 'Panel Kullanıcı Başvurusu Detayı Görüntüle',
   PANEL_USER_APPLICATION_APPROVE: 'Panel Kullanıcı Başvurusu Onayla',
   PANEL_USER_APPLICATION_REJECT: 'Panel Kullanıcı Başvurusu Reddet',
+  ADVANCE_VIEW: 'Avansları Görüntüle',
+  ADVANCE_ADD: 'Avans Ekle / Güncelle / Sil',
 };
 

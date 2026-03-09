@@ -320,3 +320,83 @@ export const downloadTevkifatFile = async (
   document.body.removeChild(link);
   window.URL.revokeObjectURL(blobUrl);
 };
+
+// Avans Sistemi
+
+export interface MemberAdvance {
+  id: string;
+  memberId: string;
+  registrationNumber?: string | null;
+  amount: number | string;
+  advanceDate: string;
+  month: number;
+  year: number;
+  description?: string | null;
+  member: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    registrationNumber?: string | null;
+    province?: {
+      id: string;
+      name: string;
+    } | null;
+  };
+  createdByUser?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+}
+
+export interface CreateAdvanceDto {
+  memberId: string;
+  amount: string;
+  month: number;
+  year: number;
+  advanceDate?: string;
+  description?: string;
+}
+
+export interface UpdateAdvanceDto {
+  amount?: string;
+  month?: number;
+  year?: number;
+  advanceDate?: string;
+  description?: string;
+}
+
+export const getAdvances = async (filters?: {
+  search?: string;
+  year?: number;
+  month?: number;
+  provinceId?: string;
+}): Promise<MemberAdvance[]> => {
+  const res = await httpClient.get<MemberAdvance[]>('/accounting/advances', {
+    params: filters,
+  });
+  return Array.isArray(res.data) ? res.data : [];
+};
+
+export const createAdvance = async (
+  dto: CreateAdvanceDto,
+): Promise<MemberAdvance> => {
+  const res = await httpClient.post<MemberAdvance>('/accounting/advances', dto);
+  return res.data;
+};
+
+export const updateAdvance = async (
+  id: string,
+  dto: UpdateAdvanceDto,
+): Promise<MemberAdvance> => {
+  const res = await httpClient.patch<MemberAdvance>(
+    `/accounting/advances/${id}`,
+    dto,
+  );
+  return res.data;
+};
+
+export const deleteAdvance = async (id: string): Promise<void> => {
+  await httpClient.delete(`/accounting/advances/${id}`);
+};

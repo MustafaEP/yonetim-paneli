@@ -26,6 +26,7 @@
     "prisma:seed3:prod": "node dist/prisma/seed3.js",
     "prisma:build-seed": "tsc -p tsconfig.prisma.json",
     "prisma:migrate:document-upload": "ts-node -r tsconfig-paths/register scripts/apply-document-upload-migration-simple.ts",
+    "prisma:repair:approved-panel-users": "node scripts/repair-approved-panel-users.js",
     "prisma:sync:document-templates": "ts-node -r tsconfig-paths/register scripts/sync-document-templates.ts",
     "prisma:generate": "prisma generate"
   },

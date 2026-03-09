@@ -53,7 +53,7 @@ export class ReportsController {
 
   @Permissions(Permission.REPORT_DUES_VIEW)
   @Get('dues')
-  @ApiOperation({ summary: 'Aidat raporu' })
+  @ApiOperation({ summary: 'Kesinti raporu' })
   @ApiResponse({ status: 200 })
   async getDuesReport(
     @Query('year') year?: string,
@@ -127,7 +127,7 @@ export class ReportsController {
 
   @Permissions(Permission.REPORT_DUES_VIEW)
   @Get('dues/export/excel')
-  @ApiOperation({ summary: 'Aidat raporunu Excel olarak export et' })
+  @ApiOperation({ summary: 'Kesinti raporunu Excel olarak export et' })
   @ApiResponse({ status: 200, description: 'Excel dosyası indiriliyor' })
   async exportDuesReportToExcel(
     @Res() res: Response,
@@ -152,7 +152,7 @@ export class ReportsController {
         { header: 'C', key: 'C', width: 20 },
         { header: 'D', key: 'D', width: 20 },
       ],
-      `Aidat_Raporu_${new Date().toISOString().split('T')[0]}`,
+      `Kesinti_Raporu_${new Date().toISOString().split('T')[0]}`,
       res,
     );
   }
@@ -220,7 +220,7 @@ export class ReportsController {
 
   @Permissions(Permission.REPORT_DUES_VIEW)
   @Get('dues/export/pdf')
-  @ApiOperation({ summary: 'Aidat raporunu PDF olarak export et' })
+  @ApiOperation({ summary: 'Kesinti raporunu PDF olarak export et' })
   @ApiResponse({ status: 200, description: 'PDF dosyası indiriliyor' })
   async exportDuesReportToPdf(
     @Res() res: Response,
@@ -236,7 +236,7 @@ export class ReportsController {
     await this.pdfReportService.exportReportToPdf(
       data,
       'dues',
-      `Aidat_Raporu_${new Date().toISOString().split('T')[0]}`,
+      `Kesinti_Raporu_${new Date().toISOString().split('T')[0]}`,
       res,
     );
   }

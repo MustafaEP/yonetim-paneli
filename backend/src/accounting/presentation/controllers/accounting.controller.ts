@@ -42,6 +42,8 @@ import { Permission } from '../../../auth/permission.enum';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import type { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
 import { ApprovalStatus } from '@prisma/client';
+import { CreateAdvanceDto } from '../../dto/create-advance.dto';
+import { UpdateAdvanceDto } from '../../dto/update-advance.dto';
 
 @ApiTags('Accounting')
 @ApiBearerAuth('JWT-auth')
@@ -395,5 +397,97 @@ export class AccountingController {
   async deleteTevkifatTitle(@Param('id') id: string) {
     await this.tevkifatTitleApplicationService.deleteTitle(id);
     return { message: 'Tevkifat unvanı silindi' };
+  }
+
+  // Avans Sistemi
+
+  @Permissions(Permission.ADVANCE_VIEW)
+  @Get('advances')
+  @ApiOperation({
+    summary: 'Avansları listele',
+    description: 'Yıl, ay, il ve arama filtresi ile avans listesi',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Ad, soyad veya üye kayıt no ile arama',
+  })
+  @ApiQuery({
+    name: 'year',
+    required: false,
+    description: 'Yıl filtresi',
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    description: 'Ay filtresi (1-12)',
+  })
+  @ApiQuery({
+    name: 'provinceId',
+    required: false,
+    description: 'İl filtresi',
+  })
+  async listAdvances(
+    @Query('search') search?: string,
+    @Query('year') year?: number,
+    @Query('month') month?: number,
+    @Query('provinceId') provinceId?: string,
+  ) {
+    return this.accountingService.listAdvances({
+      search: search?.trim() || undefined,
+      year: year ? Number(year) : undefined,
+      month: month ? Number(month) : undefined,
+      provinceId,
+    });
+  }
+
+  @Permissions(Permission.ADVANCE_ADD)
+  @Post('advances')
+  @ApiOperation({
+    summary: 'Yeni avans oluştur',
+    description: 'Üye için manuel avans kaydı oluşturur',
+  })
+  @ApiResponse({ status: 201, description: 'Avans kaydı oluşturuldu' })
+  async createAdvance(
+    @Body() dto: CreateAdvanceDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.accountingService.createAdvance(dto, user.userId);
+  }
+
+  @Permissions(Permission.ADVANCE_VIEW)
+  @Get('advances/:id')
+  @ApiOperation({
+    summary: 'Avans detayı',
+    description: 'Belirli bir avans kaydının detaylarını getirir',
+  })
+  @ApiParam({ name: 'id', description: 'Avans ID' })
+  async getAdvanceById(@Param('id') id: string) {
+    return this.accountingService.getAdvanceById(id);
+  }
+
+  @Permissions(Permission.ADVANCE_ADD)
+  @Patch('advances/:id')
+  @ApiOperation({
+    summary: 'Avansı güncelle',
+    description: 'Mevcut avans kaydını günceller',
+  })
+  @ApiParam({ name: 'id', description: 'Avans ID' })
+  async updateAdvance(
+    @Param('id') id: string,
+    @Body() dto: UpdateAdvanceDto,
+  ) {
+    return this.accountingService.updateAdvance(id, dto);
+  }
+
+  @Permissions(Permission.ADVANCE_ADD)
+  @Delete('advances/:id')
+  @ApiOperation({
+    summary: 'Avansı sil',
+    description: 'Avans kaydını soft delete ile siler',
+  })
+  @ApiParam({ name: 'id', description: 'Avans ID' })
+  async deleteAdvance(@Param('id') id: string) {
+    return this.accountingService.deleteAdvance(id);
   }
 }

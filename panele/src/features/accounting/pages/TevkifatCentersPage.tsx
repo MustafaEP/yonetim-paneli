@@ -330,7 +330,7 @@ const TevkifatCentersPage: React.FC = () => {
       <PageHeader
         icon={<BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.8rem', sm: '2rem' } }} />}
         title="Tevkifat Merkezleri"
-        description="Kurumlardan gelen toplu aidat kesintilerinin merkezi takibi ve unvan yönetimi"
+        description="Kurumlardan gelen toplu Kesinti kesintilerinin merkezi takibi ve unvan yönetimi"
         color={theme.palette.primary.main}
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}

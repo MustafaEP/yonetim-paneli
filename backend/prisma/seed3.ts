@@ -107,6 +107,15 @@ async function main() {
   // Temizleme (seed.ts ile aynı sıra)
   console.log('🗑️  Mevcut veriler temizleniyor...');
   await prisma.memberPayment.deleteMany();
+  try {
+    await prisma.memberAdvance.deleteMany();
+  } catch (error: any) {
+    if (error.code === 'P2021' || error.message?.includes('MemberAdvance')) {
+      console.log('   ⚠️  MemberAdvance tablosu bulunamadı, atlanıyor...');
+    } else {
+      throw error;
+    }
+  }
   await prisma.userNotification.deleteMany();
   await prisma.notificationRecipient.deleteMany();
   await prisma.notificationLog.deleteMany();
@@ -749,6 +758,32 @@ async function main() {
     });
   }
   console.log('   ✅ 3 MemberPayment eklendi');
+
+  // 27.1 MemberAdvance (3) – Avans Sistemi için örnek veriler (tablo varsa)
+  try {
+    console.log('💸 Üye avansları ekleniyor...');
+    for (let i = 0; i < 3; i++) {
+      await prisma.memberAdvance.create({
+        data: {
+          memberId: members[i].id,
+          registrationNumber: members[i].registrationNumber,
+          advanceDate: new Date(now.getFullYear(), now.getMonth(), 10 + i),
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+          amount: 400 + i * 50,
+          description: `Örnek avans ${i + 1}`,
+          createdByUserId: adminUser.id,
+        },
+      });
+    }
+    console.log('   ✅ 3 MemberAdvance eklendi');
+  } catch (error: any) {
+    if (error.code === 'P2021' || error.message?.includes('MemberAdvance')) {
+      console.log('   ⚠️  MemberAdvance tablosu bulunamadı, avans seed atlanıyor...');
+    } else {
+      throw error;
+    }
+  }
 
   // 28. MemberMembershipPeriod (3 - her üye için 1 dönem)
   for (let i = 0; i < 3; i++) {

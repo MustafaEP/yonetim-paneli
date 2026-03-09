@@ -116,7 +116,7 @@ const RoleDetailPage: React.FC = () => {
         USER_MANAGEMENT: 'Kullanıcı Yönetimi',
         ROLE_MANAGEMENT: 'Rol Yönetimi',
         MEMBER_MANAGEMENT: 'Üye Yönetimi',
-        DUES_MANAGEMENT: 'Aidat Yönetimi',
+        DUES_MANAGEMENT: 'Kesinti Yönetimi',
         REGION_MANAGEMENT: 'Bölge Yönetimi',
         CONTENT_MANAGEMENT: 'İçerik Yönetimi',
         DOCUMENT_MANAGEMENT: 'Doküman Yönetimi',

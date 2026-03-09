@@ -31,8 +31,8 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ListAltIcon from '@mui/icons-material/ListAlt';
-import SendIcon from '@mui/icons-material/Send';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import BadgeIcon from '@mui/icons-material/Badge';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import HistoryIcon from '@mui/icons-material/History';
@@ -106,6 +106,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   const showSystemLogs = hasPermission('LOG_VIEW_ALL') || hasPermission('LOG_VIEW_OWN_SCOPE');
   const showBranches = hasPermission('BRANCH_MANAGE');
   const showAccounting = hasPermission('ACCOUNTING_VIEW');
+  const showAdvances = hasPermission('ADVANCE_VIEW');
   const showPayments = hasPermission('MEMBER_PAYMENT_LIST');
   const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
   const showInstitutions = hasPermission('INSTITUTION_LIST');
@@ -132,15 +133,14 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
     } else if (
       path.startsWith('/regions') ||
       path.startsWith('/institutions') ||
-      path.startsWith('/accounting/tevkifat-centers')
+      path.startsWith('/accounting/tevkifat-centers') ||
+      path.startsWith('/accounting/advances')
     ) {
       setOpenSection('region');
     } else if (path.startsWith('/payments')) {
       setOpenSection('deductions');
     } else if (path.startsWith('/content') || path.startsWith('/documents')) {
       setOpenSection('content-docs');
-    } else if (path.startsWith('/notifications')) {
-      setOpenSection('notifications');
     } else if (path.startsWith('/users') || path.startsWith('/roles')) {
       setOpenSection('user-management');
     } else if (path.startsWith('/system')) {
@@ -151,7 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   }, [location.pathname]);
 
   const hasRegionGroup =
-    showRegions || showBranches || showInstitutions || showAccounting;
+    showRegions || showBranches || showInstitutions || showAccounting || showAdvances;
   const hasDeductionsGroup = showPayments || canAddPayment;
   const hasMembersGroup = showMembers;
   const hasContentGroup = showContent || showDocuments;
@@ -403,6 +403,27 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                 </ListItemButton>
               )}
 
+              {showAdvances && (
+                <ListItemButton
+                  component={Link}
+                  to="/accounting/advances"
+                  selected={location.pathname.startsWith('/accounting/advances')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <MonetizationOnIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Avans Sistemi"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+
               {showBranches && (
                 <ListItemButton
                   component={Link}
@@ -615,72 +636,29 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
         )}
       </List>
 
-      {/* 8. Bildirim Sistemi */}
-      <List sx={{ px: 1 }}>
-        <ListItemButton
-          onClick={() => handleSectionToggle('notifications')}
-          sx={getNavItemSx(theme)}
-        >
-          <ListItemIcon sx={{ minWidth: 40 }}>
-            <NotificationsActiveIcon />
-          </ListItemIcon>
-          <ListItemText
-            primary="Bildirim Sistemi"
-            primaryTypographyProps={{
-              fontSize: '0.9rem',
-              fontWeight: 500,
-            }}
-          />
-          {openSection === 'notifications' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </ListItemButton>
-
-        <Collapse in={openSection === 'notifications'} timeout="auto" unmountOnExit>
-          <List component="div" disablePadding sx={{ pl: 4 }}>
-            <ListItemButton
-              component={Link}
-              to="/notifications"
-              selected={
-                location.pathname.startsWith('/notifications') &&
-                !location.pathname.startsWith('/notifications/send')
-              }
-              onClick={handleLinkClick}
-              sx={getNavItemSx(theme)}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <NotificationsActiveIcon />
-              </ListItemIcon>
-              <ListItemText
-                primary="Bildirimlerim"
-                primaryTypographyProps={{
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                }}
-              />
-            </ListItemButton>
-
-            {showNotifications && (
-              <ListItemButton
-                component={Link}
-                to="/notifications/send"
-                selected={location.pathname === '/notifications/send'}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <SendIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Bildirim Gönder"
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
-            )}
-          </List>
-        </Collapse>
-      </List>
+      {/* 8. Bildirimler */}
+      {showNotifications && (
+        <List sx={{ px: 1 }}>
+          <ListItemButton
+            component={Link}
+            to="/notifications"
+            selected={location.pathname.startsWith('/notifications')}
+            onClick={handleLinkClick}
+            sx={getNavItemSx(theme)}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <NotificationsActiveIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Bildirimler"
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            />
+          </ListItemButton>
+        </List>
+      )}
 
       {/* 9. Kullanıcı İşlemleri */}
       {hasUserManagementGroup && (

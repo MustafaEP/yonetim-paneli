@@ -2,17 +2,18 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { ConfigService } from '../../config/config.service';
 
 /**
- * File Upload Configuration
+ * File Upload Configuration (sabit değerler — dinamik limit için ConfigService kullanılır)
  */
 export const FILE_UPLOAD_CONFIG = {
-  maxFileSize: 10 * 1024 * 1024, // 10MB
+  defaultMaxFileSizeMB: 10,
   allowedMimeTypes: ['application/pdf'],
   allowedExtensions: ['.pdf'],
   stagingDir: 'uploads/staging/documents',
   permanentDir: 'uploads/documents',
-  stagingRetentionDays: 30, // Auto-delete staging files after 30 days
+  stagingRetentionDays: 30,
 };
 
 /**
@@ -22,6 +23,16 @@ export const FILE_UPLOAD_CONFIG = {
 @Injectable()
 export class FileStorageService {
   private readonly logger = new Logger(FileStorageService.name);
+
+  constructor(private readonly configService: ConfigService) {}
+
+  private get maxFileSizeBytes(): number {
+    const mb = this.configService.getSystemSettingNumber(
+      'MAINTENANCE_MAX_UPLOAD_SIZE_MB',
+      FILE_UPLOAD_CONFIG.defaultMaxFileSizeMB,
+    );
+    return mb * 1024 * 1024;
+  }
 
   /**
    * Generate a secure filename using timestamp, UUID, and content hash
@@ -54,9 +65,13 @@ export class FileStorageService {
     }
 
     // Check file size
-    if (file.size > FILE_UPLOAD_CONFIG.maxFileSize) {
+    if (file.size > this.maxFileSizeBytes) {
+      const maxMB = this.configService.getSystemSettingNumber(
+        'MAINTENANCE_MAX_UPLOAD_SIZE_MB',
+        FILE_UPLOAD_CONFIG.defaultMaxFileSizeMB,
+      );
       throw new BadRequestException(
-        `Dosya boyutu çok büyük. Maksimum: ${FILE_UPLOAD_CONFIG.maxFileSize / 1024 / 1024}MB`,
+        `Dosya boyutu çok büyük. Maksimum: ${maxMB}MB`,
       );
     }
 

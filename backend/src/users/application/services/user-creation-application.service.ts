@@ -126,7 +126,7 @@ export class UserCreationApplicationService {
       }
     }
 
-    const passwordHash = await this.passwordService.hash(dto.password);
+    const passwordHash = await this.passwordService.hashWithPolicy(dto.password);
 
     const scopes =
       dto.scopes ||

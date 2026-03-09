@@ -32,11 +32,24 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { Public } from '../auth/decorators/public.decorator';
+import { ConfigService } from '../config/config.service';
 
 @ApiTags('System')
 @Controller('system')
 export class SystemController {
-  constructor(private readonly systemService: SystemService) {}
+  constructor(
+    private readonly systemService: SystemService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  /** MAINTENANCE_MAX_UPLOAD_SIZE_MB ayarından maksimum dosya boyutunu MB cinsinden okur. */
+  private getMaxUploadBytes(): number {
+    const mb = this.configService.getSystemSettingNumber(
+      'MAINTENANCE_MAX_UPLOAD_SIZE_MB',
+      10,
+    );
+    return mb * 1024 * 1024;
+  }
 
   // Public endpoint - Logo ve sistem adı için
   @Public()
@@ -193,7 +206,10 @@ export class SystemController {
     if (!file) {
       throw new BadRequestException('Dosya yüklenemedi');
     }
-
+    if (file.size > this.getMaxUploadBytes()) {
+      const mb = this.configService.getSystemSettingNumber('MAINTENANCE_MAX_UPLOAD_SIZE_MB', 10);
+      throw new BadRequestException(`Dosya boyutu ${mb}MB limitini aşıyor.`);
+    }
     const logoUrl = `/uploads/logos/${file.filename}`;
     return { url: logoUrl };
   }
@@ -256,7 +272,10 @@ export class SystemController {
     if (!file) {
       throw new BadRequestException('Dosya yüklenemedi');
     }
-
+    if (file.size > this.getMaxUploadBytes()) {
+      const mb = this.configService.getSystemSettingNumber('MAINTENANCE_MAX_UPLOAD_SIZE_MB', 10);
+      throw new BadRequestException(`Dosya boyutu ${mb}MB limitini aşıyor.`);
+    }
     const headerPaperUrl = `/uploads/header-paper/${file.filename}`;
     return { url: headerPaperUrl };
   }

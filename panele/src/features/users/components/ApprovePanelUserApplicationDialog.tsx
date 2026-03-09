@@ -28,6 +28,38 @@ import { getProvinces, getDistricts } from '../../regions/services/regionsApi';
 import type { Province, District } from '../../../types/region';
 import { getRoleById } from '../../roles/services/rolesApi';
 
+const RECENT_APPROVED_PANEL_USERS_KEY = 'recentApprovedPanelUsers';
+
+type ApprovedPanelUserSyncPayload = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roles: string[];
+  isActive: boolean;
+};
+
+const readRecentApprovedPanelUsers = (): ApprovedPanelUserSyncPayload[] => {
+  try {
+    const raw = localStorage.getItem(RECENT_APPROVED_PANEL_USERS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveRecentApprovedPanelUsers = (
+  payload: ApprovedPanelUserSyncPayload,
+): void => {
+  const existing = readRecentApprovedPanelUsers().filter(
+    (item) => item.id !== payload.id,
+  );
+  const next = [payload, ...existing].slice(0, 20);
+  localStorage.setItem(RECENT_APPROVED_PANEL_USERS_KEY, JSON.stringify(next));
+};
+
 interface ApprovePanelUserApplicationDialogProps {
   open: boolean;
   onClose: () => void;
@@ -212,11 +244,31 @@ const ApprovePanelUserApplicationDialog: React.FC<ApprovePanelUserApplicationDia
         reviewNote: formData.reviewNote || undefined,
         scopes: cleanedScopes,
       };
-      await approvePanelUserApplication(applicationId, submitData);
+      const approvedApplication = await approvePanelUserApplication(
+        applicationId,
+        submitData,
+      );
       toast.showSuccess('Başvuru başarıyla onaylandı ve kullanıcı oluşturuldu');
-      
-      // Panel kullanıcıları listesini güncellemek için custom event tetikle
-      window.dispatchEvent(new CustomEvent('panelUserApproved'));
+
+      if (approvedApplication.createdUser) {
+        const syncPayload: ApprovedPanelUserSyncPayload = {
+          id: approvedApplication.createdUser.id,
+          email: approvedApplication.createdUser.email,
+          firstName: approvedApplication.createdUser.firstName,
+          lastName: approvedApplication.createdUser.lastName,
+          roles: [approvedApplication.requestedRole.name],
+          isActive: true,
+        };
+
+        saveRecentApprovedPanelUsers(syncPayload);
+
+        // Aynı sekmede açıksa kullanıcı listesi anında güncellensin.
+        window.dispatchEvent(
+          new CustomEvent<ApprovedPanelUserSyncPayload>('panelUserApproved', {
+            detail: syncPayload,
+          }),
+        );
+      }
       
       onSuccess?.();
       onClose();

@@ -34,6 +34,48 @@ import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
 
+const RECENT_APPROVED_PANEL_USERS_KEY = 'recentApprovedPanelUsers';
+
+type ApprovedPanelUserSyncPayload = UserListItem;
+
+const readRecentApprovedPanelUsers = (): ApprovedPanelUserSyncPayload[] => {
+  try {
+    const raw = localStorage.getItem(RECENT_APPROVED_PANEL_USERS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const mergeUsers = (
+  existingUsers: UserListItem[],
+  incomingUsers: ApprovedPanelUserSyncPayload[],
+): UserListItem[] => {
+  if (incomingUsers.length === 0) return existingUsers;
+
+  const incomingUserIds = new Set(incomingUsers.map((user) => user.id));
+  const mergedIncomingUsers = incomingUsers.map((incomingUser) => {
+    const currentUser = existingUsers.find((user) => user.id === incomingUser.id);
+
+    return {
+      ...incomingUser,
+      ...currentUser,
+      roles:
+        currentUser && currentUser.roles.length > 0
+          ? currentUser.roles
+          : incomingUser.roles,
+    };
+  });
+
+  const remainingUsers = existingUsers.filter(
+    (user) => !incomingUserIds.has(user.id),
+  );
+
+  return [...mergedIncomingUsers, ...remainingUsers];
+};
+
 const UsersListPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -197,7 +239,7 @@ const UsersListPage: React.FC = () => {
     if (showLoading) setLoading(true);
     try {
       const data = await getUsers();
-      setRows(data);
+      setRows(mergeUsers(data, readRecentApprovedPanelUsers()));
     } catch (e: unknown) {
       console.error('Kullanıcılar alınırken hata:', e);
       toastRef.current.showError(getApiErrorMessage(e, 'Kullanıcılar alınırken bir hata oluştu.'));
@@ -212,11 +254,36 @@ const UsersListPage: React.FC = () => {
 
   // Panel Kullanıcı Başvurusu onaylandığında listeyi güncelle (onaylanan üye panel kullanıcıları listesinde görünsün)
   useEffect(() => {
-    const handlePanelUserApproved = () => {
+    const handlePanelUserApproved = (
+      event: Event,
+    ) => {
+      const customEvent = event as CustomEvent<ApprovedPanelUserSyncPayload>;
+      const approvedUser = customEvent.detail;
+
+      if (approvedUser) {
+        setRows((currentRows) => mergeUsers(currentRows, [approvedUser]));
+      }
+
       fetchUsers(false);
     };
-    window.addEventListener('panelUserApproved', handlePanelUserApproved);
-    return () => window.removeEventListener('panelUserApproved', handlePanelUserApproved);
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== RECENT_APPROVED_PANEL_USERS_KEY) return;
+      setRows((currentRows) =>
+        mergeUsers(currentRows, readRecentApprovedPanelUsers()),
+      );
+    };
+
+    window.addEventListener('panelUserApproved', handlePanelUserApproved as EventListener);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener(
+        'panelUserApproved',
+        handlePanelUserApproved as EventListener,
+      );
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [fetchUsers]);
 
   return (

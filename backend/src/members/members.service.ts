@@ -564,6 +564,31 @@ export class MembersService {
             },
           },
         },
+        advances: {
+          where: { deletedAt: null },
+          orderBy: [
+            { year: 'desc' },
+            { month: 'desc' },
+            { advanceDate: 'desc' },
+          ],
+          select: {
+            id: true,
+            amount: true,
+            advanceDate: true,
+            month: true,
+            year: true,
+            description: true,
+            createdAt: true,
+            createdByUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
         user: {
           select: {
             id: true,

@@ -22,6 +22,7 @@ import { MemberGroupsModule } from './member-groups/member-groups.module';
 import { PanelUserApplicationsModule } from './panel-user-applications/panel-user-applications.module';
 import { ImportsModule } from './imports/imports.module';
 import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 @Module({
   imports: [
@@ -56,7 +57,12 @@ import { SystemLogInterceptor } from './common/interceptors/system-log.intercept
       provide: APP_GUARD,
       useClass: PermissionsGuard,
     },
-    // 3. System Log Interceptor
+    // 3. Logging Interceptor (DB ayarlarına göre log seviyesi)
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+    // 4. System Log Interceptor
     {
       provide: APP_INTERCEPTOR,
       useClass: SystemLogInterceptor,

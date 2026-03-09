@@ -13,7 +13,6 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SecurityIcon from '@mui/icons-material/Security';
-import IntegrationInstructionsIcon from '@mui/icons-material/IntegrationInstructions';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import HistoryIcon from '@mui/icons-material/History';
 
@@ -23,7 +22,6 @@ export type SettingsCategory =
   | 'DUES'
   | 'SECURITY'
   | 'AUDIT'
-  | 'INTEGRATION'
   | 'MAINTENANCE';
 
 interface SettingsSidebarProps {
@@ -53,33 +51,27 @@ const categories: CategoryItem[] = [
   },
   {
     id: 'DUES',
-    label: 'Aidat',
+    label: 'Kesinti',
     icon: <AccountBalanceIcon />,
-    description: 'Yakında eklenecek',
+    description: 'Aidat ve ödeme ayarları',
   },
   {
     id: 'SECURITY',
     label: 'Güvenlik',
     icon: <SecurityIcon />,
-    description: 'Yakında eklenecek',
+    description: 'Şifre ve oturum politikası',
   },
   {
     id: 'AUDIT',
     label: 'Loglama',
     icon: <HistoryIcon />,
-    description: 'Yakında eklenecek',
-  },
-  {
-    id: 'INTEGRATION',
-    label: 'Entegrasyon',
-    icon: <IntegrationInstructionsIcon />,
-    description: 'Yakında eklenecek',
+    description: 'Sistem log ayarları',
   },
   {
     id: 'MAINTENANCE',
     label: 'Bakım',
     icon: <AssessmentIcon />,
-    description: 'Yakında eklenecek',
+    description: 'Cache ve geliştirici ayarları',
   },
 ];
 

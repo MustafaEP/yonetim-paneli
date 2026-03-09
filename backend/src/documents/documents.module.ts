@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DocumentsController } from './presentation/controllers/documents.controller';
 import { DocumentsService } from './documents.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { ConfigModule } from '../config/config.module';
 import { PdfService } from './services/pdf.service';
 import { FileStorageService } from './services/file-storage.service';
 import { DocumentTemplateApplicationService } from './application/services/document-template-application.service';
@@ -11,7 +12,7 @@ import { DocumentExceptionFilter } from './presentation/filters/document-excepti
 import { DocumentValidationPipe } from './presentation/pipes/document-validation.pipe';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ConfigModule],
   providers: [
     DocumentsService,
     PdfService,

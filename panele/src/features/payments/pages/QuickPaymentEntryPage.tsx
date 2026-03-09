@@ -1090,7 +1090,7 @@ const QuickPaymentEntryPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>TC Kimlik No</TableCell>
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Tevkifat Merkezi</TableCell>
                 <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>İl</TableCell>
-                <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Aidat Tutarı</TableCell>
+                <TableCell sx={{ fontWeight: 600, bgcolor: 'background.paper', fontSize: '0.8125rem' }}>Kesinti Tutarı</TableCell>
               </TableRow>
               {/* Filtre Satırı */}
               <TableRow>

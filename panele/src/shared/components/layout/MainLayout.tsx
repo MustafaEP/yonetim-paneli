@@ -141,7 +141,7 @@ const MainLayout: React.FC = () => {
     new: 'Yeni Başvuru',
     users: 'Panel Kullanıcıları',
     roles: 'Roller',
-    dues: 'Aidat',
+    dues: 'Kesinti',
     plans: 'Planlar',
     debts: 'Borçlular',
     regions: 'Bölgeler',

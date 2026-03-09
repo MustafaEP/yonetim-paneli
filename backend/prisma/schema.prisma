@@ -89,6 +89,9 @@ model User {
 
   // 🔹 Refresh token'lar (auth – logout'ta revoke)
   refreshTokens RefreshToken[]
+
+  // 🔹 Üye avansları ilişkileri
+  createdAdvances MemberAdvance[]
 }
 
 // 🔹 Refresh Token – JWT refresh için; logout'ta revoke edilir
@@ -235,6 +238,9 @@ model Member {
 
   // 🔹 Kesinti ilişkileri
   payments MemberPayment[]
+
+  // 🔹 Avans ilişkileri
+  advances MemberAdvance[]
 
   // 🔹 Panel kullanıcı ilişkisi
   userId String? @unique // Panel kullanıcısına terfi ettiyse User ID
@@ -998,6 +1004,33 @@ model MemberPayment {
   @@index([createdByUserId])
   @@index([tevkifatCenterId])
   @@index([tevkifatFileId])
+}
+
+// 🔹 Üye Avansları (Avans Sistemi)
+model MemberAdvance {
+  id                 String   @id @default(cuid())
+  memberId           String
+  member             Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  registrationNumber String? // Üye kayıt numarası (member'dan kopyalanır, hızlı erişim için)
+
+  advanceDate        DateTime @default(now()) // Avansın sisteme işlendiği tarih
+  month              Int      // Ay (1-12)
+  year               Int      // Yıl
+  amount             Decimal  @db.Decimal(10, 2) // Avans tutarı
+  description        String?  @db.Text // Açıklama (opsiyonel)
+
+  createdByUserId String
+  createdByUser   User   @relation(fields: [createdByUserId], references: [id])
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([registrationNumber])
+  @@index([year, month])
+  @@index([createdByUserId])
 }
 
 // 🔹 Üyelik Bilgisi Seçenekleri (Admin tarafından yönetilir)

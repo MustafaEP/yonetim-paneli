@@ -715,6 +715,11 @@ const MemberDetailPage = () => {
 
     setUpdatingStatus(true);
     try {
+      if (status === 'APPROVED') {
+        toast.showError('Onaylı durum bu ekrandan güncellenemez.');
+        return;
+      }
+
       const isCancelStatus = status === 'RESIGNED' || status === 'EXPELLED' || status === 'INACTIVE';
       const useCancelEndpoint = member.status === 'ACTIVE' && isCancelStatus;
       if (useCancelEndpoint) {
@@ -1026,6 +1031,28 @@ const MemberDetailPage = () => {
       minute: '2-digit',
     });
   };
+
+  const formatCurrency = (amount?: number | string | null) => {
+    if (amount === null || amount === undefined || amount === '') return '-';
+    return `${Number(amount).toLocaleString('tr-TR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} TL`;
+  };
+
+  const advances = member?.advances ?? [];
+  const latestAdvance = advances[0];
+  const totalAdvanceAmount = advances.reduce(
+    (total, advance) => total + Number(advance.amount || 0),
+    0,
+  );
+  const advanceSummaryText = latestAdvance
+    ? `${advances.length} avans kaydı mevcut. Toplam ${formatCurrency(totalAdvanceAmount)}, son avans ${formatCurrency(
+        latestAdvance.amount,
+      )} (${new Date(latestAdvance.advanceDate).toLocaleDateString('tr-TR')} - ${String(
+        latestAdvance.month,
+      ).padStart(2, '0')}/${latestAdvance.year})${latestAdvance.description ? `, açıklama: ${latestAdvance.description}` : ''}.`
+    : '';
 
   const InfoRow = ({ label, value, icon }: { label: string; value: string | number | null | undefined; icon?: React.ReactNode }) => (
     <Box
@@ -2370,6 +2397,21 @@ const MemberDetailPage = () => {
                 />
               </Box>
             </SectionCard>
+
+            {advances.length > 0 && (
+              <SectionCard title="Avans Bilgileri" icon={<PaymentIcon />}>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontWeight: 500,
+                    color: theme.palette.text.primary,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {advanceSummaryText}
+                </Typography>
+              </SectionCard>
+            )}
           </Box>
         </Box>
 
@@ -2763,7 +2805,7 @@ const MemberDetailPage = () => {
         </SectionCard>
 
         {/* Kesintiler */}
-        <SectionCard title="Aidat / Kesinti Geçmişi" icon={<PaymentIcon />}>
+        <SectionCard title="Kesinti / Kesinti Geçmişi" icon={<PaymentIcon />}>
             {loadingPayments ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />

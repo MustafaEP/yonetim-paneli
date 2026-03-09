@@ -340,7 +340,7 @@ export class PdfReportService {
   private generateDuesReportHtml(data: any): string {
     return `
       <div class="section">
-        <div class="section-title">Aidat Raporu</div>
+        <div class="section-title">Kesinti Raporu</div>
         <div class="summary-box">
           <div class="metric-row">
             <span class="metric-label">Toplam Kesinti:</span>

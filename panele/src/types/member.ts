@@ -114,6 +114,7 @@ export interface MemberDetail extends MemberListItem {
     isActive: boolean;
   } | null;
   membershipPeriods?: MemberMembershipPeriod[];
+  advances?: MemberAdvanceSummary[];
 }
 
 /** Üyelik dönemi (istifa/ihraç geçmişi, yeniden üyelik) */
@@ -130,6 +131,22 @@ export interface MemberMembershipPeriod {
   createdAt: string;
   approvedBy?: { id: string; firstName: string; lastName: string } | null;
   cancelledBy?: { id: string; firstName: string; lastName: string } | null;
+}
+
+export interface MemberAdvanceSummary {
+  id: string;
+  amount: number | string;
+  advanceDate: string;
+  month: number;
+  year: number;
+  description?: string | null;
+  createdAt: string;
+  createdByUser?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
 }
 
 export interface MemberHistory {
