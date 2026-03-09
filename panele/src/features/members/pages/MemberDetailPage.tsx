@@ -1041,18 +1041,10 @@ const MemberDetailPage = () => {
   };
 
   const advances = member?.advances ?? [];
-  const latestAdvance = advances[0];
   const totalAdvanceAmount = advances.reduce(
     (total, advance) => total + Number(advance.amount || 0),
     0,
   );
-  const advanceSummaryText = latestAdvance
-    ? `${advances.length} avans kaydı mevcut. Toplam ${formatCurrency(totalAdvanceAmount)}, son avans ${formatCurrency(
-        latestAdvance.amount,
-      )} (${new Date(latestAdvance.advanceDate).toLocaleDateString('tr-TR')} - ${String(
-        latestAdvance.month,
-      ).padStart(2, '0')}/${latestAdvance.year})${latestAdvance.description ? `, açıklama: ${latestAdvance.description}` : ''}.`
-    : '';
 
   const InfoRow = ({ label, value, icon }: { label: string; value: string | number | null | undefined; icon?: React.ReactNode }) => (
     <Box
@@ -2398,22 +2390,196 @@ const MemberDetailPage = () => {
               </Box>
             </SectionCard>
 
-            {advances.length > 0 && (
-              <SectionCard title="Avans Bilgileri" icon={<PaymentIcon />}>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    fontWeight: 500,
-                    color: theme.palette.text.primary,
-                    lineHeight: 1.7,
-                  }}
-                >
-                  {advanceSummaryText}
-                </Typography>
-              </SectionCard>
-            )}
           </Box>
         </Box>
+
+        {advances.length > 0 && (
+          <SectionCard title="Avans Bilgileri" icon={<PaymentIcon />}>
+            {/* Özet Kartlar */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 2,
+                mb: 3,
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  p: 2,
+                  borderRadius: 3,
+                  bgcolor: alpha(theme.palette.warning.main, 0.07),
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.18)}`,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    bgcolor: alpha(theme.palette.warning.main, 0.15),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: theme.palette.warning.dark,
+                    flexShrink: 0,
+                  }}
+                >
+                  <PaymentIcon fontSize="small" />
+                </Box>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: theme.palette.text.secondary,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.6,
+                      fontSize: '0.65rem',
+                      display: 'block',
+                    }}
+                  >
+                    Toplam Avans Sayısı
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.warning.dark, lineHeight: 1.2 }}>
+                    {advances.length}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  p: 2,
+                  borderRadius: 3,
+                  bgcolor: alpha(theme.palette.success.main, 0.07),
+                  border: `1px solid ${alpha(theme.palette.success.main, 0.18)}`,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    bgcolor: alpha(theme.palette.success.main, 0.15),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: theme.palette.success.dark,
+                    flexShrink: 0,
+                  }}
+                >
+                  <AccountBalanceIcon fontSize="small" />
+                </Box>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: theme.palette.text.secondary,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.6,
+                      fontSize: '0.65rem',
+                      display: 'block',
+                    }}
+                  >
+                    Toplam Tutar
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.success.dark, lineHeight: 1.2 }}>
+                    {formatCurrency(totalAdvanceAmount)}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Avans Tablosu */}
+            <Paper
+              elevation={0}
+              sx={{
+                width: '100%',
+                overflowX: 'auto',
+                borderRadius: 2,
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              }}
+            >
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: alpha(theme.palette.warning.main, 0.05) }}>
+                    <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary, fontSize: '0.8rem' }}>Tarih</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary, fontSize: '0.8rem' }}>Dönem</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, color: theme.palette.text.primary, fontSize: '0.8rem' }}>Tutar</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary, fontSize: '0.8rem' }}>Açıklama</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {advances.map((advance, index) => (
+                    <TableRow
+                      key={advance.id}
+                      sx={{
+                        bgcolor: index === 0 ? alpha(theme.palette.warning.main, 0.03) : 'transparent',
+                        '&:hover': { bgcolor: alpha(theme.palette.warning.main, 0.05) },
+                        transition: 'background-color 0.2s',
+                      }}
+                    >
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                          <CalendarTodayIcon sx={{ fontSize: '0.85rem', color: theme.palette.text.secondary }} />
+                          <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.82rem' }}>
+                            {new Date(advance.advanceDate).toLocaleDateString('tr-TR')}
+                          </Typography>
+                          {index === 0 && (
+                            <Chip
+                              label="Son"
+                              size="small"
+                              sx={{
+                                height: 18,
+                                fontSize: '0.6rem',
+                                fontWeight: 700,
+                                bgcolor: alpha(theme.palette.warning.main, 0.15),
+                                color: theme.palette.warning.dark,
+                                ml: 0.5,
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.82rem', color: theme.palette.text.secondary }}>
+                          {String(advance.month).padStart(2, '0')}/{advance.year}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 700, fontSize: '0.85rem', color: theme.palette.success.dark }}
+                        >
+                          {formatCurrency(advance.amount)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontSize: '0.8rem',
+                            color: advance.description ? theme.palette.text.primary : theme.palette.text.disabled,
+                            fontStyle: advance.description ? 'normal' : 'italic',
+                          }}
+                        >
+                          {advance.description || '—'}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+          </SectionCard>
+        )}
 
         {/* Üyelik Geçmişi / Hareketler */}
         <SectionCard title="Üyelik Geçmişi / Hareketler" icon={<TimelineIcon />}>
