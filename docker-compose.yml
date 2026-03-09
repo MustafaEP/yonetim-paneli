@@ -59,6 +59,8 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       JWT_SECRET: ${JWT_SECRET:-changeme-secret-key}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sendika.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme-admin-pass}
     volumes:
       - backend-uploads:/app/uploads
     healthcheck:

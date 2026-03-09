@@ -27,6 +27,9 @@ RUN npx prisma generate
 COPY . .
 RUN npm run build
 
+# Seed dosyalarını derle (dist/prisma/seed*.js)
+RUN npm run prisma:build-seed
+
 # Build doğrulama
 RUN test -f /app/dist/main.js || test -f /app/dist/src/main.js || \
     (echo "ERROR: main.js bulunamadı" && ls -la /app/dist/ && exit 1)
@@ -72,6 +75,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 RUN npm ci --omit=dev && \
     npm install -D ts-node @types/node @types/bcrypt && \
+    npm install dotenv && \
     npm cache clean --force
 
 # Copy Prisma files (generate edilen client + schema + CLI)

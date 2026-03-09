@@ -395,6 +395,23 @@ const MemberApplicationCreatePage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.provinceId]);
 
+  // Bölge Bilgileri'ndeki İl/İlçe değiştiğinde Kurum İli/İlçesi'ni otomatik olarak eşitle
+  useEffect(() => {
+    setForm((prev) => {
+      if (
+        prev.institutionProvinceId === prev.provinceId &&
+        prev.institutionDistrictId === prev.districtId
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        institutionProvinceId: prev.provinceId,
+        institutionDistrictId: prev.districtId,
+      };
+    });
+  }, [form.provinceId, form.districtId]);
+
   // Memoized utility functions
     const normalizeNationalId = useCallback((value: string) => value.replace(/\D/g, '').slice(0, 11), []);
 
@@ -1507,7 +1524,7 @@ const MemberApplicationCreatePage: React.FC = () => {
               <PlaceIcon sx={{ fontSize: '1.3rem', color: '#fff' }} />
             </Box>
             <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
-              Bölge Bilgileri (Kayıtlı Olduğu Yer - İkamet)
+              Bölge Bilgileri
             </Typography>
           </Box>
 
@@ -1776,6 +1793,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                 onChange={(_, newValue) => handleChange('institutionProvinceId', newValue?.id || '')}
                 getOptionLabel={(option) => option.name}
                 isOptionEqualTo={(option, value) => option.id === value.id}
+                disabled
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -1815,7 +1833,7 @@ const MemberApplicationCreatePage: React.FC = () => {
                 onChange={(_, newValue) => handleChange('institutionDistrictId', newValue?.id || '')}
                 getOptionLabel={(option) => option.name}
                 isOptionEqualTo={(option, value) => option.id === value.id}
-                disabled={!form.institutionProvinceId}
+                disabled
                 renderInput={(params) => (
                   <TextField
                     {...params}
