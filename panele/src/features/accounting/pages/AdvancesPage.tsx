@@ -363,8 +363,15 @@ const AdvancesPage: React.FC = () => {
               filterable: false,
               align: 'center',
               headerAlign: 'center',
+              cellClassName: 'advance-actions-cell',
               renderCell: ({ row }) => (
-                <Stack direction="row" spacing={0.5} justifyContent="center">
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{ width: '100%', height: '100%' }}
+                >
                   <Tooltip title="Detay">
                     <IconButton
                       size="small"
@@ -629,6 +636,16 @@ const AdvancesPage: React.FC = () => {
                     '& .MuiDataGrid-root': { border: 'none' },
                     '& .MuiDataGrid-cell': {
                       borderBottom: `1px solid ${alpha(theme.palette.divider, 0.06)}`,
+                    },
+                    '& .advance-actions-cell': {
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      py: 0,
+                    },
+                    '& .advance-actions-cell .MuiDataGrid-cellContent': {
+                      width: '100%',
+                      height: '100%',
                     },
                     '& .MuiDataGrid-columnHeaders': {
                       background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
