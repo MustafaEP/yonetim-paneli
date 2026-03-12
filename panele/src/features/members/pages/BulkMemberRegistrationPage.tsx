@@ -177,7 +177,8 @@ const BulkMemberRegistrationPage: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Şablon Türkçe Excel uyumludur (her sütun ayrı hücrede görünür). İçinde sistemdeki gerçek
               il/ilçe/kurum ile doldurulmuş <strong>bir örnek satır</strong> vardır; bu satırı doğrulayıp
-              kaydedebilirsiniz. Doğum tarihi: <strong>YYYY-MM-DD</strong>. Cinsiyet: Erkek / Kadın / Diğer.
+              kaydedebilirsiniz. Doğum tarihi: <strong>YYYY-MM-DD</strong> veya <strong>DD-MM-YYYY</strong>.
+              Cinsiyet: Erkek / Kadın / Diğer.
               Öğrenim: İlkokul / Lise / Üniversite.
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

@@ -25,7 +25,7 @@ import {
   FormHelperText,
   Autocomplete,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -74,6 +74,7 @@ import PageLayout from '../../../shared/components/layout/PageLayout';
 const MemberApplicationCreatePage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { hasPermission, user } = useAuth();
   const { getSettingValue } = useSystemSettings();
 
@@ -91,6 +92,9 @@ const MemberApplicationCreatePage: React.FC = () => {
   const canCreateApplication = hasPermission('MEMBER_CREATE_APPLICATION');
   const hasMemberListByProvince = hasPermission('MEMBER_LIST_BY_PROVINCE');
   const hasMemberList = hasPermission('MEMBER_LIST');
+
+  const searchParams = new URLSearchParams(location.search);
+  const prefillNationalId = searchParams.get('nationalId') ?? '';
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +140,7 @@ const MemberApplicationCreatePage: React.FC = () => {
   }>({
     firstName: '',
     lastName: '',
-    nationalId: '',
+    nationalId: prefillNationalId,
     phone: '',
     email: '',
     motherName: '',

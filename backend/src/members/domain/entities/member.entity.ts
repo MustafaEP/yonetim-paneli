@@ -664,9 +664,10 @@ export class Member {
    *
    * Domain rules:
    * 1. Sadece ACTIVE üyelerin üyeliği iptal edilebilir
-   * 2. İptal nedeni zorunludur
+   * 2. İptal nedeni zorunlu.
    * 3. Status RESIGNED, EXPELLED veya INACTIVE'e geçer
-   * 4. İptal tarihi otomatik set edilir
+   * 4. İptal tarihi otomatik set edilir.
+   * 5. İptal edilen üye numarası null yapılmaz.
    */
   cancelMembership(
     cancelledByUserId: string,
@@ -704,8 +705,6 @@ export class Member {
     this._cancelledByUserId = cancelledByUserId;
     this._cancellationReason = cancellationData.cancellationReason.trim();
     this._cancelledAt = new Date();
-    // İptal edildiğinde üye numarası null yapılır (liste sadece güncel numarayı gösterir)
-    this._registrationNumber = null;
     this._updatedAt = new Date();
   }
 
@@ -835,6 +834,14 @@ export class Member {
 
       // Status transition (business rule kontrolü ile)
       const newStatus = MemberStatus.fromString(updateData.status);
+
+      // İstifa/ihraç edilmiş bir üye doğrudan ACTIVE yapılamaz
+      if (
+        newStatus.isActive() &&
+        (this._status.isResigned() || this._status.isExpelled())
+      ) {
+        throw new MemberCannotBeActivatedException(this._status.toString());
+      }
 
       // APPROVED veya ACTIVE'e geçerken zorunlu alanları kontrol et
       if (newStatus.isApproved() || newStatus.isActive()) {

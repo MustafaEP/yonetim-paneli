@@ -84,9 +84,6 @@ export class MemberUpdateApplicationService {
     try {
       // 3. DTO'yu Domain Entity update data formatına çevir
       const updateData = this.mapDtoToUpdateData(command.updateData);
-      if (isCancellationStatus) {
-        updateData.registrationNumber = null;
-      }
 
       // 4. Domain Entity'de update method'unu çağır
       member.update(updateData);

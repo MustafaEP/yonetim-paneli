@@ -957,7 +957,7 @@ const RegionsPage: React.FC = () => {
                                 size="small"
                                 color="success"
                                 startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
-                                onClick={() => navigate(`/institutions?institutionId=${institution.id}`)}
+                                onClick={() => navigate(`/institutions/${institution.id}`)}
                                 sx={{
                                   textTransform: 'none',
                                   fontSize: '0.75rem',

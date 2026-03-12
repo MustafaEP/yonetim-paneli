@@ -92,6 +92,28 @@ function normalizePhone(phone: string | null): string {
   return phone.trim();
 }
 
+/** Doğum tarihini normalize eder: YYYY-MM-DD veya DD-MM-YYYY / DD.MM.YYYY → her zaman YYYY-MM-DD döner */
+function normalizeBirthDate(input: string): string | null {
+  if (!input) return null;
+  const value = input.trim();
+
+  // YYYY-MM-DD veya YYYY.MM.DD
+  let match = value.match(/^(\d{4})[-.](\d{2})[-.](\d{2})$/);
+  if (match) {
+    const [, y, m, d] = match;
+    return `${y}-${m}-${d}`;
+  }
+
+  // DD-MM-YYYY veya DD.MM.YYYY
+  match = value.match(/^(\d{2})[-.](\d{2})[-.](\d{4})$/);
+  if (match) {
+    const [, d, m, y] = match;
+    return `${y}-${m}-${d}`;
+  }
+
+  return null;
+}
+
 @Injectable()
 export class MemberImportValidationService {
   private readonly logger = new Logger(MemberImportValidationService.name);
@@ -524,6 +546,9 @@ export class MemberImportValidationService {
       const gender = this.normalizeGender(get('gender'))!;
       const educationStatus = this.normalizeEducation(get('educationStatus'))!;
 
+      const birthDateStr = get('birthDate');
+      const birthDateNormalized = normalizeBirthDate(birthDateStr)!;
+
       validRows.push({
         rowIndex,
         data: {
@@ -534,7 +559,7 @@ export class MemberImportValidationService {
           email: email || null,
           motherName: get('motherName'),
           fatherName: get('fatherName'),
-          birthDate: new Date(get('birthDate')),
+          birthDate: new Date(birthDateNormalized),
           birthplace: get('birthplace'),
           gender,
           educationStatus,
@@ -872,7 +897,8 @@ export class MemberImportValidationService {
     const phone = get('phone');
     const motherName = get('motherName');
     const fatherName = get('fatherName');
-    const birthDate = get('birthDate');
+    const birthDateRaw = get('birthDate');
+    const birthDateNormalized = normalizeBirthDate(birthDateRaw);
     const birthplace = get('birthplace');
     const gender = get('gender');
     const educationStatus = get('educationStatus');
@@ -918,15 +944,15 @@ export class MemberImportValidationService {
       errors.push({ column: 'motherName', message: 'Anne adı zorunludur.' });
     if (!fatherName)
       errors.push({ column: 'fatherName', message: 'Baba adı zorunludur.' });
-    if (!birthDate) {
+    if (!birthDateRaw) {
       errors.push({
         column: 'birthDate',
-        message: 'Doğum tarihi zorunludur (YYYY-MM-DD).',
+        message: 'Doğum tarihi zorunludur.',
       });
-    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    } else if (!birthDateNormalized) {
       errors.push({
         column: 'birthDate',
-        message: 'Doğum tarihi YYYY-MM-DD formatında olmalıdır.',
+        message: 'Doğum tarihi YYYY-MM-DD veya DD-MM-YYYY formatında olmalıdır.',
       });
     }
     if (!birthplace)

@@ -1,5 +1,6 @@
 // src/pages/system/components/MembershipSettings.tsx
 import React, { useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -248,6 +249,30 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               </Box>
             </Box>
             <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <Box
+                sx={{
+                  mb: 3,
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: 2,
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  Birden fazla üyeyi CSV dosyası ile toplu olarak sisteme kaydetmek için toplu üye kayıt
+                  sayfasını kullanabilirsiniz.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PeopleIcon fontSize="small" />}
+                  component={RouterLink}
+                  to="/members/bulk-registration"
+                >
+                  Toplu Üye Kayıt Sayfası
+                </Button>
+              </Box>
               <Grid container spacing={3}>
             <Grid
               size={{

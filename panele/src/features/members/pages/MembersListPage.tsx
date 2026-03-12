@@ -506,6 +506,23 @@ const MembersListPage: React.FC = () => {
   const handleStatusChange = async (status: MemberStatus, reason?: string) => {
     if (!selectedMember) return;
 
+    // İptal / ihraç edilen bir üyeyi ACTIVE yapmaya çalışınca:
+    // Üye başvuru sayfasına yönlendir ve TC'yi otomatik doldur
+    if (
+      status === 'ACTIVE' &&
+      (selectedMember.status === 'RESIGNED' || selectedMember.status === 'EXPELLED')
+    ) {
+      const nationalId = selectedMember.nationalId ?? '';
+      setStatusDialogOpen(false);
+      setSelectedMember(null);
+      navigate(
+        nationalId
+          ? `/members/applications/new?nationalId=${encodeURIComponent(nationalId)}`
+          : '/members/applications/new'
+      );
+      return;
+    }
+
     setUpdatingStatus(true);
     try {
       const updateData: { status: MemberStatus; cancellationReason?: string } = { status };
