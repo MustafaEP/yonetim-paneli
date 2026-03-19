@@ -8,10 +8,40 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import * as bodyParser from 'body-parser';
 import { existsSync, mkdirSync } from 'fs';
+import helmet from 'helmet';
+import * as Joi from 'joi';
+
+function validateEnv(): void {
+  const schema = Joi.object({
+    DATABASE_URL: Joi.string().uri().required(),
+    JWT_SECRET: Joi.string().min(32).required(),
+    PORT: Joi.number().default(3000),
+    NODE_ENV: Joi.string()
+      .valid('development', 'production', 'test')
+      .default('development'),
+    REDIS_HOST: Joi.string().default('127.0.0.1'),
+    REDIS_PORT: Joi.number().default(6379),
+    CORS_ORIGIN: Joi.string().default('http://localhost:5173'),
+  }).unknown(true);
+
+  const { error } = schema.validate(process.env, { abortEarly: false });
+  if (error) {
+    const messages = error.details.map((d) => `  • ${d.message}`).join('\n');
+    throw new Error(`Geçersiz ortam değişkenleri:\n${messages}`);
+  }
+}
 
 async function bootstrap() {
+  validateEnv();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+
+  // 🔹 Proxy güveni – gerçek istemci IP'si için (rate limit, brute force)
+  app.set('trust proxy', 1);
+
+  // 🔹 HTTP güvenlik başlıkları (CSP, HSTS, X-Frame-Options vb.)
+  app.use(helmet());
 
   // 🔹 CORS ayarları - static dosya yanıtlarına da uygulanması için useStaticAssets'tan ÖNCE
   app.enableCors({
@@ -57,37 +87,39 @@ async function bootstrap() {
   // 🔹 Global Exception Filter
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // 🔹 Swagger/OpenAPI Documentation
-  const config = new DocumentBuilder()
-    .setTitle('Yönetim Paneli API')
-    .setDescription('Yönetim Paneli Backend API Dokümantasyonu')
-    .setVersion('1.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Enter JWT token',
-        in: 'header',
-      },
-      'JWT-auth',
-    )
-    .build();
+  // 🔹 Swagger – yalnızca development ortamında aktif
+  if (configService.isDevelopment) {
+    const config = new DocumentBuilder()
+      .setTitle('Yönetim Paneli API')
+      .setDescription('Yönetim Paneli Backend API Dokümantasyonu')
+      .setVersion('1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Enter JWT token',
+          in: 'header',
+        },
+        'JWT-auth',
+      )
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
+    console.log(
+      `📚 Swagger documentation: http://localhost:${configService.port}/api`,
+    );
+  }
 
   await app.listen(configService.port);
   console.log(
     `🚀 Application is running on: http://localhost:${configService.port}`,
-  );
-  console.log(
-    `📚 Swagger documentation: http://localhost:${configService.port}/api`,
   );
 }
 bootstrap();

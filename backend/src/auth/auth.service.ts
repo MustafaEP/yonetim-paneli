@@ -150,8 +150,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, meta?: AuthRequestMeta): Promise<LoginResult> {
-    if (meta?.ipAddress && this.bruteForceService.isLocked(meta.ipAddress)) {
-      const remaining = this.bruteForceService.getLockoutRemainingMinutes(
+    if (meta?.ipAddress && (await this.bruteForceService.isLocked(meta.ipAddress))) {
+      const remaining = await this.bruteForceService.getLockoutRemainingMinutes(
         meta.ipAddress,
       );
       throw new HttpException(
@@ -170,7 +170,7 @@ export class AuthService {
     if (maintenanceMode) {
       const user = await this.usersService.findByEmail(dto.email);
       if (!user) {
-        this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
+        await this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
         this.logFailedLogin(dto.email, meta?.ipAddress, meta?.userAgent);
         throw new UnauthorizedException('Invalid credentials');
       }
@@ -181,7 +181,7 @@ export class AuthService {
       const isAdmin = customRoleNames.includes('ADMIN');
 
       if (!isAdmin) {
-        this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
+        await this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
         this.logFailedLogin(dto.email, meta?.ipAddress, meta?.userAgent);
         const maintenanceMessage = this.configService.getSystemSetting(
           'MAINTENANCE_MESSAGE',
@@ -194,12 +194,12 @@ export class AuthService {
       try {
         validatedUser = await this.validateUser(dto.email, dto.password);
       } catch (e) {
-        this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
+        await this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
         this.logFailedLogin(dto.email, meta?.ipAddress, meta?.userAgent);
         throw e;
       }
       const result = await this.createSession(validatedUser as UserWithRoles);
-      this.bruteForceService.recordSuccess(meta?.ipAddress ?? '');
+      await this.bruteForceService.recordSuccess(meta?.ipAddress ?? '');
       this.logLoginSuccess(result.user.id, meta?.ipAddress);
       return result;
     }
@@ -208,12 +208,12 @@ export class AuthService {
     try {
       user = await this.validateUser(dto.email, dto.password);
     } catch (e) {
-      this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
+      await this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
       this.logFailedLogin(dto.email, meta?.ipAddress, meta?.userAgent);
       throw e;
     }
     const result = await this.createSession(user as UserWithRoles);
-    this.bruteForceService.recordSuccess(meta?.ipAddress ?? '');
+    await this.bruteForceService.recordSuccess(meta?.ipAddress ?? '');
     this.logLoginSuccess(result.user.id, meta?.ipAddress);
     return result;
   }

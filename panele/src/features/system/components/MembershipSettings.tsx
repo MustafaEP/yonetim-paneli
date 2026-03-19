@@ -306,34 +306,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
 
-            <Grid
-              size={{
-                xs: 12,
-                md: 6
-              }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Varsayılan Üye Durumu</InputLabel>
-                <Select
-                  value={getValue('MEMBERSHIP_DEFAULT_STATUS') || 'PENDING'}
-                  label="Varsayılan Üye Durumu"
-                  onChange={(e) => handleChange('MEMBERSHIP_DEFAULT_STATUS', e.target.value)}
-                  disabled={!canManage || loading}
-                >
-                  <MenuItem value="PENDING">Beklemede (PENDING)</MenuItem>
-                  <MenuItem value="ACTIVE">Aktif (ACTIVE)</MenuItem>
-                  <MenuItem value="INACTIVE">Pasif (INACTIVE)</MenuItem>
-                </Select>
-              </FormControl>
-              {getSetting('MEMBERSHIP_DEFAULT_STATUS')?.description && (
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  {getSetting('MEMBERSHIP_DEFAULT_STATUS')?.description}
-                </Typography>
-              )}
-              {localSettings['MEMBERSHIP_DEFAULT_STATUS'] !== undefined && (
-                <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 0.5 }} />
-              )}
-            </Grid>
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth

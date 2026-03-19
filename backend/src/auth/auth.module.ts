@@ -13,12 +13,14 @@ import { TokenService } from './infrastructure/services/token.service';
 import { PasswordService } from './infrastructure/services/password.service';
 import { AuthBruteForceService } from './infrastructure/services/auth-brute-force.service';
 import { AuthRateLimitGuard } from './guards/auth-rate-limit.guard';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
     forwardRef(() => UsersModule),
     PrismaModule,
     ConfigModule,
+    RedisModule,
     forwardRef(() => SystemModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
