@@ -97,11 +97,11 @@ const MembersByStatusPage: React.FC = () => {
 
   // Durum bilgileri
   const statusInfo = useMemo(() => {
-    const statusMap: Record<string, { label: string; color: 'success' | 'warning' | 'error' | 'default' | 'info' }> = {
+    const statusMap: Record<string, { label: string; color: 'success' | 'warning' | 'error' | 'default' | 'info' | 'secondary' }> = {
       ACTIVE: { label: 'Aktif Üyeler', color: 'success' },
       PENDING: { label: 'Bekleyen Üyeler', color: 'warning' },
       INACTIVE: { label: 'Pasif Üyeler', color: 'default' },
-      RESIGNED: { label: 'İstifa Eden Üyeler', color: 'default' },
+      RESIGNED: { label: 'İstifa Eden Üyeler', color: 'secondary' },
       EXPELLED: { label: 'İhraç Edilen Üyeler', color: 'error' },
       REJECTED: { label: 'Reddedilen Üyeler', color: 'error' },
     };
@@ -243,16 +243,18 @@ const MembersByStatusPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: MemberStatus): 'success' | 'warning' | 'error' | 'default' | 'info' => {
+  const getStatusColor = (status: MemberStatus): 'success' | 'warning' | 'error' | 'default' | 'info' | 'secondary' => {
     switch (status) {
       case 'ACTIVE':
         return 'success';
       case 'PENDING':
         return 'warning';
       case 'REJECTED':
-      case 'EXPELLED':
         return 'error';
+      case 'EXPELLED':
+        return 'default';
       case 'RESIGNED':
+        return 'secondary';
       case 'INACTIVE':
         return 'default';
       default:
@@ -319,6 +321,8 @@ const MembersByStatusPage: React.FC = () => {
       headerAlign: 'center',
       renderCell: (params: GridRenderCellParams<MemberListItem>) => {
         const statusColor = getStatusColor(params.row.status);
+        const isExpelled = params.row.status === 'EXPELLED';
+        const isResigned = params.row.status === 'RESIGNED';
         
         const getShadowColor = (color: string): string => {
           const palette = theme.palette as any;
@@ -344,6 +348,14 @@ const MembersByStatusPage: React.FC = () => {
                 borderRadius: 2,
                 px: 1,
                 boxShadow: `0 2px 8px ${alpha(shadowColor, 0.25)}`,
+                ...(isExpelled && {
+                  backgroundColor: '#212121',
+                  color: '#fff',
+                }),
+                ...(isResigned && {
+                  backgroundColor: theme.palette.secondary.main,
+                  color: '#fff',
+                }),
               }}
             />
           </Box>

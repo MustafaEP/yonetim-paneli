@@ -159,7 +159,7 @@ const ApprovedMembersPage: React.FC = () => {
 
   const getStatusColor = (
     status: MemberStatus,
-  ): 'success' | 'warning' | 'error' | 'default' | 'info' => {
+  ): 'success' | 'warning' | 'error' | 'default' | 'info' | 'secondary' => {
     switch (status) {
       case 'PENDING':
         return 'warning';
@@ -168,9 +168,11 @@ const ApprovedMembersPage: React.FC = () => {
       case 'ACTIVE':
         return 'success';
       case 'REJECTED':
-      case 'EXPELLED':
         return 'error';
+      case 'EXPELLED':
+        return 'default';
       case 'RESIGNED':
+        return 'secondary';
       case 'INACTIVE':
         return 'default';
       default:
@@ -342,23 +344,44 @@ const ApprovedMembersPage: React.FC = () => {
       width: 160,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params: GridRenderCellParams<MemberApplicationRow>) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          <Chip
-            label={getStatusLabel(params.row.status)}
-            size="medium"
-            color={getStatusColor(params.row.status)}
-            sx={{ 
-              fontWeight: 700,
-              fontSize: '0.8rem',
-              height: '32px',
-              borderRadius: 2,
-              px: 1,
-              boxShadow: `0 2px 8px ${alpha(theme.palette[getStatusColor(params.row.status)].main, 0.25)}`,
-            }}
-          />
-        </Box>
-      ),
+      renderCell: (params: GridRenderCellParams<MemberApplicationRow>) => {
+        const statusColor = getStatusColor(params.row.status);
+        const isExpelled = params.row.status === 'EXPELLED';
+        const isResigned = params.row.status === 'RESIGNED';
+        const getShadowColor = (color: string): string => {
+          const palette = theme.palette as any;
+          const colorObj = palette[color];
+          if (colorObj && colorObj.main) return colorObj.main;
+          return theme.palette.grey[500];
+        };
+        const shadowColor = isExpelled ? '#212121' : getShadowColor(statusColor);
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Chip
+              label={getStatusLabel(params.row.status)}
+              size="medium"
+              color={statusColor}
+              sx={{
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                height: '32px',
+                borderRadius: 2,
+                px: 1,
+                boxShadow: `0 2px 8px ${alpha(shadowColor, 0.25)}`,
+                ...(isExpelled && {
+                  backgroundColor: '#212121',
+                  color: '#fff',
+                }),
+                ...(isResigned && {
+                  backgroundColor: theme.palette.secondary.main,
+                  color: '#fff',
+                }),
+              }}
+            />
+          </Box>
+        );
+      },
     },
     {
       field: 'actions',

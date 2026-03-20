@@ -720,6 +720,22 @@ const MemberDetailPage = () => {
   const handleStatusChange = async (status: MemberStatus, reason?: string) => {
     if (!id || !member) return;
 
+    // İstifa/İhraç edilen üyeyi ACTIVE yapmak istendiğinde aynı davranışı kullan:
+    // Üye başvuru sayfasına yönlendir ve TC'yi otomatik doldur.
+    if (
+      status === 'ACTIVE' &&
+      (member.status === 'RESIGNED' || member.status === 'EXPELLED')
+    ) {
+      const nationalId = member.nationalId ?? '';
+      setStatusDialogOpen(false);
+      navigate(
+        nationalId
+          ? `/members/applications/new?nationalId=${encodeURIComponent(nationalId)}`
+          : '/members/applications/new',
+      );
+      return;
+    }
+
     setUpdatingStatus(true);
     try {
       if (status === 'APPROVED') {
@@ -891,20 +907,20 @@ const MemberDetailPage = () => {
         headerShadow: theme.palette.error.main,
       },
       EXPELLED: {
-        color: 'error',
-        icon: <CancelIcon fontSize="small" />,
-        label: 'İhraç',
-        bgColor: alpha('#d32f2f', 0.1),
-        headerGradient: `linear-gradient(135deg, ${alpha('#d32f2f', 0.95)} 0%, #b71c1c 100%)`,
-        headerShadow: '#d32f2f',
-      },
-      RESIGNED: {
         color: 'default',
         icon: <CancelIcon fontSize="small" />,
+        label: 'İhraç',
+        bgColor: alpha('#212121', 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha('#212121', 0.95)} 0%, #000000 100%)`,
+        headerShadow: '#212121',
+      },
+      RESIGNED: {
+        color: 'secondary',
+        icon: <CancelIcon fontSize="small" />,
         label: 'İstifa',
-        bgColor: alpha(theme.palette.grey[500], 0.1),
-        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.grey[600], 0.95)} 0%, ${theme.palette.grey[800]} 100%)`,
-        headerShadow: theme.palette.grey[600],
+        bgColor: alpha(theme.palette.secondary.main, 0.1),
+        headerGradient: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.95)} 0%, ${theme.palette.secondary.dark} 100%)`,
+        headerShadow: theme.palette.secondary.main,
       },
       INACTIVE: {
         color: 'default',
@@ -2008,18 +2024,18 @@ const MemberDetailPage = () => {
             sx={{
               borderRadius: 3,
               border: `2px solid ${alpha(
-                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600],
+                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.secondary.main,
                 0.3
               )}`,
               background: `linear-gradient(135deg, ${alpha(
-                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600],
+                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.secondary.main,
                 0.08
               )} 0%, ${alpha(
-                member.status === 'EXPELLED' ? theme.palette.error.light : theme.palette.grey[400],
+                member.status === 'EXPELLED' ? theme.palette.error.light : theme.palette.secondary.light,
                 0.05
               )} 100%)`,
               boxShadow: `0 4px 16px ${alpha(
-                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600],
+                member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.secondary.main,
                 0.15
               )}`,
             }}
@@ -2032,15 +2048,15 @@ const MemberDetailPage = () => {
                     height: 48,
                     borderRadius: 2,
                     background: `linear-gradient(135deg, ${
-                      member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600]
+                      member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.info.main
                     } 0%, ${
-                      member.status === 'EXPELLED' ? theme.palette.error.dark : theme.palette.grey[800]
+                      member.status === 'EXPELLED' ? theme.palette.error.dark : theme.palette.info.dark
                     } 100%)`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: `0 4px 12px ${alpha(
-                      member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600],
+                      member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.info.main,
                       0.3
                     )}`,
                     flexShrink: 0,
@@ -2055,7 +2071,7 @@ const MemberDetailPage = () => {
                       sx={{
                         fontWeight: 700,
                         fontSize: { xs: '1.1rem', sm: '1.25rem' },
-                        color: member.status === 'EXPELLED' ? theme.palette.error.dark : theme.palette.grey[800],
+                        color: member.status === 'EXPELLED' ? theme.palette.error.dark : theme.palette.info.dark,
                       }}
                     >
                       {member.status === 'EXPELLED' ? 'İhraç Nedeni' : 'İstifa Nedeni'}
@@ -2068,7 +2084,7 @@ const MemberDetailPage = () => {
                             setEditReasonValue(member.cancellationReason ?? '');
                             setEditingReason(true);
                           }}
-                          sx={{ color: member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600] }}
+                          sx={{ color: member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.info.main }}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>

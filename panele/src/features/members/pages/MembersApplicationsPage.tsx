@@ -165,7 +165,7 @@ const MembersApplicationsPage: React.FC = () => {
 
   const getStatusColor = (
     status: MemberStatus,
-  ): 'success' | 'warning' | 'error' | 'default' | 'info' => {
+  ): 'success' | 'warning' | 'error' | 'default' | 'info' | 'secondary' => {
     switch (status) {
       case 'PENDING':
         return 'warning';
@@ -174,9 +174,11 @@ const MembersApplicationsPage: React.FC = () => {
       case 'ACTIVE':
         return 'success';
       case 'REJECTED':
-      case 'EXPELLED':
         return 'error';
+      case 'EXPELLED':
+        return 'default';
       case 'RESIGNED':
+        return 'secondary';
       case 'INACTIVE':
         return 'default';
       default:
@@ -385,6 +387,8 @@ const MembersApplicationsPage: React.FC = () => {
       headerAlign: 'center',
       renderCell: (params: GridRenderCellParams<MemberApplicationRow>) => {
         const statusColor = getStatusColor(params.row.status);
+        const isExpelled = params.row.status === 'EXPELLED';
+        const isResigned = params.row.status === 'RESIGNED';
         
         // Safely get the color from palette with fallback
         const getShadowColor = (color: string): string => {
@@ -411,6 +415,14 @@ const MembersApplicationsPage: React.FC = () => {
                 borderRadius: 2,
                 px: 1,
                 boxShadow: `0 2px 8px ${alpha(shadowColor, 0.25)}`,
+                ...(isExpelled && {
+                  backgroundColor: '#212121',
+                  color: '#fff',
+                }),
+                ...(isResigned && {
+                  backgroundColor: theme.palette.secondary.main,
+                  color: '#fff',
+                }),
               }}
             />
           </Box>

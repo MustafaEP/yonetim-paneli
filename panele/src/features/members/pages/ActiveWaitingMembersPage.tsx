@@ -284,7 +284,7 @@ const ActiveWaitingMembersPage: React.FC = () => {
 
   const getStatusColor = (
     status: MemberStatus,
-  ): 'success' | 'warning' | 'error' | 'default' | 'info' => {
+  ): 'success' | 'warning' | 'error' | 'default' | 'info' | 'secondary' => {
     switch (status) {
       case 'PENDING':
         return 'warning';
@@ -293,9 +293,11 @@ const ActiveWaitingMembersPage: React.FC = () => {
       case 'ACTIVE':
         return 'success';
       case 'REJECTED':
-      case 'EXPELLED':
         return 'error';
+      case 'EXPELLED':
+        return 'default';
       case 'RESIGNED':
+        return 'secondary';
       case 'INACTIVE':
         return 'default';
       default:
@@ -484,6 +486,8 @@ const ActiveWaitingMembersPage: React.FC = () => {
       headerAlign: 'center',
       renderCell: (params: GridRenderCellParams<MemberListItem>) => {
         const statusColor = getStatusColor(params.row.status);
+        const isExpelled = params.row.status === 'EXPELLED';
+        const isResigned = params.row.status === 'RESIGNED';
         
         const getShadowColor = (color: string): string => {
           const palette = theme.palette as any;
@@ -509,6 +513,14 @@ const ActiveWaitingMembersPage: React.FC = () => {
                 borderRadius: 2,
                 px: 1,
                 boxShadow: `0 2px 8px ${alpha(shadowColor, 0.25)}`,
+                ...(isExpelled && {
+                  backgroundColor: '#212121',
+                  color: '#fff',
+                }),
+                ...(isResigned && {
+                  backgroundColor: theme.palette.secondary.main,
+                  color: '#fff',
+                }),
               }}
             />
           </Box>

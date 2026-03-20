@@ -487,12 +487,47 @@ export class MembersController {
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get('export/pdf')
   @ApiOperation({ summary: 'Üyeleri PDF olarak export et' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description:
+      'Üye durumu filtresi. Belirtilmezse tüm durumlar (ACTIVE, APPROVED, INACTIVE, RESIGNED, EXPELLED, REJECTED) dahil edilir.',
+  })
   @ApiResponse({ status: 200, description: 'PDF dosyası indiriliyor' })
   async exportMembersToPdf(
     @Res() res: Response,
     @CurrentUser() user: CurrentUserData,
+    @Query('status') status?: string,
   ) {
-    const members = await this.membersService.listMembersForUser(user);
+    let members: any[];
+
+    if (status && status !== 'ALL') {
+      // Belirli bir durum filtresi istendi
+      members = await this.membersService.listMembersForUser(user, status as any);
+    } else {
+      // Tüm durumları paralel olarak çek ve birleştir
+      const statuses = ['ACTIVE', 'APPROVED', 'INACTIVE', 'RESIGNED', 'EXPELLED', 'REJECTED'];
+      const results = await Promise.all(
+        statuses.map((s) => this.membersService.listMembersForUser(user, s as any)),
+      );
+      members = results.flat();
+    }
+
+    // PDF listesinde üyeleri kayıt numarasına göre (azalan) sırala.
+    // Kayıt numarası olmayan/parse edilemeyen kayıtlar listenin sonunda kalır.
+    members = [...members].sort((a, b) => {
+      const registrationB = this.extractRegistrationOrderValue(
+        b?.registrationNumber,
+      );
+      const registrationA = this.extractRegistrationOrderValue(
+        a?.registrationNumber,
+      );
+      if (registrationB !== registrationA) return registrationB - registrationA;
+
+      const dateA = new Date(a?.createdAt || 0).getTime();
+      const dateB = new Date(b?.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
 
     // HTML içeriği oluştur
     const htmlContent = this.generateMembersHtml(members);
@@ -507,6 +542,16 @@ export class MembersController {
       `attachment; filename=uyeler_${new Date().toISOString().split('T')[0]}.pdf`,
     );
     res.send(pdfBuffer);
+  }
+
+  private extractRegistrationOrderValue(
+    registrationNumber?: string | null,
+  ): number {
+    if (!registrationNumber) return -1;
+    const digits = registrationNumber.match(/\d+/g)?.join('') ?? '';
+    if (!digits) return -1;
+    const parsed = Number(digits);
+    return Number.isNaN(parsed) ? -1 : parsed;
   }
 
   @Permissions(Permission.MEMBER_VIEW)
@@ -530,6 +575,20 @@ export class MembersController {
     res.send(pdfBuffer);
   }
 
+  private getStatusCellStyle(status: string): string {
+    const MAP: Record<string, { bg: string; color: string }> = {
+      ACTIVE:   { bg: '#e8f5e9', color: '#1b5e20' },
+      PENDING:  { bg: '#fff8e1', color: '#e65100' },
+      APPROVED: { bg: '#e3f2fd', color: '#0d47a1' },
+      REJECTED: { bg: '#ffebee', color: '#b71c1c' },
+      EXPELLED: { bg: '#212121', color: '#ffffff' },
+      RESIGNED: { bg: '#f3e5f5', color: '#4a148c' },
+      INACTIVE: { bg: '#f5f5f5', color: '#424242' },
+    };
+    const s = MAP[status] || { bg: '#f5f5f5', color: '#424242' };
+    return `background-color:${s.bg};color:${s.color};font-weight:700;text-align:center;border-radius:4px;`;
+  }
+
   private generateMembersHtml(members: any[]): string {
     const now = new Date();
     const dateStr = now.toLocaleDateString('tr-TR', {
@@ -541,6 +600,7 @@ export class MembersController {
     const getStatusLabel = (status: string) => {
       const statusMap: Record<string, string> = {
         PENDING: 'Onay Bekliyor',
+        APPROVED: 'Beklemede',
         ACTIVE: 'Aktif',
         INACTIVE: 'Pasif',
         RESIGNED: 'İstifa Etmiş',
@@ -548,6 +608,23 @@ export class MembersController {
         REJECTED: 'Reddedilmiş',
       };
       return statusMap[status] || status;
+    };
+
+    const getStatusRowColor = (status: string): string => {
+      const colors: Record<string, string> = {
+        PENDING: '#fff8e1',
+        APPROVED: '#e3f2fd',
+        ACTIVE: '#e8f5e9',
+        INACTIVE: '#f5f5f5',
+        RESIGNED: '#f3e5f5',
+        EXPELLED: '#212121',
+        REJECTED: '#ffebee',
+      };
+      return colors[status] || '#ffffff';
+    };
+
+    const getStatusTextColor = (status: string): string => {
+      return status === 'EXPELLED' ? '#ffffff' : '#333333';
     };
 
     const rows = members
@@ -558,23 +635,21 @@ export class MembersController {
         const email = member.email || '-';
         const nationalId = member.nationalId || '-';
         const registrationNumber = member.registrationNumber || '-';
-        const province = member.province?.name || '-';
-        const district = member.district?.name || '-';
+        const memberGroup = member.memberGroup?.name || '-';
+        const institution = member.institution?.name || '-';
         const status = getStatusLabel(member.status);
-        const positionTitle = '-';
+        const rowBg = getStatusRowColor(member.status);
+        const rowColor = getStatusTextColor(member.status);
 
+        const statusCellStyle = this.getStatusCellStyle(member.status);
         return `
-        <tr>
-          <td>${firstName}</td>
-          <td>${lastName}</td>
-          <td>${phone}</td>
-          <td>${email}</td>
-          <td>${nationalId}</td>
+        <tr style="background-color: ${rowBg}; color: ${rowColor};">
+          <td style="${statusCellStyle}">${status}</td>
           <td>${registrationNumber}</td>
-          <td>${province}</td>
-          <td>${district}</td>
-          <td>${status}</td>
-          <td>${positionTitle}</td>
+          <td>${memberGroup}</td>
+          <td>${firstName} ${lastName}</td>
+          <td>${nationalId}</td>
+          <td>${institution}</td>
         </tr>
       `;
       })
@@ -659,16 +734,12 @@ export class MembersController {
         <table>
           <thead>
             <tr>
-              <th>Ad</th>
-              <th>Soyad</th>
-              <th>Telefon</th>
-              <th>Email</th>
-              <th>TC Kimlik</th>
-              <th>Üye No</th>
-              <th>İl</th>
-              <th>İlçe</th>
-              <th>Durum</th>
-              <th>Pozisyon</th>
+              <th>Üyelik Durumu</th>
+              <th>Üye Kayıt No</th>
+              <th>Üye Grubu</th>
+              <th>Ad Soyadı</th>
+              <th>TC Kimlik Numarası</th>
+              <th>Çalıştığı Kurum</th>
             </tr>
           </thead>
           <tbody>

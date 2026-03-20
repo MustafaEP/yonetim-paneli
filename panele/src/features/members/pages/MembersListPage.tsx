@@ -94,6 +94,25 @@ const MembersListPage: React.FC = () => {
   const canChangeStatus = hasPermission('MEMBER_STATUS_CHANGE');
   const canDeleteMember = hasRole('ADMIN');
 
+  const extractRegistrationOrderValue = (registrationNumber?: string | null): number => {
+    if (!registrationNumber) return -1;
+    const digits = registrationNumber.match(/\d+/g)?.join('') ?? '';
+    if (!digits) return -1;
+    const parsed = Number(digits);
+    return Number.isNaN(parsed) ? -1 : parsed;
+  };
+
+  const sortMembersByRegistrationDesc = (members: MemberListItem[]): MemberListItem[] => {
+    return [...members].sort((a, b) => {
+      const regB = extractRegistrationOrderValue(b.registrationNumber);
+      const regA = extractRegistrationOrderValue(a.registrationNumber);
+      if (regB !== regA) return regB - regA;
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  };
+
   // Şubeleri yükle
   useEffect(() => {
     const loadBranches = async () => {
@@ -228,7 +247,7 @@ const MembersListPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: MemberStatus | 'ALL'): 'success' | 'warning' | 'error' | 'default' | 'info' => {
+  const getStatusColor = (status: MemberStatus | 'ALL'): 'success' | 'warning' | 'error' | 'default' | 'info' | 'secondary' => {
     if (status === 'ALL') return 'info';
     switch (status) {
       case 'ACTIVE':
@@ -238,14 +257,64 @@ const MembersListPage: React.FC = () => {
       case 'APPROVED':
         return 'info';
       case 'REJECTED':
-      case 'EXPELLED':
         return 'error';
+      case 'EXPELLED':
+        return 'default';
       case 'RESIGNED':
+        return 'secondary';
       case 'INACTIVE':
         return 'default';
       default:
         return 'info';
     }
+  };
+
+  const getMemberGroupLabel = (row: MemberListItem): string => {
+    const memberGroupName = row.memberGroup?.name?.trim();
+    if (memberGroupName) return memberGroupName;
+
+    // Eski/eksik kayıtlarda memberGroup boş olabilir; üyelik bilgisi etiketini fallback göster.
+    const membershipInfoLabel = (row as MemberListItem & {
+      membershipInfoOption?: { label?: string | null } | null;
+    }).membershipInfoOption?.label?.trim();
+
+    return membershipInfoLabel || '-';
+  };
+
+  // Sabit renk haritası; bilinmeyen gruplar için hash tabanlı palet
+  const MEMBER_GROUP_COLOR_MAP: Record<string, { chip: string; chipText: string; exportBg: string; exportText: string }> = {
+    'üye':         { chip: '#1565c0', chipText: '#fff', exportBg: '#BBDEFB', exportText: '0D47A1' },
+    'fahri üye':   { chip: '#e65100', chipText: '#fff', exportBg: '#FFE0B2', exportText: 'BF360C' },
+    'onursal üye': { chip: '#4a148c', chipText: '#fff', exportBg: '#EDE7F6', exportText: '4A148C' },
+    'aday üye':    { chip: '#006064', chipText: '#fff', exportBg: '#E0F7FA', exportText: '006064' },
+  };
+
+  const MEMBER_GROUP_PALETTE = [
+    { chip: '#1B5E20', chipText: '#fff', exportBg: '#C8E6C9', exportText: '1B5E20' },
+    { chip: '#880E4F', chipText: '#fff', exportBg: '#FCE4EC', exportText: '880E4F' },
+    { chip: '#1A237E', chipText: '#fff', exportBg: '#E8EAF6', exportText: '1A237E' },
+    { chip: '#BF360C', chipText: '#fff', exportBg: '#FBE9E7', exportText: 'BF360C' },
+    { chip: '#004D40', chipText: '#fff', exportBg: '#E0F2F1', exportText: '004D40' },
+    { chip: '#6A1B9A', chipText: '#fff', exportBg: '#F3E5F5', exportText: '6A1B9A' },
+    { chip: '#B71C1C', chipText: '#fff', exportBg: '#FFEBEE', exportText: 'B71C1C' },
+    { chip: '#01579B', chipText: '#fff', exportBg: '#E1F5FE', exportText: '01579B' },
+    { chip: '#558B2F', chipText: '#fff', exportBg: '#F1F8E9', exportText: '558B2F' },
+    { chip: '#F57F17', chipText: '#fff', exportBg: '#FFFDE7', exportText: 'F57F17' },
+    { chip: '#4E342E', chipText: '#fff', exportBg: '#EFEBE9', exportText: '4E342E' },
+    { chip: '#00695C', chipText: '#fff', exportBg: '#E0F2F1', exportText: '00695C' },
+  ];
+
+  const getMemberGroupColors = (name: string | null | undefined) => {
+    const EMPTY = { chip: '#9e9e9e', chipText: '#fff', exportBg: '#F5F5F5', exportText: '424242' };
+    if (!name || name === '-') return EMPTY;
+    const key = name.trim().toLowerCase();
+    const known = MEMBER_GROUP_COLOR_MAP[key];
+    if (known) return known;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return MEMBER_GROUP_PALETTE[Math.abs(hash) % MEMBER_GROUP_PALETTE.length];
   };
 
   // Status'a göre tema rengi config'i (MemberDetailPage'den alındı)
@@ -280,14 +349,14 @@ const MembersListPage: React.FC = () => {
         lightColor: theme.palette.error.light,
       },
       EXPELLED: {
-        mainColor: '#d32f2f',
-        darkColor: '#b71c1c',
-        lightColor: '#ef5350',
+        mainColor: '#212121',
+        darkColor: '#000000',
+        lightColor: '#616161',
       },
       RESIGNED: {
-        mainColor: theme.palette.grey[600],
-        darkColor: theme.palette.grey[800],
-        lightColor: theme.palette.grey[400],
+        mainColor: theme.palette.secondary.main,
+        darkColor: theme.palette.secondary.dark,
+        lightColor: theme.palette.secondary.light,
       },
       INACTIVE: {
         mainColor: '#757575',
@@ -300,7 +369,144 @@ const MembersListPage: React.FC = () => {
 
   const statusTheme = getStatusThemeConfig(statusFilter);
 
+  // Üyelik durumuna göre export hücre renkleri (HTML/PDF ve Excel için)
+  const STATUS_EXPORT_CELL: Record<string, { bg: string; text: string; bgRgb: string; textRgb: string }> = {
+    ACTIVE:   { bg: '#e8f5e9', text: '#1b5e20', bgRgb: 'E8F5E9', textRgb: '1B5E20' },
+    PENDING:  { bg: '#fff8e1', text: '#e65100', bgRgb: 'FFF8E1', textRgb: 'E65100' },
+    APPROVED: { bg: '#e3f2fd', text: '#0d47a1', bgRgb: 'E3F2FD', textRgb: '0D47A1' },
+    REJECTED: { bg: '#ffebee', text: '#b71c1c', bgRgb: 'FFEBEE', textRgb: 'B71C1C' },
+    EXPELLED: { bg: '#212121', text: '#ffffff', bgRgb: '212121', textRgb: 'FFFFFF' },
+    RESIGNED: { bg: '#f3e5f5', text: '#4a148c', bgRgb: 'F3E5F5', textRgb: '4A148C' },
+    INACTIVE: { bg: '#f5f5f5', text: '#424242', bgRgb: 'F5F5F5', textRgb: '424242' },
+  };
+
+  const exportColumns: ExportColumn[] = [
+    {
+      field: 'status',
+      headerName: 'Üyelik Durumu',
+      valueGetter: (_value, row) => getStatusLabel(row.status),
+      cellStyleGetter: (_value, row) => {
+        const s = STATUS_EXPORT_CELL[row.status] ?? STATUS_EXPORT_CELL.INACTIVE;
+        return `background-color:${s.bg};color:${s.text};font-weight:700;text-align:center;border-radius:4px;padding:3px 8px;`;
+      },
+      cellExcelStyleGetter: (_value, row) => {
+        const s = STATUS_EXPORT_CELL[row.status] ?? STATUS_EXPORT_CELL.INACTIVE;
+        return { bgRgb: s.bgRgb, textRgb: s.textRgb };
+      },
+    },
+    {
+      field: 'registrationNumber',
+      headerName: 'Üye Kayıt No',
+      valueGetter: (_value, row) => row.registrationNumber ?? '-',
+    },
+    {
+      field: 'memberGroup',
+      headerName: 'Üye Grubu',
+      valueGetter: (_value, row) => getMemberGroupLabel(row as MemberListItem),
+    },
+    {
+      field: 'fullName',
+      headerName: 'Ad Soyadı',
+      valueGetter: (_value, row) => `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim(),
+    },
+    {
+      field: 'nationalId',
+      headerName: 'TC Kimlik Numarası',
+      valueGetter: (_value, row) => row.nationalId ?? '-',
+    },
+    {
+      field: 'institution',
+      headerName: 'Çalıştığı Kurum',
+      valueGetter: (_value, row) => row.institution?.name ?? '-',
+    },
+  ];
+
+  // HTML/PDF export: satır arka plan rengi (tr style)
+  const getStatusRowStyleForExport = (row: MemberListItem): string => {
+    const status = row.status;
+    const map: Record<string, string> = {
+      ACTIVE: '#e8f5e9',
+      PENDING: '#fff8e1',
+      APPROVED: '#e3f2fd',
+      RESIGNED: '#f3e5f5',
+      INACTIVE: '#f5f5f5',
+      REJECTED: '#ffebee',
+      EXPELLED: '#212121',
+    };
+    const color = map[status] || '#ffffff';
+    if (status === 'EXPELLED') {
+      return `background-color: ${color}; color: #ffffff;`;
+    }
+    return `background-color: ${color};`;
+  };
+
+  // Excel export: satır arka plan rengi ({ bgRgb, textRgb } → # olmadan HEX)
+  const getStatusRowStyleForExcel = (row: MemberListItem): { bgRgb: string; textRgb: string } => {
+    const map: Record<string, { bgRgb: string; textRgb: string }> = {
+      ACTIVE:   { bgRgb: 'E8F5E9', textRgb: '1B5E20' },
+      PENDING:  { bgRgb: 'FFF8E1', textRgb: 'E65100' },
+      APPROVED: { bgRgb: 'E3F2FD', textRgb: '0D47A1' },
+      RESIGNED: { bgRgb: 'F3E5F5', textRgb: '4A148C' },
+      INACTIVE: { bgRgb: 'F5F5F5', textRgb: '424242' },
+      REJECTED: { bgRgb: 'FFEBEE', textRgb: 'B71C1C' },
+      EXPELLED: { bgRgb: '212121', textRgb: 'FFFFFF' },
+    };
+    return map[row.status] ?? { bgRgb: 'FFFFFF', textRgb: '212121' };
+  };
+
   const columns: GridColDef<MemberListItem>[] = [
+    {
+      field: 'status',
+      headerName: 'Üyelik Durumu',
+      flex: 1,
+      minWidth: 150,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params: GridRenderCellParams<MemberListItem>) => {
+        const statusColor = getStatusColor(params.row.status);
+        const isExpelled = params.row.status === 'EXPELLED';
+        const isResigned = params.row.status === 'RESIGNED';
+
+        // Safely get the color from palette with fallback
+        const getShadowColor = (color: string): string => {
+          const palette = theme.palette as any;
+          const colorObj = palette[color];
+          if (colorObj && colorObj.main) {
+            return colorObj.main;
+          }
+          // Fallback to grey if color not found
+          return theme.palette.grey[500];
+        };
+
+        const shadowColor = getShadowColor(statusColor);
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Chip
+              label={getStatusLabel(params.row.status)}
+              size="medium"
+              color={statusColor}
+              sx={{
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                height: '32px',
+                borderRadius: 2,
+                px: 1,
+                boxShadow: `0 2px 8px ${alpha(shadowColor, 0.25)}`,
+                ...(isExpelled && {
+                  backgroundColor: '#212121',
+                  color: '#fff',
+                }),
+                ...(isResigned && {
+                  backgroundColor: theme.palette.secondary.main,
+                  color: '#fff',
+                }),
+              }}
+            />
+          </Box>
+        );
+      },
+    },
     { 
       field: 'registrationNumber',
       headerName: 'Üye Kayıt No',
@@ -309,6 +515,37 @@ const MembersListPage: React.FC = () => {
       align: 'center',
       headerAlign: 'center',
       valueGetter: (_value, row: MemberListItem) => row.registrationNumber ?? '-',
+    },
+    {
+      field: 'memberGroup',
+      headerName: 'Üye Grubu',
+      flex: 1,
+      minWidth: 160,
+      align: 'center',
+      headerAlign: 'center',
+      valueGetter: (_value, row: MemberListItem) => getMemberGroupLabel(row),
+      renderCell: (params: GridRenderCellParams<MemberListItem>) => {
+        const label = getMemberGroupLabel(params.row);
+        const colors = getMemberGroupColors(params.row.memberGroup?.name);
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Chip
+              label={label}
+              size="medium"
+              sx={{
+                backgroundColor: colors.chip,
+                color: colors.chipText,
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                height: '28px',
+                borderRadius: 1.5,
+                px: 0.5,
+                boxShadow: `0 1px 4px ${alpha(colors.chip, 0.35)}`,
+              }}
+            />
+          </Box>
+        );
+      },
     },
     {
       field: 'fullName',
@@ -349,62 +586,6 @@ const MembersListPage: React.FC = () => {
       align: 'center',
       headerAlign: 'center',
       valueGetter: (_value, row: MemberListItem) => row.institution?.name ?? '-',
-    },
-    {
-      field: 'status',
-      headerName: 'Üyelik Durumu',
-      flex: 1,
-      minWidth: 150,
-      align: 'center',
-      headerAlign: 'center',
-      renderCell: (params: GridRenderCellParams<MemberListItem>) => {
-        const statusColor = getStatusColor(params.row.status);
-        
-        // Safely get the color from palette with fallback
-        const getShadowColor = (color: string): string => {
-          const palette = theme.palette as any;
-          const colorObj = palette[color];
-          if (colorObj && colorObj.main) {
-            return colorObj.main;
-          }
-          // Fallback to grey if color not found
-          return theme.palette.grey[500];
-        };
-        
-        const shadowColor = getShadowColor(statusColor);
-        
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-            <Chip
-              label={getStatusLabel(params.row.status)}
-              size="medium"
-              color={statusColor}
-              sx={{ 
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                height: '32px',
-                borderRadius: 2,
-                px: 1,
-                boxShadow: `0 2px 8px ${alpha(shadowColor, 0.25)}`,
-              }}
-            />
-          </Box>
-        );
-      },
-    },
-    {
-      field: 'createdAt',
-      headerName: 'Kayıt Tarihi',
-      flex: 1,
-      minWidth: 130,
-      align: 'center',
-      headerAlign: 'center',
-      valueGetter: (_value, row: MemberListItem) => {
-        if (row.createdAt) {
-          return new Date(row.createdAt).toLocaleDateString('tr-TR');
-        }
-        return '-';
-      },
     },
     {
       field: 'actions',
@@ -547,7 +728,7 @@ const MembersListPage: React.FC = () => {
         // Belirli bir durum seçildiğinde sadece o durumdaki üyeleri çek
         data = await getMembers(statusFilter);
       }
-      setRows(data);
+      setRows(sortMembersByRegistrationDesc(data));
     } catch (error: unknown) {
       console.error('Durum güncellenirken hata:', error);
       toast.showError(getApiErrorMessage(error, 'Durum güncellenirken bir hata oluştu'));
@@ -585,7 +766,7 @@ const MembersListPage: React.FC = () => {
         // Belirli bir durum seçildiğinde sadece o durumdaki üyeleri çek
         data = await getMembers(statusFilter);
       }
-      setRows(data);
+      setRows(sortMembersByRegistrationDesc(data));
     } catch (error: unknown) {
       console.error('Üye silinirken hata:', error);
       toast.showError(getApiErrorMessage(error, 'Üye silinirken bir hata oluştu'));
@@ -608,24 +789,14 @@ const MembersListPage: React.FC = () => {
           const results = await Promise.all(
             statuses.map(status => getMembers(status))
           );
-          // Tüm sonuçları birleştir ve kayıt tarihine göre sırala (yeni üyeler önce)
-          data = results.flat().sort((a, b) => {
-            const dateA = new Date(a.createdAt || 0).getTime();
-            const dateB = new Date(b.createdAt || 0).getTime();
-            return dateB - dateA; // Azalan sıralama (yeni önce)
-          });
+          // Tüm sonuçları birleştir
+          data = results.flat();
         } else {
           // Belirli bir durum seçildiğinde sadece o durumdaki üyeleri çek
-          // Backend zaten sıralıyor ama yine de frontend'de sıralayalım
           data = await getMembers(statusFilter);
-          data = data.sort((a, b) => {
-            const dateA = new Date(a.createdAt || 0).getTime();
-            const dateB = new Date(b.createdAt || 0).getTime();
-            return dateB - dateA; // Azalan sıralama (yeni önce)
-          });
         }
 
-        setRows(data);
+        setRows(sortMembersByRegistrationDesc(data));
       } catch (error: unknown) {
         console.error('Üyeler alınırken hata:', error);
         setError(getApiErrorMessage(error, 'Üyeler alınırken bir hata oluştu'));
@@ -1478,13 +1649,7 @@ const MembersListPage: React.FC = () => {
                 size="medium"
                 startIcon={<FileDownloadIcon />}
                 onClick={() => {
-                  const exportColumns: ExportColumn[] = columns.map((col) => ({
-                    field: col.field,
-                    headerName: col.headerName,
-                    width: col.width,
-                    valueGetter: col.valueGetter,
-                  }));
-                  exportToExcel(filteredRows, exportColumns, 'uyeler');
+                  exportToExcel(filteredRows, exportColumns, 'uyeler', getStatusRowStyleForExcel);
                 }}
                 sx={{ 
                   textTransform: 'none',
@@ -1514,7 +1679,7 @@ const MembersListPage: React.FC = () => {
                 startIcon={<PictureAsPdfIcon />}
                 onClick={async () => {
                   try {
-                    await exportMembersToPdf();
+                    await exportMembersToPdf(statusFilter);
                   } catch (error) {
                     console.error('PDF export hatası:', error);
                     toast.showError('PDF export sırasında bir hata oluştu');
@@ -1547,13 +1712,14 @@ const MembersListPage: React.FC = () => {
                 size="medium"
                 startIcon={<FileDownloadIcon />}
                 onClick={() => {
-                  const exportColumns: ExportColumn[] = columns.map((col) => ({
-                    field: col.field,
-                    headerName: col.headerName,
-                    width: col.width,
-                    valueGetter: col.valueGetter,
-                  }));
-                  exportToPDF(filteredRows, exportColumns, 'uyeler', 'Üyeler Listesi', toast.showInfo);
+                  exportToPDF(
+                    filteredRows,
+                    exportColumns,
+                    'uyeler',
+                    'Üyeler Listesi',
+                    toast.showInfo,
+                    getStatusRowStyleForExport,
+                  );
                 }}
                 sx={{ 
                   textTransform: 'none',
@@ -1614,11 +1780,7 @@ const MembersListPage: React.FC = () => {
               '& .MuiDataGrid-row': {
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  backgroundColor: alpha(statusTheme.mainColor, 0.03),
                   boxShadow: `inset 4px 0 0 ${statusTheme.mainColor}`,
-                },
-                '&:nth-of-type(even)': {
-                  backgroundColor: alpha(theme.palette.grey[50], 0.3),
                 },
               },
               '& .MuiDataGrid-footerContainer': {
@@ -1639,7 +1801,7 @@ const MembersListPage: React.FC = () => {
               initialState={{
                 pagination: { paginationModel: { pageSize: 25, page: 0 } },
                 sorting: {
-                  sortModel: [{ field: 'createdAt', sort: 'desc' }],
+                  sortModel: [{ field: 'registrationNumber', sort: 'desc' }],
                 },
               }}
               pageSizeOptions={[10, 25, 50, 100]}
