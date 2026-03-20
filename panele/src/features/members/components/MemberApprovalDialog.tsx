@@ -9,10 +9,7 @@ import {
   Typography,
   Box,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Autocomplete,
   CircularProgress,
   alpha,
 } from '@mui/material';
@@ -21,13 +18,14 @@ import { useTheme } from '@mui/material/styles';
 import { getTevkifatCenters, getTevkifatTitles } from '../../accounting/services/accountingApi';
 import { getBranches } from '../../regions/services/branchesApi';
 import { getMemberGroups } from '../../system/services/memberGroupsApi';
+import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import type { TevkifatCenter, TevkifatTitle } from '../../accounting/services/accountingApi';
 import type { Branch } from '../../regions/services/branchesApi';
 import type { MemberGroup } from '../../system/services/memberGroupsApi';
 
 export interface ApproveFormData {
   registrationNumber: string;
-  boardDecisionDate: string;
+  boardDecisionDate?: string;
   boardDecisionBookNo: string;
   tevkifatCenterId: string;
   tevkifatTitleId: string;
@@ -55,7 +53,7 @@ const MemberApprovalDialog: React.FC<MemberApprovalDialogProps> = ({
   const theme = useTheme();
   const [formData, setFormData] = useState<ApproveFormData>({
     registrationNumber: '',
-    boardDecisionDate: '',
+    boardDecisionDate: undefined,
     boardDecisionBookNo: '',
     tevkifatCenterId: '',
     tevkifatTitleId: '',
@@ -76,7 +74,7 @@ const MemberApprovalDialog: React.FC<MemberApprovalDialogProps> = ({
     if (open && !initialFormData) {
       setFormData({
         registrationNumber: '',
-        boardDecisionDate: '',
+        boardDecisionDate: undefined,
         boardDecisionBookNo: '',
         tevkifatCenterId: '',
         tevkifatTitleId: '',
@@ -123,22 +121,46 @@ const MemberApprovalDialog: React.FC<MemberApprovalDialogProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!formData.registrationNumber?.trim()) {
-      setError('Üye numarası zorunludur');
+    const missingFields: string[] = [];
+
+    if (!formData.registrationNumber?.trim()) missingFields.push('Üye Numarası');
+    if (!formData.boardDecisionDate?.trim()) missingFields.push('Yönetim Kurulu Karar Tarihi');
+    if (!formData.boardDecisionBookNo?.trim()) missingFields.push('Yönetim Kurulu Karar Defter No');
+    if (!formData.tevkifatCenterId) missingFields.push('Tevkifat Kurumu');
+    if (!formData.tevkifatTitleId) missingFields.push('Tevkifat Ünvanı');
+    if (!formData.branchId) missingFields.push('Şube');
+    if (!formData.memberGroupId) missingFields.push('Üye Grubu');
+
+    if (missingFields.length > 0) {
+      setError(`Lütfen şu alanları doldurun: ${missingFields.join(', ')}`);
       return;
     }
+
     setError('');
     try {
       await onConfirm({
         ...formData,
         registrationNumber: formData.registrationNumber.trim(),
         boardDecisionBookNo: formData.boardDecisionBookNo.trim(),
+        // `class-validator` `IsOptional` için `''` (empty string) değil `undefined` bekler.
+        // Bu yüzden tarih boşsa backend'e geçerli formatta olmayan '' göndermiyoruz.
+        boardDecisionDate: formData.boardDecisionDate?.trim()
+          ? formData.boardDecisionDate.trim()
+          : undefined,
       });
       onClose();
-    } catch {
-      setError('Onaylama sırasında bir hata oluştu');
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Onaylama sırasında bir hata oluştu'));
     }
   };
+
+  const selectedTevkifatCenter =
+    tevkifatCenters.find((c) => c.id === formData.tevkifatCenterId) ?? null;
+  const selectedTevkifatTitle =
+    tevkifatTitles.find((t) => t.id === formData.tevkifatTitleId) ?? null;
+  const selectedBranch = branches.find((b) => b.id === formData.branchId) ?? null;
+  const selectedMemberGroup =
+    memberGroups.find((g) => g.id === formData.memberGroupId) ?? null;
 
   return (
     <Dialog
@@ -205,6 +227,7 @@ const MemberApprovalDialog: React.FC<MemberApprovalDialogProps> = ({
               size="small"
               fullWidth
               InputLabelProps={{ shrink: true }}
+              required
             />
             <TextField
               label="Yönetim Kurulu Karar Defter No"
@@ -212,67 +235,86 @@ const MemberApprovalDialog: React.FC<MemberApprovalDialogProps> = ({
               onChange={handleChange('boardDecisionBookNo')}
               size="small"
               fullWidth
+              required
             />
-            <FormControl size="small" fullWidth>
-              <InputLabel>Tevkifat Kurumu</InputLabel>
-              <Select
-                value={formData.tevkifatCenterId || ''}
-                label="Tevkifat Kurumu"
-                onChange={handleChange('tevkifatCenterId')}
-              >
-                <MenuItem value="">Seçiniz</MenuItem>
-                {tevkifatCenters.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl size="small" fullWidth>
-              <InputLabel>Tevkifat Ünvanı</InputLabel>
-              <Select
-                value={formData.tevkifatTitleId || ''}
-                label="Tevkifat Ünvanı"
-                onChange={handleChange('tevkifatTitleId')}
-              >
-                <MenuItem value="">Seçiniz</MenuItem>
-                {tevkifatTitles.map((t) => (
-                  <MenuItem key={t.id} value={t.id}>
-                    {t.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl size="small" fullWidth>
-              <InputLabel>Şube</InputLabel>
-              <Select
-                value={formData.branchId || ''}
-                label="Şube"
-                onChange={handleChange('branchId')}
-              >
-                <MenuItem value="">Seçiniz</MenuItem>
-                {branches.map((b) => (
-                  <MenuItem key={b.id} value={b.id}>
-                    {b.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl size="small" fullWidth>
-              <InputLabel>Üye Grubu</InputLabel>
-              <Select
-                value={formData.memberGroupId || ''}
-                label="Üye Grubu"
-                onChange={handleChange('memberGroupId')}
-              >
-                <MenuItem value="">Seçiniz</MenuItem>
-                {memberGroups.map((g) => (
-                  <MenuItem key={g.id} value={g.id}>
-                    {g.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              size="small"
+              fullWidth
+              options={tevkifatCenters}
+              value={selectedTevkifatCenter}
+              onChange={(_, value) => {
+                setFormData((prev) => ({ ...prev, tevkifatCenterId: value?.id ?? '' }));
+                setError('');
+              }}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              noOptionsText="Sonuç bulunamadı"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Tevkifat Kurumu"
+                  placeholder="Seçiniz"
+                  required
+                />
+              )}
+              clearOnEscape
+            />
+            <Autocomplete
+              size="small"
+              fullWidth
+              options={tevkifatTitles}
+              value={selectedTevkifatTitle}
+              onChange={(_, value) => {
+                setFormData((prev) => ({ ...prev, tevkifatTitleId: value?.id ?? '' }));
+                setError('');
+              }}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              noOptionsText="Sonuç bulunamadı"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Tevkifat Ünvanı"
+                  placeholder="Seçiniz"
+                  required
+                />
+              )}
+              clearOnEscape
+            />
+            <Autocomplete
+              size="small"
+              fullWidth
+              options={branches}
+              value={selectedBranch}
+              onChange={(_, value) => {
+                setFormData((prev) => ({ ...prev, branchId: value?.id ?? '' }));
+                setError('');
+              }}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              noOptionsText="Sonuç bulunamadı"
+              renderInput={(params) => (
+                <TextField {...params} label="Şube" placeholder="Seçiniz" required />
+              )}
+              clearOnEscape
+            />
+            <Autocomplete
+              size="small"
+              fullWidth
+              options={memberGroups}
+              value={selectedMemberGroup}
+              onChange={(_, value) => {
+                setFormData((prev) => ({ ...prev, memberGroupId: value?.id ?? '' }));
+                setError('');
+              }}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              noOptionsText="Sonuç bulunamadı"
+              renderInput={(params) => (
+                <TextField {...params} label="Üye Grubu" placeholder="Seçiniz" required />
+              )}
+              clearOnEscape
+            />
           </Box>
         )}
       </DialogContent>

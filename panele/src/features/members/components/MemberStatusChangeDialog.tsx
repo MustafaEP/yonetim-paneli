@@ -16,11 +16,14 @@ import {
   TextField,
   FormHelperText,
   CircularProgress,
+  Chip,
+  Alert,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useTheme, alpha } from '@mui/material/styles';
 import type { MemberStatus } from '../../../types/member';
+import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
 
 interface MemberStatusChangeDialogProps {
   open: boolean;
@@ -51,9 +54,23 @@ const MemberStatusChangeDialog: React.FC<MemberStatusChangeDialogProps> = ({
   loading = false,
 }) => {
   const theme = useTheme();
+  const { getSettingValue } = useSystemSettings();
   const [selectedStatus, setSelectedStatus] = useState<MemberStatus>(currentStatus);
   const [reason, setReason] = useState<string>('');
   const [error, setError] = useState<string>('');
+
+  const allowCancellation = getSettingValue('MEMBERSHIP_ALLOW_CANCELLATION', 'true') === 'true';
+
+  const defaultReasonsRaw = getSettingValue('MEMBERSHIP_DEFAULT_CANCELLATION_REASONS', '');
+  const presetReasons = defaultReasonsRaw
+    ? defaultReasonsRaw.split(',').map((r) => r.trim()).filter((r) => r !== '')
+    : [];
+
+  const availableStatusOptions = statusOptions.filter((opt) => {
+    const isCancelStatus = ['RESIGNED', 'EXPELLED', 'INACTIVE'].includes(opt.value);
+    if (isCancelStatus && !allowCancellation) return false;
+    return true;
+  });
 
   useEffect(() => {
     if (open) {
@@ -155,6 +172,12 @@ const MemberStatusChangeDialog: React.FC<MemberStatusChangeDialogProps> = ({
             </Typography>
           </Box>
 
+          {!allowCancellation && (
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+              Üyelik iptali sistem ayarlarından devre dışı bırakılmıştır.
+            </Alert>
+          )}
+
           <FormControl fullWidth error={!!error && selectedStatus === currentStatus}>
             <InputLabel>Yeni Durum</InputLabel>
             <Select
@@ -162,11 +185,12 @@ const MemberStatusChangeDialog: React.FC<MemberStatusChangeDialogProps> = ({
               label="Yeni Durum"
               onChange={(e) => {
                 setSelectedStatus(e.target.value as MemberStatus);
+                setReason('');
                 setError('');
               }}
               disabled={loading}
             >
-              {statusOptions.map((option) => (
+              {availableStatusOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
                   <Box>
                     <Typography variant="body1" fontWeight={500}>
@@ -185,26 +209,52 @@ const MemberStatusChangeDialog: React.FC<MemberStatusChangeDialogProps> = ({
           </FormControl>
 
           {requiresReason && (
-            <TextField
-              label="Açıklama"
-              placeholder="Durum değişikliği için açıklama girin..."
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                setError('');
-              }}
-              disabled={loading}
-              multiline
-              rows={4}
-              fullWidth
-              required
-              error={!!error && requiresReason && !reason.trim()}
-              helperText={
-                error && requiresReason && !reason.trim()
-                  ? error
-                  : 'İstifa ve ihraç durumları için açıklama zorunludur'
-              }
-            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {presetReasons.length > 0 && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                    Hızlı seçim:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {presetReasons.map((preset) => (
+                      <Chip
+                        key={preset}
+                        label={preset}
+                        size="small"
+                        clickable
+                        disabled={loading}
+                        onClick={() => {
+                          setReason(preset);
+                          setError('');
+                        }}
+                        color={reason === preset ? 'primary' : 'default'}
+                        variant={reason === preset ? 'filled' : 'outlined'}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+              <TextField
+                label="Açıklama"
+                placeholder="Durum değişikliği için açıklama girin..."
+                value={reason}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                  setError('');
+                }}
+                disabled={loading}
+                multiline
+                rows={3}
+                fullWidth
+                required
+                error={!!error && requiresReason && !reason.trim()}
+                helperText={
+                  error && requiresReason && !reason.trim()
+                    ? error
+                    : 'İstifa ve ihraç durumları için açıklama zorunludur'
+                }
+              />
+            </Box>
           )}
         </Box>
       </DialogContent>

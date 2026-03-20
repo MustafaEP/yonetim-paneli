@@ -795,7 +795,9 @@ export class MembersService {
     }
 
     // Üyeyi soft delete yap (prisma middleware otomatik olarak soft delete yapar)
-    return this.prisma.member.delete({
+    // Not: `PrismaService` soft-delete extension'ı `prisma.extended` üzerinden çalışır.
+    // Bu yüzden burada `this.prisma.member.delete()` çağrısı FK constraint nedeniyle fiziksel delete'a sebep oluyordu.
+    return this.prisma.extended.member.delete({
       where: { id },
     });
   }

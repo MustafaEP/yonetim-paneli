@@ -79,6 +79,7 @@ import type { MemberDetail, MemberStatus, MemberHistory } from '../../../types/m
 import type { MemberPayment } from '../../payments/services/paymentsApi';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
+import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { getUserById, updateUserRoles } from '../../users/services/usersApi';
 import { getRoles } from '../../roles/services/rolesApi';
@@ -109,6 +110,7 @@ const MemberDetailPage = () => {
   const source = searchParams.get('source'); // 'application' veya 'waiting'
   const { hasPermission } = useAuth();
   const toast = useToast();
+  const { getSettingValue } = useSystemSettings();
 
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [loadingMember, setLoadingMember] = useState(true);
@@ -157,6 +159,11 @@ const MemberDetailPage = () => {
   // Durum değiştirme dialog state
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // İptal sebebi düzenleme state
+  const [editingReason, setEditingReason] = useState(false);
+  const [editReasonValue, setEditReasonValue] = useState('');
+  const [savingReason, setSavingReason] = useState(false);
 
   // Evrak ekleme dialog state
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -1995,7 +2002,7 @@ const MemberDetailPage = () => {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* İhraç/İstifa Açıklaması */}
-        {(member?.status === 'EXPELLED' || member?.status === 'RESIGNED') && member?.cancellationReason && (
+        {(member?.status === 'EXPELLED' || member?.status === 'RESIGNED') && (
           <Card
             elevation={0}
             sx={{
@@ -2042,46 +2049,145 @@ const MemberDetailPage = () => {
                   <CancelIcon sx={{ color: '#fff', fontSize: '1.5rem' }} />
                 </Box>
                 <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: 700,
-                      mb: 1.5,
-                      fontSize: { xs: '1.1rem', sm: '1.25rem' },
-                      color: member.status === 'EXPELLED' ? theme.palette.error.dark : theme.palette.grey[800],
-                    }}
-                  >
-                    {member.status === 'EXPELLED' ? 'İhraç Nedeni' : 'İstifa Nedeni'}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      color: theme.palette.text.primary,
-                      lineHeight: 1.7,
-                      fontSize: { xs: '0.9rem', sm: '1rem' },
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {member.cancellationReason}
-                  </Typography>
-                  {member.cancelledAt && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
                     <Typography
-                      variant="caption"
+                      variant="h6"
                       sx={{
-                        display: 'block',
-                        mt: 2,
-                        color: theme.palette.text.secondary,
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
+                        fontWeight: 700,
+                        fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                        color: member.status === 'EXPELLED' ? theme.palette.error.dark : theme.palette.grey[800],
                       }}
                     >
-                      Tarih: {new Date(member.cancelledAt).toLocaleDateString('tr-TR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
+                      {member.status === 'EXPELLED' ? 'İhraç Nedeni' : 'İstifa Nedeni'}
                     </Typography>
+                    {!editingReason && hasPermission('members:update') && (
+                      <Tooltip title="Sebebi düzenle">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setEditReasonValue(member.cancellationReason ?? '');
+                            setEditingReason(true);
+                          }}
+                          sx={{ color: member.status === 'EXPELLED' ? theme.palette.error.main : theme.palette.grey[600] }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
+
+                  {editingReason ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {(() => {
+                        const raw = getSettingValue('MEMBERSHIP_DEFAULT_CANCELLATION_REASONS', '');
+                        const presets = raw ? raw.split(',').map((r) => r.trim()).filter(Boolean) : [];
+                        return presets.length > 0 ? (
+                          <Box>
+                            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.75, display: 'block' }}>
+                              Hızlı seçim:
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                              {presets.map((preset) => (
+                                <Chip
+                                  key={preset}
+                                  label={preset}
+                                  size="small"
+                                  clickable
+                                  disabled={savingReason}
+                                  onClick={() => setEditReasonValue(preset)}
+                                  color={editReasonValue === preset ? 'primary' : 'default'}
+                                  variant={editReasonValue === preset ? 'filled' : 'outlined'}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        ) : null;
+                      })()}
+                      <TextField
+                        value={editReasonValue}
+                        onChange={(e) => setEditReasonValue(e.target.value)}
+                        multiline
+                        rows={3}
+                        fullWidth
+                        size="small"
+                        placeholder="İptal sebebini girin..."
+                        disabled={savingReason}
+                        autoFocus
+                        sx={{ backgroundColor: alpha(theme.palette.background.paper, 0.8), borderRadius: 1 }}
+                      />
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={savingReason}
+                          onClick={() => setEditingReason(false)}
+                          startIcon={<CloseIcon />}
+                        >
+                          Vazgeç
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          disabled={savingReason || !editReasonValue.trim()}
+                          onClick={async () => {
+                            setSavingReason(true);
+                            try {
+                              await updateMember(member.id, { cancellationReason: editReasonValue.trim() });
+                              const updated = await getMemberById(member.id);
+                              setMember(updated);
+                              setEditingReason(false);
+                              toast.showSuccess('İptal sebebi güncellendi');
+                            } catch {
+                              toast.showError('İptal sebebi güncellenirken hata oluştu');
+                            } finally {
+                              setSavingReason(false);
+                            }
+                          }}
+                          startIcon={savingReason ? <CircularProgress size={14} /> : <CheckIcon />}
+                        >
+                          Kaydet
+                        </Button>
+                      </Box>
+                    </Box>
+                  ) : (
+                    <>
+                      {member.cancellationReason ? (
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            color: theme.palette.text.primary,
+                            lineHeight: 1.7,
+                            fontSize: { xs: '0.9rem', sm: '1rem' },
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {member.cancellationReason}
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          Sebep girilmemiş
+                        </Typography>
+                      )}
+                      {member.cancelledAt && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'block',
+                            mt: 2,
+                            color: theme.palette.text.secondary,
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                          }}
+                        >
+                          Tarih: {new Date(member.cancelledAt).toLocaleDateString('tr-TR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </Typography>
+                      )}
+                    </>
                   )}
                 </Box>
               </Box>
@@ -2380,7 +2486,11 @@ const MemberDetailPage = () => {
             <SectionCard title="Üyelik Bilgileri" icon={<PersonIcon />}>
               <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(2, 1fr)' }}>
                 <InfoRow label="Üyelik Durumu" value={statusConfig.label} icon={<CheckCircleIcon />} />
-                <InfoRow label="Üye Grubu" value={member?.membershipInfoOption?.label || '-'} icon={<PersonIcon />} />
+                <InfoRow
+                  label="Üye Grubu"
+                  value={member?.memberGroup?.name || member?.membershipInfoOption?.label || '-'}
+                  icon={<PersonIcon />}
+                />
                 <InfoRow label="Yönetim Karar Defteri No" value={member?.boardDecisionBookNo || '-'} icon={<BadgeIcon />} />
                 <InfoRow
                   label="Yönetim Kurulu Karar Tarihi"

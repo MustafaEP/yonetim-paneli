@@ -274,38 +274,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                 </Button>
               </Box>
               <Grid container spacing={3}>
-            <Grid
-              size={{
-                xs: 12,
-                md: 6
-              }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={getValue('MEMBERSHIP_AUTO_APPROVE') === 'true'}
-                    onChange={(e) =>
-                      handleChange('MEMBERSHIP_AUTO_APPROVE', e.target.checked ? 'true' : 'false')
-                    }
-                    disabled={!canManage || loading}
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      Başvuruları Otomatik Onayla
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Aktif olduğunda yeni üye başvuruları otomatik olarak onaylanır
-                    </Typography>
-                  </Box>
-                }
-                sx={{ m: 0, width: '100%' }}
-              />
-              {localSettings['MEMBERSHIP_AUTO_APPROVE'] !== undefined && (
-                <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ mt: 1, ml: 5 }} />
-              )}
-            </Grid>
-
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth

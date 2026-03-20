@@ -274,9 +274,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
 
               <ListItemButton
                 component={Link}
-                to="/members/waiting"
+                to="/members"
                 selected={
-                  location.pathname === '/members/waiting' ||
+                  location.pathname === '/members' ||
                   (location.pathname.startsWith('/members/waiting') &&
                     !location.pathname.startsWith('/members/applications') &&
                     !location.pathname.startsWith('/members/waiting') &&

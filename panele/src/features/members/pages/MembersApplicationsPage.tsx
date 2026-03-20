@@ -45,7 +45,6 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import ConfirmDialog from '../../../shared/components/common/ConfirmDialog';
 import MemberApprovalDialog, { type ApproveFormData } from '../components/MemberApprovalDialog';
-import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
 
@@ -248,12 +247,12 @@ const MembersApplicationsPage: React.FC = () => {
     const id = confirmDialog.memberId;
 
     setProcessingId(id);
-    setConfirmDialog({ open: false, type: null, memberId: null });
 
     try {
       const approveData = {
         registrationNumber: data.registrationNumber.trim(),
-        boardDecisionDate: data.boardDecisionDate,
+        // Backend `@IsOptional` + `@IsDateString` beklediği için boş string gönderme.
+        boardDecisionDate: data.boardDecisionDate?.trim() ? data.boardDecisionDate.trim() : undefined,
         boardDecisionBookNo: data.boardDecisionBookNo.trim(),
         tevkifatCenterId: data.tevkifatCenterId,
         tevkifatTitleId: data.tevkifatTitleId,
@@ -272,7 +271,6 @@ const MembersApplicationsPage: React.FC = () => {
       }
     } catch (e) {
       console.error('Başvuru onaylanırken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Başvuru onaylanırken bir hata oluştu. Eksik bilgileri tamamlayıp tekrar deneyin.'));
       throw e; // Re-throw so the dialog can handle it
     } finally {
       setProcessingId(null);
@@ -284,7 +282,6 @@ const MembersApplicationsPage: React.FC = () => {
     const id = confirmDialog.memberId;
 
     setProcessingId(id);
-    setConfirmDialog({ open: false, type: null, memberId: null });
 
     try {
       await rejectMember(id);
@@ -431,7 +428,6 @@ const MembersApplicationsPage: React.FC = () => {
       renderCell: (params: GridRenderCellParams<MemberApplicationRow>) => {
         const disabled = processingId === params.row.id;
         const isPending = params.row.status === 'PENDING';
-        const isRejected = params.row.status === 'REJECTED';
         return (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <Tooltip title="Detayları Görüntüle" arrow placement="top">
