@@ -142,6 +142,35 @@ export class UpdateMemberDto {
   @IsEnum(EducationStatus)
   educationStatus?: EducationStatus;
 
+  @ApiProperty({
+    description: 'Doğum tarihi',
+    type: String,
+    format: 'date',
+    required: false,
+  })
+  @IsDateString()
+  @IsOptional()
+  birthDate?: string;
+
+  // 🔹 İkamet Bilgileri
+  @ApiProperty({
+    description: 'İkamet ili ID',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  provinceId?: string;
+
+  @ApiProperty({
+    description: 'İkamet ilçesi ID',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  districtId?: string;
+
   // 🔹 Çalışma & Kurum Bilgileri
   @ApiProperty({
     description: 'Çalıştığı kurum ID',
