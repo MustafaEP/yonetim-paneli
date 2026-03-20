@@ -145,20 +145,36 @@ const MainLayout: React.FC = () => {
     plans: 'Planlar',
     debts: 'Borçlular',
     regions: 'Bölgeler',
+    institutions: 'Kurumlar',
+    branches: 'Şubeler',
     provinces: 'İller',
     districts: 'İlçeler',
+    edit: 'Güncelle',
+    status: 'Üye Hareketleri',
+    'tevkifat-centers': 'Tevkifat Merkezleri',
+    'tevfikat-centers': 'Tevkifat Merkezleri',
+    payments: 'Kesinti Sorgulama',
+    'quick-entry': 'Kesinti Girişi',
+    advances: 'Avans Sistemi',
+    invoices: 'Fatura Sistemi',
+    content: 'İçerik Yönetimi',
+    documents: 'Dokümanlar',
+    templates: 'PDF Şablonları',
+    notifications: 'Bildirimler',
+    settings: 'Sistem Ayarları',
+    logs: 'Sistem Logları',
   };
 
   // Üye detay sayfasında üye bilgisini çek (sadece CUID benzeri segment üye ID kabul edilir)
   const looksLikeMemberId = (segment: string) => /^c[a-z0-9]{24}$/i.test(segment);
   useEffect(() => {
     const currentPathnames = location.pathname.split('/').filter((x) => x);
-    const isMemberDetailPage =
-      currentPathnames.length === 2 &&
+    const isMemberPathWithId =
       currentPathnames[0] === 'members' &&
+      currentPathnames.length >= 2 &&
       looksLikeMemberId(currentPathnames[1]);
-    
-    if (isMemberDetailPage) {
+
+    if (isMemberPathWithId) {
       const memberId = currentPathnames[1];
       // Eğer aynı üye zaten yüklenmişse tekrar yükleme
       if (memberInfo?.id === memberId) {
@@ -177,7 +193,7 @@ const MainLayout: React.FC = () => {
           setMemberInfo(null);
         });
     } else {
-      // Üye detay sayfası değilse state'i temizle
+      // Üye ID içermeyen sayfadaysak state'i temizle
       setMemberInfo(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,6 +373,10 @@ const MainLayout: React.FC = () => {
                 Ana Sayfa
               </MuiLink>
               {pathnames.map((value, index) => {
+                if (value === 'accounting' || value === 'system') {
+                  return null;
+                }
+
                 const last = index === pathnames.length - 1;
                 const to = `/${pathnames.slice(0, index + 1).join('/')}`;
                 
@@ -364,6 +384,9 @@ const MainLayout: React.FC = () => {
                 let breadcrumbText = breadcrumbNameMap[value] || value.charAt(0).toUpperCase() + value.slice(1);
                 if (index === 1 && pathnames[0] === 'members' && memberInfo && memberInfo.id === value) {
                   breadcrumbText = memberInfo.name;
+                }
+                if (pathnames[0] === 'documents' && value === 'members') {
+                  breadcrumbText = 'PDF Oluşturma Geçmişi';
                 }
 
                 return last ? (
