@@ -2978,12 +2978,25 @@ async function main() {
   const memberGroups = [
     { name: 'Üye', description: 'Üye grubu', order: 1 },
   ];
+  const createdMemberGroups: { id: string }[] = [];
   for (const group of memberGroups) {
-    await prisma.memberGroup.create({
+    const createdGroup = await prisma.memberGroup.create({
       data: group,
     });
+    createdMemberGroups.push({ id: createdGroup.id });
   }
   console.log(`   - ${memberGroups.length} üye grubu eklendi`);
+
+  // Üye grubu oluşturmadan önce eklenen üyelerde memberGroupId boş kalabiliyor.
+  // Varsayılan üye grubunu bu kayıtlar için geriye dönük olarak doldur.
+  const defaultMemberGroupId = createdMemberGroups[0]?.id ?? null;
+  if (defaultMemberGroupId) {
+    const updatedMembers = await prisma.member.updateMany({
+      where: { memberGroupId: null },
+      data: { memberGroupId: defaultMemberGroupId },
+    });
+    console.log(`   - ${updatedMembers.count} üyenin grubu varsayılan olarak dolduruldu`);
+  }
 
   // 🔹 Meslek/Unvan (Profession)
   console.log('💼 Meslek/Unvan ekleniyor...');
@@ -3121,7 +3134,7 @@ async function main() {
         
         const memberGroupId = memberGroupsForNewMembers.length > 0
           ? memberGroupsForNewMembers[0].id
-          : null;
+          : defaultMemberGroupId;
         
         // Profesyon bilgisi
         const professionId = professionIdsForNewMembers.length > 0

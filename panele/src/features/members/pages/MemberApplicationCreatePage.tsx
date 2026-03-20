@@ -94,7 +94,7 @@ const MemberApplicationCreatePage: React.FC = () => {
   const hasMemberList = hasPermission('MEMBER_LIST');
 
   const searchParams = new URLSearchParams(location.search);
-  const prefillNationalId = searchParams.get('nationalId') ?? '';
+  const prefillNationalId = (searchParams.get('nationalId') ?? '').replace(/\D/g, '').slice(0, 11);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -574,6 +574,21 @@ const MemberApplicationCreatePage: React.FC = () => {
       setCheckingNationalId(false);
     }
   }, [getNationalIdError]);
+
+  // Sayfa açılırken query ile gelen TC doluysa, debounce mekanizmasına takılmadan kontrolü otomatik başlat.
+  const lastPrefillCheckedNationalIdRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    if (!prefillNationalId) return;
+    if (prefillNationalId.length !== 11) return;
+    if (lastPrefillCheckedNationalIdRef.current === prefillNationalId) return;
+
+    const err = getNationalIdError(prefillNationalId);
+    if (err) return;
+
+    lastPrefillCheckedNationalIdRef.current = prefillNationalId;
+    checkNationalId(prefillNationalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillNationalId, checkNationalId, getNationalIdError]);
 
   const handleChange = useCallback((field: keyof typeof form, value: string) => {
     // Eğer il/ilçe disabled ise değişikliğe izin verme

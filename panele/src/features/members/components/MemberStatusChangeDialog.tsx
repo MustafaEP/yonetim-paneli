@@ -35,6 +35,7 @@ interface MemberStatusChangeDialogProps {
 }
 
 const statusOptions: Array<{ value: MemberStatus; label: string; description: string }> = [
+  { value: 'APPROVED', label: 'Beklemede', description: 'Üye onaylandı, aktifleşme bekliyor' },
   { value: 'ACTIVE', label: 'Aktif', description: 'Üye aktif durumda' },
   { value: 'INACTIVE', label: 'Pasif', description: 'Üye pasif durumda' },
   { value: 'RESIGNED', label: 'İstifa', description: 'Üye istifa etmiş' },

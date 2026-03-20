@@ -278,9 +278,15 @@ export const deleteMemberHistory = async (id: string): Promise<void> => {
 };
 
 // 🔹 Üyeleri PDF olarak export et: GET /members/export/pdf
-export const exportMembersToPdf = async (): Promise<void> => {
+// status: 'ALL' veya belirtilmezse tüm durumlar dahil edilir.
+export const exportMembersToPdf = async (status?: string): Promise<void> => {
+  const params: Record<string, string> = {};
+  if (status && status !== 'ALL') {
+    params.status = status;
+  }
   const res = await httpClient.get('/members/export/pdf', {
     responseType: 'blob',
+    params,
   });
   const url = window.URL.createObjectURL(new Blob([res.data]));
   const link = document.createElement('a');
