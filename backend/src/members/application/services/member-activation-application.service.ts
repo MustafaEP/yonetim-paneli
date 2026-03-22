@@ -28,6 +28,8 @@ import {
 export interface ActivateMemberCommand {
   memberId: string;
   activatedByUserId: string;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 @Injectable()
@@ -74,6 +76,8 @@ export class MemberActivationApplicationService {
         command.activatedByUserId,
         oldData,
         newData,
+        command.ipAddress,
+        command.userAgent,
       );
 
       return member;

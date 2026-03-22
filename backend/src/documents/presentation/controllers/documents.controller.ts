@@ -28,6 +28,7 @@ import { CreateDocumentTemplateDto } from '../../application/dto/create-document
 import { UpdateDocumentTemplateDto } from '../../application/dto/update-document-template.dto';
 import {
   GenerateDocumentDto,
+  GenerateMemberListDocumentDto,
   UploadMemberDocumentDto,
   ApproveDocumentDto,
   RejectDocumentDto,
@@ -129,6 +130,19 @@ export class DocumentsController {
     return this.documentsService.generateDocument(dto, user.userId);
   }
 
+  // Toplu üye listesi PDF oluştur (tek PDF, birden fazla üye)
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Post('generate-list')
+  @ApiOperation({ summary: 'Toplu üye listesi PDF dokümanı oluştur (tek PDF)' })
+  @ApiBody({ type: GenerateMemberListDocumentDto })
+  @ApiResponse({ status: 201, description: 'Toplu liste PDF oluşturuldu' })
+  async generateMemberListDocument(
+    @Body() dto: GenerateMemberListDocumentDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.generateMemberListDocument(dto, user.userId);
+  }
+
   // Doküman yükle
   @Permissions(Permission.DOCUMENT_GENERATE_PDF)
   @Post('members/:memberId/upload')
@@ -188,6 +202,18 @@ export class DocumentsController {
     @Res() res: Response,
   ) {
     await this.documentsService.downloadDocument(documentId, res);
+  }
+
+  // Üye dokümanını sil
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Delete(':documentId')
+  @ApiOperation({ summary: 'Üye dokümanını sil' })
+  @ApiParam({ name: 'documentId', description: 'Doküman ID' })
+  @ApiResponse({ status: 200, description: 'Doküman silindi' })
+  @ApiResponse({ status: 404, description: 'Doküman bulunamadı' })
+  async deleteMemberDocument(@Param('documentId') documentId: string) {
+    await this.documentsService.deleteMemberDocument(documentId);
+    return { message: 'Doküman silindi' };
   }
 
   // Admin: İnceleme bekleyen dokümanları getir

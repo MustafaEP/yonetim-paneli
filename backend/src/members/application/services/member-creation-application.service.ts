@@ -8,14 +8,13 @@
  * - Domain Service çağırma
  * - Cross-cutting concerns (history)
  * - Repository koordinasyonu
- * - Re-registration (aynı TC ile yeniden üyelik) akışı
+ * - Yeniden üyelik: iptal edilmiş kayda `previousCancelledMemberId` ile bağlı yeni Member satırı
  */
 import {
   Injectable,
   BadRequestException,
   Logger,
   Inject,
-  NotFoundException,
 } from '@nestjs/common';
 import {
   Member,
@@ -23,10 +22,8 @@ import {
   MemberSourceEnum,
   GenderEnum,
   EducationStatusEnum,
-  UpdateMemberData,
 } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
-import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import { MemberRegistrationDomainService } from '../../domain/services/member-registration-domain.service';
 import { CreateMemberApplicationDto } from '../dto/create-member-application.dto';
@@ -34,16 +31,15 @@ import { MemberScopeService } from '../../member-scope.service';
 import { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
 import { MemberSource } from '@prisma/client';
 import { NationalId } from '../../domain/value-objects/national-id.vo';
-import {
-  MemberStatus,
-  MemberStatusEnum,
-} from '../../domain/value-objects/member-status.vo';
+import { MemberStatus } from '../../domain/value-objects/member-status.vo';
 
 export interface CreateMemberCommand {
   dto: CreateMemberApplicationDto;
   createdByUserId?: string;
   previousCancelledMemberId?: string;
   user?: CurrentUserData;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 @Injectable()
@@ -53,8 +49,6 @@ export class MemberCreationApplicationService {
   constructor(
     @Inject('MemberRepository')
     private readonly memberRepository: MemberRepository,
-    @Inject('MemberMembershipPeriodRepository')
-    private readonly membershipPeriodRepository: MemberMembershipPeriodRepository,
     private readonly memberHistoryService: MemberHistoryService,
     private readonly registrationDomainService: MemberRegistrationDomainService,
     private readonly scopeService: MemberScopeService,
@@ -75,7 +69,14 @@ export class MemberCreationApplicationService {
    * 9. History log
    */
   async createApplication(command: CreateMemberCommand): Promise<Member> {
-    const { dto, createdByUserId, previousCancelledMemberId, user } = command;
+    const {
+      dto,
+      createdByUserId,
+      previousCancelledMemberId,
+      user,
+      ipAddress,
+      userAgent,
+    } = command;
 
     // 1. Source validation
     const source = (dto.source || MemberSource.DIRECT) as MemberSourceEnum;
@@ -202,29 +203,76 @@ export class MemberCreationApplicationService {
         undefined;
     }
 
-    // 6b. Aynı TC ile mevcut üye kontrolü – re-registration veya hata
-    const existingMember =
-      await this.memberRepository.findByNationalId(nationalId);
-    if (existingMember) {
-      const existingStatus = existingMember.status.toString();
-      const cancelledStatuses = ['RESIGNED', 'EXPELLED', 'INACTIVE'];
-      if (cancelledStatuses.includes(existingStatus) && allowReRegistration) {
-        // Re-registration: iptal edilmiş üyeyi güncelle (previousCancelledMemberId frontend'den gelmemiş olabilir)
-        const targetId = previousCancelledMemberId || existingMember.id;
-        createData.previousCancelledMemberId = targetId;
-        return this.reRegisterMember(createData, createdByUserId);
-      }
+    // 6b. Devam eden başvuru / üyelik (aynı TC ile ikinci açık kayıt yok)
+    const blockingMember =
+      await this.memberRepository.findBlockingMembershipByNationalId(
+        nationalId,
+      );
+    if (blockingMember) {
       throw new BadRequestException(
         'Bu TC kimlik numarasına ait üye kaydı mevcuttur. Yeniden üyelik için önceki üyeliğin iptal edilmiş olması gerekir.',
       );
     }
 
-    // 7. Re-registration: previousCancelledMemberId ile doğrudan güncelleme
-    if (previousCancelledMemberId && allowReRegistration) {
-      return this.reRegisterMember(createData, createdByUserId);
+    const latestCancelled =
+      await this.memberRepository.findCancelledByNationalId(nationalId);
+    if (latestCancelled && !allowReRegistration) {
+      throw new BadRequestException(
+        'Bu TC kimlik numarasına ait iptal edilmiş üye bulunmaktadır ve yeniden kayıt şu anda kapalıdır.',
+      );
     }
 
-    // 8. Initial status determination (Domain Service)
+    const cancelledStatuses = ['RESIGNED', 'EXPELLED', 'INACTIVE'];
+    let resolvedPreviousId: string | undefined;
+
+    if (previousCancelledMemberId) {
+      if (!allowReRegistration) {
+        throw new BadRequestException(
+          'Yeniden kayıt şu anda devre dışı bırakılmıştır',
+        );
+      }
+      const prev = await this.memberRepository.findById(
+        previousCancelledMemberId,
+      );
+      if (!prev) {
+        throw new BadRequestException('Belirtilen önceki üye kaydı bulunamadı.');
+      }
+      if (prev.nationalId.getValue() !== nationalId.getValue()) {
+        throw new BadRequestException(
+          'Önceki üye kaydı ile TC kimlik numarası eşleşmiyor.',
+        );
+      }
+      if (!cancelledStatuses.includes(prev.status.toString())) {
+        throw new BadRequestException(
+          'Yeniden üyelik yalnızca istifa, ihraç veya pasif kayıtlar için yapılabilir.',
+        );
+      }
+      resolvedPreviousId = previousCancelledMemberId;
+    } else if (latestCancelled && allowReRegistration) {
+      resolvedPreviousId = latestCancelled.id;
+    }
+
+    if (resolvedPreviousId) {
+      createData.previousCancelledMemberId = resolvedPreviousId;
+    }
+
+    return this.persistNewMemberApplication(
+      createData,
+      createdByUserId,
+      ipAddress,
+      userAgent,
+    );
+  }
+
+  /**
+   * Yeni Member satırı (ilk başvuru veya iptal sonrası yeniden kayıt).
+   */
+  private async persistNewMemberApplication(
+    createData: CreateMemberData,
+    createdByUserId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<Member> {
     const defaultStatus =
       await this.registrationDomainService.configAdapter.getDefaultStatus();
     const autoApprove =
@@ -238,10 +286,8 @@ export class MemberCreationApplicationService {
         requireApproval,
       );
 
-    // 9. Entity oluştur (Member.create() PENDING oluşturur, status'ü sonra set edeceğiz)
     const member = Member.create(createData);
 
-    // Status ve approval bilgilerini set et (private field'lara erişim için)
     if (statusInfo.status !== 'PENDING') {
       (member as any)._status = MemberStatus.fromString(statusInfo.status);
     }
@@ -250,10 +296,8 @@ export class MemberCreationApplicationService {
       (member as any)._approvedAt = new Date();
     }
 
-    // 10. Repository'ye kaydet
     const savedMember = await this.memberRepository.create(member);
 
-    // 11. History log
     const memberData: Record<string, any> = {
       firstName: savedMember.firstName,
       lastName: savedMember.lastName,
@@ -267,72 +311,10 @@ export class MemberCreationApplicationService {
       savedMember.id,
       createdByUserId || '',
       memberData,
+      ipAddress,
+      userAgent,
     );
 
     return savedMember;
-  }
-
-  /**
-   * Yeniden üyelik: iptal edilmiş üyeyi başvuru (PENDING) olarak güncelle.
-   * Üye numarası ve onay alanları başvuruyu onaylayan kişi tarafından doldurulacak; dönem kaydı onay sırasında oluşturulur.
-   */
-  private async reRegisterMember(
-    createData: CreateMemberData,
-    createdByUserId?: string,
-  ): Promise<Member> {
-    const memberId = createData.previousCancelledMemberId!;
-    const member = await this.memberRepository.findById(memberId);
-    if (!member) {
-      throw new NotFoundException(
-        `İptal edilmiş üye kaydı bulunamadı: ${memberId}`,
-      );
-    }
-
-    const updateData: UpdateMemberData = {
-      firstName: createData.firstName,
-      lastName: createData.lastName,
-      phone: createData.phone,
-      email: createData.email ?? undefined,
-      motherName: createData.motherName,
-      fatherName: createData.fatherName,
-      birthplace: createData.birthplace,
-      gender: createData.gender,
-      educationStatus: createData.educationStatus,
-      institutionId: createData.institutionId,
-      provinceId: createData.provinceId,
-      districtId: createData.districtId,
-      dutyUnit: createData.dutyUnit ?? undefined,
-      institutionAddress: createData.institutionAddress ?? undefined,
-      institutionProvinceId: createData.institutionProvinceId ?? undefined,
-      institutionDistrictId: createData.institutionDistrictId ?? undefined,
-      professionId: createData.professionId ?? undefined,
-      institutionRegNo: createData.institutionRegNo ?? undefined,
-      staffTitleCode: createData.staffTitleCode ?? undefined,
-      membershipInfoOptionId: createData.membershipInfoOptionId ?? undefined,
-      memberGroupId: createData.memberGroupId ?? undefined,
-      branchId: createData.branchId ?? undefined,
-      status: MemberStatusEnum.PENDING,
-      approvedAt: null,
-      approvedByUserId: null,
-    };
-
-    const oldStatus = member.status.toString();
-    member.update(updateData);
-
-    await this.memberRepository.save(member);
-
-    await this.memberHistoryService.logMemberUpdate(
-      member.id,
-      createdByUserId || '',
-      { status: oldStatus, note: 'yeniden üyelik başvurusu' },
-      {
-        firstName: member.firstName,
-        lastName: member.lastName,
-        nationalId: member.nationalId.getValue(),
-        status: member.status.toString(),
-      },
-    );
-
-    return member;
   }
 }

@@ -98,9 +98,7 @@ export class MembersService {
         isActive: true,
         ...whereScope, // Scope filtresini ekle
       },
-      orderBy: {
-        cancelledAt: 'desc', // En son iptal edileni al
-      },
+      orderBy: [{ cancelledAt: 'desc' }, { createdAt: 'desc' }],
       include: {
         province: {
           select: { name: true },
@@ -124,6 +122,8 @@ export class MembersService {
     createdByUserId?: string,
     previousCancelledMemberId?: string,
     user?: CurrentUserData,
+    ipAddress?: string,
+    userAgent?: string,
   ) {
     const member =
       await this.memberCreationApplicationService.createApplication({
@@ -131,6 +131,8 @@ export class MembersService {
         createdByUserId,
         previousCancelledMemberId,
         user,
+        ipAddress,
+        userAgent,
       });
 
     // Domain Entity → Prisma model'e dönüştür
@@ -396,25 +398,6 @@ export class MembersService {
     };
   }
 
-  /**
-   * Tek bir üye hareket geçmişi kaydını sil.
-   */
-  async deleteMemberHistory(id: string) {
-    const existing = await this.prisma.memberHistory.findUnique({
-      where: { id },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Üye hareket kaydı bulunamadı');
-    }
-
-    await this.prisma.memberHistory.delete({
-      where: { id },
-    });
-
-    return { success: true };
-  }
-
   // Reddedilen üyeler: scope'a göre
   async listRejectedMembersForUser(user: CurrentUserData) {
     const whereScope = await this.scopeService.buildMemberWhereForUser(user);
@@ -647,7 +630,13 @@ export class MembersService {
    *
    * ✅ Yeni mimari: MemberApprovalApplicationService kullanıyor
    */
-  async approve(id: string, approvedByUserId?: string, dto?: ApproveMemberDto) {
+  async approve(
+    id: string,
+    approvedByUserId?: string,
+    dto?: ApproveMemberDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     // 🆕 Yeni mimari: Application Service kullan
     if (!approvedByUserId) {
       throw new BadRequestException('Onaylayan kullanıcı ID zorunludur');
@@ -664,6 +653,8 @@ export class MembersService {
         tevkifatTitleId: dto?.tevkifatTitleId,
         branchId: dto?.branchId,
         memberGroupId: dto?.memberGroupId,
+        ipAddress,
+        userAgent,
       });
 
     // Domain Entity → Prisma model'e dönüştür, emptyOptionalFields ekle
@@ -676,7 +667,12 @@ export class MembersService {
    *
    * ✅ Yeni mimari: MemberRejectionApplicationService kullanıyor
    */
-  async reject(id: string, approvedByUserId?: string) {
+  async reject(
+    id: string,
+    approvedByUserId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     // 🆕 Yeni mimari: Application Service kullan
     if (!approvedByUserId) {
       throw new BadRequestException('Reddeden kullanıcı ID zorunludur');
@@ -685,6 +681,8 @@ export class MembersService {
     const member = await this.memberRejectionApplicationService.rejectMember({
       memberId: id,
       rejectedByUserId: approvedByUserId,
+      ipAddress,
+      userAgent,
     });
 
     // Domain Entity → Prisma model'e dönüştür
@@ -696,7 +694,12 @@ export class MembersService {
    *
    * ✅ Yeni mimari: MemberActivationApplicationService kullanıyor
    */
-  async activate(id: string, activatedByUserId?: string) {
+  async activate(
+    id: string,
+    activatedByUserId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     // 🆕 Yeni mimari: Application Service kullan
     if (!activatedByUserId) {
       throw new BadRequestException('Aktifleştiren kullanıcı ID zorunludur');
@@ -706,6 +709,8 @@ export class MembersService {
       {
         memberId: id,
         activatedByUserId,
+        ipAddress,
+        userAgent,
       },
     );
 
@@ -862,6 +867,8 @@ export class MembersService {
     id: string,
     dto: CancelMemberDto,
     cancelledByUserId: string,
+    ipAddress?: string,
+    userAgent?: string,
   ) {
     // Üyelik iptaline izin kontrolü (config check - bu Application Service'te olabilir ama şimdilik burada)
     const allowCancellation = this.configService.getSystemSettingBoolean(
@@ -881,6 +888,8 @@ export class MembersService {
         cancelledByUserId,
         status: dto.status as any,
         cancellationReason: dto.cancellationReason,
+        ipAddress,
+        userAgent,
       });
 
     // Domain Entity → Prisma model'e dönüştür

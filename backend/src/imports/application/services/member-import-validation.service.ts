@@ -438,12 +438,19 @@ export class MemberImportValidationService {
       [];
     const duplicateNationalIds: string[] = [];
 
-    // Mevcut nationalId'leri topla (duplicate kontrolü)
+    // Aynı TC ile yeni satır yalnızca iptal sonrası olabilir; import "açık" kayıt varsa engeller
     const existingNationalIds = new Set<string>();
-    const existingMembers = await this.prisma.member.findMany({
+    const blockingMembers = await this.prisma.member.findMany({
+      where: {
+        deletedAt: null,
+        isActive: true,
+        status: {
+          in: ['PENDING', 'APPROVED', 'ACTIVE', 'REJECTED'],
+        },
+      },
       select: { nationalId: true },
     });
-    existingMembers.forEach((m) => existingNationalIds.add(m.nationalId));
+    blockingMembers.forEach((m) => existingNationalIds.add(m.nationalId));
 
     // CSV içi duplicate kontrolü
     const csvNationalIds = new Set<string>();

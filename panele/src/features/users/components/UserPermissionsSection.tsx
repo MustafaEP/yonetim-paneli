@@ -57,6 +57,7 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
   CONTENT_MANAGE: 'İçerik Yönet',
   CONTENT_PUBLISH: 'İçerik Yayınla',
   // Doküman
+  DOCUMENT_SYSTEM_ACCESS: 'Evrak Sistemine Erişim',
   DOCUMENT_TEMPLATE_MANAGE: 'PDF Şablonu Yönet',
   DOCUMENT_MEMBER_HISTORY_VIEW: 'Doküman Geçmişi Görüntüle',
   DOCUMENT_GENERATE_PDF: 'PDF Oluştur',

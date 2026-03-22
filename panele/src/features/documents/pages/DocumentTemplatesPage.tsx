@@ -72,7 +72,7 @@ const DocumentTemplatesPage: React.FC = () => {
     name: '',
     description: '',
     template: '',
-    type: 'OTHER' as 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'OTHER',
+    type: 'OTHER' as 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'BULK_MEMBER_LIST' | 'OTHER',
     isActive: true,
   });
 
@@ -199,6 +199,7 @@ const DocumentTemplatesPage: React.FC = () => {
           NOTIFICATION_LETTER: 'Bildirim Mektubu',
           MEMBERSHIP_APPLICATION: 'Üyelik Başvurusu',
           TRANSFER_CERTIFICATE: 'Nakil Belgesi',
+          BULK_MEMBER_LIST: 'Toplu üye listesi',
           OTHER: 'Diğer',
         };
         return <Chip label={typeLabels[params.value] || params.value} size="small" />;
@@ -416,6 +417,7 @@ const DocumentTemplatesPage: React.FC = () => {
                 <MenuItem value="NOTIFICATION_LETTER">Bildirim Mektubu</MenuItem>
                 <MenuItem value="MEMBERSHIP_APPLICATION">Üyelik Başvurusu</MenuItem>
                 <MenuItem value="TRANSFER_CERTIFICATE">Nakil Belgesi</MenuItem>
+                <MenuItem value="BULK_MEMBER_LIST">Toplu üye listesi</MenuItem>
                 <MenuItem value="OTHER">Diğer</MenuItem>
               </Select>
             </FormControl>

@@ -74,6 +74,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     label: 'Evrak & Doküman',
     description: 'Doküman şablon ve geçmiş yönetim yetkileri',
     permissions: [
+      'DOCUMENT_SYSTEM_ACCESS',
       'DOCUMENT_TEMPLATE_MANAGE',
       'DOCUMENT_MEMBER_HISTORY_VIEW',
       'DOCUMENT_GENERATE_PDF',

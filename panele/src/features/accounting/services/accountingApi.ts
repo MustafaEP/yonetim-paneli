@@ -332,6 +332,7 @@ export interface MemberAdvance {
   month: number;
   year: number;
   description?: string | null;
+  documentUrl?: string | null;
   member: {
     id: string;
     firstName: string;
@@ -399,4 +400,116 @@ export const updateAdvance = async (
 
 export const deleteAdvance = async (id: string): Promise<void> => {
   await httpClient.delete(`/accounting/advances/${id}`);
+};
+
+/** Avans PDF yükle — ardından create/update gövdesinde `documentUrl` kullanın */
+export const uploadAdvanceDocument = async (
+  file: File,
+  memberId: string,
+  month: number,
+  year: number,
+  fileName?: string,
+): Promise<{ fileUrl: string; fileName: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('memberId', memberId);
+  formData.append('month', month.toString());
+  formData.append('year', year.toString());
+  if (fileName) {
+    formData.append('fileName', fileName);
+  }
+
+  const res = await httpClient.post<{ fileUrl: string; fileName: string }>(
+    '/accounting/advances/upload-document',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+  return res.data;
+};
+
+export const viewAdvanceDocument = async (advanceId: string): Promise<void> => {
+  const token = localStorage.getItem('accessToken');
+  const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+  const url = `${API_BASE_URL}/accounting/advances/${advanceId}/document/view`;
+
+  const newWindow = window.open('', '_blank');
+  if (!newWindow) {
+    throw new Error('Popup engellendi. Lütfen popup engelleyiciyi kapatın.');
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    newWindow.close();
+    const errorText = await response.text();
+    throw new Error(errorText || 'Dosya görüntülenemedi');
+  }
+
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  newWindow.location.href = blobUrl;
+
+  newWindow.addEventListener('beforeunload', () => {
+    window.URL.revokeObjectURL(blobUrl);
+  });
+};
+
+export const downloadAdvanceDocument = async (
+  advanceId: string,
+  fileName?: string,
+): Promise<void> => {
+  const token = localStorage.getItem('accessToken');
+  const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+  const url = `${API_BASE_URL}/accounting/advances/${advanceId}/document/download`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Dosya indirilemedi');
+  }
+
+  let finalFileName = fileName || 'avans-belgesi.pdf';
+  if (!fileName) {
+    const contentDisposition = response.headers.get('Content-Disposition');
+    if (contentDisposition) {
+      const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+      if (utf8Match?.[1]) {
+        try {
+          finalFileName = decodeURIComponent(utf8Match[1].trim());
+        } catch {
+          /* ignore */
+        }
+      } else {
+        const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
+        if (quotedMatch?.[1]) {
+          finalFileName = quotedMatch[1];
+        }
+      }
+    }
+  }
+
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = finalFileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(downloadUrl);
 };

@@ -194,6 +194,36 @@ export class FileStorageService {
   }
 
   /**
+   * Sil: dosya yolu mutlaka `process.cwd()/uploads/` altında olmalı (advances, payments, documents, …)
+   */
+  deleteFileUnderUploadsRoot(absolutePath: string): void {
+    if (!absolutePath) {
+      return;
+    }
+
+    const uploadsRoot = path.resolve(process.cwd(), 'uploads');
+    const resolvedPath = path.resolve(absolutePath);
+    if (!resolvedPath.startsWith(uploadsRoot)) {
+      this.logger.warn(
+        `Rejected delete outside uploads root: ${absolutePath}`,
+      );
+      return;
+    }
+
+    try {
+      if (fs.existsSync(resolvedPath)) {
+        fs.unlinkSync(resolvedPath);
+        this.logger.log(`File deleted under uploads: ${resolvedPath}`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error deleting file under uploads: ${resolvedPath}`,
+        error,
+      );
+    }
+  }
+
+  /**
    * Delete file from permanent storage (path must be within permanent dir)
    */
   deleteFromPermanent(permanentPath: string): void {

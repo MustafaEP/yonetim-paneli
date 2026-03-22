@@ -21,6 +21,7 @@ import { ProfessionsModule } from './professions/professions.module';
 import { MemberGroupsModule } from './member-groups/member-groups.module';
 import { PanelUserApplicationsModule } from './panel-user-applications/panel-user-applications.module';
 import { ImportsModule } from './imports/imports.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -41,6 +42,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     ApprovalsModule,
     AccountingModule,
     PaymentsModule,
+    InvoicesModule,
     DocumentsModule,
     ProfessionsModule,
     MemberGroupsModule,

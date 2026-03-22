@@ -52,9 +52,10 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   CONTENT_PUBLISH: ['CONTENT_MANAGE'], // Yayınlamak için içerik yönetimi gerekir
 
   // Evrak & Doküman
-  DOCUMENT_TEMPLATE_MANAGE: [],
-  DOCUMENT_MEMBER_HISTORY_VIEW: ['MEMBER_VIEW'], // Doküman geçmişi için üye detayı gerekir
-  DOCUMENT_GENERATE_PDF: ['MEMBER_VIEW'], // PDF oluşturmak için üye detayı gerekir
+  DOCUMENT_SYSTEM_ACCESS: [],
+  DOCUMENT_TEMPLATE_MANAGE: ['DOCUMENT_SYSTEM_ACCESS'],
+  DOCUMENT_MEMBER_HISTORY_VIEW: ['DOCUMENT_SYSTEM_ACCESS', 'MEMBER_VIEW'], // Doküman geçmişi için üye detayı gerekir
+  DOCUMENT_GENERATE_PDF: ['DOCUMENT_SYSTEM_ACCESS', 'MEMBER_VIEW'], // PDF oluşturmak için üye detayı gerekir
 
   // Raporlar & Dashboard
   REPORT_GLOBAL_VIEW: [],

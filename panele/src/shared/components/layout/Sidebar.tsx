@@ -100,7 +100,10 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
     hasPermission('REGION_LIST') || hasPermission('BRANCH_MANAGE');
   const showRoles = hasPermission('ROLE_LIST');
   const showContent = hasPermission('CONTENT_MANAGE');
-  const showDocuments = hasPermission('DOCUMENT_TEMPLATE_MANAGE') || hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
+  const showDocuments =
+    hasPermission('DOCUMENT_SYSTEM_ACCESS') ||
+    hasPermission('DOCUMENT_TEMPLATE_MANAGE') ||
+    hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
   const showReports = hasPermission('REPORT_GLOBAL_VIEW') || hasPermission('REPORT_REGION_VIEW') || hasPermission('REPORT_MEMBER_STATUS_VIEW') || hasPermission('REPORT_DUES_VIEW');
   const showNotifications = hasPermission('NOTIFY_ALL_MEMBERS') || hasPermission('NOTIFY_REGION') || hasPermission('NOTIFY_OWN_SCOPE');
   const showSystemSettings = hasPermission('SYSTEM_SETTINGS_VIEW');
@@ -608,7 +611,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                       }}
                     />
                   </ListItemButton>
-                  {hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW') && (
+                  {(hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW') || hasPermission('DOCUMENT_SYSTEM_ACCESS')) && (
                     <ListItemButton
                       component={Link}
                       to="/documents/members"

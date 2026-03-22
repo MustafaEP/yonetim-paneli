@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileStorageService } from '../documents/services/file-storage.service';
 import { UploadTevkifatFileDto } from './dto/upload-tevkifat-file.dto';
@@ -17,7 +18,12 @@ import {
 } from './dto/delete-tevkifat-center.dto';
 import { CreateTevkifatTitleDto } from './dto/create-tevkifat-title.dto';
 import { UpdateTevkifatTitleDto } from './dto/update-tevkifat-title.dto';
-import { ApprovalStatus, MemberStatus } from '@prisma/client';
+import {
+  ApprovalStatus,
+  DocumentUploadStatus,
+  MemberStatus,
+  Prisma,
+} from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
 import { CreateAdvanceDto } from './dto/create-advance.dto';
 import { UpdateAdvanceDto } from './dto/update-advance.dto';
@@ -836,7 +842,7 @@ export class AccountingService {
   }
 
   /**
-   * Avans oluştur
+   * Avans oluştur (isteğe bağlı PDF: `documentUrl` önce upload endpoint ile alınır)
    */
   async createAdvance(dto: CreateAdvanceDto, createdBy: string) {
     const member = await this.prisma.member.findUnique({
@@ -870,41 +876,40 @@ export class AccountingService {
       ? new Date(dto.advanceDate)
       : new Date();
 
-    return this.prisma.memberAdvance.create({
-      data: {
-        memberId: dto.memberId,
-        registrationNumber: member.registrationNumber,
-        advanceDate,
-        month: dto.month,
-        year: dto.year,
-        amount: dto.amount,
-        description: dto.description || null,
-        createdByUserId: createdBy,
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            registrationNumber: true,
-            province: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
+    const docUrlRaw = dto.documentUrl?.trim();
+    const safeDocUrl = docUrlRaw ? this.assertSafeAdvanceDocumentUrl(docUrlRaw) : null;
+
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.memberAdvance.create({
+        data: {
+          memberId: dto.memberId,
+          registrationNumber: member.registrationNumber,
+          advanceDate,
+          month: dto.month,
+          year: dto.year,
+          amount: dto.amount,
+          description: dto.description || null,
+          createdByUserId: createdBy,
+          documentUrl: safeDocUrl,
         },
-        createdByUser: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
+      });
+
+      if (safeDocUrl) {
+        const md = await this.createAdvanceLinkedMemberDocument(tx, {
+          memberId: dto.memberId,
+          documentUrl: safeDocUrl,
+          generatedBy: createdBy,
+        });
+        await tx.memberAdvance.update({
+          where: { id: created.id },
+          data: { linkedMemberDocumentId: md.id },
+        });
+      }
+
+      return tx.memberAdvance.findUniqueOrThrow({
+        where: { id: created.id },
+        include: this.advanceDefaultInclude(),
+      });
     });
   }
 
@@ -1038,9 +1043,9 @@ export class AccountingService {
   }
 
   /**
-   * Avans güncelle
+   * Avans güncelle (PDF: yeni `documentUrl` veya `clearDocument`)
    */
-  async updateAdvance(id: string, dto: UpdateAdvanceDto) {
+  async updateAdvance(id: string, dto: UpdateAdvanceDto, updatedByUserId: string) {
     const advance = await this.prisma.memberAdvance.findUnique({
       where: { id },
     });
@@ -1049,56 +1054,58 @@ export class AccountingService {
       throw new NotFoundException('Avans kaydı bulunamadı');
     }
 
-    const data: any = {};
+    return this.prisma.$transaction(async (tx) => {
+      const data: Prisma.MemberAdvanceUncheckedUpdateInput = {};
 
-    if (dto.advanceDate) {
-      data.advanceDate = new Date(dto.advanceDate);
-    }
-    if (dto.month !== undefined) {
-      data.month = dto.month;
-    }
-    if (dto.year !== undefined) {
-      data.year = dto.year;
-    }
-    if (dto.amount !== undefined) {
-      data.amount = dto.amount;
-    }
-    if (dto.description !== undefined) {
-      data.description = dto.description;
-    }
+      if (dto.advanceDate) {
+        data.advanceDate = new Date(dto.advanceDate);
+      }
+      if (dto.month !== undefined) {
+        data.month = dto.month;
+      }
+      if (dto.year !== undefined) {
+        data.year = dto.year;
+      }
+      if (dto.amount !== undefined) {
+        data.amount = dto.amount;
+      }
+      if (dto.description !== undefined) {
+        data.description = dto.description;
+      }
 
-    return this.prisma.memberAdvance.update({
-      where: { id },
-      data,
-      include: {
-        member: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            registrationNumber: true,
-            province: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        createdByUser: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
+      const newDoc = dto.documentUrl?.trim();
+      if (newDoc) {
+        const safeUrl = this.assertSafeAdvanceDocumentUrl(newDoc);
+        await this.removeAdvanceLinkedDocument(tx, advance);
+        const md = await this.createAdvanceLinkedMemberDocument(tx, {
+          memberId: advance.memberId,
+          documentUrl: safeUrl,
+          generatedBy: updatedByUserId,
+        });
+        data.documentUrl = safeUrl;
+        data.linkedMemberDocumentId = md.id;
+      } else if (dto.clearDocument) {
+        await this.removeAdvanceLinkedDocument(tx, advance);
+        data.documentUrl = null;
+        data.linkedMemberDocumentId = null;
+      }
+
+      if (Object.keys(data).length > 0) {
+        await tx.memberAdvance.update({
+          where: { id },
+          data,
+        });
+      }
+
+      return tx.memberAdvance.findUniqueOrThrow({
+        where: { id },
+        include: this.advanceDefaultInclude(),
+      });
     });
   }
 
   /**
-   * Avansı sil (soft delete)
+   * Avansı sil (soft delete) — bağlı üye dokümanı ve dosya kaldırılır
    */
   async deleteAdvance(id: string) {
     const advance = await this.prisma.memberAdvance.findUnique({
@@ -1109,11 +1116,319 @@ export class AccountingService {
       throw new NotFoundException('Avans kaydı bulunamadı');
     }
 
-    return this.prisma.memberAdvance.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
+    await this.prisma.$transaction(async (tx) => {
+      await this.removeAdvanceLinkedDocument(tx, advance);
+      await tx.memberAdvance.update({
+        where: { id },
+        data: {
+          deletedAt: new Date(),
+          documentUrl: null,
+          linkedMemberDocumentId: null,
+        },
+      });
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * Avans evrakı yükle (Kesinti PDF yükleme ile aynı mantık)
+   */
+  async uploadAdvanceDocument(
+    file: Express.Multer.File,
+    memberId: string,
+    month: number,
+    year: number,
+    customFileName?: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Dosya yüklenmedi');
+    }
+    if (file.mimetype !== 'application/pdf') {
+      throw new BadRequestException('Sadece PDF dosyaları kabul edilir');
+    }
+
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        registrationNumber: true,
       },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Üye bulunamadı');
+    }
+
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'advances');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    let fileName: string;
+
+    if (customFileName && customFileName.trim()) {
+      const cleanedName = customFileName
+        .trim()
+        .replace(/[^a-zA-Z0-9_\-ğüşıöçĞÜŞİÖÇ\s\.]/g, '')
+        .replace(/\s+/g, '_');
+      const hasExtension = path.extname(cleanedName);
+      fileName = hasExtension ? cleanedName : `${cleanedName}.pdf`;
+    } else {
+      const monthNames = [
+        'Ocak',
+        'Subat',
+        'Mart',
+        'Nisan',
+        'Mayis',
+        'Haziran',
+        'Temmuz',
+        'Agustos',
+        'Eylul',
+        'Ekim',
+        'Kasim',
+        'Aralik',
+      ];
+      const monthName = monthNames[month - 1] || `Ay${month}`;
+      const memberName = `${member.firstName}_${member.lastName}`
+        .replace(/[^a-zA-Z0-9_ğüşıöçĞÜŞİÖÇ]/g, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 50);
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const timestamp = Date.now();
+      fileName = `Avans_${memberName}_${monthName}${year}_${dateStr}_${timestamp}.pdf`;
+    }
+
+    const filePath = path.join(uploadsDir, fileName);
+    const fileUrl = `/uploads/advances/${fileName}`;
+    fs.writeFileSync(filePath, file.buffer);
+
+    return {
+      fileUrl,
+      fileName,
+    };
+  }
+
+  /**
+   * Avans belgesi görüntüle (inline)
+   */
+  async viewAdvanceDocument(advanceId: string, res: Response): Promise<void> {
+    const advance = await this.prisma.memberAdvance.findFirst({
+      where: { id: advanceId, deletedAt: null },
+      select: { id: true, documentUrl: true, memberId: true },
+    });
+
+    if (!advance) {
+      throw new NotFoundException(`Avans kaydı bulunamadı: ${advanceId}`);
+    }
+
+    let filePath: string;
+    let fileName: string;
+
+    if (advance.documentUrl) {
+      fileName =
+        advance.documentUrl.split('/').pop() || 'avans-belgesi.pdf';
+      filePath = path.join(process.cwd(), 'uploads', 'advances', fileName);
+      if (!fs.existsSync(filePath)) {
+        throw new NotFoundException(`Dosya bulunamadı: ${fileName}`);
+      }
+    } else {
+      throw new NotFoundException('Bu avans için belge bulunamadı');
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    const asciiFileName = fileName
+      .replace(/ğ/g, 'g')
+      .replace(/Ğ/g, 'G')
+      .replace(/ü/g, 'u')
+      .replace(/Ü/g, 'U')
+      .replace(/ş/g, 's')
+      .replace(/Ş/g, 'S')
+      .replace(/ı/g, 'i')
+      .replace(/İ/g, 'I')
+      .replace(/ö/g, 'o')
+      .replace(/Ö/g, 'O')
+      .replace(/ç/g, 'c')
+      .replace(/Ç/g, 'C')
+      .replace(/[^\x00-\x7F]/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeAsciiFileName = asciiFileName.replace(/"/g, '').replace(/;/g, '_');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${safeAsciiFileName}"`,
+    );
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    return new Promise<void>((resolve, reject) => {
+      fileStream.on('end', () => resolve());
+      fileStream.on('error', (error) => reject(error));
+    });
+  }
+
+  /**
+   * Avans belgesi indir
+   */
+  async downloadAdvanceDocument(advanceId: string, res: Response): Promise<void> {
+    const advance = await this.prisma.memberAdvance.findFirst({
+      where: { id: advanceId, deletedAt: null },
+      select: { id: true, documentUrl: true },
+    });
+
+    if (!advance) {
+      throw new NotFoundException(`Avans kaydı bulunamadı: ${advanceId}`);
+    }
+
+    if (!advance.documentUrl) {
+      throw new NotFoundException('Bu avans için belge bulunamadı');
+    }
+
+    const fileName =
+      advance.documentUrl.split('/').pop() || 'avans-belgesi.pdf';
+    const filePath = path.join(process.cwd(), 'uploads', 'advances', fileName);
+
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException(`Dosya bulunamadı: ${fileName}`);
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    const asciiFileName = fileName
+      .replace(/ğ/g, 'g')
+      .replace(/Ğ/g, 'G')
+      .replace(/ü/g, 'u')
+      .replace(/Ü/g, 'U')
+      .replace(/ş/g, 's')
+      .replace(/Ş/g, 'S')
+      .replace(/ı/g, 'i')
+      .replace(/İ/g, 'I')
+      .replace(/ö/g, 'o')
+      .replace(/Ö/g, 'O')
+      .replace(/ç/g, 'c')
+      .replace(/Ç/g, 'C')
+      .replace(/[^\x00-\x7F]/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeAsciiFileName = asciiFileName.replace(/"/g, '').replace(/;/g, '_');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${safeAsciiFileName}"`,
+    );
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    return new Promise<void>((resolve, reject) => {
+      fileStream.on('end', () => resolve());
+      fileStream.on('error', (error) => reject(error));
+    });
+  }
+
+  private advanceDefaultInclude(): Prisma.MemberAdvanceInclude {
+    return {
+      member: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          registrationNumber: true,
+          province: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      createdByUser: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
+    };
+  }
+
+  private assertSafeAdvanceDocumentUrl(url: string): string {
+    const normalized = (url.startsWith('/') ? url : `/${url}`).replace(
+      /\\/g,
+      '/',
+    );
+    const parts = normalized.split('/').filter(Boolean);
+    if (
+      parts.length !== 3 ||
+      parts[0] !== 'uploads' ||
+      parts[1] !== 'advances'
+    ) {
+      throw new BadRequestException('Geçersiz avans belgesi yolu');
+    }
+    const base = parts[2];
+    if (!base || !base.toLowerCase().endsWith('.pdf') || base.includes('..')) {
+      throw new BadRequestException('Geçersiz dosya adı');
+    }
+    return `/${parts.join('/')}`;
+  }
+
+  private async createAdvanceLinkedMemberDocument(
+    tx: Prisma.TransactionClient,
+    params: { memberId: string; documentUrl: string; generatedBy: string },
+  ) {
+    const safeUrl = this.assertSafeAdvanceDocumentUrl(params.documentUrl);
+    const fileName = path.basename(safeUrl);
+    const diskPath = path.join(process.cwd(), 'uploads', 'advances', fileName);
+    if (!fs.existsSync(diskPath)) {
+      throw new BadRequestException(
+        'Yüklenen avans belgesi bulunamadı. Önce dosyayı yükleyin.',
+      );
+    }
+    const stat = fs.statSync(diskPath);
+    return tx.memberDocument.create({
+      data: {
+        memberId: params.memberId,
+        templateId: null,
+        documentType: 'ADVANCE_DOCUMENT',
+        fileName,
+        fileUrl: safeUrl,
+        secureFileName: fileName,
+        fileSize: stat.size,
+        mimeType: 'application/pdf',
+        uploadStatus: DocumentUploadStatus.APPROVED,
+        stagingPath: null,
+        permanentPath: diskPath,
+        generatedBy: params.generatedBy,
+      },
+    });
+  }
+
+  private async removeAdvanceLinkedDocument(
+    tx: Prisma.TransactionClient,
+    advance: {
+      id: string;
+      linkedMemberDocumentId: string | null;
+      documentUrl: string | null;
+    },
+  ) {
+    if (!advance.linkedMemberDocumentId) {
+      return;
+    }
+    const doc = await tx.memberDocument.findFirst({
+      where: {
+        id: advance.linkedMemberDocumentId,
+        deletedAt: null,
+      },
+    });
+    if (!doc) {
+      return;
+    }
+    if (doc.permanentPath) {
+      this.fileStorageService.deleteFileUnderUploadsRoot(doc.permanentPath);
+    }
+    await tx.memberDocument.update({
+      where: { id: doc.id },
+      data: { deletedAt: new Date() },
     });
   }
 }

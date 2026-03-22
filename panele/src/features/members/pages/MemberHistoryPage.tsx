@@ -19,7 +19,6 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
-  Tooltip,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import HistoryIcon from '@mui/icons-material/History';
@@ -27,25 +26,19 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
-import type { MemberHistory } from '../../../types/member';
 import {
   getMemberHistoryList,
   type MemberHistoryListResponse,
 } from '../services/membersApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
-import { useAuth } from '../../../app/providers/AuthContext';
 
 const MemberHistoryPage: React.FC = () => {
   const theme = useTheme();
   const toast = useToast();
-  const { hasRole } = useAuth();
-
-  const canDeleteLogs = hasRole('ADMIN');
 
   const [rows, setRows] = useState<MemberHistoryListResponse['items']>([]);
   const [loading, setLoading] = useState(true);
@@ -200,43 +193,6 @@ const MemberHistoryPage: React.FC = () => {
         if (parts.length === 0) return '-';
         return parts.join(' | ');
       },
-    },
-    {
-      field: 'actions',
-      headerName: 'İşlemler',
-      width: canDeleteLogs ? 120 : 0,
-      sortable: false,
-      filterable: false,
-      hide: !canDeleteLogs,
-      renderCell: (params) =>
-        canDeleteLogs ? (
-          <Tooltip title="Kaydı Sil" arrow placement="top">
-            <IconButton
-              size="small"
-              onClick={async (e) => {
-                e.stopPropagation();
-                try {
-                  await deleteMemberHistory(params.row.id);
-                  toast.showSuccess('Hareket kaydı başarıyla silindi');
-                  void loadData();
-                } catch (err: unknown) {
-                  console.error('Hareket kaydı silinirken hata:', err);
-                  toast.showError(
-                    getApiErrorMessage(
-                      err,
-                      'Hareket kaydı silinirken bir hata oluştu',
-                    ),
-                  );
-                }
-              }}
-              sx={{
-                color: theme.palette.error.main,
-              }}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        ) : null,
     },
   ];
 

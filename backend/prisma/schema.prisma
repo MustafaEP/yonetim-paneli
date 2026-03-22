@@ -92,6 +92,9 @@ model User {
 
   // 🔹 Üye avansları ilişkileri
   createdAdvances MemberAdvance[]
+
+  // 🔹 Fatura ilişkileri
+  createdInvoices Invoice[]
 }
 
 // 🔹 Refresh Token – JWT refresh için; logout'ta revoke edilir
@@ -150,7 +153,7 @@ model Member {
   id         String       @id @default(cuid())
   firstName  String
   lastName   String
-  nationalId String       @unique // TC (zorunlu)
+  nationalId String // TC (zorunlu); aynı TC ile birden fazla Member (iptal sonrası yeniden kayıt)
   phone      String // Telefon (zorunlu)
   email      String?
   status     MemberStatus @default(PENDING)
@@ -264,6 +267,7 @@ model Member {
   @@index([institutionProvinceId])
   @@index([institutionDistrictId])
   @@index([memberGroupId])
+  @@index([nationalId])
 }
 
 // 🔹 Üyelik Dönemleri (aynı TC ile yeniden üye olma, istifa/ihraç geçmişi)
@@ -444,6 +448,7 @@ enum DocumentTemplateType {
   NOTIFICATION_LETTER
   MEMBERSHIP_APPLICATION
   TRANSFER_CERTIFICATE
+  BULK_MEMBER_LIST
   OTHER
 }
 
@@ -496,6 +501,9 @@ model MemberDocument {
   generatedAt     DateTime @default(now())
   generatedBy     String
   generatedByUser User?    @relation("DocumentGeneratedBy", fields: [generatedBy], references: [id])
+
+  /// Avans kaydından oluşturulan belge (tek yönlü ilişki — FK MemberAdvance tarafında)
+  linkedMemberAdvance MemberAdvance? @relation("MemberAdvanceLinkedDocument")
 
   deletedAt DateTime?
 
@@ -1019,6 +1027,11 @@ model MemberAdvance {
   amount             Decimal  @db.Decimal(10, 2) // Avans tutarı
   description        String?  @db.Text // Açıklama (opsiyonel)
 
+  /// PDF / evrak (Kesinti belgesi ile aynı mantık: /uploads/advances/…)
+  documentUrl            String?
+  linkedMemberDocumentId String?          @unique
+  linkedMemberDocument   MemberDocument?  @relation("MemberAdvanceLinkedDocument", fields: [linkedMemberDocumentId], references: [id], onDelete: SetNull)
+
   createdByUserId String
   createdByUser   User   @relation(fields: [createdByUserId], references: [id])
 
@@ -1031,6 +1044,41 @@ model MemberAdvance {
   @@index([registrationNumber])
   @@index([year, month])
   @@index([createdByUserId])
+}
+
+// 🔹 Fatura Sistemi
+enum InvoiceStatus {
+  DRAFT      // Taslak
+  SENT       // Gönderildi
+  PAID       // Ödendi
+  CANCELLED  // İptal
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  invoiceNo   String        @unique // Otomatik: FTR-2026-0001
+  recipient   String        // Alıcı (zorunlu)
+  issueDate   DateTime      @default(now()) // Düzenleme tarihi
+  dueDate     DateTime?     // Vade tarihi (opsiyonel)
+  month       Int           // Ay (1-12)
+  year        Int           // Yıl
+  amount      Decimal       @db.Decimal(10, 2) // Tutar
+  status      InvoiceStatus @default(DRAFT)
+  description String?       @db.Text // Açıklama (opsiyonel)
+  documentUrl String?       // PDF URL (opsiyonel)
+
+  createdByUserId String
+  createdByUser   User   @relation(fields: [createdByUserId], references: [id])
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([year, month])
+  @@index([status])
+  @@index([createdByUserId])
+  @@index([invoiceNo])
 }
 
 // 🔹 Üyelik Bilgisi Seçenekleri (Admin tarafından yönetilir)

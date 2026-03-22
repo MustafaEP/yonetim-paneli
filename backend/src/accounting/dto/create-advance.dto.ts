@@ -70,5 +70,15 @@ export class CreateAdvanceDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiProperty({
+    description:
+      'PDF belge URL’i (önce POST /accounting/advances/upload-document ile yükleyin)',
+    example: '/uploads/advances/Avans_...pdf',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  documentUrl?: string;
 }
 

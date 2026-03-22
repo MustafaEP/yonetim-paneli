@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Autocomplete,
   Box,
@@ -27,6 +27,8 @@ import {
   IconButton,
   Chip,
   Divider,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -37,6 +39,8 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DownloadIcon from '@mui/icons-material/Download';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 
 import PageLayout from '../../../shared/components/layout/PageLayout';
@@ -50,6 +54,9 @@ import {
   getAdvances,
   updateAdvance,
   deleteAdvance,
+  uploadAdvanceDocument,
+  viewAdvanceDocument,
+  downloadAdvanceDocument,
   type CreateAdvanceDto,
   type UpdateAdvanceDto,
   type MemberAdvance,
@@ -79,7 +86,12 @@ const YEAR_OPTIONS = Array.from(
   (_, i) => new Date().getFullYear() - i,
 );
 
+/** Liste filtresinde: 0 = seçili yılın tüm ayları */
+const MONTH_FILTER_ALL = 0;
+
 const monthName = (m: number) => MONTHS.find((x) => x.value === m)?.label ?? String(m);
+const monthFilterLabel = (m: number, year: number) =>
+  m === MONTH_FILTER_ALL ? `Tüm aylar (${year})` : `${monthName(m)} ${year}`;
 const fmtAmount = (v: string | number) => {
   const n = typeof v === 'string' ? parseFloat(v) : v;
   if (Number.isNaN(n)) return '-';
@@ -119,12 +131,19 @@ const AdvancesPage: React.FC = () => {
     year: new Date().getFullYear(),
     description: '',
   });
+  const [createPdfFile, setCreatePdfFile] = useState<File | null>(null);
+  const [uploadingCreatePdf, setUploadingCreatePdf] = useState(false);
+  const createPdfInputRef = useRef<HTMLInputElement>(null);
 
   // ── Düzenle dialog ────────────────────────────────────────────────────────
   const [editOpen, setEditOpen] = useState(false);
   const [editingAdvance, setEditingAdvance] = useState<MemberAdvance | null>(null);
   const [editForm, setEditForm] = useState<UpdateAdvanceDto>({});
   const [saving, setSaving] = useState(false);
+  const [editPdfFile, setEditPdfFile] = useState<File | null>(null);
+  const [editClearPdf, setEditClearPdf] = useState(false);
+  const [uploadingEditPdf, setUploadingEditPdf] = useState(false);
+  const editPdfInputRef = useRef<HTMLInputElement>(null);
 
   // ── Sil dialog ────────────────────────────────────────────────────────────
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -158,7 +177,7 @@ const AdvancesPage: React.FC = () => {
     try {
       const filters: Parameters<typeof getAdvances>[0] = {
         year: yearFilter,
-        month: monthFilter,
+        ...(monthFilter !== MONTH_FILTER_ALL ? { month: monthFilter } : {}),
       };
       if (searchText.trim()) filters.search = searchText.trim();
       if (provinceFilter !== 'ALL') filters.provinceId = provinceFilter;
@@ -198,13 +217,31 @@ const AdvancesPage: React.FC = () => {
     }
     setCreating(true);
     try {
+      let documentUrl: string | undefined;
+      if (createPdfFile) {
+        setUploadingCreatePdf(true);
+        try {
+          const up = await uploadAdvanceDocument(
+            createPdfFile,
+            selectedMember.id,
+            createForm.month,
+            createForm.year,
+            createPdfFile.name,
+          );
+          documentUrl = up.fileUrl;
+        } finally {
+          setUploadingCreatePdf(false);
+        }
+      }
       const created = await createAdvance({
         memberId: selectedMember.id,
         ...createForm,
         description: createForm.description?.trim() || undefined,
+        documentUrl,
       });
       toast.showSuccess('Avans kaydı oluşturuldu');
       setCreateOpen(false);
+      setCreatePdfFile(null);
       setAdvances((prev) => [created, ...prev]);
     } catch (e) {
       toast.showError(getApiErrorMessage(e, 'Avans oluşturulamadı'));
@@ -215,6 +252,7 @@ const AdvancesPage: React.FC = () => {
 
   const handleOpenCreate = async () => {
     setSelectedMember(null);
+    setCreatePdfFile(null);
     setCreateForm({
       amount: '',
       month: new Date().getMonth() + 1,
@@ -237,6 +275,8 @@ const AdvancesPage: React.FC = () => {
   // ── Düzenle ───────────────────────────────────────────────────────────────
   const handleOpenEdit = (adv: MemberAdvance) => {
     setEditingAdvance(adv);
+    setEditPdfFile(null);
+    setEditClearPdf(false);
     setEditForm({
       amount: String(adv.amount),
       month: adv.month,
@@ -246,6 +286,21 @@ const AdvancesPage: React.FC = () => {
     setEditOpen(true);
   };
 
+  const handleViewAdvancePdf = useCallback(
+    async (adv: MemberAdvance) => {
+      if (!adv.documentUrl) {
+        toast.showError('Bu avans için belge yok.');
+        return;
+      }
+      try {
+        await viewAdvanceDocument(adv.id);
+      } catch (e) {
+        toast.showError(getApiErrorMessage(e, 'Belge açılamadı'));
+      }
+    },
+    [toast],
+  );
+
   const handleUpdateAdvance = async () => {
     if (!editingAdvance) return;
     if (!editForm.amount?.trim()) {
@@ -254,12 +309,32 @@ const AdvancesPage: React.FC = () => {
     }
     setSaving(true);
     try {
-      const updated = await updateAdvance(editingAdvance.id, {
+      const payload: UpdateAdvanceDto = {
         ...editForm,
         description: editForm.description?.trim() || undefined,
-      });
+      };
+      if (editPdfFile) {
+        setUploadingEditPdf(true);
+        try {
+          const up = await uploadAdvanceDocument(
+            editPdfFile,
+            editingAdvance.member.id,
+            editForm.month ?? editingAdvance.month,
+            editForm.year ?? editingAdvance.year,
+            editPdfFile.name,
+          );
+          payload.documentUrl = up.fileUrl;
+        } finally {
+          setUploadingEditPdf(false);
+        }
+      } else if (editClearPdf && editingAdvance.documentUrl) {
+        payload.clearDocument = true;
+      }
+      const updated = await updateAdvance(editingAdvance.id, payload);
       toast.showSuccess('Avans güncellendi');
       setEditOpen(false);
+      setEditPdfFile(null);
+      setEditClearPdf(false);
       setAdvances((prev) =>
         prev.map((a) => (a.id === updated.id ? updated : a)),
       );
@@ -353,6 +428,31 @@ const AdvancesPage: React.FC = () => {
         headerAlign: 'right',
         valueGetter: (_v, row) => fmtAmount(row.amount),
       },
+      {
+        field: 'pdf',
+        headerName: 'Belge',
+        width: 76,
+        sortable: false,
+        filterable: false,
+        align: 'center',
+        headerAlign: 'center',
+        renderCell: ({ row }) =>
+          row.documentUrl ? (
+            <Tooltip title="PDF görüntüle">
+              <IconButton
+                size="small"
+                onClick={() => void handleViewAdvancePdf(row)}
+                sx={{ color: theme.palette.error.main }}
+              >
+                <PictureAsPdfIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <Typography variant="caption" color="text.disabled">
+              —
+            </Typography>
+          ),
+      },
       ...(canEdit
         ? ([
             {
@@ -405,8 +505,7 @@ const AdvancesPage: React.FC = () => {
           ] as GridColDef<MemberAdvance>[])
         : []),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [canEdit, theme],
+    [canEdit, theme, handleViewAdvancePdf],
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -567,6 +666,7 @@ const AdvancesPage: React.FC = () => {
                       label="Ay"
                       onChange={(e) => setMonthFilter(Number(e.target.value))}
                     >
+                      <MenuItem value={MONTH_FILTER_ALL}>Tüm aylar</MenuItem>
                       {MONTHS.map((m) => (
                         <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
                       ))}
@@ -754,7 +854,7 @@ const AdvancesPage: React.FC = () => {
                   }}
                 >
                   <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.warning.main }}>
-                    {monthName(monthFilter)} {yearFilter}
+                    {monthFilterLabel(monthFilter, yearFilter)}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
                     Seçili Dönem
@@ -855,7 +955,7 @@ const AdvancesPage: React.FC = () => {
         <DialogContent sx={{ pt: 3 }}>
           <Grid container spacing={2.5}>
             {/* Üye Seç */}
-            <Grid size={12}>
+            <Grid size={12} sx={{ mt: 1.5 }}>
               <Autocomplete
                 options={allMembers}
                 loading={membersLoading}
@@ -964,6 +1064,52 @@ const AdvancesPage: React.FC = () => {
                 }
               />
             </Grid>
+
+            <Grid size={12}>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                Avans belgesi (PDF, isteğe bağlı)
+              </Typography>
+              <input
+                ref={createPdfInputRef}
+                type="file"
+                hidden
+                accept="application/pdf"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setCreatePdfFile(f);
+                  e.target.value = '';
+                }}
+              />
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={() => createPdfInputRef.current?.click()}
+                  disabled={creating}
+                  sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                >
+                  {createPdfFile ? 'PDF değiştir' : 'PDF seç'}
+                </Button>
+                {createPdfFile && (
+                  <>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 220 }} noWrap title={createPdfFile.name}>
+                      {createPdfFile.name}
+                    </Typography>
+                    <Button
+                      type="button"
+                      size="small"
+                      onClick={() => setCreatePdfFile(null)}
+                      disabled={creating}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Kaldır
+                    </Button>
+                  </>
+                )}
+              </Stack>
+            </Grid>
           </Grid>
         </DialogContent>
 
@@ -985,11 +1131,21 @@ const AdvancesPage: React.FC = () => {
           <Button
             onClick={handleCreateAdvance}
             variant="contained"
-            disabled={creating}
-            startIcon={creating ? <CircularProgress size={16} /> : <AddIcon />}
+            disabled={creating || uploadingCreatePdf}
+            startIcon={
+              creating || uploadingCreatePdf ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <AddIcon />
+              )
+            }
             sx={{ textTransform: 'none', fontWeight: 700, minWidth: 140, borderRadius: 2 }}
           >
-            {creating ? 'Kaydediliyor…' : 'Avans Ekle'}
+            {uploadingCreatePdf
+              ? 'PDF yükleniyor…'
+              : creating
+                ? 'Kaydediliyor…'
+                : 'Avans Ekle'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1026,6 +1182,7 @@ const AdvancesPage: React.FC = () => {
             <Paper
               elevation={0}
               sx={{
+                mt: 1.5,
                 p: 2,
                 mb: 3,
                 borderRadius: 2,
@@ -1104,6 +1261,104 @@ const AdvancesPage: React.FC = () => {
                 onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
               />
             </Grid>
+
+            {editingAdvance && (
+              <Grid size={12}>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                  Avans belgesi (PDF)
+                </Typography>
+                {editingAdvance.documentUrl && !editPdfFile && (
+                  <Stack direction="row" spacing={1} sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
+                    <Button
+                      type="button"
+                      size="small"
+                      variant="outlined"
+                      startIcon={<PictureAsPdfIcon />}
+                      onClick={() => void handleViewAdvancePdf(editingAdvance)}
+                      sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
+                    >
+                      Görüntüle
+                    </Button>
+                    <Button
+                      type="button"
+                      size="small"
+                      variant="outlined"
+                      startIcon={<DownloadIcon />}
+                      onClick={() =>
+                        void downloadAdvanceDocument(editingAdvance.id).catch((e: unknown) =>
+                          toast.showError(getApiErrorMessage(e, 'İndirilemedi')),
+                        )
+                      }
+                      sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
+                    >
+                      İndir
+                    </Button>
+                  </Stack>
+                )}
+                <input
+                  ref={editPdfInputRef}
+                  type="file"
+                  hidden
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setEditPdfFile(f);
+                    if (f) setEditClearPdf(false);
+                    e.target.value = '';
+                  }}
+                />
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={() => editPdfInputRef.current?.click()}
+                    disabled={saving}
+                    sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                  >
+                    {editPdfFile ? 'PDF değiştir' : 'Yeni PDF yükle'}
+                  </Button>
+                  {editPdfFile && (
+                    <>
+                      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200 }} noWrap title={editPdfFile.name}>
+                        {editPdfFile.name}
+                      </Typography>
+                      <Button
+                        type="button"
+                        size="small"
+                        onClick={() => setEditPdfFile(null)}
+                        disabled={saving}
+                        sx={{ textTransform: 'none' }}
+                      >
+                        Vazgeç
+                      </Button>
+                    </>
+                  )}
+                </Stack>
+                {editingAdvance.documentUrl && (
+                  <FormControlLabel
+                    sx={{ mt: 1, alignItems: 'flex-start' }}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={editClearPdf}
+                        onChange={(_, c) => {
+                          setEditClearPdf(c);
+                          if (c) setEditPdfFile(null);
+                        }}
+                        disabled={saving || Boolean(editPdfFile)}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" color="text.secondary">
+                        Mevcut belgeyi kaldır
+                      </Typography>
+                    }
+                  />
+                )}
+              </Grid>
+            )}
           </Grid>
         </DialogContent>
 
@@ -1125,12 +1380,22 @@ const AdvancesPage: React.FC = () => {
           <Button
             onClick={handleUpdateAdvance}
             variant="contained"
-            disabled={saving}
+            disabled={saving || uploadingEditPdf}
             color="warning"
-            startIcon={saving ? <CircularProgress size={16} /> : <EditIcon />}
+            startIcon={
+              saving || uploadingEditPdf ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <EditIcon />
+              )
+            }
             sx={{ textTransform: 'none', fontWeight: 700, minWidth: 140, borderRadius: 2 }}
           >
-            {saving ? 'Kaydediliyor…' : 'Güncelle'}
+            {uploadingEditPdf
+              ? 'PDF yükleniyor…'
+              : saving
+                ? 'Kaydediliyor…'
+                : 'Güncelle'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1251,6 +1516,45 @@ const AdvancesPage: React.FC = () => {
                 </Typography>
               </Box>
             ))}
+            {detailAdvance.documentUrl && (
+              <Stack
+                direction="row"
+                spacing={1}
+                flexWrap="wrap"
+                useFlexGap
+                sx={{
+                  mt: 2,
+                  pt: 2,
+                  borderTop: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+                }}
+              >
+                <Button
+                  type="button"
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={() => void handleViewAdvancePdf(detailAdvance)}
+                  sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                >
+                  PDF görüntüle
+                </Button>
+                <Button
+                  type="button"
+                  size="small"
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={() =>
+                    void downloadAdvanceDocument(detailAdvance.id).catch((e: unknown) =>
+                      toast.showError(getApiErrorMessage(e, 'İndirilemedi')),
+                    )
+                  }
+                  sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                >
+                  İndir
+                </Button>
+              </Stack>
+            )}
           </DialogContent>
         )}
 

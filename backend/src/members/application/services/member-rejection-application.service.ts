@@ -27,6 +27,8 @@ import {
 export interface RejectMemberCommand {
   memberId: string;
   rejectedByUserId: string;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 @Injectable()
@@ -73,6 +75,8 @@ export class MemberRejectionApplicationService {
         command.rejectedByUserId,
         oldData,
         newData,
+        command.ipAddress,
+        command.userAgent,
       );
 
       return member;

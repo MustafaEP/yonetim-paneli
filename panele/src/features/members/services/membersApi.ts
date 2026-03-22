@@ -272,11 +272,6 @@ export const getMemberHistoryList = async (
   return res.data;
 };
 
-// 🔹 Tek bir üye hareketi kaydını sil: DELETE /members/history/:id
-export const deleteMemberHistory = async (id: string): Promise<void> => {
-  await httpClient.delete(`/members/history/${id}`);
-};
-
 // 🔹 Üyeleri PDF olarak export et: GET /members/export/pdf
 // status: 'ALL' veya belirtilmezse tüm durumlar dahil edilir.
 export const exportMembersToPdf = async (status?: string): Promise<void> => {

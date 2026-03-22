@@ -18,11 +18,12 @@ import {
   Delete,
   Patch,
   Query,
+  Req,
   Res,
   UseFilters,
   UsePipes,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -46,6 +47,10 @@ import { PdfService } from '../../../documents/services/pdf.service';
 import { MemberMapper } from '../../application/mappers/member.mapper';
 import { MemberExceptionFilter } from '../filters/member-exception.filter';
 import { MemberValidationPipe } from '../pipes/member-validation.pipe';
+import {
+  getClientIpFromRequest,
+  getUserAgentFromRequest,
+} from '../../../common/utils/request-client-meta';
 
 @ApiTags('Members')
 @ApiBearerAuth('JWT-auth')
@@ -97,6 +102,7 @@ export class MembersController {
     @Body()
     dto: CreateMemberApplicationDto & { previousCancelledMemberId?: string },
     @CurrentUser() user: CurrentUserData,
+    @Req() req: Request,
   ) {
     // Service Prisma model dönüyor, şimdilik direkt döndürüyoruz
     // İleride Domain Entity döndüğünde mapper kullanılacak
@@ -105,6 +111,8 @@ export class MembersController {
       user.userId,
       dto.previousCancelledMemberId,
       user,
+      getClientIpFromRequest(req),
+      getUserAgentFromRequest(req),
     );
     return member;
   }
@@ -262,22 +270,6 @@ export class MembersController {
     });
   }
 
-  @Permissions(Permission.LOG_VIEW_ALL)
-  @Delete('history/:id')
-  @ApiOperation({
-    summary: 'Üye hareket geçmişi kaydını sil',
-    description:
-      'Belirli bir üye hareketi (MemberHistory) kaydını siler. Bu işlem sadece tam log yetkisine sahip admin kullanıcılar tarafından yapılmalıdır.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Silinecek log kaydının ID bilgisi',
-  })
-  @ApiResponse({ status: 200, description: 'Kayıt başarıyla silindi' })
-  async deleteMemberHistory(@Param('id') id: string) {
-    return this.membersService.deleteMemberHistory(id);
-  }
-
   @Permissions(Permission.MEMBER_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
   @Get('rejected')
   @ApiOperation({
@@ -364,8 +356,15 @@ export class MembersController {
     @Param('id') id: string,
     @Body() dto: ApproveMemberDto,
     @CurrentUser() user: CurrentUserData,
+    @Req() req: Request,
   ) {
-    const member = await this.membersService.approve(id, user.userId, dto);
+    const member = await this.membersService.approve(
+      id,
+      user.userId,
+      dto,
+      getClientIpFromRequest(req),
+      getUserAgentFromRequest(req),
+    );
     // Prisma model dönüyor, mapper kullanılabilir ama şimdilik direkt dönüyoruz
     return member;
   }
@@ -382,8 +381,17 @@ export class MembersController {
     description: 'Başvuru reddedildi',
   })
   @ApiResponse({ status: 404, description: 'Üye bulunamadı' })
-  async reject(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
-    const member = await this.membersService.reject(id, user.userId);
+  async reject(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserData,
+    @Req() req: Request,
+  ) {
+    const member = await this.membersService.reject(
+      id,
+      user.userId,
+      getClientIpFromRequest(req),
+      getUserAgentFromRequest(req),
+    );
     return member;
   }
 
@@ -406,8 +414,14 @@ export class MembersController {
   async activate(
     @Param('id') id: string,
     @CurrentUser() user: CurrentUserData,
+    @Req() req: Request,
   ) {
-    const member = await this.membersService.activate(id, user.userId);
+    const member = await this.membersService.activate(
+      id,
+      user.userId,
+      getClientIpFromRequest(req),
+      getUserAgentFromRequest(req),
+    );
     return member;
   }
 
@@ -445,11 +459,14 @@ export class MembersController {
     @Param('id') id: string,
     @Body() dto: CancelMemberDto,
     @CurrentUser() user: CurrentUserData,
+    @Req() req: Request,
   ) {
     const member = await this.membersService.cancelMembership(
       id,
       dto,
       user.userId,
+      getClientIpFromRequest(req),
+      getUserAgentFromRequest(req),
     );
     return member;
   }
@@ -469,9 +486,15 @@ export class MembersController {
     @Param('id') id: string,
     @Body() dto: UpdateMemberDto,
     @CurrentUser() user: CurrentUserData,
+    @Req() req: Request,
   ) {
-    // TODO: IP adresi ve user agent bilgisini request'ten al
-    const member = await this.membersService.updateMember(id, dto, user.userId);
+    const member = await this.membersService.updateMember(
+      id,
+      dto,
+      user.userId,
+      getClientIpFromRequest(req),
+      getUserAgentFromRequest(req),
+    );
     return member;
   }
 

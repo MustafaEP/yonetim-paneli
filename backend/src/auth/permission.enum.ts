@@ -35,6 +35,7 @@ export enum Permission {
   CONTENT_PUBLISH = 'CONTENT_PUBLISH',
 
   // Evrak & Doküman
+  DOCUMENT_SYSTEM_ACCESS = 'DOCUMENT_SYSTEM_ACCESS',
   DOCUMENT_TEMPLATE_MANAGE = 'DOCUMENT_TEMPLATE_MANAGE',
   DOCUMENT_MEMBER_HISTORY_VIEW = 'DOCUMENT_MEMBER_HISTORY_VIEW',
   DOCUMENT_GENERATE_PDF = 'DOCUMENT_GENERATE_PDF',
@@ -90,4 +91,8 @@ export enum Permission {
   // Avans Sistemi
   ADVANCE_VIEW = 'ADVANCE_VIEW', // Avansları listele ve görüntüle
   ADVANCE_ADD = 'ADVANCE_ADD',   // Avans oluştur, güncelle, sil
+
+  // Fatura Sistemi
+  INVOICE_VIEW = 'INVOICE_VIEW', // Faturaları listele ve görüntüle
+  INVOICE_ADD = 'INVOICE_ADD',   // Fatura oluştur, güncelle, sil
 }

@@ -42,12 +42,12 @@ import {
   updatePayment,
   deletePayment,
   uploadPaymentDocument,
+  viewPaymentDocument,
   type MemberPayment,
   type PaymentType,
   type UpdateMemberPaymentDto,
 } from '../services/paymentsApi';
 import { getTevkifatCenters } from '../../accounting/services/accountingApi';
-import httpClient from '../../../shared/services/httpClient';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
 
@@ -138,6 +138,18 @@ const PaymentDetailPage: React.FC = () => {
     });
     setDocumentFile(null);
     setEditDialogOpen(true);
+  };
+
+  const handleViewDocument = async () => {
+    if (!payment?.documentUrl) {
+      toast.showError('Bu kesinti için belge bulunmamaktadır.');
+      return;
+    }
+    try {
+      await viewPaymentDocument(payment.id);
+    } catch (e: unknown) {
+      toast.showError(getApiErrorMessage(e, 'Belge görüntülenemedi'));
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -625,16 +637,7 @@ const PaymentDetailPage: React.FC = () => {
                         variant="contained"
                         size="small"
                         startIcon={<PictureAsPdfIcon />}
-                        onClick={() => {
-                          // Backend base URL'ini kullan
-                          const baseURL = httpClient.defaults.baseURL || 'http://localhost:3000';
-                          const fileUrl = payment.documentUrl?.startsWith('/') 
-                            ? `${baseURL}${payment.documentUrl}` 
-                            : payment.documentUrl;
-                          if (fileUrl) {
-                            window.open(fileUrl, '_blank');
-                          }
-                        }}
+                        onClick={() => void handleViewDocument()}
                         sx={{ 
                           textTransform: 'none',
                           borderRadius: 2,
@@ -770,23 +773,6 @@ const PaymentDetailPage: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              <FormControl fullWidth>
-                <InputLabel>Kesinti Tipi</InputLabel>
-                <Select
-                  value={editForm.paymentType ?? 'TEVKIFAT'}
-                  label="Kesinti Tipi"
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      paymentType: e.target.value as PaymentType,
-                    })
-                  }
-                >
-                  <MenuItem value="TEVKIFAT">Tevkifat</MenuItem>
-                  <MenuItem value="ELDEN">Elden</MenuItem>
-                  <MenuItem value="HAVALE">Havale</MenuItem>
-                </Select>
-              </FormControl>
               {editForm.paymentType === 'TEVKIFAT' && (
                 <FormControl fullWidth>
                   <InputLabel>Tevkifat Merkezi</InputLabel>
@@ -829,15 +815,7 @@ const PaymentDetailPage: React.FC = () => {
                     <Button
                       size="small"
                       startIcon={<VisibilityIcon />}
-                      onClick={() => {
-                        const baseURL = httpClient.defaults.baseURL || 'http://localhost:3000';
-                        const fileUrl = payment.documentUrl?.startsWith('/')
-                          ? `${baseURL}${payment.documentUrl}`
-                          : payment.documentUrl;
-                        if (fileUrl) {
-                          window.open(fileUrl, '_blank');
-                        }
-                      }}
+                      onClick={() => void handleViewDocument()}
                       sx={{ fontSize: '0.75rem' }}
                     >
                       Görüntüle

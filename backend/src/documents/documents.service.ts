@@ -9,7 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '../config/config.service';
 import { CreateDocumentTemplateDto } from './application/dto/create-document-template.dto';
 import { UpdateDocumentTemplateDto } from './application/dto/update-document-template.dto';
-import { GenerateDocumentDto } from './dto';
+import { GenerateDocumentDto, GenerateMemberListDocumentDto } from './dto';
 import { DocumentTemplateType, DocumentUploadStatus } from '@prisma/client';
 import type { Response } from 'express';
 import * as fs from 'fs';
@@ -17,6 +17,7 @@ import * as path from 'path';
 import { PdfService } from './services/pdf.service';
 import { FileStorageService } from './services/file-storage.service';
 import { DocumentTemplateApplicationService } from './application/services/document-template-application.service';
+import { sanitizePdfFileBaseName } from './utils/sanitize-pdf-file-base-name';
 
 @Injectable()
 export class DocumentsService {
@@ -132,6 +133,12 @@ export class DocumentsService {
     // Şablonu al
     const template = await this.findTemplateById(dto.templateId);
 
+    if ((template.type as string) === 'BULK_MEMBER_LIST') {
+      throw new BadRequestException(
+        'Toplu üye listesi şablonları yalnızca toplu liste PDF akışı ile kullanılabilir.',
+      );
+    }
+
     // Üyeyi al
     const member = await this.prisma.member.findUnique({
       where: { id: dto.memberId },
@@ -237,15 +244,8 @@ export class DocumentsService {
     htmlContent = this.pdfService.wrapTemplateWithHtml(htmlContent);
 
     // Dosya adı ve yolu oluştur (isteğe bağlı custom fileName)
-    const sanitizeBaseName = (name: string) =>
-      name
-        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 120);
-
     const suggestedBase = dto.fileName
-      ? sanitizeBaseName(dto.fileName.replace(/\.pdf$/i, ''))
+      ? sanitizePdfFileBaseName(dto.fileName)
       : '';
     const defaultBase = `${template.type}_${member.registrationNumber || member.id}_${Date.now()}`;
     const baseName = suggestedBase || defaultBase;
@@ -349,6 +349,145 @@ export class DocumentsService {
     };
   }
 
+  // Toplu üye listesi PDF oluştur (tek PDF, birden fazla üye)
+  async generateMemberListDocument(
+    dto: GenerateMemberListDocumentDto,
+    generatedBy: string,
+  ) {
+    if (!dto.memberIds || dto.memberIds.length === 0) {
+      throw new BadRequestException('En az bir üye seçilmelidir');
+    }
+
+    const template = await this.findTemplateById(dto.templateId);
+
+    if ((template.type as string) !== 'BULK_MEMBER_LIST') {
+      throw new BadRequestException(
+        'Toplu üye listesi PDF\'i yalnızca türü "Toplu üye listesi" (BULK_MEMBER_LIST) olan şablonlarla oluşturulabilir.',
+      );
+    }
+
+    // Tüm üyeleri çek
+    const members = await this.prisma.member.findMany({
+      where: { id: { in: dto.memberIds } },
+      include: {
+        tevkifatTitle: true,
+        profession: true,
+      },
+      orderBy: { registrationNumber: 'asc' },
+    });
+
+    if (members.length === 0) {
+      throw new NotFoundException('Seçilen üyeler bulunamadı');
+    }
+
+    // Üye tablo satırlarını oluştur
+    const memberTableRows = members
+      .map(
+        (m, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${[m.firstName, m.lastName].filter(Boolean).join(' ')}</td>
+        <td>${m.nationalId || ''}</td>
+        <td>${m.tevkifatTitle?.name || m.profession?.name || ''}</td>
+        <td>${m.registrationNumber || ''}</td>
+      </tr>`,
+      )
+      .join('');
+
+    // Tarih ve genel değişkenler
+    const now = new Date();
+    const variables: Record<string, string> = {
+      date: now.toLocaleDateString('tr-TR'),
+      memberTable: memberTableRows,
+      ...(dto.variables || {}),
+    };
+
+    // Şablon değişkenlerini değiştir
+    let htmlContent = this.pdfService.replaceTemplateVariables(
+      template.template,
+      variables,
+    );
+    htmlContent = this.pdfService.wrapTemplateWithHtml(htmlContent);
+
+    // Dosya adı
+    const suggestedBase = dto.fileName
+      ? sanitizePdfFileBaseName(dto.fileName)
+      : '';
+    const defaultBase = `${template.type}_liste_${Date.now()}`;
+    const baseName = suggestedBase || defaultBase;
+
+    let fileName = `${baseName}.pdf`;
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
+    let filePath = path.join(uploadsDir, fileName);
+
+    if (fs.existsSync(filePath)) {
+      fileName = `${baseName}_${Date.now()}.pdf`;
+      filePath = path.join(uploadsDir, fileName);
+    }
+    const fileUrl = `/uploads/documents/${fileName}`;
+
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    try {
+      const headerPaperPath = this.configService.getSystemSetting(
+        'DOCUMENT_HEADER_PAPER_PATH',
+      );
+      let finalHeaderPaperPath: string | undefined;
+
+      if (headerPaperPath) {
+        if (headerPaperPath.startsWith('/uploads/')) {
+          finalHeaderPaperPath = path.join(process.cwd(), headerPaperPath);
+        } else if (!path.isAbsolute(headerPaperPath)) {
+          finalHeaderPaperPath = path.join(process.cwd(), headerPaperPath);
+        } else {
+          finalHeaderPaperPath = headerPaperPath;
+        }
+        if (!fs.existsSync(finalHeaderPaperPath)) {
+          finalHeaderPaperPath = undefined;
+        }
+      }
+
+      await this.pdfService.generatePdfFromHtml(htmlContent, filePath, {
+        format: 'A4',
+        printBackground: true,
+        headerPaperPath: finalHeaderPaperPath,
+      });
+    } catch (error) {
+      throw new BadRequestException(`PDF oluşturma hatası: ${error.message}`);
+    }
+
+    // İlk üyeye bağlı doküman kaydı oluştur
+    const firstMember = members[0];
+    const document = await this.prisma.memberDocument.create({
+      data: {
+        memberId: firstMember.id,
+        templateId: dto.templateId,
+        documentType: template.type,
+        fileName,
+        fileUrl,
+        generatedBy,
+      },
+      include: {
+        template: true,
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            registrationNumber: true,
+          },
+        },
+        generatedByUser: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+    });
+
+    return { fileUrl, fileName, document, memberCount: members.length };
+  }
+
   // Doküman yükle (yeni güvenli staging sistemi)
   async uploadMemberDocument(
     memberId: string,
@@ -443,7 +582,7 @@ export class DocumentsService {
       this.fileStorageService.deleteFromStaging(document.stagingPath);
     }
     if (document.permanentPath) {
-      this.fileStorageService.deleteFromPermanent(document.permanentPath);
+      this.fileStorageService.deleteFileUnderUploadsRoot(document.permanentPath);
     }
 
     await this.prisma.memberDocument.update({

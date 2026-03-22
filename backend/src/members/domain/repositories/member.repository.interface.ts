@@ -19,9 +19,12 @@ export interface MemberRepository {
   save(member: Member): Promise<void>;
 
   /**
-   * TC Kimlik numarasına göre üye bul (herhangi bir durumda)
+   * TC ile yeni başvuruyu engelleyen üye var mı (PENDING, APPROVED, ACTIVE, REJECTED).
+   * İstifa/ihraç/pasif (RESIGNED, EXPELLED, INACTIVE) kayıtları engellemez; yeniden kayıt için yeni satır açılabilir.
    */
-  findByNationalId(nationalId: NationalId): Promise<Member | null>;
+  findBlockingMembershipByNationalId(
+    nationalId: NationalId,
+  ): Promise<Member | null>;
 
   /**
    * TC Kimlik numarasına göre iptal edilmiş üye bul

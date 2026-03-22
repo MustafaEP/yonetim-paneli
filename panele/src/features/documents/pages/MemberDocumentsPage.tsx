@@ -1,5 +1,5 @@
 // src/pages/documents/MemberDocumentsPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -33,14 +33,16 @@ import PersonIcon from '@mui/icons-material/Person';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import Autocomplete from '@mui/material/Autocomplete';
 
-import type { MemberDocument, DocumentTemplate, GenerateDocumentDto } from '../services/documentsApi';
-import { getMemberDocuments, uploadMemberDocument, generateDocument, getDocumentTemplates } from '../services/documentsApi';
+import type { MemberDocument, DocumentTemplate, GenerateDocumentDto, GenerateMemberListDocumentDto } from '../services/documentsApi';
+import { getMemberDocuments, uploadMemberDocument, generateDocument, generateMemberListDocument, getDocumentTemplates, deleteMemberDocument } from '../services/documentsApi';
 import { getMembers } from '../../members/services/membersApi';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
+import { sanitizePdfFileBaseName } from '../../../shared/utils/sanitizePdfFileBaseName';
 import type { MemberListItem } from '../../../types/member';
 import { DOCUMENT_TYPES, getDocumentTypeLabel } from '../../../shared/utils/documentTypes';
 import httpClient from '../../../shared/services/httpClient';
@@ -76,6 +78,7 @@ const MemberDocumentsPage: React.FC = () => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfTitle, setPdfTitle] = useState<string>('');
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
 
   const [bulkGenerateDialogOpen, setBulkGenerateDialogOpen] = useState(false);
   const [bulkSelectedMembers, setBulkSelectedMembers] = useState<MemberListItem[]>([]);
@@ -85,9 +88,28 @@ const MemberDocumentsPage: React.FC = () => {
   const [bulkPhotoPreview, setBulkPhotoPreview] = useState<string>('');
   const [bulkGenerating, setBulkGenerating] = useState(false);
 
+  // Toplu liste (tek PDF) state
+  const [listGenerateDialogOpen, setListGenerateDialogOpen] = useState(false);
+  const [listSelectedMembers, setListSelectedMembers] = useState<MemberListItem[]>([]);
+  const [listSelectedTemplate, setListSelectedTemplate] = useState<DocumentTemplate | null>(null);
+  const [listExtraVariables, setListExtraVariables] = useState<Record<string, string>>({});
+  const [listPdfFileName, setListPdfFileName] = useState<string>('');
+  const [listGenerating, setListGenerating] = useState(false);
+
   const canView = hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
   const canUpload = hasPermission('DOCUMENT_GENERATE_PDF');
   const canGenerate = hasPermission('DOCUMENT_GENERATE_PDF');
+
+  const bulkMemberListTemplates = useMemo(
+    () => templates.filter((t) => t.type === 'BULK_MEMBER_LIST'),
+    [templates],
+  );
+
+  /** Tekil / üye başına toplu PDF — toplu üye listesi (tek döküman) şablonları burada gösterilmez */
+  const perMemberPdfTemplates = useMemo(
+    () => templates.filter((t) => t.type !== 'BULK_MEMBER_LIST'),
+    [templates],
+  );
 
   // Üyeleri yükle (sayfa ilk açıldığında veya paramMemberId değiştiğinde)
   const loadMembers = async () => {
@@ -209,6 +231,52 @@ const MemberDocumentsPage: React.FC = () => {
     loadTemplates();
   };
 
+  const handleOpenListGenerateDialog = () => {
+    setListGenerateDialogOpen(true);
+    setListSelectedTemplate(null);
+    setListSelectedMembers([]);
+    setListExtraVariables({});
+    setListPdfFileName('');
+    loadTemplates();
+  };
+
+  const handleListGenerate = async () => {
+    if (!listSelectedTemplate || listSelectedMembers.length === 0) {
+      toast.showError('Lütfen en az bir üye ve bir şablon seçin');
+      return;
+    }
+    const emptyVars = Object.entries(listExtraVariables).filter(([, value]) => !value || value.trim() === '');
+    if (emptyVars.length > 0) {
+      toast.showError(`Lütfen tüm alanları doldurun: ${emptyVars.map(([k]) => getVariableLabel(k)).join(', ')}`);
+      return;
+    }
+    setListGenerating(true);
+    try {
+      const payload: GenerateMemberListDocumentDto = {
+        memberIds: listSelectedMembers.map((m) => m.id),
+        templateId: listSelectedTemplate.id,
+        variables: Object.keys(listExtraVariables).length > 0 ? listExtraVariables : undefined,
+        fileName: listPdfFileName
+          ? sanitizePdfFileBaseName(listPdfFileName)
+          : undefined,
+      };
+      const result = await generateMemberListDocument(payload);
+      toast.showSuccess(`${result.memberCount} üyeli liste PDF başarıyla oluşturuldu`);
+      setListGenerateDialogOpen(false);
+      setListSelectedTemplate(null);
+      setListSelectedMembers([]);
+      setListExtraVariables({});
+      setListPdfFileName('');
+      if (selectedMember && listSelectedMembers.some((m) => m.id === selectedMember.id)) {
+        loadDocuments();
+      }
+    } catch (e: unknown) {
+      toast.showError(getApiErrorMessage(e, 'Liste PDF oluşturulurken bir hata oluştu'));
+    } finally {
+      setListGenerating(false);
+    }
+  };
+
   const toDataUrl = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -291,6 +359,9 @@ const MemberDocumentsPage: React.FC = () => {
       subject: 'Konu',
       reason: 'Sebep',
       description: 'Açıklama',
+
+      sayi: 'Sayı',
+      tevkifatMerkezi: 'Tevkifat merkezi (alıcı)',
     };
 
     return labels[varName] || varName.replace(/([A-Z])/g, ' $1').trim();
@@ -315,7 +386,9 @@ const MemberDocumentsPage: React.FC = () => {
         memberId: selectedMember.id,
         templateId: selectedTemplate.id,
         variables: Object.keys(extraVariables).length > 0 ? extraVariables : undefined,
-        fileName: pdfFileName || undefined,
+        fileName: pdfFileName
+          ? sanitizePdfFileBaseName(pdfFileName)
+          : undefined,
       };
       await generateDocument(payload);
       toast.showSuccess('PDF doküman başarıyla oluşturuldu');
@@ -356,7 +429,9 @@ const MemberDocumentsPage: React.FC = () => {
           templateId: bulkSelectedTemplate.id,
           variables: Object.keys(bulkExtraVariables).length > 0 ? bulkExtraVariables : undefined,
           fileName: bulkPdfFileName
-            ? `${bulkPdfFileName}_${member.firstName || ''}_${member.lastName || ''}`.trim()
+            ? sanitizePdfFileBaseName(
+                `${bulkPdfFileName}_${member.firstName || ''}_${member.lastName || ''}`.trim(),
+              )
             : undefined,
         };
         await generateDocument(payload);
@@ -394,6 +469,7 @@ const MemberDocumentsPage: React.FC = () => {
         const colors: Record<string, string> = {
           'MEMBER_REGISTRATION': theme.palette.primary.main,
           'PAYMENT_RECEIPT': theme.palette.success.main,
+          'ADVANCE_DOCUMENT': theme.palette.warning.main,
           'DOCUMENT': theme.palette.info.main,
           'UPLOADED': theme.palette.secondary.main,
         };
@@ -480,57 +556,100 @@ const MemberDocumentsPage: React.FC = () => {
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 100,
+      width: 170,
       sortable: false,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
         const doc = params.row as MemberDocument;
+        const isDeleting = deletingDocumentId === doc.id;
         return (
-          <Tooltip title="PDF Görüntüle">
-            <IconButton
-              size="small"
-              onClick={async () => {
-                try {
-                  setLoadingPdf(true);
-                  const token = localStorage.getItem('accessToken');
-                  const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
-                  const url = `${API_BASE_URL}/documents/view/${doc.id}`;
-                  
-                  const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                      'Authorization': `Bearer ${token}`,
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Tooltip title="PDF Görüntüle">
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    try {
+                      setLoadingPdf(true);
+                      const token = localStorage.getItem('accessToken');
+                      const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+                      const url = `${API_BASE_URL}/documents/view/${doc.id}`;
+                      
+                      const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                        },
+                      });
+
+                      if (!response.ok) {
+                        throw new Error('Dosya görüntülenemedi');
+                      }
+
+                      const blob = await response.blob();
+                      const blobUrl = window.URL.createObjectURL(blob);
+                      setPdfUrl(blobUrl);
+                      setPdfTitle(doc.fileName || 'Belge');
+                      setPdfViewerOpen(true);
+                      setLoadingPdf(false);
+                    } catch (error) {
+                      console.error('Dosya görüntülenirken hata:', error);
+                      toast.showError('Dosya görüntülenemedi');
+                      setLoadingPdf(false);
+                    }
+                  }}
+                  sx={{
+                    bgcolor: alpha(theme.palette.info.main, 0.1),
+                    color: theme.palette.info.main,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.info.main, 0.2),
                     },
-                  });
+                  }}
+                >
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            {canUpload && (
+              <Tooltip title="Evrak Sil">
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={isDeleting}
+                    onClick={async () => {
+                      const confirmed = window.confirm(
+                        `"${doc.fileName || 'Bu evrak'}" silinecek. Devam etmek istiyor musunuz?`,
+                      );
+                      if (!confirmed) return;
 
-                  if (!response.ok) {
-                    throw new Error('Dosya görüntülenemedi');
-                  }
-
-                  const blob = await response.blob();
-                  const blobUrl = window.URL.createObjectURL(blob);
-                  setPdfUrl(blobUrl);
-                  setPdfTitle(doc.fileName || 'Belge');
-                  setPdfViewerOpen(true);
-                  setLoadingPdf(false);
-                } catch (error) {
-                  console.error('Dosya görüntülenirken hata:', error);
-                  toast.showError('Dosya görüntülenemedi');
-                  setLoadingPdf(false);
-                }
-              }}
-              sx={{
-                bgcolor: alpha(theme.palette.info.main, 0.1),
-                color: theme.palette.info.main,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.info.main, 0.2),
-                },
-              }}
-            >
-              <VisibilityIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+                      setDeletingDocumentId(doc.id);
+                      try {
+                        await deleteMemberDocument(doc.id);
+                        toast.showSuccess('Evrak başarıyla silindi');
+                        await loadDocuments();
+                      } catch (error) {
+                        console.error('Evrak silinirken hata:', error);
+                        toast.showError('Evrak silinirken bir hata oluştu');
+                      } finally {
+                        setDeletingDocumentId(null);
+                      }
+                    }}
+                    sx={{
+                      bgcolor: alpha(theme.palette.error.main, 0.1),
+                      color: theme.palette.error.main,
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.error.main, 0.2),
+                      },
+                    }}
+                  >
+                    {isDeleting ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon fontSize="small" />}
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+          </Box>
         );
       },
     },
@@ -645,6 +764,27 @@ const MemberDocumentsPage: React.FC = () => {
               }}
             >
               Toplu PDF Oluştur
+            </Button>
+          )}
+          {canUpload && (
+            <Button
+              variant="outlined"
+              startIcon={<DescriptionIcon />}
+              onClick={handleOpenListGenerateDialog}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                borderColor: theme.palette.warning.main,
+                color: theme.palette.warning.dark,
+                '&:hover': {
+                  borderColor: theme.palette.warning.dark,
+                  bgcolor: alpha(theme.palette.warning.main, 0.05),
+                },
+              }}
+            >
+              Toplu Liste Oluştur
             </Button>
           )}
         </Box>
@@ -1154,7 +1294,7 @@ const MemberDocumentsPage: React.FC = () => {
                 <Select
                   value={selectedTemplate?.id || ''}
                   onChange={(e) => {
-                    const template = templates.find(t => t.id === e.target.value);
+                    const template = perMemberPdfTemplates.find((t) => t.id === e.target.value);
                     setSelectedTemplate(template || null);
 
                     if (template) {
@@ -1166,7 +1306,11 @@ const MemberDocumentsPage: React.FC = () => {
                       setExtraVariables(newExtraVariables);
                       setPhotoPreview('');
                       // varsayılan dosya adı önerisi
-                      setPdfFileName(`${template.name}_${selectedMember?.firstName || ''}_${selectedMember?.lastName || ''}`.trim());
+                      setPdfFileName(
+                        sanitizePdfFileBaseName(
+                          `${template.name}_${selectedMember?.firstName || ''}_${selectedMember?.lastName || ''}`.trim(),
+                        ),
+                      );
                     } else {
                       setExtraVariables({});
                       setPhotoPreview('');
@@ -1175,15 +1319,15 @@ const MemberDocumentsPage: React.FC = () => {
                   }}
                   label="Şablon Seç"
                 >
-                  {templates.map((template) => (
+                  {perMemberPdfTemplates.map((template) => (
                     <MenuItem key={template.id} value={template.id}>
                       {template.name}
                     </MenuItem>
                   ))}
                 </Select>
-                {templates.length === 0 && (
+                {perMemberPdfTemplates.length === 0 && (
                   <FormHelperText>
-                    Aktif şablon bulunamadı. Önce bir şablon oluşturun.
+                    Bu işlem için uygun aktif şablon yok. Toplu üye listesi şablonları yalnızca &quot;Toplu Liste Oluştur&quot;dan kullanılır.
                   </FormHelperText>
                 )}
               </FormControl>
@@ -1217,7 +1361,9 @@ const MemberDocumentsPage: React.FC = () => {
                   <TextField
                     label="PDF Dosya Adı"
                     value={pdfFileName}
-                    onChange={(e) => setPdfFileName(e.target.value)}
+                    onChange={(e) =>
+                      setPdfFileName(sanitizePdfFileBaseName(e.target.value))
+                    }
                     fullWidth
                     size="small"
                     disabled={generating}
@@ -1452,7 +1598,7 @@ const MemberDocumentsPage: React.FC = () => {
                 <Select
                   value={bulkSelectedTemplate?.id || ''}
                   onChange={(e) => {
-                    const template = templates.find((t) => t.id === e.target.value);
+                    const template = perMemberPdfTemplates.find((t) => t.id === e.target.value);
                     setBulkSelectedTemplate(template || null);
 
                     if (template) {
@@ -1463,7 +1609,7 @@ const MemberDocumentsPage: React.FC = () => {
                       });
                       setBulkExtraVariables(newExtraVariables);
                       setBulkPhotoPreview('');
-                      setBulkPdfFileName(template.name);
+                      setBulkPdfFileName(sanitizePdfFileBaseName(template.name));
                     } else {
                       setBulkExtraVariables({});
                       setBulkPhotoPreview('');
@@ -1472,15 +1618,15 @@ const MemberDocumentsPage: React.FC = () => {
                   }}
                   label="Şablon Seç"
                 >
-                  {templates.map((template) => (
+                  {perMemberPdfTemplates.map((template) => (
                     <MenuItem key={template.id} value={template.id}>
                       {template.name}
                     </MenuItem>
                   ))}
                 </Select>
-                {templates.length === 0 && (
+                {perMemberPdfTemplates.length === 0 && (
                   <FormHelperText>
-                    Aktif şablon bulunamadı. Önce bir şablon oluşturun.
+                    Bu işlem için uygun aktif şablon yok. Toplu üye listesi şablonları yalnızca &quot;Toplu Liste Oluştur&quot;dan kullanılır.
                   </FormHelperText>
                 )}
               </FormControl>
@@ -1514,7 +1660,9 @@ const MemberDocumentsPage: React.FC = () => {
                   <TextField
                     label="PDF Dosya Adı (Önek)"
                     value={bulkPdfFileName}
-                    onChange={(e) => setBulkPdfFileName(e.target.value)}
+                    onChange={(e) =>
+                      setBulkPdfFileName(sanitizePdfFileBaseName(e.target.value))
+                    }
                     fullWidth
                     size="small"
                     disabled={bulkGenerating}
@@ -1671,6 +1819,129 @@ const MemberDocumentsPage: React.FC = () => {
             }}
           >
             {bulkGenerating ? 'Oluşturuluyor...' : 'Toplu PDF Oluştur'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Toplu Liste PDF Dialog */}
+      <Dialog
+        open={listGenerateDialogOpen}
+        onClose={() => { if (!listGenerating) { setListGenerateDialogOpen(false); setListSelectedTemplate(null); setListSelectedMembers([]); setListExtraVariables({}); setListPdfFileName(''); } }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            pb: 2,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.12), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <DescriptionIcon sx={{ color: theme.palette.warning.dark }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Toplu Üye Listesi PDF Oluştur</Typography>
+            <Typography variant="caption" color="text.secondary">Seçilen tüm üyeler tek bir PDF'te listelenir</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
+            <Autocomplete
+              multiple
+              options={members}
+              getOptionLabel={(option) => `${option.firstName} ${option.lastName}${option.registrationNumber ? ` (${option.registrationNumber})` : ''}`}
+              value={listSelectedMembers}
+              onChange={(_, newValue) => setListSelectedMembers(newValue)}
+              renderInput={(params) => (
+                <TextField {...params} label="Üyeleri Seçin" placeholder="Listede yer alacak üyeleri seçin" />
+              )}
+            />
+            {listSelectedMembers.length > 0 && (
+              <Typography variant="body2" color="text.secondary">
+                Seçilen üye sayısı: <strong>{listSelectedMembers.length}</strong>
+              </Typography>
+            )}
+            {loadingTemplates ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress /></Box>
+            ) : (
+              <FormControl fullWidth>
+                <InputLabel>Şablon Seç</InputLabel>
+                <Select
+                  value={listSelectedTemplate?.id || ''}
+                  onChange={(e) => {
+                    const template = bulkMemberListTemplates.find((t) => t.id === e.target.value);
+                    setListSelectedTemplate(template || null);
+                    if (template) {
+                      const extraVars = getExtraVariablesFromTemplate(template).filter(v => v !== 'memberTable');
+                      const newVars: Record<string, string> = {};
+                      extraVars.forEach((v) => { newVars[v] = ''; });
+                      setListExtraVariables(newVars);
+                      setListPdfFileName(sanitizePdfFileBaseName(template.name));
+                    } else {
+                      setListExtraVariables({});
+                      setListPdfFileName('');
+                    }
+                  }}
+                  label="Şablon Seç"
+                >
+                  {bulkMemberListTemplates.map((t) => (
+                    <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+                  ))}
+                </Select>
+                {bulkMemberListTemplates.length === 0 && (
+                  <FormHelperText>
+                    Toplu liste için türü &quot;Toplu üye listesi&quot; (BULK_MEMBER_LIST) olan aktif şablon gerekir. Şablon yoksa PDF Şablonları sayfasından ekleyin veya seed/migration çalıştırın.
+                  </FormHelperText>
+                )}
+              </FormControl>
+            )}
+            {listSelectedTemplate && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <TextField
+                  label="PDF Dosya Adı"
+                  value={listPdfFileName}
+                  onChange={(e) =>
+                    setListPdfFileName(sanitizePdfFileBaseName(e.target.value))
+                  }
+                  fullWidth
+                  size="small"
+                  disabled={listGenerating}
+                  helperText="Uzantı (.pdf) otomatik eklenir"
+                />
+                {Object.keys(listExtraVariables).map((varName) => (
+                  <TextField
+                    key={varName}
+                    label={getVariableLabel(varName)}
+                    value={listExtraVariables[varName] || ''}
+                    onChange={(e) => setListExtraVariables((prev) => ({ ...prev, [varName]: e.target.value }))}
+                    fullWidth
+                    size="small"
+                    required
+                    disabled={listGenerating}
+                    error={!listExtraVariables[varName]}
+                    helperText={!listExtraVariables[varName] ? 'Bu alan zorunludur' : ''}
+                  />
+                ))}
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`, gap: 1.5 }}>
+          <Button onClick={() => { setListGenerateDialogOpen(false); setListSelectedTemplate(null); setListSelectedMembers([]); setListExtraVariables({}); setListPdfFileName(''); }} disabled={listGenerating} sx={{ borderRadius: 2, textTransform: 'none', px: 3 }}>
+            İptal
+          </Button>
+          <Button
+            onClick={handleListGenerate}
+            variant="contained"
+            disabled={!listSelectedTemplate || listSelectedMembers.length === 0 || listGenerating}
+            startIcon={listGenerating ? <CircularProgress size={16} /> : <DescriptionIcon />}
+            sx={{ borderRadius: 2, textTransform: 'none', px: 3, fontWeight: 600, bgcolor: theme.palette.warning.dark, '&:hover': { bgcolor: theme.palette.warning.main } }}
+          >
+            {listGenerating ? 'Oluşturuluyor...' : `PDF Oluştur (${listSelectedMembers.length} üye)`}
           </Button>
         </DialogActions>
       </Dialog>

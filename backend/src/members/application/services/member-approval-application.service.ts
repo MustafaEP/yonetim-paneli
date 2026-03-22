@@ -41,6 +41,8 @@ export interface ApproveMemberCommand {
   tevkifatTitleId?: string;
   branchId?: string;
   memberGroupId?: string;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 /**
@@ -102,11 +104,12 @@ export class MemberApprovalApplicationService {
       // 4. Repository'ye kaydet
       await this.memberRepository.save(member);
 
-      // 4b. Yeniden üyelik onayı: PENDING iken onaylandıysa ve geçmişte dönem kaydı varsa (iptal sonrası başvuru) yeni dönem kaydı oluştur
+      // 4b. Yeniden üyelik onayı: yeni Member satırında önceki iptal kaydına bağlantı varsa veya bu üyede kapalı dönem zaten varsa açık dönem oluştur
       const existingPeriods =
         await this.membershipPeriodRepository.findByMemberId(member.id);
       const isReRegistrationApproval =
-        oldData.status === 'PENDING' && existingPeriods.length > 0;
+        oldData.status === 'PENDING' &&
+        (existingPeriods.length > 0 || !!member.previousCancelledMemberId);
       if (
         isReRegistrationApproval &&
         member.registrationNumber?.getValue() &&
@@ -130,6 +133,8 @@ export class MemberApprovalApplicationService {
         command.approvedByUserId,
         oldData,
         newData,
+        command.ipAddress,
+        command.userAgent,
       );
 
       // 6. Document file name update (non-blocking, error handling ile)

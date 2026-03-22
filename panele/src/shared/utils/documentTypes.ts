@@ -33,8 +33,10 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   NOTIFICATION_LETTER: 'Bildirim Yazısı',
   MEMBERSHIP_APPLICATION: 'Üyelik Başvurusu',
   TRANSFER_CERTIFICATE: 'Nakil Belgesi',
+  BULK_MEMBER_LIST: 'Toplu üye listesi',
   // Diğer kullanılan tipler
   PAYMENT_RECEIPT: 'Kesinti Makbuzu',
+  ADVANCE_DOCUMENT: 'Avans Belgesi',
   DOCUMENT: 'Doküman',
 };
 

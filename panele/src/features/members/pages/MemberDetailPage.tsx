@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -57,7 +57,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SecurityIcon from '@mui/icons-material/Security';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { getMemberById, exportMemberDetailToPdf, updateMember, approveMember, rejectMember, getMemberHistory, cancelMember } from '../services/membersApi';
+import { getMemberById, updateMember, approveMember, rejectMember, getMemberHistory, cancelMember } from '../services/membersApi';
 import httpClient from '../../../shared/services/httpClient';
 import MemberStatusChangeDialog from '../components/MemberStatusChangeDialog';
 import PromoteToPanelUserDialog from '../components/PromoteToPanelUserDialog';
@@ -70,6 +70,7 @@ import {
   uploadMemberDocument,
   generateDocument,
   getDocumentTemplates,
+  deleteMemberDocument,
   type MemberDocument,
   type DocumentTemplate,
   type GenerateDocumentDto,
@@ -81,6 +82,7 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
+import { sanitizePdfFileBaseName } from '../../../shared/utils/sanitizePdfFileBaseName';
 import { getUserById, updateUserRoles } from '../../users/services/usersApi';
 import { getRoles } from '../../roles/services/rolesApi';
 import type { CustomRole } from '../../../types/role';
@@ -177,6 +179,12 @@ const MemberDetailPage = () => {
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
+
+  const perMemberPdfTemplates = useMemo(
+    () => templates.filter((t) => t.type !== 'BULK_MEMBER_LIST'),
+    [templates],
+  );
 
   // Üye başvurusu onaylama dialog state
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
@@ -628,7 +636,9 @@ const MemberDetailPage = () => {
         memberId: id,
         templateId: selectedTemplate.id,
         variables: Object.keys(extraVariables).length > 0 ? extraVariables : undefined,
-        fileName: pdfFileName || undefined,
+        fileName: pdfFileName
+          ? sanitizePdfFileBaseName(pdfFileName)
+          : undefined,
       };
       await generateDocument(payload);
       toast.showSuccess('PDF evrak başarıyla oluşturuldu');
@@ -645,17 +655,6 @@ const MemberDetailPage = () => {
       toast.showError(getApiErrorMessage(error, 'PDF oluşturulurken bir hata oluştu'));
     } finally {
       setGenerating(false);
-    }
-  };
-
-  const handleExportPdf = async () => {
-    if (!id) return;
-    try {
-      await exportMemberDetailToPdf(id);
-      toast.showSuccess('PDF dosyası indirildi');
-    } catch (error: unknown) {
-      console.error('PDF export hatası:', error);
-      toast.showError(getApiErrorMessage(error, 'PDF export sırasında bir hata oluştu'));
     }
   };
 
@@ -935,6 +934,45 @@ const MemberDetailPage = () => {
   };
 
   const statusConfig = getStatusConfig(member?.status || 'PENDING');
+  const memberGroupLabel =
+    member?.memberGroup?.name?.trim() || member?.membershipInfoOption?.label?.trim() || '-';
+
+  const MEMBER_GROUP_COLOR_MAP: Record<string, { chip: string; chipText: string }> = {
+    'üye': { chip: '#1565c0', chipText: '#fff' },
+    'fahri üye': { chip: '#e65100', chipText: '#fff' },
+    'onursal üye': { chip: '#4a148c', chipText: '#fff' },
+    'aday üye': { chip: '#006064', chipText: '#fff' },
+  };
+
+  const MEMBER_GROUP_PALETTE = [
+    { chip: '#1B5E20', chipText: '#fff' },
+    { chip: '#880E4F', chipText: '#fff' },
+    { chip: '#1A237E', chipText: '#fff' },
+    { chip: '#BF360C', chipText: '#fff' },
+    { chip: '#004D40', chipText: '#fff' },
+    { chip: '#6A1B9A', chipText: '#fff' },
+    { chip: '#B71C1C', chipText: '#fff' },
+    { chip: '#01579B', chipText: '#fff' },
+    { chip: '#558B2F', chipText: '#fff' },
+    { chip: '#F57F17', chipText: '#fff' },
+    { chip: '#4E342E', chipText: '#fff' },
+    { chip: '#00695C', chipText: '#fff' },
+  ];
+
+  const getMemberGroupColors = (name: string | null | undefined) => {
+    const EMPTY = { chip: '#9e9e9e', chipText: '#fff' };
+    if (!name || name === '-') return EMPTY;
+    const key = name.trim().toLowerCase();
+    const known = MEMBER_GROUP_COLOR_MAP[key];
+    if (known) return known;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return MEMBER_GROUP_PALETTE[Math.abs(hash) % MEMBER_GROUP_PALETTE.length];
+  };
+
+  const memberGroupColors = getMemberGroupColors(memberGroupLabel);
 
   // İstatistik hesaplama fonksiyonları
   const calculateMembershipDuration = () => {
@@ -1243,13 +1281,35 @@ const MemberDetailPage = () => {
           </Box>
         }
         description={
-          member?.nationalId && member?.registrationNumber
-            ? `TC: ${member.nationalId} • Kayıt No: ${member.registrationNumber} • ${statusConfig.label}`
-            : member?.nationalId
-            ? `TC: ${member.nationalId} • ${statusConfig.label}`
-            : member?.registrationNumber
-            ? `Kayıt No: ${member.registrationNumber} • ${statusConfig.label}`
-            : statusConfig.label
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Typography
+              variant="body1"
+              sx={{ color: 'text.secondary', fontWeight: 500, fontSize: { xs: '0.9rem', sm: '1rem' } }}
+            >
+              {member?.nationalId && member?.registrationNumber
+                ? `TC: ${member.nationalId} • Kayıt No: ${member.registrationNumber} • ${statusConfig.label}`
+                : member?.nationalId
+                ? `TC: ${member.nationalId} • ${statusConfig.label}`
+                : member?.registrationNumber
+                ? `Kayıt No: ${member.registrationNumber} • ${statusConfig.label}`
+                : statusConfig.label}
+            </Typography>
+            <Chip
+              label={memberGroupLabel}
+              size="small"
+              sx={{
+                alignSelf: 'flex-start',
+                backgroundColor: memberGroupColors.chip,
+                color: memberGroupColors.chipText,
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                height: 26,
+                borderRadius: 1.5,
+                px: 0.5,
+                boxShadow: `0 2px 6px ${alpha(memberGroupColors.chip, 0.35)}`,
+              }}
+            />
+          </Box>
         }
         color={statusConfig.headerShadow}
         darkColor={statusConfig.headerShadow}
@@ -1304,31 +1364,6 @@ const MemberDetailPage = () => {
                 Durum Değiştir
               </Button>
             )}
-            {(member?.status === 'ACTIVE' || member?.status === 'APPROVED') && canUploadDocument && (
-              <Button
-                variant="contained"
-                startIcon={<PictureAsPdfIcon />}
-                onClick={handleExportPdf}
-                sx={{
-                  borderRadius: 2.5,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.25,
-                  fontSize: '0.95rem',
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.45)}`,
-                    background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-                  },
-                }}
-              >
-                PDF İndir
-              </Button>
-            )}
           </Stack>
         }
         mobileContent={
@@ -1367,25 +1402,6 @@ const MemberDetailPage = () => {
                 }}
               >
                 Durum Değiştir
-              </Button>
-            )}
-            {(member?.status === 'ACTIVE' || member?.status === 'APPROVED') && canUploadDocument && (
-              <Button
-                variant="contained"
-                startIcon={<PictureAsPdfIcon />}
-                fullWidth
-                onClick={handleExportPdf}
-                sx={{
-                  borderRadius: 2.5,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  py: 1.5,
-                  fontSize: '0.95rem',
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
-                }}
-              >
-                PDF İndir
               </Button>
             )}
           </Stack>
@@ -3042,10 +3058,11 @@ const MemberDetailPage = () => {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                           <Button
                             size="small"
                             variant="outlined"
+                            disabled={deletingDocumentId === document.id}
                             startIcon={<PictureAsPdfIcon />}
                             onClick={async () => {
                               try {
@@ -3086,6 +3103,48 @@ const MemberDetailPage = () => {
                           >
                             Görüntüle
                           </Button>
+                          {canUploadDocument && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              disabled={deletingDocumentId === document.id}
+                              startIcon={
+                                deletingDocumentId === document.id ? (
+                                  <CircularProgress size={14} color="inherit" />
+                                ) : (
+                                  <DeleteIcon fontSize="small" />
+                                )
+                              }
+                              onClick={async () => {
+                                const confirmed = window.confirm(
+                                  `"${document.fileName || 'Bu evrak'}" silinecek. Devam etmek istiyor musunuz?`,
+                                );
+                                if (!confirmed || !id) return;
+
+                                setDeletingDocumentId(document.id);
+                                try {
+                                  await deleteMemberDocument(document.id);
+                                  toast.showSuccess('Evrak başarıyla silindi');
+                                  const data = await getMemberDocuments(id);
+                                  setDocuments(data);
+                                } catch (error: unknown) {
+                                  console.error('Evrak silinirken hata:', error);
+                                  toast.showError(getApiErrorMessage(error, 'Evrak silinirken bir hata oluştu'));
+                                } finally {
+                                  setDeletingDocumentId(null);
+                                }
+                              }}
+                              sx={{
+                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                px: { xs: 1, sm: 1.5 },
+                                py: { xs: 0.5, sm: 0.75 },
+                                minWidth: 'auto',
+                              }}
+                            >
+                              {deletingDocumentId === document.id ? 'Siliniyor...' : 'Sil'}
+                            </Button>
+                          )}
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -3595,7 +3654,7 @@ const MemberDetailPage = () => {
                   <Select
                     value={selectedTemplate?.id || ''}
                     onChange={(e) => {
-                      const template = templates.find(t => t.id === e.target.value);
+                      const template = perMemberPdfTemplates.find((t) => t.id === e.target.value);
                       setSelectedTemplate(template || null);
                       // Template değiştiğinde ekstra değişkenleri sıfırla
                       if (template) {
@@ -3606,7 +3665,11 @@ const MemberDetailPage = () => {
                         });
                         setExtraVariables(newExtraVariables);
                         setPhotoPreview('');
-                        setPdfFileName(`${template.name}_${member?.firstName || ''}_${member?.lastName || ''}`.trim());
+                        setPdfFileName(
+                          sanitizePdfFileBaseName(
+                            `${template.name}_${member?.firstName || ''}_${member?.lastName || ''}`.trim(),
+                          ),
+                        );
                       } else {
                         setExtraVariables({});
                         setPhotoPreview('');
@@ -3622,15 +3685,15 @@ const MemberDetailPage = () => {
                       },
                     }}
                   >
-                    {templates.map((template) => (
+                    {perMemberPdfTemplates.map((template) => (
                       <MenuItem key={template.id} value={template.id}>
                         {template.name}
                       </MenuItem>
                     ))}
                   </Select>
-                  {templates.length === 0 && (
+                  {perMemberPdfTemplates.length === 0 && (
                     <FormHelperText>
-                      Aktif şablon bulunamadı. Önce bir şablon oluşturun.
+                      Bu işlem için uygun aktif şablon yok. Toplu üye listesi şablonları yalnızca evraklar sayfasındaki &quot;Toplu Liste Oluştur&quot;dan kullanılır.
                     </FormHelperText>
                   )}
                 </FormControl>
@@ -3653,7 +3716,9 @@ const MemberDetailPage = () => {
                     <TextField
                       label="PDF Dosya Adı"
                       value={pdfFileName}
-                      onChange={(e) => setPdfFileName(e.target.value)}
+                      onChange={(e) =>
+                        setPdfFileName(sanitizePdfFileBaseName(e.target.value))
+                      }
                       fullWidth
                       size="small"
                       disabled={generating}

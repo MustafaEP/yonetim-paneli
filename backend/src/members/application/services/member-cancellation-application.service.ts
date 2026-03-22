@@ -32,6 +32,8 @@ export interface CancelMemberCommand {
   cancelledByUserId: string;
   status: MemberStatusEnum; // RESIGNED, EXPELLED, veya INACTIVE
   cancellationReason: string;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 @Injectable()
@@ -107,6 +109,8 @@ export class MemberCancellationApplicationService {
         command.cancelledByUserId,
         oldData,
         newData,
+        command.ipAddress,
+        command.userAgent,
       );
 
       return member;

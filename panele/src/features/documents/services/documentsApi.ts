@@ -6,7 +6,7 @@ export interface DocumentTemplate {
   name: string;
   description?: string;
   template: string;
-  type: 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'OTHER';
+  type: 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'BULK_MEMBER_LIST' | 'OTHER';
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -39,19 +39,26 @@ export interface CreateDocumentTemplateDto {
   name: string;
   description?: string;
   template: string;
-  type: 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'OTHER';
+  type: 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'BULK_MEMBER_LIST' | 'OTHER';
 }
 
 export interface UpdateDocumentTemplateDto {
   name?: string;
   description?: string;
   template?: string;
-  type?: 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'OTHER';
+  type?: 'MEMBER_CERTIFICATE' | 'MEMBER_CARD' | 'LETTER' | 'RESIGNATION_LETTER' | 'EXPULSION_LETTER' | 'APPROVAL_CERTIFICATE' | 'INVITATION_LETTER' | 'CONGRATULATION_LETTER' | 'WARNING_LETTER' | 'NOTIFICATION_LETTER' | 'MEMBERSHIP_APPLICATION' | 'TRANSFER_CERTIFICATE' | 'BULK_MEMBER_LIST' | 'OTHER';
   isActive?: boolean;
 }
 
 export interface GenerateDocumentDto {
   memberId: string;
+  templateId: string;
+  variables?: Record<string, string>;
+  fileName?: string;
+}
+
+export interface GenerateMemberListDocumentDto {
+  memberIds: string[];
   templateId: string;
   variables?: Record<string, string>;
   fileName?: string;
@@ -179,6 +186,14 @@ export const generateDocument = async (
   payload: GenerateDocumentDto,
 ): Promise<MemberDocument> => {
   const res = await httpClient.post<MemberDocument>('/documents/generate', payload);
+  return res.data;
+};
+
+// Toplu üye listesi PDF oluştur (tek PDF)
+export const generateMemberListDocument = async (
+  payload: GenerateMemberListDocumentDto,
+): Promise<{ fileUrl: string; fileName: string; document: MemberDocument; memberCount: number }> => {
+  const res = await httpClient.post('/documents/generate-list', payload);
   return res.data;
 };
 

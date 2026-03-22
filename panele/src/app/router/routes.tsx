@@ -121,11 +121,11 @@ const AppRoutes: React.FC = () => (
           <Route path="/content" element={<ContentListPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="DOCUMENT_TEMPLATE_MANAGE" />}>
+        <Route element={<ProtectedRoute requiredPermission="DOCUMENT_TEMPLATE_MANAGE" alternativePermission="DOCUMENT_SYSTEM_ACCESS" />}>
           <Route path="/documents/templates" element={<DocumentTemplatesPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="DOCUMENT_MEMBER_HISTORY_VIEW" />}>
+        <Route element={<ProtectedRoute requiredPermission="DOCUMENT_MEMBER_HISTORY_VIEW" alternativePermission="DOCUMENT_SYSTEM_ACCESS" />}>
           <Route path="/documents/members" element={<MemberDocumentsPage />} />
           <Route path="/documents/members/:memberId" element={<MemberDocumentsPage />} />
         </Route>

@@ -26,6 +26,7 @@ export type Permission =
   | 'BRANCH_ASSIGN_PRESIDENT'
   | 'CONTENT_MANAGE'
   | 'CONTENT_PUBLISH'
+  | 'DOCUMENT_SYSTEM_ACCESS'
   | 'DOCUMENT_TEMPLATE_MANAGE'
   | 'DOCUMENT_MEMBER_HISTORY_VIEW'
   | 'DOCUMENT_GENERATE_PDF'
@@ -183,6 +184,7 @@ export const PERMISSION_GROUPS = {
     'CONTENT_PUBLISH',
   ] as Permission[],
   DOCUMENT_MANAGEMENT: [
+    'DOCUMENT_SYSTEM_ACCESS',
     'DOCUMENT_TEMPLATE_MANAGE',
     'DOCUMENT_MEMBER_HISTORY_VIEW',
     'DOCUMENT_GENERATE_PDF',
@@ -267,6 +269,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   BRANCH_ASSIGN_PRESIDENT: 'Şube Başkanı Ata',
   CONTENT_MANAGE: 'İçerik Yönet',
   CONTENT_PUBLISH: 'İçerik Yayınla',
+  DOCUMENT_SYSTEM_ACCESS: 'Evrak Sistemine Erişim',
   DOCUMENT_TEMPLATE_MANAGE: 'Doküman Şablonu Yönet',
   DOCUMENT_MEMBER_HISTORY_VIEW: 'Üye Doküman Geçmişini Görüntüle',
   DOCUMENT_GENERATE_PDF: 'PDF Oluştur',

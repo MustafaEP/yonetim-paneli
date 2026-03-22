@@ -7,6 +7,7 @@ import {
   Max,
   IsDateString,
   Matches,
+  IsBoolean,
 } from 'class-validator';
 
 export class UpdateAdvanceDto {
@@ -65,5 +66,22 @@ export class UpdateAdvanceDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiProperty({
+    description:
+      'Yeni PDF URL’i (POST /accounting/advances/upload-document çıktısı)',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  documentUrl?: string;
+
+  @ApiProperty({
+    description: 'true ise mevcut PDF kaldırılır',
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  clearDocument?: boolean;
 }
 

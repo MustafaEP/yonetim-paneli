@@ -141,6 +141,7 @@ export interface MemberAdvanceSummary {
   month: number;
   year: number;
   description?: string | null;
+  documentUrl?: string | null;
   createdAt: string;
   createdByUser?: {
     id: string;

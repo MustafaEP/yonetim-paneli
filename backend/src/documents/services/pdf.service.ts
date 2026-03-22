@@ -229,7 +229,7 @@ export class PdfService {
       position: relative;
       z-index: 1;
       width: 100%;
-      padding: 55mm 25mm 15mm 25mm; /* Üst: 55mm (logo için), Yan: 25mm, Alt: 15mm */
+      padding: 55mm 15mm 15mm 15mm; /* Üst: 55mm (logo için), Yan: 15mm, Alt: 15mm */
       box-sizing: border-box;
     }
     /* Her sayfa için padding */
@@ -420,6 +420,9 @@ export class PdfService {
   /**
    * HTML template'ini değişkenlerle doldur
    */
+  // Ham HTML içeren değişkenler — escape edilmez
+  private static readonly HTML_VARS = new Set(['memberTable']);
+
   replaceTemplateVariables(
     template: string,
     variables: Record<string, string>,
@@ -444,9 +447,13 @@ export class PdfService {
     }
 
     // {{variable}} formatındaki değişkenleri değiştir
+    // HTML_VARS listesindeki değişkenler ham HTML içerdiğinden escape edilmez
     Object.entries(variables).forEach(([key, value]) => {
       const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-      html = html.replace(regex, this.escapeHtml(value || ''));
+      const replacement = PdfService.HTML_VARS.has(key)
+        ? (value || '')
+        : this.escapeHtml(value || '');
+      html = html.replace(regex, replacement);
     });
 
     // Hala değiştirilmemiş değişkenleri boş string ile değiştir

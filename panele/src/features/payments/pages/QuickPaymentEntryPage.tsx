@@ -32,6 +32,7 @@ import {
   TablePagination,
   Tooltip,
   Stack,
+  Autocomplete,
 } from '@mui/material';
 import PaymentIcon from '@mui/icons-material/Payment';
 import SaveIcon from '@mui/icons-material/Save';
@@ -182,22 +183,34 @@ const QuickPaymentEntryPage: React.FC = () => {
     HAVALE: 'Havale',
   };
 
-  useEffect(() => {
-    if (canView) {
-      loadTevkifatCenters();
-      loadProvinces();
-    }
-  }, [canView]);
-
-  const loadTevkifatCenters = async () => {
+  const loadTevkifatCenters = useCallback(async (provinceIdFilter: string) => {
     try {
-      const data = await getTevkifatCenters({ activeOnly: true });
+      const data = await getTevkifatCenters({
+        activeOnly: true,
+        ...(provinceIdFilter ? { provinceId: provinceIdFilter } : {}),
+      });
       setTevkifatCenters(data);
+      setFilters((prev) => {
+        if (!prev.tevkifatCenterId) return prev;
+        if (data.some((c) => c.id === prev.tevkifatCenterId)) return prev;
+        return { ...prev, tevkifatCenterId: '' };
+      });
     } catch (e) {
       console.error('Tevkifat merkezleri yüklenirken hata:', e);
       toast.showError('Tevkifat merkezleri yüklenirken bir hata oluştu');
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (canView) {
+      loadProvinces();
+    }
+  }, [canView]);
+
+  useEffect(() => {
+    if (!canView) return;
+    void loadTevkifatCenters(filters.provinceId);
+  }, [canView, filters.provinceId, loadTevkifatCenters]);
 
   const loadProvinces = async () => {
     try {
@@ -820,7 +833,7 @@ const QuickPaymentEntryPage: React.FC = () => {
                 Filtreler ve Üye Seçimi
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8125rem' }}>
-                Kesinti dönemi ve tevkifat merkezi seçimi yapın
+                İl seçerek tevkifat merkezlerini daraltın; ardından merkez ve dönem seçin
               </Typography>
             </Box>
           </Box>
@@ -866,47 +879,58 @@ const QuickPaymentEntryPage: React.FC = () => {
               </Select>
             </FormControl>
 
-            <FormControl size="medium" sx={{ minWidth: { xs: '100%', sm: 250 }, flexGrow: 1 }}>
-              <InputLabel>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <BusinessIcon fontSize="small" />
-                  Tevkifat Merkezi
-                </Box>
-              </InputLabel>
-              <Select
-                value={filters.tevkifatCenterId}
-                label="Tevkifat Merkezi"
-                onChange={(e) => setFilters({ ...filters, tevkifatCenterId: e.target.value })}
-                required
-              >
-                <MenuItem value="" disabled>
-                  <em>Lütfen bir tevkifat merkezi seçin (zorunlu)</em>
-                </MenuItem>
-                {tevkifatCenters.map((center) => (
-                  <MenuItem key={center.id} value={center.id}>
-                    {center.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              size="medium"
+              sx={{ minWidth: { xs: '100%', sm: 220 }, flexShrink: 0 }}
+              options={provinces}
+              getOptionLabel={(p) => p.name}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              filterOptions={(options, state) => {
+                const q = state.inputValue.trim().toLocaleLowerCase('tr');
+                if (!q) return options;
+                return options.filter((p) => p.name.toLocaleLowerCase('tr').includes(q));
+              }}
+              value={provinces.find((p) => p.id === filters.provinceId) ?? null}
+              onChange={(_, v) => setFilters({ ...filters, provinceId: v?.id ?? '' })}
+              clearOnEscape
+              noOptionsText="Eşleşen il yok"
+              renderInput={(params) => (
+                <TextField {...params} label="İl" placeholder="Tüm iller" />
+              )}
+            />
 
-            <FormControl size="medium" sx={{ minWidth: { xs: '100%', sm: 180 } }}>
-              <InputLabel>İl</InputLabel>
-              <Select
-                value={filters.provinceId}
-                label="İl"
-                onChange={(e) => setFilters({ ...filters, provinceId: e.target.value })}
-              >
-                <MenuItem value="">
-                  <em>Tümü</em>
-                </MenuItem>
-                {provinces.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              size="medium"
+              sx={{ minWidth: { xs: '100%', sm: 250 }, flexGrow: 1 }}
+              options={tevkifatCenters}
+              getOptionLabel={(c) => c.name}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              filterOptions={(options, state) => {
+                const q = state.inputValue.trim().toLocaleLowerCase('tr');
+                if (!q) return options;
+                return options.filter((c) => c.name.toLocaleLowerCase('tr').includes(q));
+              }}
+              value={tevkifatCenters.find((c) => c.id === filters.tevkifatCenterId) ?? null}
+              onChange={(_, v) => setFilters({ ...filters, tevkifatCenterId: v?.id ?? '' })}
+              noOptionsText="Eşleşen merkez yok"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  required
+                  label={
+                    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                      <BusinessIcon sx={{ fontSize: '1.125rem', verticalAlign: 'middle' }} />
+                      Tevkifat Merkezi
+                    </Box>
+                  }
+                  placeholder={
+                    filters.provinceId
+                      ? 'Bu il için merkez ara / seç'
+                      : 'Merkez ara / seç'
+                  }
+                />
+              )}
+            />
           </Box>
 
           {/* Üye Filtresi */}

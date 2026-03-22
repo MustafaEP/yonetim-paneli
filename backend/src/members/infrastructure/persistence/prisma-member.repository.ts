@@ -38,13 +38,19 @@ export class PrismaMemberRepository implements MemberRepository {
     });
   }
 
-  async findByNationalId(nationalId: NationalId): Promise<Member | null> {
+  async findBlockingMembershipByNationalId(
+    nationalId: NationalId,
+  ): Promise<Member | null> {
     const data = await this.prisma.member.findFirst({
       where: {
         nationalId: nationalId.getValue(),
         deletedAt: null,
         isActive: true,
+        status: {
+          in: ['PENDING', 'APPROVED', 'ACTIVE', 'REJECTED'],
+        },
       },
+      orderBy: { createdAt: 'desc' },
     });
     if (!data) return null;
     return Member.fromPrisma(data);
@@ -62,9 +68,7 @@ export class PrismaMemberRepository implements MemberRepository {
         deletedAt: null,
         isActive: true,
       },
-      orderBy: {
-        cancelledAt: 'desc',
-      },
+      orderBy: [{ cancelledAt: 'desc' }, { createdAt: 'desc' }],
     });
 
     if (!data) {

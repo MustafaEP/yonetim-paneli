@@ -17,6 +17,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -420,7 +421,8 @@ export class AccountingController {
   @ApiQuery({
     name: 'month',
     required: false,
-    description: 'Ay filtresi (1-12)',
+    description:
+      'Ay filtresi (1-12). Gönderilmezse veya 0 ise seçili yılda tüm aylar dahil edilir.',
   })
   @ApiQuery({
     name: 'provinceId',
@@ -455,6 +457,73 @@ export class AccountingController {
     return this.accountingService.createAdvance(dto, user.userId);
   }
 
+  @Permissions(Permission.ADVANCE_ADD)
+  @Post('advances/upload-document')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Avans evrakı yükle',
+    description: 'Avans için PDF yükleme (kesinti evrakı ile aynı akış)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        memberId: { type: 'string' },
+        month: { type: 'number', description: 'Dönem ayı (1-12)' },
+        year: { type: 'number' },
+        fileName: {
+          type: 'string',
+          description: 'Özel dosya adı (opsiyonel)',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Dosya yüklendi' })
+  async uploadAdvanceDocument(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('memberId') memberId: string,
+    @Body('month') month: string,
+    @Body('year') year: string,
+    @Body('fileName') fileName?: string,
+  ) {
+    return this.accountingService.uploadAdvanceDocument(
+      file,
+      memberId,
+      Number(month),
+      Number(year),
+      fileName,
+    );
+  }
+
+  @Permissions(Permission.ADVANCE_VIEW)
+  @Get('advances/:id/document/view')
+  @ApiOperation({
+    summary: 'Avans belgesi görüntüle',
+    description: 'Avans PDF’ini yeni sekmede aç',
+  })
+  @ApiParam({ name: 'id', description: 'Avans ID' })
+  @ApiResponse({ status: 200, description: 'Dosya görüntüleniyor' })
+  async viewAdvanceDocument(@Param('id') id: string, @Res() res: Response) {
+    await this.accountingService.viewAdvanceDocument(id, res);
+  }
+
+  @Permissions(Permission.ADVANCE_VIEW)
+  @Get('advances/:id/document/download')
+  @ApiOperation({
+    summary: 'Avans belgesi indir',
+    description: 'Avans PDF’ini indir',
+  })
+  @ApiParam({ name: 'id', description: 'Avans ID' })
+  @ApiResponse({ status: 200, description: 'Dosya indiriliyor' })
+  async downloadAdvanceDocument(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    await this.accountingService.downloadAdvanceDocument(id, res);
+  }
+
   @Permissions(Permission.ADVANCE_VIEW)
   @Get('advances/:id')
   @ApiOperation({
@@ -476,8 +545,9 @@ export class AccountingController {
   async updateAdvance(
     @Param('id') id: string,
     @Body() dto: UpdateAdvanceDto,
+    @CurrentUser() user: CurrentUserData,
   ) {
-    return this.accountingService.updateAdvance(id, dto);
+    return this.accountingService.updateAdvance(id, dto, user.userId);
   }
 
   @Permissions(Permission.ADVANCE_ADD)
