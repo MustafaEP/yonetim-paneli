@@ -100,13 +100,11 @@ export const uploadInvoiceDocument = async (
   return res.data;
 };
 
-export const viewInvoiceDocument = async (invoiceId: string): Promise<void> => {
+/** Fatura PDF’ini uygulama içi PDF.js önizleyicide göstermek için blob alır */
+export const fetchInvoiceDocumentBlob = async (invoiceId: string): Promise<Blob> => {
   const token = localStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/invoices/${invoiceId}/document/view`;
-
-  const newWindow = window.open('', '_blank');
-  if (!newWindow) throw new Error('Popup engellendi. Lütfen popup engelleyiciyi kapatın.');
 
   const response = await fetch(url, {
     method: 'GET',
@@ -114,15 +112,11 @@ export const viewInvoiceDocument = async (invoiceId: string): Promise<void> => {
   });
 
   if (!response.ok) {
-    newWindow.close();
     const errorText = await response.text();
     throw new Error(errorText || 'Dosya görüntülenemedi');
   }
 
-  const blob = await response.blob();
-  const blobUrl = window.URL.createObjectURL(blob);
-  newWindow.location.href = blobUrl;
-  newWindow.addEventListener('beforeunload', () => window.URL.revokeObjectURL(blobUrl));
+  return response.blob();
 };
 
 export const downloadInvoiceDocument = async (

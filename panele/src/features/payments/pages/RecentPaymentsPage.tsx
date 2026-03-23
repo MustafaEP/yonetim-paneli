@@ -42,15 +42,16 @@ import {
   updatePayment,
   deletePayment,
   uploadPaymentDocument,
+  fetchPaymentDocumentBlob,
   type MemberPayment,
   type PaymentType,
   type UpdateMemberPaymentDto,
 } from '../services/paymentsApi';
 import { getTevkifatCenters } from '../../accounting/services/accountingApi';
 import { getMembers } from '../../members/services/membersApi';
-import httpClient from '../../../shared/services/httpClient';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
+import { DraftPdfCanvasPreview } from '../../documents/components/DraftPdfCanvasPreview';
 
 const RecentPaymentsPage: React.FC = () => {
   const theme = useTheme();
@@ -172,37 +173,17 @@ const RecentPaymentsPage: React.FC = () => {
 
     setLoadingPdf(true);
     try {
-      const token = localStorage.getItem('accessToken');
-      const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
-      const url = `${API_BASE_URL}/payments/${payment.id}/document/view`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('PDF görüntüleme hatası:', response.status, errorText);
-        if (response.status === 404) {
-          throw new Error('Kesinti belgesi bulunamadı. Belge yüklenmemiş olabilir.');
-        }
-        throw new Error(errorText || 'Dosya görüntülenemedi');
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchPaymentDocumentBlob(payment.id);
       const blobUrl = window.URL.createObjectURL(blob);
       const urlParts = payment.documentUrl.split('/');
       const fileName = urlParts[urlParts.length - 1] || 'Kesinti Belgesi';
       setPdfUrl(blobUrl);
       setPdfTitle(fileName);
       setPdfViewerOpen(true);
-      setLoadingPdf(false);
     } catch (error: unknown) {
       console.error('Dosya görüntülenirken hata:', error);
       toast.showError(getApiErrorMessage(error, 'Dosya görüntülenemedi'));
+    } finally {
       setLoadingPdf(false);
     }
   };
@@ -744,47 +725,21 @@ const RecentPaymentsPage: React.FC = () => {
           sx={{
             p: 0,
             height: 'calc(90vh - 80px)',
-            position: 'relative',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            minHeight: 0,
           }}
         >
           {loadingPdf ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'center' }}>
               <CircularProgress size={48} />
               <Typography variant="body2" color="text.secondary">
                 PDF yükleniyor...
               </Typography>
             </Box>
           ) : pdfUrl ? (
-            <Box
-              sx={{
-                width: '100%',
-                height: '100%',
-                position: 'relative',
-                overflow: 'hidden',
-                '& iframe': {
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                },
-                '& embed': {
-                  width: '100%',
-                  height: '100%',
-                },
-              }}
-            >
-              <embed
-                src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-                type="application/pdf"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                }}
-              />
-            </Box>
+            <DraftPdfCanvasPreview blobUrl={pdfUrl} variant="document" />
           ) : null}
         </DialogContent>
       </Dialog>

@@ -41,10 +41,12 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
+import CloseIcon from '@mui/icons-material/Close';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 
 import PageLayout from '../../../shared/components/layout/PageLayout';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import { DraftPdfCanvasPreview } from '../../documents/components/DraftPdfCanvasPreview';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { useAuth } from '../../../app/providers/AuthContext';
@@ -55,7 +57,7 @@ import {
   updateAdvance,
   deleteAdvance,
   uploadAdvanceDocument,
-  viewAdvanceDocument,
+  fetchAdvanceDocumentBlob,
   downloadAdvanceDocument,
   type CreateAdvanceDto,
   type UpdateAdvanceDto,
@@ -153,6 +155,11 @@ const AdvancesPage: React.FC = () => {
   // ── Detay dialog ─────────────────────────────────────────────────────────
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailAdvance, setDetailAdvance] = useState<MemberAdvance | null>(null);
+
+  const [advancePdfViewerOpen, setAdvancePdfViewerOpen] = useState(false);
+  const [advancePdfBlobUrl, setAdvancePdfBlobUrl] = useState<string | null>(null);
+  const [advancePdfTitle, setAdvancePdfTitle] = useState('');
+  const [loadingAdvancePdf, setLoadingAdvancePdf] = useState(false);
 
   // ── Veri yükleme ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -286,19 +293,42 @@ const AdvancesPage: React.FC = () => {
     setEditOpen(true);
   };
 
+  const closeAdvancePdfViewer = useCallback(() => {
+    setAdvancePdfViewerOpen(false);
+    setLoadingAdvancePdf(false);
+    setAdvancePdfBlobUrl((prev) => {
+      if (prev) window.URL.revokeObjectURL(prev);
+      return null;
+    });
+    setAdvancePdfTitle('');
+  }, []);
+
   const handleViewAdvancePdf = useCallback(
     async (adv: MemberAdvance) => {
       if (!adv.documentUrl) {
         toast.showError('Bu avans için belge yok.');
         return;
       }
+      setAdvancePdfTitle(
+        adv.documentUrl.split('/').pop() || `Avans — ${adv.member?.firstName ?? ''} ${adv.member?.lastName ?? ''}`.trim() || 'Avans belgesi',
+      );
+      setAdvancePdfViewerOpen(true);
+      setLoadingAdvancePdf(true);
+      setAdvancePdfBlobUrl((prev) => {
+        if (prev) window.URL.revokeObjectURL(prev);
+        return null;
+      });
       try {
-        await viewAdvanceDocument(adv.id);
+        const blob = await fetchAdvanceDocumentBlob(adv.id);
+        setAdvancePdfBlobUrl(window.URL.createObjectURL(blob));
       } catch (e) {
         toast.showError(getApiErrorMessage(e, 'Belge açılamadı'));
+        closeAdvancePdfViewer();
+      } finally {
+        setLoadingAdvancePdf(false);
       }
     },
-    [toast],
+    [toast, closeAdvancePdfViewer],
   );
 
   const handleUpdateAdvance = async () => {
@@ -1581,6 +1611,62 @@ const AdvancesPage: React.FC = () => {
             </Button>
           )}
         </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={advancePdfViewerOpen}
+        onClose={closeAdvancePdfViewer}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { height: '90vh', maxHeight: '90vh' } }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PictureAsPdfIcon sx={{ color: theme.palette.error.main }} />
+            <Typography variant="h6">{advancePdfTitle}</Typography>
+          </Box>
+          <IconButton
+            onClick={closeAdvancePdfViewer}
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.error.main, 0.1),
+                color: theme.palette.error.main,
+              },
+            }}
+            aria-label="Kapat"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            p: 0,
+            height: 'calc(90vh - 80px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            minHeight: 0,
+          }}
+        >
+          {loadingAdvancePdf ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'center' }}>
+              <CircularProgress size={48} />
+              <Typography variant="body2" color="text.secondary">
+                PDF yükleniyor...
+              </Typography>
+            </Box>
+          ) : advancePdfBlobUrl ? (
+            <DraftPdfCanvasPreview blobUrl={advancePdfBlobUrl} variant="document" />
+          ) : null}
+        </DialogContent>
       </Dialog>
     </PageLayout>
   );

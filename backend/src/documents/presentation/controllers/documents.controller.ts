@@ -102,6 +102,17 @@ export class DocumentsController {
     return this.documentsService.deleteTemplate(id);
   }
 
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Get('recent-panel-pdfs')
+  @ApiOperation({
+    summary:
+      'PDF Oluştur sayfası — son 10 PDF (admin: tümü, diğer kullanıcılar: kendi oluşturdukları)',
+  })
+  @ApiResponse({ status: 200, description: 'Son PDF kayıtları' })
+  async listRecentPanelPdfs(@CurrentUser() user: CurrentUserData) {
+    return this.documentsService.listRecentPanelPdfs(user.userId, user.roles ?? []);
+  }
+
   // Üye dokümanları
   @Permissions(
     Permission.DOCUMENT_MEMBER_HISTORY_VIEW,
@@ -130,6 +141,16 @@ export class DocumentsController {
     return this.documentsService.generateDocument(dto, user.userId);
   }
 
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Post('preview')
+  @ApiOperation({ summary: 'PDF doküman önizleme oluştur (kaydetmeden)' })
+  async previewDocument(
+    @Body() dto: GenerateDocumentDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.previewDocument(dto, user.userId);
+  }
+
   // Toplu üye listesi PDF oluştur (tek PDF, birden fazla üye)
   @Permissions(Permission.DOCUMENT_GENERATE_PDF)
   @Post('generate-list')
@@ -141,6 +162,60 @@ export class DocumentsController {
     @CurrentUser() user: CurrentUserData,
   ) {
     return this.documentsService.generateMemberListDocument(dto, user.userId);
+  }
+
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Post('preview-list')
+  @ApiOperation({ summary: 'Toplu liste PDF önizleme oluştur (kaydetmeden)' })
+  async previewMemberListDocument(
+    @Body() dto: GenerateMemberListDocumentDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.previewMemberListDocument(dto, user.userId);
+  }
+
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Post('preview-bulk')
+  @ApiOperation({
+    summary:
+      'Toplu üye PDF önizleme (her üye ayrı dosya; önizleme ilk üye için)',
+  })
+  async previewBulkMemberDocuments(
+    @Body() dto: GenerateMemberListDocumentDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.previewBulkMemberDocuments(dto, user.userId);
+  }
+
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Get('preview/:previewId/view')
+  @ApiOperation({ summary: 'Önizleme PDF görüntüle' })
+  async viewPreview(
+    @Param('previewId') previewId: string,
+    @CurrentUser() user: CurrentUserData,
+    @Res() res: Response,
+  ) {
+    await this.documentsService.viewPreview(previewId, user.userId, res);
+  }
+
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Post('preview/:previewId/commit')
+  @ApiOperation({ summary: 'Önizleme PDF kaydet (kalıcılaştır)' })
+  async commitPreview(
+    @Param('previewId') previewId: string,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.commitPreview(previewId, user.userId);
+  }
+
+  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Delete('preview/:previewId')
+  @ApiOperation({ summary: 'Önizleme PDF sil (vazgeç)' })
+  async discardPreview(
+    @Param('previewId') previewId: string,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.documentsService.discardPreview(previewId, user.userId);
   }
 
   // Doküman yükle

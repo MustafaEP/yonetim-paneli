@@ -40,10 +40,12 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
+import CloseIcon from '@mui/icons-material/Close';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 
 import PageLayout from '../../../shared/components/layout/PageLayout';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import { DraftPdfCanvasPreview } from '../../documents/components/DraftPdfCanvasPreview';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { useAuth } from '../../../app/providers/AuthContext';
@@ -53,7 +55,7 @@ import {
   updateInvoice,
   deleteInvoice,
   uploadInvoiceDocument,
-  viewInvoiceDocument,
+  fetchInvoiceDocumentBlob,
   downloadInvoiceDocument,
   type CreateInvoiceDto,
   type UpdateInvoiceDto,
@@ -162,6 +164,11 @@ const InvoicesPage: React.FC = () => {
   // ── Detay dialog ─────────────────────────────────────────────────────────
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
+
+  const [invoicePdfViewerOpen, setInvoicePdfViewerOpen] = useState(false);
+  const [invoicePdfBlobUrl, setInvoicePdfBlobUrl] = useState<string | null>(null);
+  const [invoicePdfTitle, setInvoicePdfTitle] = useState('');
+  const [loadingInvoicePdf, setLoadingInvoicePdf] = useState(false);
 
   // ── Veri yükleme ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -289,19 +296,40 @@ const InvoicesPage: React.FC = () => {
     setEditOpen(true);
   };
 
+  const closeInvoicePdfViewer = useCallback(() => {
+    setInvoicePdfViewerOpen(false);
+    setLoadingInvoicePdf(false);
+    setInvoicePdfBlobUrl((prev) => {
+      if (prev) window.URL.revokeObjectURL(prev);
+      return null;
+    });
+    setInvoicePdfTitle('');
+  }, []);
+
   const handleViewPdf = useCallback(
     async (inv: Invoice) => {
       if (!inv.documentUrl) {
         toast.showError('Bu fatura için belge yok.');
         return;
       }
+      setInvoicePdfTitle(inv.invoiceNo ? `Fatura ${inv.invoiceNo}` : 'Fatura belgesi');
+      setInvoicePdfViewerOpen(true);
+      setLoadingInvoicePdf(true);
+      setInvoicePdfBlobUrl((prev) => {
+        if (prev) window.URL.revokeObjectURL(prev);
+        return null;
+      });
       try {
-        await viewInvoiceDocument(inv.id);
+        const blob = await fetchInvoiceDocumentBlob(inv.id);
+        setInvoicePdfBlobUrl(window.URL.createObjectURL(blob));
       } catch (e) {
         toast.showError(getApiErrorMessage(e, 'Belge açılamadı'));
+        closeInvoicePdfViewer();
+      } finally {
+        setLoadingInvoicePdf(false);
       }
     },
-    [toast],
+    [toast, closeInvoicePdfViewer],
   );
 
   const handleUpdateInvoice = async () => {
@@ -1388,6 +1416,62 @@ const InvoicesPage: React.FC = () => {
             </Button>
           )}
         </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={invoicePdfViewerOpen}
+        onClose={closeInvoicePdfViewer}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { height: '90vh', maxHeight: '90vh' } }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PictureAsPdfIcon sx={{ color: theme.palette.error.main }} />
+            <Typography variant="h6">{invoicePdfTitle}</Typography>
+          </Box>
+          <IconButton
+            onClick={closeInvoicePdfViewer}
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.error.main, 0.1),
+                color: theme.palette.error.main,
+              },
+            }}
+            aria-label="Kapat"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            p: 0,
+            height: 'calc(90vh - 80px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            minHeight: 0,
+          }}
+        >
+          {loadingInvoicePdf ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'center' }}>
+              <CircularProgress size={48} />
+              <Typography variant="body2" color="text.secondary">
+                PDF yükleniyor...
+              </Typography>
+            </Box>
+          ) : invoicePdfBlobUrl ? (
+            <DraftPdfCanvasPreview blobUrl={invoicePdfBlobUrl} variant="document" />
+          ) : null}
+        </DialogContent>
       </Dialog>
     </PageLayout>
   );

@@ -31,6 +31,7 @@ import ProfessionsPage from '../../features/professions/pages/ProfessionsPage';
 import ContentListPage from '../../features/content/pages/ContentListPage';
 import DocumentTemplatesPage from '../../features/documents/pages/DocumentTemplatesPage';
 import MemberDocumentsPage from '../../features/documents/pages/MemberDocumentsPage';
+import PdfGeneratePage from '../../features/documents/pages/PdfGeneratePage';
 import ReportsPage from '../../features/reports/pages/ReportsPage';
 import MyNotificationsPage from '../../features/notifications/pages/MyNotificationsPage';
 import NotificationSettingsPage from '../../features/notifications/pages/NotificationSettingsPage';
@@ -123,6 +124,10 @@ const AppRoutes: React.FC = () => (
 
         <Route element={<ProtectedRoute requiredPermission="DOCUMENT_TEMPLATE_MANAGE" alternativePermission="DOCUMENT_SYSTEM_ACCESS" />}>
           <Route path="/documents/templates" element={<DocumentTemplatesPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute requiredPermission="DOCUMENT_GENERATE_PDF" />}>
+          <Route path="/documents/generate" element={<PdfGeneratePage />} />
         </Route>
 
         <Route element={<ProtectedRoute requiredPermission="DOCUMENT_MEMBER_HISTORY_VIEW" alternativePermission="DOCUMENT_SYSTEM_ACCESS" />}>

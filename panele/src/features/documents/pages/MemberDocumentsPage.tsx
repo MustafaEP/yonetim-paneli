@@ -1,6 +1,5 @@
-// src/pages/documents/MemberDocumentsPage.tsx
-import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -14,14 +13,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   TextField,
-  Alert,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  FormHelperText,
   Chip,
   Paper,
 } from '@mui/material';
@@ -30,24 +22,22 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DescriptionIcon from '@mui/icons-material/Description';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PersonIcon from '@mui/icons-material/Person';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DownloadIcon from '@mui/icons-material/Download';
 import Autocomplete from '@mui/material/Autocomplete';
-
-import type { MemberDocument, DocumentTemplate, GenerateDocumentDto, GenerateMemberListDocumentDto } from '../services/documentsApi';
-import { getMemberDocuments, uploadMemberDocument, generateDocument, generateMemberListDocument, getDocumentTemplates, deleteMemberDocument } from '../services/documentsApi';
+import { getMemberDocuments, deleteMemberDocument, fetchMemberDocumentBlob, downloadDocument } from '../services/documentsApi';
+import type { MemberDocument } from '../services/documentsApi';
 import { getMembers } from '../../members/services/membersApi';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
-import { sanitizePdfFileBaseName } from '../../../shared/utils/sanitizePdfFileBaseName';
 import type { MemberListItem } from '../../../types/member';
-import { DOCUMENT_TYPES, getDocumentTypeLabel } from '../../../shared/utils/documentTypes';
-import httpClient from '../../../shared/services/httpClient';
+import { getDocumentTypeLabel } from '../../../shared/utils/documentTypes';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
+import { DraftPdfCanvasPreview } from '../components/DraftPdfCanvasPreview';
 
 const MemberDocumentsPage: React.FC = () => {
   const { memberId: paramMemberId } = useParams<{ memberId?: string }>();
@@ -60,81 +50,32 @@ const MemberDocumentsPage: React.FC = () => {
   const [members, setMembers] = useState<MemberListItem[]>([]);
   const [rows, setRows] = useState<MemberDocument[]>([]);
   const [loading, setLoading] = useState(false);
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [documentType, setDocumentType] = useState<string>('UPLOADED');
-  const [description, setDescription] = useState<string>('');
-  const [customFileName, setCustomFileName] = useState<string>('');
-  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
-  const [extraVariables, setExtraVariables] = useState<Record<string, string>>({});
-  const [pdfFileName, setPdfFileName] = useState<string>('');
-  const [photoPreview, setPhotoPreview] = useState<string>('');
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfTitle, setPdfTitle] = useState<string>('');
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
+  const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
 
-  const [bulkGenerateDialogOpen, setBulkGenerateDialogOpen] = useState(false);
-  const [bulkSelectedMembers, setBulkSelectedMembers] = useState<MemberListItem[]>([]);
-  const [bulkSelectedTemplate, setBulkSelectedTemplate] = useState<DocumentTemplate | null>(null);
-  const [bulkExtraVariables, setBulkExtraVariables] = useState<Record<string, string>>({});
-  const [bulkPdfFileName, setBulkPdfFileName] = useState<string>('');
-  const [bulkPhotoPreview, setBulkPhotoPreview] = useState<string>('');
-  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const canManageDocuments = hasPermission('DOCUMENT_GENERATE_PDF');
 
-  // Toplu liste (tek PDF) state
-  const [listGenerateDialogOpen, setListGenerateDialogOpen] = useState(false);
-  const [listSelectedMembers, setListSelectedMembers] = useState<MemberListItem[]>([]);
-  const [listSelectedTemplate, setListSelectedTemplate] = useState<DocumentTemplate | null>(null);
-  const [listExtraVariables, setListExtraVariables] = useState<Record<string, string>>({});
-  const [listPdfFileName, setListPdfFileName] = useState<string>('');
-  const [listGenerating, setListGenerating] = useState(false);
-
-  const canView = hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
-  const canUpload = hasPermission('DOCUMENT_GENERATE_PDF');
-  const canGenerate = hasPermission('DOCUMENT_GENERATE_PDF');
-
-  const bulkMemberListTemplates = useMemo(
-    () => templates.filter((t) => t.type === 'BULK_MEMBER_LIST'),
-    [templates],
-  );
-
-  /** Tekil / üye başına toplu PDF — toplu üye listesi (tek döküman) şablonları burada gösterilmez */
-  const perMemberPdfTemplates = useMemo(
-    () => templates.filter((t) => t.type !== 'BULK_MEMBER_LIST'),
-    [templates],
-  );
-
-  // Üyeleri yükle (sayfa ilk açıldığında veya paramMemberId değiştiğinde)
   const loadMembers = async () => {
     try {
       const data = await getMembers();
       setMembers(data);
-      // URL'den gelen memberId varsa, o üyeyi seç
       if (paramMemberId) {
         const member = data.find((m) => m.id === paramMemberId);
-        if (member) {
-          setSelectedMember(member);
-        } else {
-          // Üye bulunamadıysa, state'i temizle
-          setSelectedMember(null);
-        }
+        setSelectedMember(member || null);
       }
     } catch (e: unknown) {
-      console.error('Üyeler yüklenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Üyeler yüklenirken bir hata oluştu'));
+      console.error('Uyeler yuklenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Uyeler yuklenirken bir hata olustu'));
     }
   };
 
   useEffect(() => {
     loadMembers();
-  }, [paramMemberId]); // paramMemberId değiştiğinde tekrar yükle
+  }, [paramMemberId]);
 
   useEffect(() => {
     if (selectedMember) {
@@ -151,308 +92,10 @@ const MemberDocumentsPage: React.FC = () => {
       const data = await getMemberDocuments(selectedMember.id);
       setRows(data);
     } catch (e: unknown) {
-      console.error('Dokümanlar yüklenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Dokümanlar yüklenirken bir hata oluştu'));
+      console.error('Dokumanlar yuklenirken hata:', e);
+      toast.showError(getApiErrorMessage(e, 'Dokumanlar yuklenirken bir hata olustu'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Sadece PDF dosyalarını kabul et
-      if (file.type !== 'application/pdf') {
-        toast.showError('Sadece PDF dosyaları yüklenebilir');
-        return;
-      }
-      setSelectedFile(file);
-      // Dosya adından doküman tipini çıkar (opsiyonel)
-      if (!documentType || documentType === 'UPLOADED') {
-        const fileName = file.name.toLowerCase();
-        if (fileName.includes('kayit') || fileName.includes('uye')) {
-          setDocumentType('MEMBER_REGISTRATION');
-        }
-      }
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedMember || !selectedFile) return;
-
-    setUploading(true);
-    try {
-        const fileName = customFileName.trim() || selectedFile.name.replace(/\.pdf$/i, '');
-      await uploadMemberDocument(selectedMember.id, selectedFile, documentType, description, fileName);
-      toast.showSuccess('Doküman başarıyla yüklendi');
-      setUploadDialogOpen(false);
-      setSelectedFile(null);
-      setDocumentType('UPLOADED');
-      setDescription('');
-      setCustomFileName('');
-      loadDocuments();
-    } catch (e: unknown) {
-      console.error('Doküman yüklenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Doküman yüklenirken bir hata oluştu'));
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const loadTemplates = async () => {
-    setLoadingTemplates(true);
-    try {
-      const data = await getDocumentTemplates();
-      setTemplates(data.filter(t => t.isActive));
-    } catch (e: unknown) {
-      console.error('Şablonlar yüklenirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Şablonlar yüklenirken bir hata oluştu'));
-    } finally {
-      setLoadingTemplates(false);
-    }
-  };
-
-  const handleOpenGenerateDialog = () => {
-    setGenerateDialogOpen(true);
-    setSelectedTemplate(null);
-    setExtraVariables({});
-      setPdfFileName('');
-      setPhotoPreview('');
-    loadTemplates();
-  };
-
-  const handleOpenBulkGenerateDialog = () => {
-    setBulkGenerateDialogOpen(true);
-    setBulkSelectedTemplate(null);
-    setBulkSelectedMembers([]);
-    setBulkExtraVariables({});
-    setBulkPdfFileName('');
-    setBulkPhotoPreview('');
-    loadTemplates();
-  };
-
-  const handleOpenListGenerateDialog = () => {
-    setListGenerateDialogOpen(true);
-    setListSelectedTemplate(null);
-    setListSelectedMembers([]);
-    setListExtraVariables({});
-    setListPdfFileName('');
-    loadTemplates();
-  };
-
-  const handleListGenerate = async () => {
-    if (!listSelectedTemplate || listSelectedMembers.length === 0) {
-      toast.showError('Lütfen en az bir üye ve bir şablon seçin');
-      return;
-    }
-    const emptyVars = Object.entries(listExtraVariables).filter(([, value]) => !value || value.trim() === '');
-    if (emptyVars.length > 0) {
-      toast.showError(`Lütfen tüm alanları doldurun: ${emptyVars.map(([k]) => getVariableLabel(k)).join(', ')}`);
-      return;
-    }
-    setListGenerating(true);
-    try {
-      const payload: GenerateMemberListDocumentDto = {
-        memberIds: listSelectedMembers.map((m) => m.id),
-        templateId: listSelectedTemplate.id,
-        variables: Object.keys(listExtraVariables).length > 0 ? listExtraVariables : undefined,
-        fileName: listPdfFileName
-          ? sanitizePdfFileBaseName(listPdfFileName)
-          : undefined,
-      };
-      const result = await generateMemberListDocument(payload);
-      toast.showSuccess(`${result.memberCount} üyeli liste PDF başarıyla oluşturuldu`);
-      setListGenerateDialogOpen(false);
-      setListSelectedTemplate(null);
-      setListSelectedMembers([]);
-      setListExtraVariables({});
-      setListPdfFileName('');
-      if (selectedMember && listSelectedMembers.some((m) => m.id === selectedMember.id)) {
-        loadDocuments();
-      }
-    } catch (e: unknown) {
-      toast.showError(getApiErrorMessage(e, 'Liste PDF oluşturulurken bir hata oluştu'));
-    } finally {
-      setListGenerating(false);
-    }
-  };
-
-  const toDataUrl = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-
-  // Template'den ekstra değişkenleri çıkar (şablonda var ama backend'in otomatik doldurmadıkları)
-  const getExtraVariablesFromTemplate = (template: DocumentTemplate): string[] => {
-    const standardVars = new Set([
-      'firstName',
-      'lastName',
-      'fullName',
-      'memberNumber',
-      'nationalId',
-      'phone',
-      'email',
-      'province',
-      'district',
-      'institution',
-      'branch',
-      'date',
-      'joinDate',
-      'applicationDate',
-      'validUntil',
-      'birthPlace',
-      'gender',
-      'educationStatus',
-      'position',
-      'workUnitAddress',
-      'birthDate',
-      'motherName',
-      'fatherName',
-      'dutyUnit',
-      'institutionAddress',
-      'boardDecisionDate',
-      'boardDecisionBookNo',
-      'membershipInfoOption',
-      'memberGroup',
-    ]);
-
-    const varRegex = /\{\{\s*(\w+)\s*\}\}/g;
-    const foundVars = new Set<string>();
-    let match;
-
-    while ((match = varRegex.exec(template.template)) !== null) {
-      const varName = match[1];
-      if (!standardVars.has(varName)) {
-        foundVars.add(varName);
-      }
-    }
-
-    // Üye kartı fotoğraf alanı: DB'de eski template olsa bile kullanıcıdan fotoğraf al
-    if (template.type === 'MEMBER_CARD') {
-      foundVars.add('photoDataUrl');
-    }
-
-    return Array.from(foundVars);
-  };
-
-  const getVariableLabel = (varName: string): string => {
-    const labels: Record<string, string> = {
-      oldProvince: 'Eski İl',
-      oldDistrict: 'Eski İlçe',
-      oldInstitution: 'Eski Kurum',
-      oldBranch: 'Eski Şube',
-      transferReason: 'Nakil Nedeni',
-      photoDataUrl: 'Fotoğraf',
-
-      eventName: 'Etkinlik Adı',
-      eventDate: 'Etkinlik Tarihi',
-      eventPlace: 'Etkinlik Yeri',
-      eventDescription: 'Etkinlik Açıklaması',
-
-      invitationDate: 'Davet Tarihi',
-      meetingDate: 'Toplantı Tarihi',
-      meetingPlace: 'Toplantı Yeri',
-
-      subject: 'Konu',
-      reason: 'Sebep',
-      description: 'Açıklama',
-
-      sayi: 'Sayı',
-      tevkifatMerkezi: 'Tevkifat merkezi (alıcı)',
-    };
-
-    return labels[varName] || varName.replace(/([A-Z])/g, ' $1').trim();
-  };
-
-  const handleGenerate = async () => {
-    if (!selectedMember || !selectedTemplate) return;
-
-    // Boş değişkenleri kontrol et (şablondan gelen ekstra alanlar)
-    const emptyVars = Object.entries(extraVariables).filter(([key, value]) => {
-      if (key === 'photoDataUrl') return !value; // foto base64 (trim anlamlı değil)
-      return !value || value.trim() === '';
-    });
-    if (emptyVars.length > 0) {
-      toast.showError(`Lütfen tüm alanları doldurun: ${emptyVars.map(([k]) => getVariableLabel(k)).join(', ')}`);
-      return;
-    }
-
-    setGenerating(true);
-    try {
-      const payload: GenerateDocumentDto = {
-        memberId: selectedMember.id,
-        templateId: selectedTemplate.id,
-        variables: Object.keys(extraVariables).length > 0 ? extraVariables : undefined,
-        fileName: pdfFileName
-          ? sanitizePdfFileBaseName(pdfFileName)
-          : undefined,
-      };
-      await generateDocument(payload);
-      toast.showSuccess('PDF doküman başarıyla oluşturuldu');
-      setGenerateDialogOpen(false);
-      setSelectedTemplate(null);
-      setExtraVariables({});
-      setPdfFileName('');
-      setPhotoPreview('');
-      loadDocuments();
-    } catch (e: unknown) {
-      console.error('PDF oluşturulurken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'PDF oluşturulurken bir hata oluştu'));
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleBulkGenerate = async () => {
-    if (!bulkSelectedTemplate || bulkSelectedMembers.length === 0) {
-      toast.showError('Lütfen en az bir üye ve bir şablon seçin');
-      return;
-    }
-
-    const emptyVars = Object.entries(bulkExtraVariables).filter(([key, value]) => {
-      if (key === 'photoDataUrl') return !value;
-      return !value || value.trim() === '';
-    });
-    if (emptyVars.length > 0) {
-      toast.showError(`Lütfen tüm alanları doldurun: ${emptyVars.map(([k]) => getVariableLabel(k)).join(', ')}`);
-      return;
-    }
-
-    setBulkGenerating(true);
-    try {
-      for (const member of bulkSelectedMembers) {
-        const payload: GenerateDocumentDto = {
-          memberId: member.id,
-          templateId: bulkSelectedTemplate.id,
-          variables: Object.keys(bulkExtraVariables).length > 0 ? bulkExtraVariables : undefined,
-          fileName: bulkPdfFileName
-            ? sanitizePdfFileBaseName(
-                `${bulkPdfFileName}_${member.firstName || ''}_${member.lastName || ''}`.trim(),
-              )
-            : undefined,
-        };
-        await generateDocument(payload);
-      }
-
-      toast.showSuccess(`${bulkSelectedMembers.length} üye için PDF dokümanları başarıyla oluşturuldu`);
-      setBulkGenerateDialogOpen(false);
-      setBulkSelectedTemplate(null);
-      setBulkSelectedMembers([]);
-      setBulkExtraVariables({});
-      setBulkPdfFileName('');
-      setBulkPhotoPreview('');
-
-      if (selectedMember && bulkSelectedMembers.some((m) => m.id === selectedMember.id)) {
-        loadDocuments();
-      }
-    } catch (e: unknown) {
-      console.error('Toplu PDF oluşturulurken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Toplu PDF oluşturulurken bir hata oluştu'));
-    } finally {
-      setBulkGenerating(false);
     }
   };
 
@@ -556,47 +199,33 @@ const MemberDocumentsPage: React.FC = () => {
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 170,
+      width: 220,
       sortable: false,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
         const doc = params.row as MemberDocument;
         const isDeleting = deletingDocumentId === doc.id;
+        const isDownloading = downloadingDocumentId === doc.id;
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             <Tooltip title="PDF Görüntüle">
               <span>
                 <IconButton
                   size="small"
-                  disabled={isDeleting}
+                  disabled={isDeleting || isDownloading}
                   onClick={async () => {
                     try {
                       setLoadingPdf(true);
-                      const token = localStorage.getItem('accessToken');
-                      const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
-                      const url = `${API_BASE_URL}/documents/view/${doc.id}`;
-                      
-                      const response = await fetch(url, {
-                        method: 'GET',
-                        headers: {
-                          'Authorization': `Bearer ${token}`,
-                        },
-                      });
-
-                      if (!response.ok) {
-                        throw new Error('Dosya görüntülenemedi');
-                      }
-
-                      const blob = await response.blob();
+                      const blob = await fetchMemberDocumentBlob(doc.id);
                       const blobUrl = window.URL.createObjectURL(blob);
                       setPdfUrl(blobUrl);
                       setPdfTitle(doc.fileName || 'Belge');
                       setPdfViewerOpen(true);
-                      setLoadingPdf(false);
                     } catch (error) {
                       console.error('Dosya görüntülenirken hata:', error);
                       toast.showError('Dosya görüntülenemedi');
+                    } finally {
                       setLoadingPdf(false);
                     }
                   }}
@@ -612,12 +241,43 @@ const MemberDocumentsPage: React.FC = () => {
                 </IconButton>
               </span>
             </Tooltip>
-            {canUpload && (
+            <Tooltip title="PDF İndir">
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={isDeleting || isDownloading}
+                  onClick={async () => {
+                    const baseName = doc.fileName?.replace(/\.pdf$/i, '') || 'belge';
+                    const safeName = baseName.endsWith('.pdf') ? baseName : `${baseName}.pdf`;
+                    setDownloadingDocumentId(doc.id);
+                    try {
+                      await downloadDocument(doc.id, safeName);
+                      toast.showSuccess('Dosya indirildi');
+                    } catch (error) {
+                      console.error('Dosya indirilirken hata:', error);
+                      toast.showError(getApiErrorMessage(error, 'Dosya indirilemedi'));
+                    } finally {
+                      setDownloadingDocumentId(null);
+                    }
+                  }}
+                  sx={{
+                    bgcolor: alpha(theme.palette.success.main, 0.1),
+                    color: theme.palette.success.main,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.success.main, 0.2),
+                    },
+                  }}
+                >
+                  {isDownloading ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon fontSize="small" />}
+                </IconButton>
+              </span>
+            </Tooltip>
+            {canManageDocuments && (
               <Tooltip title="Evrak Sil">
                 <span>
                   <IconButton
                     size="small"
-                    disabled={isDeleting}
+                    disabled={isDeleting || isDownloading}
                     onClick={async () => {
                       const confirmed = window.confirm(
                         `"${doc.fileName || 'Bu evrak'}" silinecek. Devam etmek istiyor musunuz?`,
@@ -713,78 +373,6 @@ const MemberDocumentsPage: React.FC = () => {
               }}
             >
               Üye Seçimini Temizle
-            </Button>
-          )}
-          {canUpload && selectedMember && (
-            <>
-              <Button
-                variant="contained"
-                startIcon={<PictureAsPdfIcon />}
-                onClick={handleOpenGenerateDialog}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 3,
-                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.error.main, 0.3)}`,
-                  bgcolor: theme.palette.error.main,
-                  '&:hover': {
-                    bgcolor: theme.palette.error.dark,
-                  },
-                }}
-              >
-                PDF Oluştur
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<UploadFileIcon />}
-                onClick={() => setUploadDialogOpen(true)}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 3,
-                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                }}
-              >
-                Doküman Yükle
-              </Button>
-            </>
-          )}
-          {canUpload && (
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdfIcon />}
-              onClick={handleOpenBulkGenerateDialog}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-              }}
-            >
-              Toplu PDF Oluştur
-            </Button>
-          )}
-          {canUpload && (
-            <Button
-              variant="outlined"
-              startIcon={<DescriptionIcon />}
-              onClick={handleOpenListGenerateDialog}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                borderColor: theme.palette.warning.main,
-                color: theme.palette.warning.dark,
-                '&:hover': {
-                  borderColor: theme.palette.warning.dark,
-                  bgcolor: alpha(theme.palette.warning.main, 0.05),
-                },
-              }}
-            >
-              Toplu Liste Oluştur
             </Button>
           )}
         </Box>
@@ -991,12 +579,12 @@ const MemberDocumentsPage: React.FC = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Bu üye için henüz doküman oluşturulmamış veya yüklenmemiş.
               </Typography>
-              {canUpload && (
+              {canManageDocuments && (
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
                   <Button
                     variant="contained"
                     startIcon={<PictureAsPdfIcon />}
-                    onClick={handleOpenGenerateDialog}
+                    onClick={() => navigate('/documents/generate')}
                     sx={{
                       borderRadius: 2,
                       textTransform: 'none',
@@ -1007,18 +595,7 @@ const MemberDocumentsPage: React.FC = () => {
                       },
                     }}
                   >
-                    PDF Oluştur
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<UploadFileIcon />}
-                    onClick={() => setUploadDialogOpen(true)}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                    }}
-                  >
-                    Doküman Yükle
+                    PDF Olustur Sayfasina Git
                   </Button>
                 </Box>
               )}
@@ -1051,900 +628,6 @@ const MemberDocumentsPage: React.FC = () => {
           </Typography>
         </Card>
       )}
-
-      {/* Upload Dialog */}
-      <Dialog 
-        open={uploadDialogOpen} 
-        onClose={() => {
-          if (!uploading) {
-            setUploadDialogOpen(false);
-            // Form state'ini temizle
-            setSelectedFile(null);
-            setDocumentType('UPLOADED');
-            setDescription('');
-            setCustomFileName('');
-          }
-        }} 
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            pb: 2,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          }}
-        >
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <UploadFileIcon sx={{ color: theme.palette.primary.main }} />
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Doküman Yükle
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              PDF formatında doküman yükleyin
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 3 }}>
-            <TextField
-              fullWidth
-              type="file"
-              inputProps={{ accept: 'application/pdf' }}
-              onChange={handleFileSelect}
-              label="PDF Dosyası Seç"
-              InputLabelProps={{ shrink: true }}
-              helperText="Sadece PDF dosyaları yüklenebilir"
-            />
-            {selectedFile && (
-              <Alert 
-                severity="success"
-                icon={<PictureAsPdfIcon />}
-                sx={{ 
-                  borderRadius: 2,
-                  '& .MuiAlert-message': {
-                    width: '100%',
-                  },
-                }}
-              >
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    Seçilen dosya:
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>{selectedFile.name}</strong> ({(selectedFile.size / 1024).toFixed(2)} KB)
-                  </Typography>
-                </Box>
-              </Alert>
-            )}
-            <TextField
-              fullWidth
-              label="Dosya Adı"
-              value={customFileName}
-              onChange={(e) => setCustomFileName(e.target.value)}
-              placeholder="Dosya adını girin (uzantı otomatik eklenir)"
-              helperText="Dosya adını değiştirmek için buraya yeni adı yazın. PDF uzantısı otomatik eklenir."
-            />
-            <FormControl fullWidth>
-              <InputLabel id="document-type-label">Doküman Tipi</InputLabel>
-              <Select
-                labelId="document-type-label"
-                id="document-type-select"
-                value={documentType}
-                label="Doküman Tipi"
-                onChange={(e) => setDocumentType(e.target.value)}
-              >
-                {DOCUMENT_TYPES.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    {type.label}
-                  </MenuItem>
-                ))}
-              </Select>
-              <FormHelperText>Dokümanın türünü seçin</FormHelperText>
-            </FormControl>
-            <TextField
-              fullWidth
-              label="Açıklama (Opsiyonel)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              multiline
-              rows={3}
-              placeholder="Doküman hakkında ek bilgiler..."
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions
-          sx={{
-            px: 3,
-            py: 2,
-            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            gap: 1.5,
-          }}
-        >
-          <Button 
-            onClick={() => {
-              setUploadDialogOpen(false);
-              // Form state'ini temizle
-              setSelectedFile(null);
-              setDocumentType('UPLOADED');
-              setDescription('');
-            }} 
-            disabled={uploading}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleUpload}
-            variant="contained"
-            disabled={uploading || !selectedFile || !documentType}
-            startIcon={uploading ? <CircularProgress size={16} /> : <UploadFileIcon />}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-              fontWeight: 600,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            {uploading ? 'Yükleniyor...' : 'Yükle'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Generate PDF Dialog */}
-      <Dialog 
-        open={generateDialogOpen} 
-        onClose={() => {
-          if (!generating) {
-            setGenerateDialogOpen(false);
-            setSelectedTemplate(null);
-          }
-        }} 
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            pb: 2,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          }}
-        >
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.error.main, 0.1),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <PictureAsPdfIcon sx={{ color: theme.palette.error.main }} />
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              PDF Doküman Oluştur
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Şablon seçerek PDF oluşturun
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 3 }}>
-            {selectedMember && (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
-                  bgcolor: alpha(theme.palette.info.main, 0.04),
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                  Üye Bilgileri
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedMember.firstName} {selectedMember.lastName}
-                  {selectedMember.registrationNumber ? ` • Üye No: ${selectedMember.registrationNumber}` : ''}
-                </Typography>
-              </Paper>
-            )}
-            {loadingTemplates ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <FormControl fullWidth>
-                <InputLabel>Şablon Seç</InputLabel>
-                <Select
-                  value={selectedTemplate?.id || ''}
-                  onChange={(e) => {
-                    const template = perMemberPdfTemplates.find((t) => t.id === e.target.value);
-                    setSelectedTemplate(template || null);
-
-                    if (template) {
-                      const extraVars = getExtraVariablesFromTemplate(template);
-                      const newExtraVariables: Record<string, string> = {};
-                      extraVars.forEach((varName) => {
-                        newExtraVariables[varName] = '';
-                      });
-                      setExtraVariables(newExtraVariables);
-                      setPhotoPreview('');
-                      // varsayılan dosya adı önerisi
-                      setPdfFileName(
-                        sanitizePdfFileBaseName(
-                          `${template.name}_${selectedMember?.firstName || ''}_${selectedMember?.lastName || ''}`.trim(),
-                        ),
-                      );
-                    } else {
-                      setExtraVariables({});
-                      setPhotoPreview('');
-                      setPdfFileName('');
-                    }
-                  }}
-                  label="Şablon Seç"
-                >
-                  {perMemberPdfTemplates.map((template) => (
-                    <MenuItem key={template.id} value={template.id}>
-                      {template.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {perMemberPdfTemplates.length === 0 && (
-                  <FormHelperText>
-                    Bu işlem için uygun aktif şablon yok. Toplu üye listesi şablonları yalnızca &quot;Toplu Liste Oluştur&quot;dan kullanılır.
-                  </FormHelperText>
-                )}
-              </FormControl>
-            )}
-            {selectedTemplate && (
-              <>
-                <Alert 
-                  severity="success"
-                  icon={<PictureAsPdfIcon />}
-                  sx={{ 
-                    borderRadius: 2,
-                    '& .MuiAlert-message': {
-                      width: '100%',
-                    },
-                  }}
-                >
-                  <Box>
-                    <Typography variant="body2" fontWeight={600} gutterBottom>
-                      Seçilen Şablon: {selectedTemplate.name}
-                    </Typography>
-                    {selectedTemplate.description && (
-                      <Typography variant="body2" color="text.secondary">
-                        {selectedTemplate.description}
-                      </Typography>
-                    )}
-                  </Box>
-                </Alert>
-
-                {/* Şablonda olup otomatik dolmayan alanlar */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <TextField
-                    label="PDF Dosya Adı"
-                    value={pdfFileName}
-                    onChange={(e) =>
-                      setPdfFileName(sanitizePdfFileBaseName(e.target.value))
-                    }
-                    fullWidth
-                    size="small"
-                    disabled={generating}
-                    placeholder="Örn: DavetMektubu_ZeynepUnal"
-                    helperText="Uzantı (.pdf) otomatik eklenir"
-                    sx={{ borderRadius: 2 }}
-                  />
-
-                  {Object.keys(extraVariables).length > 0 && (
-                    <>
-                      <Typography variant="body2" fontWeight={600} color="text.secondary">
-                        Lütfen aşağıdaki bilgileri doldurun:
-                      </Typography>
-                    {Object.keys(extraVariables).map((varName) => {
-                      const isMulti =
-                        varName.toLowerCase().includes('reason') ||
-                        varName.toLowerCase().includes('description');
-
-                      const value = extraVariables[varName] || '';
-                      const isEmpty = value.trim() === '';
-
-                      // Fotoğraf alanı
-                      if (varName === 'photoDataUrl') {
-                        return (
-                          <Box key={varName} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>
-                              {getVariableLabel(varName)}
-                            </Typography>
-                            <Button
-                              component="label"
-                              variant="outlined"
-                              disabled={generating}
-                              sx={{ borderRadius: 2, alignSelf: 'flex-start' }}
-                            >
-                              Fotoğraf Seç
-                              <input
-                                hidden
-                                type="file"
-                                accept="image/*"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  const dataUrl = await toDataUrl(file);
-                                  setExtraVariables((prev) => ({ ...prev, photoDataUrl: dataUrl }));
-                                  setPhotoPreview(dataUrl);
-                                }}
-                              />
-                            </Button>
-                            {photoPreview && (
-                              <Box
-                                sx={{
-                                  width: 96,
-                                  height: 128,
-                                  borderRadius: 2,
-                                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                <img
-                                  src={photoPreview}
-                                  alt="Fotoğraf Önizleme"
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                                />
-                              </Box>
-                            )}
-                            {!photoPreview && (
-                              <Typography variant="caption" color="text.secondary">
-                                Bu alan zorunludur
-                              </Typography>
-                            )}
-                          </Box>
-                        );
-                      }
-
-                      return (
-                        <TextField
-                          key={varName}
-                          label={getVariableLabel(varName)}
-                          value={value}
-                          onChange={(e) =>
-                            setExtraVariables((prev) => ({
-                              ...prev,
-                              [varName]: e.target.value,
-                            }))
-                          }
-                          fullWidth
-                          size="small"
-                          required
-                          disabled={generating}
-                          placeholder={`${getVariableLabel(varName)} girin`}
-                          error={isEmpty}
-                          helperText={isEmpty ? 'Bu alan zorunludur' : ''}
-                          multiline={isMulti}
-                          rows={isMulti ? 3 : 1}
-                          sx={{ borderRadius: 2 }}
-                        />
-                      );
-                    })}
-                    </>
-                  )}
-                </Box>
-              </>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions
-          sx={{
-            px: 3,
-            py: 2,
-            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            gap: 1.5,
-          }}
-        >
-          <Button
-            onClick={() => {
-              setGenerateDialogOpen(false);
-              setSelectedTemplate(null);
-            }}
-            disabled={generating}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleGenerate}
-            variant="contained"
-            disabled={!selectedTemplate || generating}
-            startIcon={generating ? <CircularProgress size={16} /> : <PictureAsPdfIcon />}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-              fontWeight: 600,
-              bgcolor: theme.palette.error.main,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.error.main, 0.3)}`,
-              '&:hover': {
-                bgcolor: theme.palette.error.dark,
-              },
-            }}
-          >
-            {generating ? 'Oluşturuluyor...' : 'PDF Oluştur'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Bulk Generate PDF Dialog */}
-      <Dialog
-        open={bulkGenerateDialogOpen}
-        onClose={() => {
-          if (!bulkGenerating) {
-            setBulkGenerateDialogOpen(false);
-            setBulkSelectedTemplate(null);
-            setBulkSelectedMembers([]);
-            setBulkExtraVariables({});
-            setBulkPdfFileName('');
-            setBulkPhotoPreview('');
-          }
-        }}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            pb: 2,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          }}
-        >
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.error.main, 0.1),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <PictureAsPdfIcon sx={{ color: theme.palette.error.main }} />
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Toplu PDF Doküman Oluştur
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Birden fazla üye ve şablon seçerek toplu PDF oluşturun
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
-            <Autocomplete
-              multiple
-              options={members}
-              getOptionLabel={(option) =>
-                `${option.firstName} ${option.lastName}${
-                  option.registrationNumber ? ` (${option.registrationNumber})` : ''
-                }`
-              }
-              value={bulkSelectedMembers}
-              onChange={(_, newValue) => {
-                setBulkSelectedMembers(newValue);
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Üyeleri Seçin"
-                  placeholder="Toplu PDF oluşturulacak üyeleri seçin"
-                />
-              )}
-            />
-
-            {loadingTemplates ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <FormControl fullWidth>
-                <InputLabel>Şablon Seç</InputLabel>
-                <Select
-                  value={bulkSelectedTemplate?.id || ''}
-                  onChange={(e) => {
-                    const template = perMemberPdfTemplates.find((t) => t.id === e.target.value);
-                    setBulkSelectedTemplate(template || null);
-
-                    if (template) {
-                      const extraVars = getExtraVariablesFromTemplate(template);
-                      const newExtraVariables: Record<string, string> = {};
-                      extraVars.forEach((varName) => {
-                        newExtraVariables[varName] = '';
-                      });
-                      setBulkExtraVariables(newExtraVariables);
-                      setBulkPhotoPreview('');
-                      setBulkPdfFileName(sanitizePdfFileBaseName(template.name));
-                    } else {
-                      setBulkExtraVariables({});
-                      setBulkPhotoPreview('');
-                      setBulkPdfFileName('');
-                    }
-                  }}
-                  label="Şablon Seç"
-                >
-                  {perMemberPdfTemplates.map((template) => (
-                    <MenuItem key={template.id} value={template.id}>
-                      {template.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {perMemberPdfTemplates.length === 0 && (
-                  <FormHelperText>
-                    Bu işlem için uygun aktif şablon yok. Toplu üye listesi şablonları yalnızca &quot;Toplu Liste Oluştur&quot;dan kullanılır.
-                  </FormHelperText>
-                )}
-              </FormControl>
-            )}
-
-            {bulkSelectedTemplate && (
-              <>
-                <Alert
-                  severity="success"
-                  icon={<PictureAsPdfIcon />}
-                  sx={{
-                    borderRadius: 2,
-                    '& .MuiAlert-message': {
-                      width: '100%',
-                    },
-                  }}
-                >
-                  <Box>
-                    <Typography variant="body2" fontWeight={600} gutterBottom>
-                      Seçilen Şablon: {bulkSelectedTemplate.name}
-                    </Typography>
-                    {bulkSelectedTemplate.description && (
-                      <Typography variant="body2" color="text.secondary">
-                        {bulkSelectedTemplate.description}
-                      </Typography>
-                    )}
-                  </Box>
-                </Alert>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <TextField
-                    label="PDF Dosya Adı (Önek)"
-                    value={bulkPdfFileName}
-                    onChange={(e) =>
-                      setBulkPdfFileName(sanitizePdfFileBaseName(e.target.value))
-                    }
-                    fullWidth
-                    size="small"
-                    disabled={bulkGenerating}
-                    placeholder="Örn: DavetMektubu"
-                    helperText="Her üye için bu ada üyenin adı otomatik eklenecektir. Uzantı (.pdf) otomatik eklenir."
-                    sx={{ borderRadius: 2 }}
-                  />
-
-                  {Object.keys(bulkExtraVariables).length > 0 && (
-                    <>
-                      <Typography variant="body2" fontWeight={600} color="text.secondary">
-                        Lütfen aşağıdaki bilgileri doldurun (tüm üyeler için ortak kullanılacaktır):
-                      </Typography>
-                      {Object.keys(bulkExtraVariables).map((varName) => {
-                        const isMulti =
-                          varName.toLowerCase().includes('reason') ||
-                          varName.toLowerCase().includes('description');
-
-                        const value = bulkExtraVariables[varName] || '';
-                        const isEmpty = value.trim() === '';
-
-                        if (varName === 'photoDataUrl') {
-                          return (
-                            <Box key={varName} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 600, color: theme.palette.text.secondary }}
-                              >
-                                {getVariableLabel(varName)}
-                              </Typography>
-                              <Button
-                                component="label"
-                                variant="outlined"
-                                disabled={bulkGenerating}
-                                sx={{ borderRadius: 2, alignSelf: 'flex-start' }}
-                              >
-                                Fotoğraf Seç
-                                <input
-                                  hidden
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    const dataUrl = await toDataUrl(file);
-                                    setBulkExtraVariables((prev) => ({ ...prev, photoDataUrl: dataUrl }));
-                                    setBulkPhotoPreview(dataUrl);
-                                  }}
-                                />
-                              </Button>
-                              {bulkPhotoPreview && (
-                                <Box
-                                  sx={{
-                                    width: 96,
-                                    height: 128,
-                                    borderRadius: 2,
-                                    border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                                    overflow: 'hidden',
-                                  }}
-                                >
-                                  <img
-                                    src={bulkPhotoPreview}
-                                    alt="Fotoğraf Önizleme"
-                                    style={{
-                                      width: '100%',
-                                      height: '100%',
-                                      objectFit: 'cover',
-                                      display: 'block',
-                                    }}
-                                  />
-                                </Box>
-                              )}
-                              {!bulkPhotoPreview && (
-                                <Typography variant="caption" color="text.secondary">
-                                  Bu alan zorunludur
-                                </Typography>
-                              )}
-                            </Box>
-                          );
-                        }
-
-                        return (
-                          <TextField
-                            key={varName}
-                            label={getVariableLabel(varName)}
-                            value={value}
-                            onChange={(e) =>
-                              setBulkExtraVariables((prev) => ({
-                                ...prev,
-                                [varName]: e.target.value,
-                              }))
-                            }
-                            fullWidth
-                            size="small"
-                            required
-                            disabled={bulkGenerating}
-                            placeholder={`${getVariableLabel(varName)} girin`}
-                            error={isEmpty}
-                            helperText={isEmpty ? 'Bu alan zorunludur' : ''}
-                            multiline={isMulti}
-                            rows={isMulti ? 3 : 1}
-                            sx={{ borderRadius: 2 }}
-                          />
-                        );
-                      })}
-                    </>
-                  )}
-                </Box>
-              </>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions
-          sx={{
-            px: 3,
-            py: 2,
-            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            gap: 1.5,
-          }}
-        >
-          <Button
-            onClick={() => {
-              setBulkGenerateDialogOpen(false);
-              setBulkSelectedTemplate(null);
-              setBulkSelectedMembers([]);
-              setBulkExtraVariables({});
-              setBulkPdfFileName('');
-              setBulkPhotoPreview('');
-            }}
-            disabled={bulkGenerating}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleBulkGenerate}
-            variant="contained"
-            disabled={!bulkSelectedTemplate || bulkSelectedMembers.length === 0 || bulkGenerating}
-            startIcon={bulkGenerating ? <CircularProgress size={16} /> : <PictureAsPdfIcon />}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-              fontWeight: 600,
-              bgcolor: theme.palette.error.main,
-              boxShadow: `0 4px 14px 0 ${alpha(theme.palette.error.main, 0.3)}`,
-              '&:hover': {
-                bgcolor: theme.palette.error.dark,
-              },
-            }}
-          >
-            {bulkGenerating ? 'Oluşturuluyor...' : 'Toplu PDF Oluştur'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Toplu Liste PDF Dialog */}
-      <Dialog
-        open={listGenerateDialogOpen}
-        onClose={() => { if (!listGenerating) { setListGenerateDialogOpen(false); setListSelectedTemplate(null); setListSelectedMembers([]); setListExtraVariables({}); setListPdfFileName(''); } }}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
-      >
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            pb: 2,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          }}
-        >
-          <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.12), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <DescriptionIcon sx={{ color: theme.palette.warning.dark }} />
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>Toplu Üye Listesi PDF Oluştur</Typography>
-            <Typography variant="caption" color="text.secondary">Seçilen tüm üyeler tek bir PDF'te listelenir</Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
-            <Autocomplete
-              multiple
-              options={members}
-              getOptionLabel={(option) => `${option.firstName} ${option.lastName}${option.registrationNumber ? ` (${option.registrationNumber})` : ''}`}
-              value={listSelectedMembers}
-              onChange={(_, newValue) => setListSelectedMembers(newValue)}
-              renderInput={(params) => (
-                <TextField {...params} label="Üyeleri Seçin" placeholder="Listede yer alacak üyeleri seçin" />
-              )}
-            />
-            {listSelectedMembers.length > 0 && (
-              <Typography variant="body2" color="text.secondary">
-                Seçilen üye sayısı: <strong>{listSelectedMembers.length}</strong>
-              </Typography>
-            )}
-            {loadingTemplates ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress /></Box>
-            ) : (
-              <FormControl fullWidth>
-                <InputLabel>Şablon Seç</InputLabel>
-                <Select
-                  value={listSelectedTemplate?.id || ''}
-                  onChange={(e) => {
-                    const template = bulkMemberListTemplates.find((t) => t.id === e.target.value);
-                    setListSelectedTemplate(template || null);
-                    if (template) {
-                      const extraVars = getExtraVariablesFromTemplate(template).filter(v => v !== 'memberTable');
-                      const newVars: Record<string, string> = {};
-                      extraVars.forEach((v) => { newVars[v] = ''; });
-                      setListExtraVariables(newVars);
-                      setListPdfFileName(sanitizePdfFileBaseName(template.name));
-                    } else {
-                      setListExtraVariables({});
-                      setListPdfFileName('');
-                    }
-                  }}
-                  label="Şablon Seç"
-                >
-                  {bulkMemberListTemplates.map((t) => (
-                    <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-                  ))}
-                </Select>
-                {bulkMemberListTemplates.length === 0 && (
-                  <FormHelperText>
-                    Toplu liste için türü &quot;Toplu üye listesi&quot; (BULK_MEMBER_LIST) olan aktif şablon gerekir. Şablon yoksa PDF Şablonları sayfasından ekleyin veya seed/migration çalıştırın.
-                  </FormHelperText>
-                )}
-              </FormControl>
-            )}
-            {listSelectedTemplate && (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <TextField
-                  label="PDF Dosya Adı"
-                  value={listPdfFileName}
-                  onChange={(e) =>
-                    setListPdfFileName(sanitizePdfFileBaseName(e.target.value))
-                  }
-                  fullWidth
-                  size="small"
-                  disabled={listGenerating}
-                  helperText="Uzantı (.pdf) otomatik eklenir"
-                />
-                {Object.keys(listExtraVariables).map((varName) => (
-                  <TextField
-                    key={varName}
-                    label={getVariableLabel(varName)}
-                    value={listExtraVariables[varName] || ''}
-                    onChange={(e) => setListExtraVariables((prev) => ({ ...prev, [varName]: e.target.value }))}
-                    fullWidth
-                    size="small"
-                    required
-                    disabled={listGenerating}
-                    error={!listExtraVariables[varName]}
-                    helperText={!listExtraVariables[varName] ? 'Bu alan zorunludur' : ''}
-                  />
-                ))}
-              </Box>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`, gap: 1.5 }}>
-          <Button onClick={() => { setListGenerateDialogOpen(false); setListSelectedTemplate(null); setListSelectedMembers([]); setListExtraVariables({}); setListPdfFileName(''); }} disabled={listGenerating} sx={{ borderRadius: 2, textTransform: 'none', px: 3 }}>
-            İptal
-          </Button>
-          <Button
-            onClick={handleListGenerate}
-            variant="contained"
-            disabled={!listSelectedTemplate || listSelectedMembers.length === 0 || listGenerating}
-            startIcon={listGenerating ? <CircularProgress size={16} /> : <DescriptionIcon />}
-            sx={{ borderRadius: 2, textTransform: 'none', px: 3, fontWeight: 600, bgcolor: theme.palette.warning.dark, '&:hover': { bgcolor: theme.palette.warning.main } }}
-          >
-            {listGenerating ? 'Oluşturuluyor...' : `PDF Oluştur (${listSelectedMembers.length} üye)`}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* PDF Görüntüleme Dialog */}
       <Dialog
@@ -2001,48 +684,21 @@ const MemberDocumentsPage: React.FC = () => {
           sx={{
             p: 0,
             height: 'calc(90vh - 80px)',
-            position: 'relative',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            minHeight: 0,
           }}
         >
           {loadingPdf ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'center' }}>
               <CircularProgress size={48} />
               <Typography variant="body2" color="text.secondary">
                 PDF yükleniyor...
               </Typography>
             </Box>
           ) : pdfUrl ? (
-            <Box
-              sx={{
-                width: '100%',
-                height: '100%',
-                position: 'relative',
-                overflow: 'hidden',
-                '& iframe': {
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                },
-                // PDF viewer sidebar'ını gizle
-                '& embed': {
-                  width: '100%',
-                  height: '100%',
-                },
-              }}
-            >
-              <embed
-                src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-                type="application/pdf"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                }}
-              />
-            </Box>
+            <DraftPdfCanvasPreview blobUrl={pdfUrl} variant="document" />
           ) : null}
         </DialogContent>
       </Dialog>

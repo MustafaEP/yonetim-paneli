@@ -99,11 +99,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   const showRegions =
     hasPermission('REGION_LIST') || hasPermission('BRANCH_MANAGE');
   const showRoles = hasPermission('ROLE_LIST');
-  const showContent = hasPermission('CONTENT_MANAGE');
   const showDocuments =
     hasPermission('DOCUMENT_SYSTEM_ACCESS') ||
     hasPermission('DOCUMENT_TEMPLATE_MANAGE') ||
     hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
+  const showPdfGenerate = hasPermission('DOCUMENT_GENERATE_PDF');
   const showReports = hasPermission('REPORT_GLOBAL_VIEW') || hasPermission('REPORT_REGION_VIEW') || hasPermission('REPORT_MEMBER_STATUS_VIEW') || hasPermission('REPORT_DUES_VIEW');
   const showNotifications = hasPermission('NOTIFY_ALL_MEMBERS') || hasPermission('NOTIFY_REGION') || hasPermission('NOTIFY_OWN_SCOPE');
   const showSystemSettings = hasPermission('SYSTEM_SETTINGS_VIEW');
@@ -161,7 +161,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
     showRegions || showBranches || showInstitutions || showAccounting;
   const hasDeductionsGroup = showPayments || canAddPayment || showAdvances;
   const hasMembersGroup = showMembers;
-  const hasContentGroup = showContent || showDocuments;
+  const hasContentGroup = showDocuments || showPdfGenerate;
   const hasUserManagementGroup = showUsers || showRoles || showPanelUserApplications;
   const hasSystemGroup = showSystemSettings || showSystemLogs;
 
@@ -570,29 +570,28 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
 
           <Collapse in={openSection === 'content-docs'} timeout="auto" unmountOnExit>
             <List component="div" disablePadding sx={{ pl: 4 }}>
-              {showContent && (
-                <ListItemButton
-                  component={Link}
-                  to="/content"
-                  selected={location.pathname.startsWith('/content')}
-                  onClick={handleLinkClick}
-                  sx={getNavItemSx(theme)}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <ArticleIcon />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="İçerik Yönetimi"
-                    primaryTypographyProps={{
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-              )}
-
-              {showDocuments && (
+              {(showDocuments || showPdfGenerate) && (
                 <>
+                  {showPdfGenerate && (
+                    <ListItemButton
+                      component={Link}
+                      to="/documents/generate"
+                      selected={location.pathname.startsWith('/documents/generate')}
+                      onClick={handleLinkClick}
+                      sx={getNavItemSx(theme)}
+                    >
+                      <ListItemIcon sx={{ minWidth: 40 }}>
+                        <DescriptionIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="PDF Oluştur"
+                        primaryTypographyProps={{
+                          fontSize: '0.9rem',
+                          fontWeight: 500,
+                        }}
+                      />
+                    </ListItemButton>
+                  )}
                   <ListItemButton
                     component={Link}
                     to="/documents/templates"

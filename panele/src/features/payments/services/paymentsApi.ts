@@ -190,41 +190,25 @@ export const uploadPaymentDocument = async (
   return res.data;
 };
 
-// 🔹 Kesinti belgesi görüntüle (yeni sekmede aç)
-export const viewPaymentDocument = async (paymentId: string): Promise<void> => {
+/** Kesinti PDF’ini uygulama içi PDF.js önizleyicide göstermek için blob alır */
+export const fetchPaymentDocumentBlob = async (paymentId: string): Promise<Blob> => {
   const token = localStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/payments/${paymentId}/document/view`;
-  
-  // Yeni sekmede PDF'i aç
-  const newWindow = window.open('', '_blank');
-  if (!newWindow) {
-    throw new Error('Popup engellendi. Lütfen popup engelleyiciyi kapatın.');
-  }
 
-  // Token ile PDF'i yükle
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
   if (!response.ok) {
-    newWindow.close();
     const errorText = await response.text();
     throw new Error(errorText || 'Dosya görüntülenemedi');
   }
 
-  // Blob oluştur ve yeni sekmede göster
-  const blob = await response.blob();
-  const blobUrl = window.URL.createObjectURL(blob);
-  newWindow.location.href = blobUrl;
-  
-  // Blob URL'i temizle (yeni pencere kapandığında)
-  newWindow.addEventListener('beforeunload', () => {
-    window.URL.revokeObjectURL(blobUrl);
-  });
+  return response.blob();
 };
 
 // 🔹 Kesinti belgesi indir

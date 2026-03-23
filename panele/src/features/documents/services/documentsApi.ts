@@ -35,6 +35,32 @@ export interface MemberDocument {
   };
 }
 
+/** PDF Oluştur sayfası — son kayıtlar listesi (GET /documents/recent-panel-pdfs) */
+export interface RecentPanelPdf {
+  id: string;
+  fileName: string;
+  documentType: string;
+  uploadStatus: string;
+  generatedAt: string;
+  fileUrl: string | null;
+  templateId: string | null;
+  templateName: string | null;
+  memberId: string;
+  member: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    registrationNumber: string | null;
+  };
+  generatedBy: string;
+  generatedByUser: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+  fromTemplate: boolean;
+}
+
 export interface CreateDocumentTemplateDto {
   name: string;
   description?: string;
@@ -62,6 +88,13 @@ export interface GenerateMemberListDocumentDto {
   templateId: string;
   variables?: Record<string, string>;
   fileName?: string;
+}
+
+export interface DocumentPreviewResponse {
+  previewId: string;
+  fileName: string;
+  expiresAt: string;
+  memberCount?: number;
 }
 
 // Doküman şablonları
@@ -97,6 +130,11 @@ export const updateDocumentTemplate = async (
 
 export const deleteDocumentTemplate = async (id: string): Promise<void> => {
   await httpClient.delete(`/documents/templates/${id}`);
+};
+
+export const getRecentPanelPdfs = async (): Promise<RecentPanelPdf[]> => {
+  const res = await httpClient.get<RecentPanelPdf[]>('/documents/recent-panel-pdfs');
+  return Array.isArray(res.data) ? res.data : [];
 };
 
 // Üye doküman geçmişi
@@ -139,41 +177,25 @@ export const uploadMemberDocument = async (
   return res.data;
 };
 
-// PDF görüntüle (yeni sekmede aç)
-export const viewDocument = async (documentId: string): Promise<void> => {
+/** Üye dokümanı PDF’ini uygulama içi PDF.js önizleyicide göstermek için blob alır */
+export const fetchMemberDocumentBlob = async (documentId: string): Promise<Blob> => {
   const token = localStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/documents/view/${documentId}`;
-  
-  // Yeni sekmede PDF'i aç
-  const newWindow = window.open('', '_blank');
-  if (!newWindow) {
-    throw new Error('Popup engellendi. Lütfen popup engelleyiciyi kapatın.');
-  }
 
-  // Token ile PDF'i yükle
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
   if (!response.ok) {
-    newWindow.close();
     const errorText = await response.text();
     throw new Error(errorText || 'Dosya görüntülenemedi');
   }
 
-  // Blob oluştur ve yeni sekmede göster
-  const blob = await response.blob();
-  const blobUrl = window.URL.createObjectURL(blob);
-  newWindow.location.href = blobUrl;
-  
-  // Blob URL'i temizle (yeni pencere kapandığında)
-  newWindow.addEventListener('beforeunload', () => {
-    window.URL.revokeObjectURL(blobUrl);
-  });
+  return response.blob();
 };
 
 // Üye dokümanını sil
@@ -189,12 +211,52 @@ export const generateDocument = async (
   return res.data;
 };
 
+export const previewDocument = async (
+  payload: GenerateDocumentDto,
+): Promise<DocumentPreviewResponse> => {
+  const res = await httpClient.post<DocumentPreviewResponse>('/documents/preview', payload);
+  return res.data;
+};
+
 // Toplu üye listesi PDF oluştur (tek PDF)
 export const generateMemberListDocument = async (
   payload: GenerateMemberListDocumentDto,
 ): Promise<{ fileUrl: string; fileName: string; document: MemberDocument; memberCount: number }> => {
   const res = await httpClient.post('/documents/generate-list', payload);
   return res.data;
+};
+
+export const previewMemberListDocument = async (
+  payload: GenerateMemberListDocumentDto,
+): Promise<DocumentPreviewResponse> => {
+  const res = await httpClient.post<DocumentPreviewResponse>('/documents/preview-list', payload);
+  return res.data;
+};
+
+export const commitDocumentPreview = async (previewId: string) => {
+  const res = await httpClient.post(`/documents/preview/${previewId}/commit`);
+  return res.data;
+};
+
+export const discardDocumentPreview = async (previewId: string) => {
+  const res = await httpClient.delete(`/documents/preview/${previewId}`);
+  return res.data;
+};
+
+export const viewDocumentPreview = async (previewId: string): Promise<Blob> => {
+  const token = localStorage.getItem('accessToken');
+  const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
+  const response = await fetch(`${API_BASE_URL}/documents/preview/${previewId}/view`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || 'Preview görüntülenemedi');
+  }
+  return response.blob();
 };
 
 // PDF indir

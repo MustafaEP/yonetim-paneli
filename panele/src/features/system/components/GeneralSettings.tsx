@@ -38,6 +38,7 @@ import { uploadHeaderPaper } from '../services/systemApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
+import { DraftPdfCanvasPreview } from '../../documents/components/DraftPdfCanvasPreview';
 
 interface GeneralSettingsProps {
   settings: SystemSetting[];
@@ -640,41 +641,34 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
           sx={{
             p: 0,
             height: 'calc(90vh - 80px)',
-            position: 'relative',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            minHeight: 0,
           }}
         >
           {headerPaperLoading ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'center' }}>
               <CircularProgress size={48} />
               <Typography variant="body2" color="text.secondary">
                 Yükleniyor...
               </Typography>
             </Box>
           ) : headerPaperBlobUrl ? (
-            <Box
-              sx={{
-                width: '100%',
-                height: '100%',
-                position: 'relative',
-                overflow: 'auto',
-                '& iframe': { width: '100%', height: '100%', border: 'none' },
-                '& embed': { width: '100%', height: '100%' },
-                '& img': { maxWidth: '100%', height: 'auto', display: 'block' },
-              }}
-            >
-              {headerPaperIsPdf ? (
-                <embed
-                  src={`${headerPaperBlobUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-                  type="application/pdf"
-                  style={{ width: '100%', height: '100%', border: 'none' }}
-                />
-              ) : (
+            headerPaperIsPdf ? (
+              <DraftPdfCanvasPreview blobUrl={headerPaperBlobUrl} variant="document" />
+            ) : (
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  overflow: 'auto',
+                  '& img': { maxWidth: '100%', height: 'auto', display: 'block' },
+                }}
+              >
                 <img src={headerPaperBlobUrl} alt="Antetli kağıt" style={{ width: '100%', height: 'auto' }} />
-              )}
-            </Box>
+              </Box>
+            )
           ) : null}
         </DialogContent>
       </Dialog>

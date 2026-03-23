@@ -159,6 +159,7 @@ const MainLayout: React.FC = () => {
     invoices: 'Fatura Sistemi',
     content: 'İçerik Yönetimi',
     documents: 'Dokümanlar',
+    generate: 'PDF Oluştur',
     templates: 'PDF Şablonları',
     notifications: 'Bildirimler',
     settings: 'Sistem Ayarları',

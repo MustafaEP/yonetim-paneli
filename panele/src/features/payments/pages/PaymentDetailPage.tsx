@@ -1,5 +1,5 @@
 // src/pages/payments/PaymentDetailPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -30,10 +30,12 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PaymentIcon from '@mui/icons-material/Payment';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import CloseIcon from '@mui/icons-material/Close';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
@@ -42,7 +44,8 @@ import {
   updatePayment,
   deletePayment,
   uploadPaymentDocument,
-  viewPaymentDocument,
+  fetchPaymentDocumentBlob,
+  downloadPaymentDocument,
   type MemberPayment,
   type PaymentType,
   type UpdateMemberPaymentDto,
@@ -50,6 +53,7 @@ import {
 import { getTevkifatCenters } from '../../accounting/services/accountingApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
+import { DraftPdfCanvasPreview } from '../../documents/components/DraftPdfCanvasPreview';
 
 const PaymentDetailPage: React.FC = () => {
   const theme = useTheme();
@@ -76,6 +80,12 @@ const PaymentDetailPage: React.FC = () => {
     tevkifatCenterId: '',
     description: '',
   });
+
+  const [paymentPdfViewerOpen, setPaymentPdfViewerOpen] = useState(false);
+  const [paymentPdfBlobUrl, setPaymentPdfBlobUrl] = useState<string | null>(null);
+  const [paymentPdfTitle, setPaymentPdfTitle] = useState('');
+  const [loadingPaymentPdf, setLoadingPaymentPdf] = useState(false);
+  const [downloadingDocument, setDownloadingDocument] = useState(false);
 
   const canView = hasPermission('MEMBER_PAYMENT_VIEW');
   const canEdit = hasPermission('MEMBER_PAYMENT_UPDATE') || hasPermission('MEMBER_PAYMENT_ADD');
@@ -140,15 +150,56 @@ const PaymentDetailPage: React.FC = () => {
     setEditDialogOpen(true);
   };
 
+  const closePaymentPdfViewer = useCallback(() => {
+    setPaymentPdfViewerOpen(false);
+    setLoadingPaymentPdf(false);
+    setPaymentPdfBlobUrl((prev) => {
+      if (prev) window.URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPaymentPdfTitle('');
+  }, []);
+
   const handleViewDocument = async () => {
     if (!payment?.documentUrl) {
       toast.showError('Bu kesinti için belge bulunmamaktadır.');
       return;
     }
+    const urlParts = payment.documentUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1] || 'Kesinti belgesi';
+    setPaymentPdfTitle(fileName);
+    setPaymentPdfViewerOpen(true);
+    setLoadingPaymentPdf(true);
+    setPaymentPdfBlobUrl((prev) => {
+      if (prev) window.URL.revokeObjectURL(prev);
+      return null;
+    });
     try {
-      await viewPaymentDocument(payment.id);
+      const blob = await fetchPaymentDocumentBlob(payment.id);
+      setPaymentPdfBlobUrl(window.URL.createObjectURL(blob));
     } catch (e: unknown) {
       toast.showError(getApiErrorMessage(e, 'Belge görüntülenemedi'));
+      closePaymentPdfViewer();
+    } finally {
+      setLoadingPaymentPdf(false);
+    }
+  };
+
+  const handleDownloadDocument = async () => {
+    if (!payment?.documentUrl) {
+      toast.showError('Bu kesinti için belge bulunmamaktadır.');
+      return;
+    }
+    const urlParts = payment.documentUrl.split('/');
+    const suggestedName = urlParts[urlParts.length - 1] || undefined;
+    setDownloadingDocument(true);
+    try {
+      await downloadPaymentDocument(payment.id, suggestedName);
+      toast.showSuccess('Belge indirildi');
+    } catch (e: unknown) {
+      toast.showError(getApiErrorMessage(e, 'Belge indirilemedi'));
+    } finally {
+      setDownloadingDocument(false);
     }
   };
 
@@ -633,19 +684,41 @@ const PaymentDetailPage: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                         Kesinti Evrakı (PDF)
                       </Typography>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<PictureAsPdfIcon />}
-                        onClick={() => void handleViewDocument()}
-                        sx={{ 
-                          textTransform: 'none',
-                          borderRadius: 2,
-                          fontWeight: 600,
-                        }}
-                      >
-                        Evrakı Görüntüle
-                      </Button>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={<PictureAsPdfIcon />}
+                          onClick={() => void handleViewDocument()}
+                          sx={{
+                            textTransform: 'none',
+                            borderRadius: 2,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Evrakı Görüntüle
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={
+                            downloadingDocument ? (
+                              <CircularProgress size={16} color="inherit" />
+                            ) : (
+                              <DownloadIcon />
+                            )
+                          }
+                          disabled={downloadingDocument}
+                          onClick={() => void handleDownloadDocument()}
+                          sx={{
+                            textTransform: 'none',
+                            borderRadius: 2,
+                            fontWeight: 600,
+                          }}
+                        >
+                          İndir
+                        </Button>
+                      </Box>
                     </Box>
                   </Box>
                 </Grid>
@@ -807,9 +880,17 @@ const PaymentDetailPage: React.FC = () => {
                   PDF Belgesi
                 </Typography>
                 {payment.documentUrl && !documentFile && (
-                  <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    sx={{
+                      mb: 1,
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
                     <PictureAsPdfIcon sx={{ color: theme.palette.error.main, fontSize: 20 }} />
-                    <Typography variant="body2" sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ flex: 1, minWidth: 120 }}>
                       Mevcut belge var
                     </Typography>
                     <Button
@@ -819,6 +900,22 @@ const PaymentDetailPage: React.FC = () => {
                       sx={{ fontSize: '0.75rem' }}
                     >
                       Görüntüle
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={
+                        downloadingDocument ? (
+                          <CircularProgress size={14} color="inherit" />
+                        ) : (
+                          <DownloadIcon sx={{ fontSize: 18 }} />
+                        )
+                      }
+                      disabled={downloadingDocument}
+                      onClick={() => void handleDownloadDocument()}
+                      sx={{ fontSize: '0.75rem' }}
+                    >
+                      İndir
                     </Button>
                   </Box>
                 )}
@@ -932,6 +1029,62 @@ const PaymentDetailPage: React.FC = () => {
           </DialogActions>
         </Dialog>
       )}
+
+      <Dialog
+        open={paymentPdfViewerOpen}
+        onClose={closePaymentPdfViewer}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { height: '90vh', maxHeight: '90vh' } }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PictureAsPdfIcon sx={{ color: theme.palette.error.main }} />
+            <Typography variant="h6">{paymentPdfTitle}</Typography>
+          </Box>
+          <IconButton
+            onClick={closePaymentPdfViewer}
+            sx={{
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.error.main, 0.1),
+                color: theme.palette.error.main,
+              },
+            }}
+            aria-label="Kapat"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            p: 0,
+            height: 'calc(90vh - 80px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            minHeight: 0,
+          }}
+        >
+          {loadingPaymentPdf ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'center' }}>
+              <CircularProgress size={48} />
+              <Typography variant="body2" color="text.secondary">
+                PDF yükleniyor...
+              </Typography>
+            </Box>
+          ) : paymentPdfBlobUrl ? (
+            <DraftPdfCanvasPreview blobUrl={paymentPdfBlobUrl} variant="document" />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };

@@ -10,13 +10,16 @@ import { PrismaDocumentTemplateRepository } from './infrastructure/persistence/p
 import { DocumentTemplateRepository } from './domain/repositories/document.repository.interface';
 import { DocumentExceptionFilter } from './presentation/filters/document-exception.filter';
 import { DocumentValidationPipe } from './presentation/pipes/document-validation.pipe';
+import { RedisModule } from '../redis/redis.module';
+import { DocumentPreviewStoreService } from './services/document-preview-store.service';
 
 @Module({
-  imports: [PrismaModule, ConfigModule],
+  imports: [PrismaModule, ConfigModule, RedisModule],
   providers: [
     DocumentsService,
     PdfService,
     FileStorageService,
+    DocumentPreviewStoreService,
     DocumentTemplateApplicationService,
     {
       provide: 'DocumentTemplateRepository',
