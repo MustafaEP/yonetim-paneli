@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Param,
   Patch,
   Body,
@@ -23,6 +24,7 @@ import { Permissions } from '../../../auth/decorators/permissions.decorator';
 import { Permission } from '../../../auth/permission.enum';
 import { UserQueryApplicationService } from '../../application/services/user-query-application.service';
 import { UserUpdateRolesApplicationService } from '../../application/services/user-update-roles-application.service';
+import { UserDemotionApplicationService } from '../../application/services/user-demotion-application.service';
 import { UserMapper } from '../../application/mappers/user.mapper';
 import { UserExceptionFilter } from '../filters/user-exception.filter';
 import { UserValidationPipe } from '../pipes/user-validation.pipe';
@@ -38,6 +40,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly userQueryService: UserQueryApplicationService,
     private readonly userUpdateRolesService: UserUpdateRolesApplicationService,
+    private readonly userDemotionService: UserDemotionApplicationService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -101,6 +104,7 @@ export class UsersController {
     return users.map((u) => {
       const userWithRoles = u as typeof u & {
         customRoles?: Array<{ name: string }>;
+        member?: { id: string } | null;
       };
       return {
         id: u.id,
@@ -109,6 +113,7 @@ export class UsersController {
         lastName: u.lastName,
         roles: userWithRoles.customRoles?.map((r) => r.name) || [],
         isActive: u.isActive,
+        memberId: userWithRoles.member?.id ?? null,
       };
     });
   }
@@ -191,6 +196,33 @@ export class UsersController {
           }
         : null,
     };
+  }
+
+  @Permissions(
+    Permission.USER_SOFT_DELETE,
+    Permission.PANEL_USER_APPLICATION_APPROVE,
+  )
+  @Post(':id/demote-to-member')
+  @ApiOperation({
+    summary: 'Panel kullanıcısını tekrar yalnız üyeliğe düşür',
+    description:
+      'Üyeye bağlı panel hesabını kapatır; üye yeniden panel başvurusu yapabilir.',
+  })
+  @ApiParam({ name: 'id', description: 'Kullanıcı ID' })
+  @ApiResponse({ status: 200, description: 'İşlem tamamlandı' })
+  @ApiResponse({
+    status: 400,
+    description: 'Üyeye bağlı değil veya ADMIN',
+  })
+  async demoteToMember(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    await this.userDemotionService.demoteMemberLinkedPanelUser(
+      id,
+      user.userId,
+    );
+    return { success: true };
   }
 
   @Permissions(Permission.USER_ASSIGN_ROLE)

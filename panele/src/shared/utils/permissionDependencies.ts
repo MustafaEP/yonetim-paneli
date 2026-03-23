@@ -17,13 +17,13 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   USER_SOFT_DELETE: [],
   USER_ASSIGN_ROLE: ['USER_LIST', 'ROLE_LIST'], // Rol atamak için kullanıcı ve rol listesi gerekir
 
-  // Rol & Yetki Yönetimi
+  // Rol & Yetki Yönetimi (API ile hizalı: liste → detay → CRUD)
   ROLE_LIST: [],
-  ROLE_VIEW: [],
-  ROLE_CREATE: [],
-  ROLE_UPDATE: [],
-  ROLE_DELETE: [],
-  ROLE_MANAGE_PERMISSIONS: ['ROLE_VIEW'], // İzin yönetmek için rol detayı gerekir
+  ROLE_VIEW: ['ROLE_LIST'],
+  ROLE_CREATE: ['ROLE_LIST'],
+  ROLE_UPDATE: ['ROLE_VIEW', 'ROLE_LIST'],
+  ROLE_DELETE: ['ROLE_LIST'],
+  ROLE_MANAGE_PERMISSIONS: ['ROLE_VIEW', 'ROLE_LIST'],
 
   // Üye Yönetimi
   MEMBER_LIST: [],
@@ -32,6 +32,7 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
     'INSTITUTION_LIST', // Kurum seçimi için
     'REGION_LIST', // İl/İlçe seçimi için
   ],
+  MEMBER_APPLICATIONS_VIEW: ['MEMBER_VIEW'], // Başvurudan üye detayına geçiş için
   MEMBER_APPROVE: ['MEMBER_VIEW'], // Onaylamak için üye detayı gerekir
   MEMBER_REJECT: ['MEMBER_VIEW'], // Reddetmek için üye detayı gerekir
   MEMBER_UPDATE: [
@@ -40,6 +41,7 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
     'MEMBER_VIEW', // Güncellemek için üye detayı gerekir
   ],
   MEMBER_STATUS_CHANGE: ['MEMBER_VIEW'], // Durum değiştirmek için üye detayı gerekir
+  MEMBER_HISTORY_VIEW: [],
   MEMBER_LIST_BY_PROVINCE: [],
 
   // Şube / İl / İlçe Yönetimi
@@ -108,6 +110,10 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   // Avans Sistemi
   ADVANCE_VIEW: [],
   ADVANCE_ADD: ['ADVANCE_VIEW', 'MEMBER_VIEW'], // Avans oluşturmak için üye detayı ve liste görüntüleme gerekir
+
+  // Faturalar
+  INVOICE_VIEW: [],
+  INVOICE_ADD: ['INVOICE_VIEW'],
 };
 
 /**

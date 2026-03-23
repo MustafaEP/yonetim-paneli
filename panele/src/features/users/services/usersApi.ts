@@ -22,3 +22,8 @@ export const updateUserRoles = async (
   });
   return res.data;
 };
+
+/** Üyeye bağlı panel hesabını kapatır; kişi yalnız üye kalır ve yeniden başvuru yapılabilir. */
+export const demoteUserToMember = async (userId: string): Promise<void> => {
+  await httpClient.post(`/users/${userId}/demote-to-member`);
+};

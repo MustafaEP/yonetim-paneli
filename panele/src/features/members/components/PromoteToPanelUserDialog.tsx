@@ -85,8 +85,11 @@ const PromoteToPanelUserDialog: React.FC<PromoteToPanelUserDialogProps> = ({
           const customRoles = allRoles.filter(
             (r): r is CustomRole => 'id' in r && !('isSystemRole' in r),
           );
-          // UYE rolünü hariç tut
-          const filteredRoles = customRoles.filter(r => r.name !== 'UYE');
+          // UYE ve ADMIN atanabilir rol değil (ADMIN sistem rolü)
+          const filteredRoles = customRoles.filter(
+            (r) =>
+              r.name !== 'UYE' && r.name.toUpperCase() !== 'ADMIN',
+          );
           setRoles(filteredRoles);
         } catch (e) {
           console.error('Roller yüklenirken hata:', e);

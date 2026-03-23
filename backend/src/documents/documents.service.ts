@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -292,9 +293,31 @@ export class DocumentsService {
   /**
    * PDF Oluştur sayfası: son üretilen / yüklenen PDF üye belgeleri.
    * Admin: sistemdeki son 10; diğer panel kullanıcıları: yalnızca kendi oluşturdukları son 10.
+   *
+   * Admin tespiti JWT `roles` ile değil, veritabanındaki aktif custom roller ile yapılır
+   * (JWT ile DB sapması veya `generatedBy: undefined` ile filtrenin düşmesi önlenir).
    */
-  async listRecentPanelPdfs(userId: string, roles: string[]) {
-    const isAdmin = Array.isArray(roles) && roles.includes('ADMIN');
+  async listRecentPanelPdfs(userId: string) {
+    if (!userId || typeof userId !== 'string' || !userId.trim()) {
+      throw new UnauthorizedException('Oturum kullanıcı bilgisi geçersiz');
+    }
+
+    const panelUser = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null, isActive: true },
+      select: {
+        id: true,
+        customRoles: {
+          where: { deletedAt: null, isActive: true },
+          select: { name: true },
+        },
+      },
+    });
+
+    if (!panelUser) {
+      throw new UnauthorizedException('Kullanıcı bulunamadı veya pasif');
+    }
+
+    const isAdmin = panelUser.customRoles.some((r) => r.name === 'ADMIN');
 
     const pdfWhere: Prisma.MemberDocumentWhereInput = {
       deletedAt: null,
@@ -308,7 +331,7 @@ export class DocumentsService {
     const documents = await this.prisma.memberDocument.findMany({
       where: {
         ...pdfWhere,
-        ...(isAdmin ? {} : { generatedBy: userId }),
+        ...(isAdmin ? {} : { generatedBy: panelUser.id }),
       },
       include: {
         template: { select: { id: true, name: true, type: true } },

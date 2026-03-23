@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MembersService } from './members.service';
 import { MembersController } from './presentation/controllers/members.controller';
+import { PublicMembershipController } from './presentation/controllers/public-membership.controller';
 import { MemberScopeService } from './member-scope.service';
 import { MemberHistoryService } from './member-history.service';
 import { DocumentsModule } from '../documents/documents.module';
@@ -20,9 +21,12 @@ import {
   MembershipConfigAdapter,
 } from './domain/services/member-registration-domain.service';
 import { PrismaMembershipConfigAdapter } from './infrastructure/config/membership-config.adapter';
+import { RedisModule } from '../redis/redis.module';
+import { MembershipInquiryTokenGuard } from './guards/membership-inquiry-token.guard';
+import { MembershipInquiryRateLimitGuard } from './guards/membership-inquiry-rate-limit.guard';
 
 @Module({
-  imports: [DocumentsModule],
+  imports: [DocumentsModule, RedisModule],
   providers: [
     MembersService,
     MemberScopeService,
@@ -50,8 +54,10 @@ import { PrismaMembershipConfigAdapter } from './infrastructure/config/membershi
     },
     PrismaMemberRepository,
     PrismaMembershipConfigAdapter,
+    MembershipInquiryTokenGuard,
+    MembershipInquiryRateLimitGuard,
   ],
-  controllers: [MembersController],
+  controllers: [MembersController, PublicMembershipController],
   exports: [MemberScopeService, MemberHistoryService],
 })
 export class MembersModule {}

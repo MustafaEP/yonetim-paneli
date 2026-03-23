@@ -44,10 +44,12 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
   MEMBER_LIST: 'Üye Listele',
   MEMBER_VIEW: 'Üye Görüntüle',
   MEMBER_CREATE_APPLICATION: 'Üye Başvurusu Oluştur',
+  MEMBER_APPLICATIONS_VIEW: 'Üye Başvurularını Görüntüle',
   MEMBER_APPROVE: 'Başvuru Onayla',
   MEMBER_REJECT: 'Başvuru Reddet',
   MEMBER_UPDATE: 'Üye Güncelle',
   MEMBER_STATUS_CHANGE: 'Üye Durum Değiştir',
+  MEMBER_HISTORY_VIEW: 'Üye Hareketlerini Görüntüle',
   MEMBER_LIST_BY_PROVINCE: 'İle Göre Üye Listele',
   // Bölge / Şube
   REGION_LIST: 'Bölgeleri Listele',

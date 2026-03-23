@@ -895,4 +895,46 @@ export class MembersService {
     // Domain Entity → Prisma model'e dönüştür
     return await this.getById(member.id);
   }
+
+  /**
+   * Herkese açık: Sadece aktif üyelik ve üyelik başlangıç tarihi (kişisel veri yok).
+   */
+  async publicActiveMembershipLookup(nationalId: string): Promise<{
+    isMember: boolean;
+    memberSince: string | null;
+  }> {
+    const member = await this.prisma.member.findFirst({
+      where: {
+        nationalId,
+        status: MemberStatus.ACTIVE,
+        deletedAt: null,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        approvedAt: true,
+        createdAt: true,
+        membershipPeriods: {
+          where: { periodEnd: null },
+          orderBy: { periodStart: 'asc' },
+          take: 1,
+          select: { periodStart: true },
+        },
+      },
+    });
+
+    if (!member) {
+      return { isMember: false, memberSince: null };
+    }
+
+    const openPeriod = member.membershipPeriods[0];
+    const since =
+      openPeriod?.periodStart ?? member.approvedAt ?? member.createdAt;
+
+    return {
+      isMember: true,
+      memberSince: since.toISOString(),
+    };
+  }
 }

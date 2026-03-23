@@ -19,10 +19,14 @@ export enum Permission {
   MEMBER_LIST = 'MEMBER_LIST',
   MEMBER_VIEW = 'MEMBER_VIEW',
   MEMBER_CREATE_APPLICATION = 'MEMBER_CREATE_APPLICATION',
+  /** Bekleyen üye başvuruları listesini görüntüleme (onay/red ayrı izinler) */
+  MEMBER_APPLICATIONS_VIEW = 'MEMBER_APPLICATIONS_VIEW',
   MEMBER_APPROVE = 'MEMBER_APPROVE',
   MEMBER_REJECT = 'MEMBER_REJECT',
   MEMBER_UPDATE = 'MEMBER_UPDATE',
   MEMBER_STATUS_CHANGE = 'MEMBER_STATUS_CHANGE', // istifa / ihraç / pasif
+  /** Üye hareket geçmişi (MemberHistory) listesi */
+  MEMBER_HISTORY_VIEW = 'MEMBER_HISTORY_VIEW',
   MEMBER_LIST_BY_PROVINCE = 'MEMBER_LIST_BY_PROVINCE', // Belirli bir ildeki üyeleri görüntüleme (UserScope'daki provinceId'ye göre)
 
   // Şube / İl / İlçe Yönetimi

@@ -16,6 +16,13 @@ import {
   useTheme,
   alpha,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
+  CircularProgress,
 } from '@mui/material';
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -23,12 +30,13 @@ import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PeopleIcon from '@mui/icons-material/People';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 
 import type { UserListItem } from '../../../types/user';
-import { getUsers, getUserById } from '../services/usersApi';
+import { getUsers, getUserById, demoteUserToMember } from '../services/usersApi';
+import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import PageHeader from '../../../shared/components/layout/PageHeader';
@@ -49,43 +57,67 @@ const readRecentApprovedPanelUsers = (): ApprovedPanelUserSyncPayload[] => {
   }
 };
 
+/**
+ * Panel kullanıcı listesi yalnızca GET /users (aktif, silinmemiş) kaydına dayanır.
+ * localStorage’daki son onaylar sadece sıralamayı günceller; API’de artık olmayan
+ * (ör. üyeliğe düşürülmüş) id’ler asla eklenmez.
+ */
 const mergeUsers = (
-  existingUsers: UserListItem[],
-  incomingUsers: ApprovedPanelUserSyncPayload[],
+  apiUsers: UserListItem[],
+  recentFromStorage: ApprovedPanelUserSyncPayload[],
 ): UserListItem[] => {
-  if (incomingUsers.length === 0) return existingUsers;
+  if (recentFromStorage.length === 0) {
+    return apiUsers;
+  }
 
-  const incomingUserIds = new Set(incomingUsers.map((user) => user.id));
-  const mergedIncomingUsers = incomingUsers.map((incomingUser) => {
-    const currentUser = existingUsers.find((user) => user.id === incomingUser.id);
+  const apiById = new Map(apiUsers.map((u) => [u.id, u]));
+  const mergedRecent: UserListItem[] = [];
 
-    return {
-      ...incomingUser,
-      ...currentUser,
+  for (const incoming of recentFromStorage) {
+    const fromApi = apiById.get(incoming.id);
+    if (!fromApi) {
+      continue;
+    }
+    mergedRecent.push({
+      ...incoming,
+      ...fromApi,
       roles:
-        currentUser && currentUser.roles.length > 0
-          ? currentUser.roles
-          : incomingUser.roles,
-    };
-  });
+        fromApi.roles.length > 0 ? fromApi.roles : incoming.roles,
+      memberId: fromApi.memberId ?? incoming.memberId ?? null,
+    });
+  }
 
-  const remainingUsers = existingUsers.filter(
-    (user) => !incomingUserIds.has(user.id),
-  );
+  const recentIds = new Set(mergedRecent.map((u) => u.id));
+  const rest = apiUsers.filter((u) => !recentIds.has(u.id));
 
-  return [...mergedIncomingUsers, ...remainingUsers];
+  return [...mergedRecent, ...rest];
+};
+
+const removeUserIdFromRecentApprovedStorage = (userId: string) => {
+  try {
+    const recent = readRecentApprovedPanelUsers().filter((u) => u.id !== userId);
+    localStorage.setItem(RECENT_APPROVED_PANEL_USERS_KEY, JSON.stringify(recent));
+  } catch {
+    /* ignore */
+  }
 };
 
 const UsersListPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const toast = useToast();
+  const { hasPermission, user: authUser } = useAuth();
+  const canDemoteToMember =
+    hasPermission('USER_SOFT_DELETE') ||
+    hasPermission('PANEL_USER_APPLICATION_APPROVE');
   const toastRef = useRef(toast);
   toastRef.current = toast;
   const [rows, setRows] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [demoteTarget, setDemoteTarget] = useState<UserListItem | null>(null);
+  const [demoteSubmitting, setDemoteSubmitting] = useState(false);
 
   // Filtrelenmiş veriler
   const filteredRows = useMemo(() => {
@@ -193,45 +225,87 @@ const UsersListPage: React.FC = () => {
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 100,
+      width: canDemoteToMember ? 140 : 100,
       sortable: false,
       filterable: false,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params: GridRenderCellParams<UserListItem>) => (
-        <Tooltip title="Detay Görüntüle" arrow placement="top">
-          <IconButton
-            size="small"
-            onClick={async (e) => {
-              e.stopPropagation();
-              try {
-                // Kullanıcı detayını çek ve member bilgisini kontrol et
-                const userDetail = await getUserById(params.row.id);
-                if (userDetail.member?.id) {
-                  // Üye varsa üye detay sayfasına yönlendir
-                  navigate(`/members/${userDetail.member.id}`);
-                } else {
-                  // Admin kullanıcı veya üye bilgisi yok
-                  toast.showWarning('Bu kullanıcının üye bilgisi bulunmuyor. Admin kullanıcılar üye detay sayfasına sahip değildir.');
-                }
-              } catch (error) {
-                console.error('Kullanıcı detayı alınırken hata:', error);
-                toast.showError('Kullanıcı bilgileri alınırken bir hata oluştu.');
-              }
-            }}
+      renderCell: (params: GridRenderCellParams<UserListItem>) => {
+        const memberId = params.row.memberId;
+        const isAdminUser = params.row.roles.some(
+          (r) => r.toUpperCase() === 'ADMIN',
+        );
+        const showDemote =
+          canDemoteToMember &&
+          Boolean(memberId) &&
+          !isAdminUser &&
+          params.row.id !== authUser?.id;
+
+        return (
+          <Box
             sx={{
-              color: theme.palette.primary.main,
-              '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                transform: 'scale(1.1)',
-              },
-              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 0.5,
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <VisibilityIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      ),
+            <Tooltip title="Detay Görüntüle" arrow placement="top">
+              <IconButton
+                size="small"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    const userDetail = await getUserById(params.row.id);
+                    if (userDetail.member?.id) {
+                      navigate(`/members/${userDetail.member.id}`);
+                    } else {
+                      toast.showWarning(
+                        'Bu kullanıcının üye bilgisi bulunmuyor. Admin kullanıcılar üye detay sayfasına sahip değildir.',
+                      );
+                    }
+                  } catch (error) {
+                    console.error('Kullanıcı detayı alınırken hata:', error);
+                    toast.showError('Kullanıcı bilgileri alınırken bir hata oluştu.');
+                  }
+                }}
+                sx={{
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                    transform: 'scale(1.1)',
+                  },
+                  transition: 'all 0.2s',
+                }}
+              >
+                <VisibilityIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {showDemote && (
+              <Tooltip title="Tekrar üyeliğe düşür" arrow placement="top">
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDemoteTarget(params.row);
+                  }}
+                  sx={{
+                    color: theme.palette.warning.dark,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.warning.main, 0.12),
+                      transform: 'scale(1.1)',
+                    },
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <PersonRemoveIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        );
+      },
     },
   ];
 
@@ -254,24 +328,13 @@ const UsersListPage: React.FC = () => {
 
   // Panel Kullanıcı Başvurusu onaylandığında listeyi güncelle (onaylanan üye panel kullanıcıları listesinde görünsün)
   useEffect(() => {
-    const handlePanelUserApproved = (
-      event: Event,
-    ) => {
-      const customEvent = event as CustomEvent<ApprovedPanelUserSyncPayload>;
-      const approvedUser = customEvent.detail;
-
-      if (approvedUser) {
-        setRows((currentRows) => mergeUsers(currentRows, [approvedUser]));
-      }
-
-      fetchUsers(false);
+    const handlePanelUserApproved = () => {
+      void fetchUsers(false);
     };
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== RECENT_APPROVED_PANEL_USERS_KEY) return;
-      setRows((currentRows) =>
-        mergeUsers(currentRows, readRecentApprovedPanelUsers()),
-      );
+      void fetchUsers(false);
     };
 
     window.addEventListener('panelUserApproved', handlePanelUserApproved as EventListener);
@@ -285,6 +348,25 @@ const UsersListPage: React.FC = () => {
       window.removeEventListener('storage', handleStorage);
     };
   }, [fetchUsers]);
+
+  const handleConfirmDemote = async () => {
+    if (!demoteTarget) return;
+    setDemoteSubmitting(true);
+    try {
+      await demoteUserToMember(demoteTarget.id);
+      removeUserIdFromRecentApprovedStorage(demoteTarget.id);
+      toast.showSuccess(
+        `${demoteTarget.firstName} ${demoteTarget.lastName} artık yalnızca üye; panel hesabı kapatıldı.`,
+      );
+      setDemoteTarget(null);
+      await fetchUsers(false);
+    } catch (e: unknown) {
+      console.error('Üyeliğe düşürme hatası:', e);
+      toast.showError(getApiErrorMessage(e, 'İşlem sırasında bir hata oluştu.'));
+    } finally {
+      setDemoteSubmitting(false);
+    }
+  };
 
   return (
     <PageLayout>
@@ -487,6 +569,39 @@ const UsersListPage: React.FC = () => {
           </Box>
           </Box>
         </Card>
+
+      <Dialog
+        open={Boolean(demoteTarget)}
+        onClose={() => !demoteSubmitting && setDemoteTarget(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Panel erişimini kaldır</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>
+              {demoteTarget
+                ? `${demoteTarget.firstName} ${demoteTarget.lastName}`
+                : ''}
+            </strong>{' '}
+            kullanıcısının panel hesabı kapatılacak; kişi yalnızca üye olarak kalacak. İstenirse
+            daha sonra yeniden panel kullanıcı başvurusu yapılabilir. Devam edilsin mi?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDemoteTarget(null)} disabled={demoteSubmitting}>
+            Vazgeç
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => void handleConfirmDemote()}
+            disabled={demoteSubmitting}
+          >
+            {demoteSubmitting ? <CircularProgress size={22} color="inherit" /> : 'Evet, üyeliğe düşür'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageLayout>
   );
 };

@@ -6,6 +6,7 @@ import ForbiddenPage from './ForbiddenPage';
 import NotFoundPage from './NotFoundPage';
 
 import LoginPage from '../../features/auth/pages/LoginPage';
+import MembershipInquiryPage from '../../features/members/pages/MembershipInquiryPage';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
 import MembersListPage from '../../features/members/pages/MembersListPage';
 import MembersByStatusPage from '../../features/members/pages/MembersByStatusPage';
@@ -53,6 +54,7 @@ import InvoicesPage from '../../features/invoices/pages/InvoicesPage';
 const AppRoutes: React.FC = () => (
   <Routes>
     <Route path="/login" element={<LoginPage />} />
+    <Route path="/uyelik-sorgula" element={<MembershipInquiryPage />} />
 
     <Route element={<ProtectedRoute />}>
       <Route element={<MainLayout />}>
@@ -69,12 +71,37 @@ const AppRoutes: React.FC = () => (
           <Route path="/members/:id/edit" element={<MemberUpdatePage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="MEMBER_VIEW" alternativePermission="MEMBER_LIST" />}>
+        <Route element={<ProtectedRoute requiredPermission="MEMBER_HISTORY_VIEW" />}>
           <Route path="/members/status" element={<MemberHistoryPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="MEMBER_APPROVE" />}>
+        {/* Bekleyen başvurular: görüntüleme izni veya onay/red (MEMBER_LIST tek başına yetmez) */}
+        <Route
+          element={
+            <ProtectedRoute
+              requiredAnyOf={[
+                'MEMBER_APPLICATIONS_VIEW',
+                'MEMBER_APPROVE',
+                'MEMBER_REJECT',
+              ]}
+            />
+          }
+        >
           <Route path="/members/applications" element={<MembersApplicationsPage />} />
+        </Route>
+
+        {/* Onaylı / beklemedeki üyeler: GET /members/approved ve üye listesi API ile uyumlu */}
+        <Route
+          element={
+            <ProtectedRoute
+              requiredAnyOf={[
+                'MEMBER_APPROVE',
+                'MEMBER_LIST',
+                'MEMBER_LIST_BY_PROVINCE',
+              ]}
+            />
+          }
+        >
           <Route path="/members/approved" element={<ApprovedMembersPage />} />
           <Route path="/members/waiting" element={<ActiveWaitingMembersPage />} />
         </Route>
@@ -92,11 +119,17 @@ const AppRoutes: React.FC = () => (
           <Route path="/users/applications" element={<PanelUserApplicationsPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="ROLE_LIST" />}>
+        <Route element={<ProtectedRoute requiredPermission="ROLE_LIST" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
           <Route path="/roles" element={<RolesListPage />} />
+        </Route>
+        <Route element={<ProtectedRoute requiredPermission="ROLE_CREATE" />}>
           <Route path="/roles/new" element={<RoleCreateEditPage />} />
-          <Route path="/roles/:id" element={<RoleDetailPage />} />
+        </Route>
+        <Route element={<ProtectedRoute requiredAllOf={['ROLE_UPDATE', 'ROLE_MANAGE_PERMISSIONS']} />}>
           <Route path="/roles/:id/edit" element={<RoleCreateEditPage />} />
+        </Route>
+        <Route element={<ProtectedRoute requiredPermission="ROLE_VIEW" />}>
+          <Route path="/roles/:id" element={<RoleDetailPage />} />
         </Route>
 
         <Route element={<ProtectedRoute requiredPermission="REGION_LIST" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
@@ -160,18 +193,29 @@ const AppRoutes: React.FC = () => (
           <Route path="/accounting/advances" element={<AdvancesPage />} />
         </Route>
 
+        <Route
+          element={
+            <ProtectedRoute
+              requiredAnyOf={['MEMBER_PAYMENT_LIST', 'MEMBER_PAYMENT_ADD']}
+            />
+          }
+        >
+          <Route path="/payments/quick-entry" element={<QuickPaymentEntryPage />} />
+        </Route>
+
         <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_LIST" />}>
           <Route path="/payments" element={<PaymentsListPage />} />
           <Route path="/payments/inquiry" element={<PaymentInquiryPage />} />
           <Route path="/payments/recent" element={<RecentPaymentsPage />} />
-          <Route path="/payments/quick-entry" element={<QuickPaymentEntryPage />} />
         </Route>
 
         <Route element={<ProtectedRoute requiredPermission="MEMBER_PAYMENT_VIEW" />}>
           <Route path="/payments/:id" element={<PaymentDetailPage />} />
         </Route>
 
-        <Route path="/invoices" element={<InvoicesPage />} />
+        <Route element={<ProtectedRoute requiredPermission="INVOICE_VIEW" />}>
+          <Route path="/invoices" element={<InvoicesPage />} />
+        </Route>
 
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/forbidden" element={<ForbiddenPage />} />

@@ -2,33 +2,113 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User } from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
+import { Permission } from '../auth/permission.enum';
+
+type CustomRoleWithPermsAndScopes = {
+  name: string;
+  hasScopeRestriction: boolean;
+  roleScopes?: Array<{
+    provinceId?: string | null;
+    districtId?: string | null;
+  }>;
+  permissions?: Array<{ permission: string }>;
+};
 
 @Injectable()
 export class MemberScopeService {
   constructor(private prisma: PrismaService) {}
 
+  private isAdminRoleName(roles: string[]): boolean {
+    return roles.includes('ADMIN');
+  }
+
+  private rolesHaveMemberListByProvince(
+    customRoles: CustomRoleWithPermsAndScopes[] | undefined,
+  ): boolean {
+    return (
+      customRoles?.some((role) =>
+        role.permissions?.some(
+          (p) => p.permission === Permission.MEMBER_LIST_BY_PROVINCE,
+        ),
+      ) ?? false
+    );
+  }
+
+  /**
+   * MEMBER_LIST_BY_PROVINCE + hasScopeRestriction + dolu roleScopes ile il/ilçe id'leri.
+   */
+  private roleHasScopedGeography(role: CustomRoleWithPermsAndScopes): boolean {
+    return !!(
+      role.hasScopeRestriction &&
+      role.roleScopes &&
+      role.roleScopes.length > 0 &&
+      role.permissions?.some(
+        (p) =>
+          p.permission === Permission.MEMBER_LIST_BY_PROVINCE ||
+          p.permission === Permission.MEMBER_APPLICATIONS_VIEW ||
+          p.permission === Permission.MEMBER_HISTORY_VIEW,
+      )
+    );
+  }
+
+  /** MEMBER_APPLICATIONS_VIEW + rol il/ilçe kapsamı (MEMBER_LIST_BY_PROVINCE olmadan) */
+  private rolesHaveScopedApplicationsView(
+    customRoles: CustomRoleWithPermsAndScopes[] | undefined,
+  ): boolean {
+    return (
+      customRoles?.some(
+        (role) =>
+          role.permissions?.some(
+            (p) => p.permission === Permission.MEMBER_APPLICATIONS_VIEW,
+          ) && this.roleHasScopedGeography(role),
+      ) ?? false
+    );
+  }
+
+  /** MEMBER_HISTORY_VIEW + rol il/ilçe kapsamı */
+  private rolesHaveScopedHistoryView(
+    customRoles: CustomRoleWithPermsAndScopes[] | undefined,
+  ): boolean {
+    return (
+      customRoles?.some(
+        (role) =>
+          role.permissions?.some(
+            (p) => p.permission === Permission.MEMBER_HISTORY_VIEW,
+          ) && this.roleHasScopedGeography(role),
+      ) ?? false
+    );
+  }
+
+  private collectIdsFromScopedCustomRoles(
+    customRoles: CustomRoleWithPermsAndScopes[] | undefined,
+  ): { districtIds: string[]; provinceIds: string[] } {
+    const districtIds: string[] = [];
+    const provinceIds: string[] = [];
+
+    const scoped =
+      customRoles?.filter((role) => this.roleHasScopedGeography(role)) ?? [];
+
+    for (const role of scoped) {
+      for (const scope of role.roleScopes ?? []) {
+        if (scope.districtId) {
+          districtIds.push(scope.districtId);
+        } else if (scope.provinceId) {
+          provinceIds.push(scope.provinceId);
+        }
+      }
+    }
+    return { districtIds, provinceIds };
+  }
+
   async buildMemberWhereForUser(
     user: CurrentUserData,
   ): Promise<Prisma.MemberWhereInput> {
-    // Önce JWT'den gelen rolleri kontrol et (fallback olarak)
     const jwtRoles = user.roles || [];
 
-    // ADMIN her şeyi görsün (JWT'den gelen rol bilgisini kullan)
-    if (jwtRoles.includes('ADMIN')) {
-      return {}; // filtre yok → tüm üyeler
+    if (this.isAdminRoleName(jwtRoles)) {
+      return {};
     }
 
-    // Süper kullanıcı rolleri (JWT'den gelen rol bilgisini kullan)
-    if (
-      jwtRoles.includes('MODERATOR') ||
-      jwtRoles.includes('GENEL_BASKAN') ||
-      jwtRoles.includes('GENEL_BASKAN_YRD') ||
-      jwtRoles.includes('GENEL_SEKRETER')
-    ) {
-      return {}; // filtre yok → tüm üyeler
-    }
-
-    // Kullanıcının custom rolleri ve scope'u kontrol et
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.userId },
       include: {
@@ -54,234 +134,89 @@ export class MemberScopeService {
     });
 
     if (!dbUser) {
-      // Kullanıcı bulunamadı ama JWT'de rol var - zaten yukarıda kontrol ettik
-      // Eğer süper rol yoksa, scope olmadan üye gösteremeyiz
-      return { id: '' }; // impossible filter
+      return { id: '' };
     }
 
-    // Type assertion for customRoles
-    const userWithRoles = dbUser as User & {
-      customRoles?: Array<{
-        name: string;
-        hasScopeRestriction: boolean;
-        roleScopes?: Array<{
-          provinceId?: string | null;
-          districtId?: string | null;
-        }>;
-        permissions?: Array<{ permission: string }>;
-      }>;
-    };
+    const customRoles =
+      (dbUser as User & { customRoles?: CustomRoleWithPermsAndScopes[] })
+        .customRoles ?? [];
 
-    // Custom role isimlerini kontrol et
-    const customRoleNames = userWithRoles.customRoles?.map((r) => r.name) || [];
-
-    // MEMBER_LIST_BY_PROVINCE izni olan ve hasScopeRestriction true olan custom role'lerin scope'larını kontrol et
-    // Önce districtId kontrolü (daha spesifik) - çoklu scope desteği
-    const scopedRoles =
-      userWithRoles.customRoles?.filter((role) => {
-        const hasProvincePermission = role.permissions?.some(
-          (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE',
-        );
-        return (
-          hasProvincePermission &&
-          role.hasScopeRestriction &&
-          role.roleScopes &&
-          role.roleScopes.length > 0
-        );
-      }) || [];
-
-    if (scopedRoles.length > 0) {
-      // Tüm districtId'leri topla (çoklu scope desteği)
-      const districtIds: string[] = [];
-      const provinceIds: string[] = [];
-
-      for (const role of scopedRoles) {
-        if (role.roleScopes) {
-          for (const scope of role.roleScopes) {
-            if (scope.districtId) {
-              districtIds.push(scope.districtId);
-            } else if (scope.provinceId) {
-              provinceIds.push(scope.provinceId);
-            }
-          }
-        }
-      }
-
-      // DistrictId varsa önce onu kullan
-      if (districtIds.length > 0) {
-        return { districtId: { in: districtIds } };
-      }
-
-      // ProvinceId varsa onu kullan
-      if (provinceIds.length > 0) {
-        return { provinceId: { in: provinceIds } };
-      }
+    const customNames = customRoles.map((r) => r.name);
+    if (this.isAdminRoleName(customNames)) {
+      return {};
     }
 
-    // Eğer custom role'ler boş geliyorsa ama JWT'de rol varsa, JWT'deki rol adına göre role'ü çek
-    if (customRoleNames.length === 0 && jwtRoles.length > 0) {
-      for (const roleName of jwtRoles) {
-        const role = await this.prisma.customRole.findFirst({
-          where: {
-            name: roleName,
-            deletedAt: null,
-            isActive: true,
-          },
-          include: {
-            permissions: true,
-            roleScopes: {
-              where: {
-                deletedAt: null,
-              },
-              include: {
-                province: true,
-                district: true,
-              },
-            },
-          },
-        });
-
-        if (role) {
-          // MEMBER_LIST_BY_PROVINCE izni var mı kontrol et
-          const hasProvincePermission = role.permissions?.some(
-            (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE',
-          );
-
-          if (
-            hasProvincePermission &&
-            role.hasScopeRestriction &&
-            role.roleScopes &&
-            role.roleScopes.length > 0
-          ) {
-            const districtIds = role.roleScopes
-              .filter((s) => s.districtId)
-              .map((s) => s.districtId)
-              .filter((id): id is string => id !== null);
-
-            const provinceIds = role.roleScopes
-              .filter((s) => s.provinceId && !s.districtId)
-              .map((s) => s.provinceId)
-              .filter((id): id is string => id !== null);
-
-            if (districtIds.length > 0) {
-              return { districtId: { in: districtIds } };
-            }
-
-            if (provinceIds.length > 0) {
-              return { provinceId: { in: provinceIds } };
-            }
-          }
-        }
-      }
-    }
-
-    // ADMIN her şeyi görsün (veritabanından gelen rol bilgisini kullan)
-    if (customRoleNames.includes('ADMIN')) {
-      return {}; // filtre yok → tüm üyeler
-    }
-
-    // Süper kullanıcı rolleri (veritabanından gelen)
-    if (
-      customRoleNames.includes('MODERATOR') ||
-      customRoleNames.includes('GENEL_BASKAN') ||
-      customRoleNames.includes('GENEL_BASKAN_YRD') ||
-      customRoleNames.includes('GENEL_SEKRETER')
-    ) {
-      return {}; // filtre yok → tüm üyeler
-    }
-
-    // İlgili kullanıcı için tüm scope kayıtlarını bul (çoklu scope desteği)
     const scopes = await this.prisma.userScope.findMany({
       where: {
         userId: user.userId,
-        deletedAt: null, // Sadece soft delete edilmemiş scope'ları kullan
+        deletedAt: null,
       },
     });
 
-    if (!scopes || scopes.length === 0) {
-      // Scope tanımlı değilse, şimdilik hiçbir üye göstermeyelim
-      return { id: '' }; // impossible filter
-    }
+    const hasMbp = this.rolesHaveMemberListByProvince(customRoles);
+    const hasUserScopes = scopes.length > 0;
+    const hasScopedAppView = this.rolesHaveScopedApplicationsView(customRoles);
+    const hasScopedHistoryView = this.rolesHaveScopedHistoryView(customRoles);
 
-    // IL_BASKANI → il bazlı (veritabanından gelen rol)
-    if (customRoleNames.includes('IL_BASKANI')) {
-      const provinceIds = scopes
-        .filter((s) => s.provinceId)
-        .map((s) => s.provinceId)
-        .filter((id): id is string => id !== null);
-
-      if (provinceIds.length > 0) {
-        return { provinceId: { in: provinceIds } };
-      }
-    }
-
-    // ILCE_TEMSILCISI → ilçe bazlı (veritabanından gelen rol)
-    if (customRoleNames.includes('ILCE_TEMSILCISI')) {
-      const districtIds = scopes
-        .filter((s) => s.districtId)
-        .map((s) => s.districtId)
-        .filter((id): id is string => id !== null);
-
-      if (districtIds.length > 0) {
-        return { districtId: { in: districtIds } };
-      }
-    }
-
-    // MEMBER_LIST_BY_PROVINCE izni varsa, tüm scope'ları OR mantığıyla birleştir
-    const hasMemberListByProvince = userWithRoles.customRoles?.some((role) =>
-      role.permissions?.some((p) => p.permission === 'MEMBER_LIST_BY_PROVINCE'),
-    );
-
-    if (hasMemberListByProvince) {
-      // Tüm scope'ları OR mantığıyla birleştir
-      const orConditions: Prisma.MemberWhereInput[] = [];
-
-      const districtIds = scopes
-        .filter((s) => s.districtId)
-        .map((s) => s.districtId)
-        .filter((id): id is string => id !== null);
-
-      const provinceIds = scopes
-        .filter((s) => s.provinceId && !s.districtId) // Sadece il bazlı olanlar (ilçe bazlı olanlar zaten districtIds'de)
-        .map((s) => s.provinceId)
-        .filter((id): id is string => id !== null);
-
-      if (districtIds.length > 0) {
-        orConditions.push({ districtId: { in: districtIds } });
-      }
-
-      if (provinceIds.length > 0) {
-        orConditions.push({ provinceId: { in: provinceIds } });
-      }
-
-      if (orConditions.length > 0) {
-        return { OR: orConditions };
-      }
-    }
-
-    // Diğer roller veya eksik scope: şimdilik hiç üye gösterme
-    return { id: '' };
-  }
-
-  // Kullanıcının provinceId ve districtId'sini döndür (başvuru oluşturma için)
-  async getUserScopeIds(
-    user: CurrentUserData,
-  ): Promise<{ provinceId?: string; districtId?: string }> {
-    // Önce JWT'den gelen rolleri kontrol et
-    const jwtRoles = user.roles || [];
-
-    // ADMIN ve süper kullanıcılar için boş döndür (her yerde başvuru yapabilirler)
-    if (
-      jwtRoles.includes('ADMIN') ||
-      jwtRoles.includes('MODERATOR') ||
-      jwtRoles.includes('GENEL_BASKAN') ||
-      jwtRoles.includes('GENEL_BASKAN_YRD') ||
-      jwtRoles.includes('GENEL_SEKRETER')
-    ) {
+    // Coğrafi kısıt yok: tüm üyeler (endpoint izinleriyle korunur)
+    if (!hasMbp && !hasUserScopes && !hasScopedAppView && !hasScopedHistoryView) {
       return {};
     }
 
-    // Kullanıcının custom rolleri ve scope'u kontrol et
+    const parts: Prisma.MemberWhereInput[] = [];
+
+    const { districtIds: crDistricts, provinceIds: crProvinces } =
+      this.collectIdsFromScopedCustomRoles(customRoles);
+
+    if (crDistricts.length > 0) {
+      parts.push({
+        districtId: { in: [...new Set(crDistricts)] },
+      });
+    } else if (crProvinces.length > 0) {
+      parts.push({
+        provinceId: { in: [...new Set(crProvinces)] },
+      });
+    }
+
+    if (hasUserScopes) {
+      const usDistricts = scopes
+        .map((s) => s.districtId)
+        .filter((id): id is string => id != null);
+      const usProvinces = scopes
+        .filter((s) => s.provinceId && !s.districtId)
+        .map((s) => s.provinceId)
+        .filter((id): id is string => id != null);
+
+      if (usDistricts.length > 0) {
+        parts.push({
+          districtId: { in: [...new Set(usDistricts)] },
+        });
+      }
+      if (usProvinces.length > 0) {
+        parts.push({
+          provinceId: { in: [...new Set(usProvinces)] },
+        });
+      }
+    }
+
+    if (parts.length === 0) {
+      return { id: '' };
+    }
+    if (parts.length === 1) {
+      return parts[0]!;
+    }
+    return { OR: parts };
+  }
+
+  async getUserScopeIds(
+    user: CurrentUserData,
+  ): Promise<{ provinceId?: string; districtId?: string }> {
+    const jwtRoles = user.roles || [];
+
+    if (this.isAdminRoleName(jwtRoles)) {
+      return {};
+    }
+
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.userId },
       include: {
@@ -306,34 +241,41 @@ export class MemberScopeService {
       return {};
     }
 
-    const userWithRoles = dbUser as User & {
-      customRoles?: Array<{
-        name: string;
-        hasScopeRestriction: boolean;
-        roleScopes?: Array<{
-          provinceId?: string | null;
-          districtId?: string | null;
-        }>;
-        permissions?: Array<{ permission: string }>;
-      }>;
-    };
+    const customRoles =
+      (dbUser as User & { customRoles?: CustomRoleWithPermsAndScopes[] })
+        .customRoles ?? [];
 
-    // MEMBER_LIST_BY_PROVINCE izni olan ve hasScopeRestriction true olan custom role'lerin scope'larını kontrol et
-    const scopedRoles =
-      userWithRoles.customRoles?.filter((role) => {
-        const hasProvincePermission = role.permissions?.some(
-          (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE',
-        );
-        return (
-          hasProvincePermission &&
-          role.hasScopeRestriction &&
-          role.roleScopes &&
-          role.roleScopes.length > 0
-        );
-      }) || [];
+    const customNames = customRoles.map((r) => r.name);
+    if (this.isAdminRoleName(customNames)) {
+      return {};
+    }
+
+    const scopes = await this.prisma.userScope.findMany({
+      where: {
+        userId: user.userId,
+        deletedAt: null,
+      },
+    });
+
+    const hasMbp = this.rolesHaveMemberListByProvince(customRoles);
+    const hasScopedAppView = this.rolesHaveScopedApplicationsView(customRoles);
+    const hasScopedHistoryView = this.rolesHaveScopedHistoryView(customRoles);
+    const hasUserScopes = scopes.length > 0;
+
+    if (
+      !hasMbp &&
+      !hasUserScopes &&
+      !hasScopedAppView &&
+      !hasScopedHistoryView
+    ) {
+      return {};
+    }
+
+    const scopedRoles = customRoles.filter((role) =>
+      this.roleHasScopedGeography(role),
+    );
 
     if (scopedRoles.length > 0) {
-      // İlk role'ün ilk scope'unu döndür (başvuru oluşturma için)
       const firstRole = scopedRoles[0];
       if (firstRole.roleScopes && firstRole.roleScopes.length > 0) {
         const firstScope = firstRole.roleScopes[0];
@@ -349,62 +291,7 @@ export class MemberScopeService {
       }
     }
 
-    // Eğer custom role'ler boş geliyorsa ama JWT'de rol varsa, JWT'deki rol adına göre role'ü çek
-    if (userWithRoles.customRoles?.length === 0 && jwtRoles.length > 0) {
-      for (const roleName of jwtRoles) {
-        const role = await this.prisma.customRole.findFirst({
-          where: {
-            name: roleName,
-            deletedAt: null,
-            isActive: true,
-          },
-          include: {
-            permissions: true,
-            roleScopes: {
-              where: {
-                deletedAt: null,
-              },
-            },
-          },
-        });
-
-        if (role) {
-          const hasProvincePermission = role.permissions?.some(
-            (p) => p.permission === 'MEMBER_LIST_BY_PROVINCE',
-          );
-
-          if (
-            hasProvincePermission &&
-            role.hasScopeRestriction &&
-            role.roleScopes &&
-            role.roleScopes.length > 0
-          ) {
-            const firstScope = role.roleScopes[0];
-            if (firstScope.districtId) {
-              return {
-                provinceId: firstScope.provinceId || undefined,
-                districtId: firstScope.districtId,
-              };
-            }
-            if (firstScope.provinceId) {
-              return { provinceId: firstScope.provinceId };
-            }
-          }
-        }
-      }
-    }
-
-    // UserScope'dan kontrol et (tüm scope'ları al)
-    const scopes = await this.prisma.userScope.findMany({
-      where: {
-        userId: user.userId,
-        deletedAt: null, // Sadece soft delete edilmemiş scope'ları kullan
-      },
-    });
-
-    if (scopes && scopes.length > 0) {
-      // İlk scope'u döndür (geriye dönük uyumluluk için)
-      // Not: Bu metod başvuru oluşturma için kullanılıyor, bu yüzden ilk scope'u döndürmek mantıklı
+    if (hasUserScopes) {
       const firstScope = scopes[0];
       if (firstScope.districtId) {
         return {

@@ -31,10 +31,17 @@ import PageLayout from '../../../shared/components/layout/PageLayout';
 import ConfirmDialog from '../../../shared/components/common/ConfirmDialog';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
+import { useAuth } from '../../../app/providers/AuthContext';
 
 const RolesListPage: React.FC = () => {
   const theme = useTheme();
   const toast = useToast();
+  const { hasPermission } = useAuth();
+  const canViewDetail = hasPermission('ROLE_VIEW');
+  const canCreate = hasPermission('ROLE_CREATE');
+  const canEdit =
+    hasPermission('ROLE_UPDATE') && hasPermission('ROLE_MANAGE_PERMISSIONS');
+  const canDelete = hasPermission('ROLE_DELETE');
   const [rows, setRows] = useState<RoleListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -171,31 +178,44 @@ const RolesListPage: React.FC = () => {
         
         return (
           <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Tooltip title="Detay">
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/roles/${customRole.id}`);
-                }}
-                sx={{
-                  color: theme.palette.primary.main,
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  },
-                }}
-              >
-                <VisibilityIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={isAdmin ? 'ADMIN rolü düzenlenemez' : 'Düzenle'}>
+            <Tooltip title={canViewDetail ? 'Detay' : 'Rol detayı için ROLE_VIEW gerekir'}>
               <span>
                 <IconButton
                   size="small"
-                  disabled={isAdmin}
+                  disabled={!canViewDetail}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isAdmin) {
+                    if (canViewDetail) {
+                      navigate(`/roles/${customRole.id}`);
+                    }
+                  }}
+                  sx={{
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    },
+                  }}
+                >
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                isAdmin
+                  ? 'ADMIN rolü düzenlenemez'
+                  : !canEdit
+                    ? 'Düzenlemek için ROLE_UPDATE ve ROLE_MANAGE_PERMISSIONS gerekir'
+                    : 'Düzenle'
+              }
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={isAdmin || !canEdit}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isAdmin && canEdit) {
                       navigate(`/roles/${customRole.id}/edit`);
                     }
                   }}
@@ -213,15 +233,23 @@ const RolesListPage: React.FC = () => {
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title={isAdmin ? 'ADMIN rolü silinemez' : 'Sil'}>
+            <Tooltip
+              title={
+                isAdmin
+                  ? 'ADMIN rolü silinemez'
+                  : !canDelete
+                    ? 'Rol silmek için ROLE_DELETE gerekir'
+                    : 'Sil'
+              }
+            >
               <span>
                 <IconButton
                   size="small"
                   color="error"
-                  disabled={isAdmin}
+                  disabled={isAdmin || !canDelete}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isAdmin) {
+                    if (!isAdmin && canDelete) {
                       setRoleToDelete(customRole);
                       setDeleteDialogOpen(true);
                     }
@@ -288,40 +316,44 @@ const RolesListPage: React.FC = () => {
           darkColor={theme.palette.primary.dark}
           lightColor={theme.palette.primary.light}
           rightContent={
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/roles/new')}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-                '&:hover': {
-                  boxShadow: `0 6px 20px 0 ${alpha(theme.palette.primary.main, 0.4)}`,
-                },
-              }}
-            >
-              Yeni Rol
-            </Button>
+            canCreate ? (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => navigate('/roles/new')}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+                  '&:hover': {
+                    boxShadow: `0 6px 20px 0 ${alpha(theme.palette.primary.main, 0.4)}`,
+                  },
+                }}
+              >
+                Yeni Rol
+              </Button>
+            ) : undefined
           }
           mobileContent={
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              fullWidth
-              onClick={() => navigate('/roles/new')}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                py: 1.5,
-                boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              Yeni Rol Ekle
-            </Button>
+            canCreate ? (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                fullWidth
+                onClick={() => navigate('/roles/new')}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  py: 1.5,
+                  boxShadow: `0 4px 14px 0 ${alpha(theme.palette.primary.main, 0.3)}`,
+                }}
+              >
+                Yeni Rol Ekle
+              </Button>
+            ) : undefined
           }
         />
 

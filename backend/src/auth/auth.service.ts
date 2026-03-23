@@ -134,7 +134,10 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<User> {
     const user = await this.usersService.findByEmail(email);
-    if (!user || !user.isActive || user.deletedAt) {
+    if (!user) {
+      throw new UnauthorizedException('Kullanıcı bulunamadı');
+    }
+    if (!user.isActive || user.deletedAt) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -172,7 +175,7 @@ export class AuthService {
       if (!user) {
         await this.bruteForceService.recordFailure(meta?.ipAddress ?? '');
         this.logFailedLogin(dto.email, meta?.ipAddress, meta?.userAgent);
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException('Kullanıcı bulunamadı');
       }
 
       const userWithRoles = user as UserWithRoles;

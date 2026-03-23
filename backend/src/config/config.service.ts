@@ -30,6 +30,12 @@ export class ConfigService implements OnModuleInit {
         'JWT_SECRET çok kısa (< 32 karakter). Güvenlik için en az 32 karakterlik bir secret kullanılması önerilir.',
       );
     }
+    if (this.isProduction && !this.membershipInquiryToken) {
+      this.logger.warn(
+        'MEMBERSHIP_INQUIRY_TOKEN tanımlı değil. Üyelik sorgulama endpoint’i production’da kimlik doğrulamasız açıktır; ' +
+          'güvenlik için ortam değişkenini ayarlayın (panel ile aynı gizli değer).',
+      );
+    }
   }
 
   /**
@@ -195,5 +201,32 @@ export class ConfigService implements OnModuleInit {
   /** Geriye uyumluluk: access süresi */
   get jwtExpiresIn(): string {
     return this.jwtAccessExpiresIn;
+  }
+
+  /**
+   * Üyelik sorgulama (public) endpoint için paylaşılan gizli anahtar.
+   * Tanımlıysa istekte header veya query ile eşleşmesi zorunludur.
+   */
+  get membershipInquiryToken(): string | undefined {
+    const t = process.env.MEMBERSHIP_INQUIRY_TOKEN?.trim();
+    return t || undefined;
+  }
+
+  /** Üyelik sorgulama IP başına rate limit penceresi (saniye). Varsayılan 60. */
+  get membershipInquiryRateLimitTtlSeconds(): number {
+    const n = parseInt(
+      process.env.MEMBERSHIP_INQUIRY_RATE_LIMIT_TTL_SECONDS || '60',
+      10,
+    );
+    return Number.isFinite(n) && n > 0 ? n : 60;
+  }
+
+  /** Üyelik sorgulama IP başına pencere içi maksimum istek. Varsayılan 20. */
+  get membershipInquiryRateLimitMax(): number {
+    const n = parseInt(
+      process.env.MEMBERSHIP_INQUIRY_RATE_LIMIT_MAX || '20',
+      10,
+    );
+    return Number.isFinite(n) && n > 0 ? n : 20;
   }
 }

@@ -1,15 +1,7 @@
 // src/types/user.ts
 
-export type Role =
-  | 'ADMIN'
-  | 'MODERATOR'
-  | 'GENEL_BASKAN'
-  | 'GENEL_BASKAN_YRD'
-  | 'GENEL_SEKRETER'
-  | 'IL_BASKANI'
-  | 'ILCE_TEMSILCISI'
-  | 'BAYI_YETKILISI'
-  | 'UYE';
+/** Backend'deki CustomRole.name değerleri; ADMIN seed ile oluşturulan sistem rolüdür. */
+export type Role = string;
 
 export interface UserListItem {
   id: string;
@@ -18,6 +10,8 @@ export interface UserListItem {
   lastName: string;
   roles: Role[];
   isActive: boolean;
+  /** Üyeye bağlı panel kullanıcısı ise dolu; üyeliğe düşürme bu satırlarda gösterilir */
+  memberId?: string | null;
 }
 
 export interface UserDetail extends UserListItem {
@@ -36,16 +30,3 @@ export interface UserDetail extends UserListItem {
     registrationNumber: string | null;
   } | null;
 }
-
-// Uygulamada göstereceğimiz tüm roller
-export const ALL_ROLES: { value: Role; label: string }[] = [
-  { value: 'ADMIN', label: 'Admin' },
-  { value: 'MODERATOR', label: 'Moderatör' },
-  { value: 'GENEL_BASKAN', label: 'Genel Başkan' },
-  { value: 'GENEL_BASKAN_YRD', label: 'Genel Başkan Yardımcısı' },
-  { value: 'GENEL_SEKRETER', label: 'Genel Sekreter' },
-  { value: 'IL_BASKANI', label: 'İl Başkanı' },
-  { value: 'ILCE_TEMSILCISI', label: 'İlçe Temsilcisi' },
-  { value: 'BAYI_YETKILISI', label: 'Bayi Yetkilisi' },
-  { value: 'UYE', label: 'Üye' },
-];

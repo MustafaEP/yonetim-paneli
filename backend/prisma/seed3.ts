@@ -179,8 +179,8 @@ async function main() {
   // 3. CustomRole (3 rol)
   console.log('🎭 Roller ekleniyor...');
   const rolePermissionMap: Record<string, string[]> = {
-    ADMIN: ['USER_LIST', 'USER_VIEW', 'MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_UPDATE'],
-    GENEL_BASKAN: ['MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_APPROVE', 'MEMBER_REJECT'],
+    ADMIN: ['USER_LIST', 'USER_VIEW', 'MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_HISTORY_VIEW', 'MEMBER_UPDATE'],
+    GENEL_BASKAN: ['MEMBER_LIST', 'MEMBER_VIEW', 'MEMBER_APPROVE', 'MEMBER_REJECT', 'MEMBER_HISTORY_VIEW'],
     UYE: [],
   };
   const customRoleMap: Record<string, string> = {};

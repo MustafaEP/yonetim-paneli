@@ -110,7 +110,7 @@ export class DocumentsController {
   })
   @ApiResponse({ status: 200, description: 'Son PDF kayıtları' })
   async listRecentPanelPdfs(@CurrentUser() user: CurrentUserData) {
-    return this.documentsService.listRecentPanelPdfs(user.userId, user.roles ?? []);
+    return this.documentsService.listRecentPanelPdfs(user.userId);
   }
 
   // Üye dokümanları

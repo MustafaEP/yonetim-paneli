@@ -43,10 +43,12 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       'MEMBER_LIST',
       'MEMBER_VIEW',
       'MEMBER_CREATE_APPLICATION',
+      'MEMBER_APPLICATIONS_VIEW',
       'MEMBER_APPROVE',
       'MEMBER_REJECT',
       'MEMBER_UPDATE',
       'MEMBER_STATUS_CHANGE',
+      'MEMBER_HISTORY_VIEW',
       'MEMBER_LIST_BY_PROVINCE',
     ],
   },
@@ -167,6 +169,18 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       'PANEL_USER_APPLICATION_APPROVE',
       'PANEL_USER_APPLICATION_REJECT',
     ],
+  },
+  {
+    id: 'ADVANCES',
+    label: 'Avanslar',
+    description: 'Üye avans kayıtları',
+    permissions: ['ADVANCE_VIEW', 'ADVANCE_ADD'],
+  },
+  {
+    id: 'INVOICES',
+    label: 'Faturalar',
+    description: 'Fatura kayıtları',
+    permissions: ['INVOICE_VIEW', 'INVOICE_ADD'],
   },
 ];
 

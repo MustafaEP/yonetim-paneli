@@ -201,6 +201,7 @@ async function main() {
               { permission: 'USER_UPDATE' },
               { permission: 'MEMBER_LIST' },
               { permission: 'MEMBER_VIEW' },
+              { permission: 'MEMBER_HISTORY_VIEW' },
               { permission: 'MEMBER_CREATE_APPLICATION' },
               { permission: 'MEMBER_APPROVE' },
             ],

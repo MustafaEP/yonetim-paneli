@@ -118,15 +118,15 @@ export class MembersController {
   }
 
   @Permissions(
-    Permission.MEMBER_LIST,
+    Permission.MEMBER_APPLICATIONS_VIEW,
     Permission.MEMBER_APPROVE,
-    Permission.MEMBER_LIST_BY_PROVINCE,
+    Permission.MEMBER_REJECT,
   )
   @Get('applications')
   @ApiOperation({
     summary: 'Bekleyen üyelik başvurularını listele',
     description:
-      "Kullanıcının yetkisi dahilindeki PENDING durumundaki başvuruları listeler. MEMBER_LIST_BY_PROVINCE izni varsa sadece role'deki il/ilçe bazlı başvuruları gösterir",
+      'MEMBER_APPLICATIONS_VIEW veya onay/red izni gerekir. Üye listesi (MEMBER_LIST) tek başına yetmez. Kapsam, rol il/ilçe atamalarına göre filtrelenir.',
   })
   @ApiResponse({
     status: 200,
@@ -199,12 +199,12 @@ export class MembersController {
     return members;
   }
 
-  @Permissions(Permission.MEMBER_VIEW, Permission.MEMBER_LIST)
+  @Permissions(Permission.MEMBER_HISTORY_VIEW)
   @Get('history')
   @ApiOperation({
     summary: 'Üye hareket geçmişi listesini getir',
     description:
-      'Üyeler üzerinde yapılan CREATE / UPDATE / DELETE işlemlerinin log kayıtlarını listeler. Kullanıcının yetki alanındaki üyeler için sonuç döner.',
+      'MEMBER_HISTORY_VIEW gerekir. Üye listesi / üye detay izinleri tek başına yetmez.',
   })
   @ApiQuery({
     name: 'memberId',
@@ -498,7 +498,7 @@ export class MembersController {
     return member;
   }
 
-  @Permissions(Permission.MEMBER_VIEW)
+  @Permissions(Permission.MEMBER_VIEW, Permission.MEMBER_HISTORY_VIEW)
   @Get(':id/history')
   @ApiOperation({ summary: 'Üye güncelleme geçmişini getir' })
   @ApiParam({ name: 'id', description: 'Üye ID', example: 'member-uuid-123' })

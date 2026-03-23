@@ -42,6 +42,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthContext';
 import type { SxProps, Theme } from '@mui/material';
+import { getSidebarNavFlags } from '../../utils/navPermissions';
 
 const drawerWidth = 260;
 
@@ -87,33 +88,33 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { hasPermission } = useAuth();
-  
-  const showUsers = hasPermission('USER_LIST');
-  const showPanelUserApplications = hasPermission('PANEL_USER_APPLICATION_LIST');
-  const showMembers = hasPermission('MEMBER_LIST') || hasPermission('MEMBER_LIST_BY_PROVINCE');
-  const showMemberApplications =
-    hasPermission('MEMBER_APPROVE') ||
-    hasPermission('MEMBER_REJECT') ||
-    hasPermission('MEMBER_LIST') ||
-    hasPermission('MEMBER_LIST_BY_PROVINCE');
-  const showRegions =
-    hasPermission('REGION_LIST') || hasPermission('BRANCH_MANAGE');
-  const showRoles = hasPermission('ROLE_LIST');
-  const showDocuments =
-    hasPermission('DOCUMENT_SYSTEM_ACCESS') ||
-    hasPermission('DOCUMENT_TEMPLATE_MANAGE') ||
-    hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
-  const showPdfGenerate = hasPermission('DOCUMENT_GENERATE_PDF');
-  const showReports = hasPermission('REPORT_GLOBAL_VIEW') || hasPermission('REPORT_REGION_VIEW') || hasPermission('REPORT_MEMBER_STATUS_VIEW') || hasPermission('REPORT_DUES_VIEW');
-  const showNotifications = hasPermission('NOTIFY_ALL_MEMBERS') || hasPermission('NOTIFY_REGION') || hasPermission('NOTIFY_OWN_SCOPE');
-  const showSystemSettings = hasPermission('SYSTEM_SETTINGS_VIEW');
-  const showSystemLogs = hasPermission('LOG_VIEW_ALL') || hasPermission('LOG_VIEW_OWN_SCOPE');
-  const showBranches = hasPermission('BRANCH_MANAGE');
-  const showAccounting = hasPermission('ACCOUNTING_VIEW');
-  const showAdvances = hasPermission('ADVANCE_VIEW');
-  const showPayments = hasPermission('MEMBER_PAYMENT_LIST');
-  const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
-  const showInstitutions = hasPermission('INSTITUTION_LIST');
+  const nav = getSidebarNavFlags(hasPermission);
+
+  const {
+    showNewMemberApplication,
+    showMemberApplications,
+    showMembersList,
+    showMemberHistory,
+    showRegions,
+    showRoles,
+    showDocumentsSection,
+    showPdfGenerate,
+    showDocumentTemplates,
+    showDocumentMemberHistory,
+    showUsers,
+    showPanelUserApplications,
+    showBranches,
+    showAccounting,
+    showAdvances,
+    showPaymentsList,
+    showPaymentQuickEntry,
+    showInvoices,
+    showReports,
+    showNotifications,
+    showSystemSettings,
+    showSystemLogs,
+    showInstitutions,
+  } = nav;
 
   const [openSection, setOpenSection] = React.useState<string | null>(null);
 
@@ -159,9 +160,14 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
 
   const hasRegionGroup =
     showRegions || showBranches || showInstitutions || showAccounting;
-  const hasDeductionsGroup = showPayments || canAddPayment || showAdvances;
-  const hasMembersGroup = showMembers;
-  const hasContentGroup = showDocuments || showPdfGenerate;
+  const hasDeductionsGroup =
+    showPaymentsList ||
+    showPaymentQuickEntry ||
+    showAdvances ||
+    showInvoices;
+  const hasMembersGroup =
+    showMemberApplications || showMembersList || showMemberHistory;
+  const hasContentGroup = showDocumentsSection;
   const hasUserManagementGroup = showUsers || showRoles || showPanelUserApplications;
   const hasSystemGroup = showSystemSettings || showSystemLogs;
 
@@ -207,27 +213,29 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
         </ListItemButton>
       </List>
 
-      <List sx={{ px: 1, pt: 0, mb: 1.5 }}>
-        <ListItemButton
-          component={Link}
-          to="/members/applications/new"
-          selected={location.pathname === '/members/applications/new'}
-          onClick={handleLinkClick}
-          sx={getNavItemSx(theme, 'success')}
-        >
-          <ListItemIcon sx={{ minWidth: 40 }}>
-            <PersonAddIcon />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Yeni Üye Başvurusu" 
-            primaryTypographyProps={{
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              color: theme.palette.success.main,
-            }}
-          />
-        </ListItemButton>
-      </List>
+      {showNewMemberApplication && (
+        <List sx={{ px: 1, pt: 0, mb: 1.5 }}>
+          <ListItemButton
+            component={Link}
+            to="/members/applications/new"
+            selected={location.pathname === '/members/applications/new'}
+            onClick={handleLinkClick}
+            sx={getNavItemSx(theme, 'success')}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <PersonAddIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Yeni Üye Başvurusu"
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                color: theme.palette.success.main,
+              }}
+            />
+          </ListItemButton>
+        </List>
+      )}
 
       {/* 3. Üyeler */}
       {hasMembersGroup && (
@@ -275,51 +283,55 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                 </ListItemButton>
               )}
 
-              <ListItemButton
-                component={Link}
-                to="/members"
-                selected={
-                  location.pathname === '/members' ||
-                  (location.pathname.startsWith('/members/waiting') &&
-                    !location.pathname.startsWith('/members/applications') &&
-                    !location.pathname.startsWith('/members/waiting') &&
-                    !location.pathname.startsWith('/members/bulk-registration') &&
-                    !location.pathname.startsWith('/members/status') &&
-                    /^\/members\/[^/]+$/.test(location.pathname))
-                }
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <GroupsIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Üyeler"
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
+              {showMembersList && (
+                <ListItemButton
+                  component={Link}
+                  to="/members"
+                  selected={
+                    location.pathname === '/members' ||
+                    (location.pathname.startsWith('/members/waiting') &&
+                      !location.pathname.startsWith('/members/applications') &&
+                      !location.pathname.startsWith('/members/waiting') &&
+                      !location.pathname.startsWith('/members/bulk-registration') &&
+                      !location.pathname.startsWith('/members/status') &&
+                      /^\/members\/[^/]+$/.test(location.pathname))
+                  }
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <GroupsIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Üyeler"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
 
-              <ListItemButton
-                component={Link}
-                to="/members/status"
-                selected={location.pathname.startsWith('/members/status')}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <HistoryIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Üye Hareketleri"
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
+              {showMemberHistory && (
+                <ListItemButton
+                  component={Link}
+                  to="/members/status"
+                  selected={location.pathname.startsWith('/members/status')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <HistoryIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Üye Hareketleri"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
             </List>
           </Collapse>
         </List>
@@ -457,7 +469,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
 
           <Collapse in={openSection === 'deductions'} timeout="auto" unmountOnExit>
             <List component="div" disablePadding sx={{ pl: 4 }}>
-              {canAddPayment && (
+              {showPaymentQuickEntry && (
                 <ListItemButton
                   component={Link}
                   to="/payments/quick-entry"
@@ -478,7 +490,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                 </ListItemButton>
               )}
 
-              {showPayments && (
+              {showPaymentsList && (
                 <ListItemButton
                   component={Link}
                   to="/payments"
@@ -525,24 +537,26 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                 </ListItemButton>
               )}
 
-              <ListItemButton
-                component={Link}
-                to="/invoices"
-                selected={location.pathname.startsWith('/invoices')}
-                onClick={handleLinkClick}
-                sx={getNavItemSx(theme)}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <RequestQuoteIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Fatura Sistemi"
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                />
-              </ListItemButton>
+              {showInvoices && (
+                <ListItemButton
+                  component={Link}
+                  to="/invoices"
+                  selected={location.pathname.startsWith('/invoices')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <RequestQuoteIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Fatura Sistemi"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
             </List>
           </Collapse>
         </List>
@@ -570,67 +584,65 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
 
           <Collapse in={openSection === 'content-docs'} timeout="auto" unmountOnExit>
             <List component="div" disablePadding sx={{ pl: 4 }}>
-              {(showDocuments || showPdfGenerate) && (
-                <>
-                  {showPdfGenerate && (
-                    <ListItemButton
-                      component={Link}
-                      to="/documents/generate"
-                      selected={location.pathname.startsWith('/documents/generate')}
-                      onClick={handleLinkClick}
-                      sx={getNavItemSx(theme)}
-                    >
-                      <ListItemIcon sx={{ minWidth: 40 }}>
-                        <DescriptionIcon />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="PDF Oluştur"
-                        primaryTypographyProps={{
-                          fontSize: '0.9rem',
-                          fontWeight: 500,
-                        }}
-                      />
-                    </ListItemButton>
-                  )}
-                  <ListItemButton
-                    component={Link}
-                    to="/documents/templates"
-                    selected={location.pathname.startsWith('/documents/templates')}
-                    onClick={handleLinkClick}
-                    sx={getNavItemSx(theme)}
-                  >
-                    <ListItemIcon sx={{ minWidth: 40 }}>
-                      <DescriptionIcon />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary="PDF Şablonları"
-                      primaryTypographyProps={{
-                        fontSize: '0.9rem',
-                        fontWeight: 500,
-                      }}
-                    />
-                  </ListItemButton>
-                  {(hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW') || hasPermission('DOCUMENT_SYSTEM_ACCESS')) && (
-                    <ListItemButton
-                      component={Link}
-                      to="/documents/members"
-                      selected={location.pathname.startsWith('/documents/members')}
-                      onClick={handleLinkClick}
-                      sx={getNavItemSx(theme)}
-                    >
-                      <ListItemIcon sx={{ minWidth: 40 }}>
-                        <DescriptionIcon />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="PDF Oluşturma Geçmişi"
-                        primaryTypographyProps={{
-                          fontSize: '0.9rem',
-                          fontWeight: 500,
-                        }}
-                      />
-                    </ListItemButton>
-                  )}
-                </>
+              {showPdfGenerate && (
+                <ListItemButton
+                  component={Link}
+                  to="/documents/generate"
+                  selected={location.pathname.startsWith('/documents/generate')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <DescriptionIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="PDF Oluştur"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+              {showDocumentTemplates && (
+                <ListItemButton
+                  component={Link}
+                  to="/documents/templates"
+                  selected={location.pathname.startsWith('/documents/templates')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <DescriptionIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="PDF Şablonları"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+              {showDocumentMemberHistory && (
+                <ListItemButton
+                  component={Link}
+                  to="/documents/members"
+                  selected={location.pathname.startsWith('/documents/members')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <DescriptionIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="PDF Oluşturma Geçmişi"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
               )}
             </List>
           </Collapse>

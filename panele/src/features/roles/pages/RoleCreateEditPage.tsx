@@ -241,7 +241,6 @@ const RoleCreateEditPage: React.FC = () => {
     USER_MANAGEMENT: 'Kullanıcı Yönetimi',
     ROLE_MANAGEMENT: 'Rol Yönetimi',
     MEMBER_MANAGEMENT: 'Üye Yönetimi',
-    DUES_MANAGEMENT: 'Kesinti Yönetimi',
     REGION_MANAGEMENT: 'Bölge Yönetimi',
     CONTENT_MANAGEMENT: 'İçerik Yönetimi',
     DOCUMENT_MANAGEMENT: 'Doküman Yönetimi',
@@ -253,6 +252,8 @@ const RoleCreateEditPage: React.FC = () => {
     MEMBER_PAYMENTS: 'Üye Kesintileri',
     APPROVALS: 'Onay Süreçleri',
     PANEL_USER_APPLICATIONS: 'Panel Kullanıcı Başvuruları',
+    ADVANCES: 'Avanslar',
+    INVOICES: 'Faturalar',
   };
 
   return (
@@ -560,7 +561,7 @@ const RoleCreateEditPage: React.FC = () => {
                           color: someSelected ? theme.palette.primary.main : theme.palette.text.primary,
                         }}
                       >
-                        {groupLabels[groupKey]}
+                        {groupLabels[groupKey] ?? groupKey}
                       </Typography>
                       <Chip
                         label={`${filteredPermissions.filter((p) => selectedPermissions.has(p)).length}/${filteredPermissions.length}`}

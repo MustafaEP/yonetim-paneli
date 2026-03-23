@@ -65,6 +65,12 @@ export class PanelUserApplicationApplicationService {
       throw new NotFoundException('Seçilen rol bulunamadı');
     }
 
+    if (role.name.toUpperCase() === 'ADMIN') {
+      throw new BadRequestException(
+        'ADMIN rolü panel terfi başvurusu ile seçilemez.',
+      );
+    }
+
     // Validate scopes if role requires them
     if (role.hasScopeRestriction) {
       if (!data.scopes || data.scopes.length === 0) {
@@ -152,9 +158,9 @@ export class PanelUserApplicationApplicationService {
       throw new BadRequestException('Bu başvuru zaten işleme alınmış');
     }
 
-    // Check email uniqueness
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: data.email },
+    // Check email uniqueness (yumuşak silinmiş kullanıcılar aynı e-postayı tekrar kullanabilsin)
+    const existingUser = await this.prisma.user.findFirst({
+      where: { email: data.email, deletedAt: null },
     });
 
     if (existingUser) {

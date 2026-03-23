@@ -36,12 +36,16 @@ import { getUserById } from '../../users/services/usersApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
+import { useAuth } from '../../../app/providers/AuthContext';
 
 const RoleDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const theme = useTheme();
   const toast = useToast();
+  const { hasPermission } = useAuth();
+  const canEdit =
+    hasPermission('ROLE_UPDATE') && hasPermission('ROLE_MANAGE_PERMISSIONS');
 
   const [role, setRole] = useState<CustomRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,13 +120,19 @@ const RoleDetailPage: React.FC = () => {
         USER_MANAGEMENT: 'Kullanıcı Yönetimi',
         ROLE_MANAGEMENT: 'Rol Yönetimi',
         MEMBER_MANAGEMENT: 'Üye Yönetimi',
-        DUES_MANAGEMENT: 'Kesinti Yönetimi',
         REGION_MANAGEMENT: 'Bölge Yönetimi',
         CONTENT_MANAGEMENT: 'İçerik Yönetimi',
         DOCUMENT_MANAGEMENT: 'Doküman Yönetimi',
         REPORTS: 'Raporlar',
         NOTIFICATIONS: 'Bildirimler',
         SYSTEM: 'Sistem',
+        INSTITUTION_MANAGEMENT: 'Kurum Yönetimi',
+        ACCOUNTING: 'Muhasebe',
+        MEMBER_PAYMENTS: 'Üye Kesintileri',
+        APPROVALS: 'Onay Süreçleri',
+        PANEL_USER_APPLICATIONS: 'Panel Kullanıcı Başvuruları',
+        ADVANCES: 'Avanslar',
+        INVOICES: 'Faturalar',
       };
 
       const rolePermissionsInGroup = permissions.filter((p) =>
@@ -131,7 +141,7 @@ const RoleDetailPage: React.FC = () => {
 
       return {
         groupKey,
-        groupLabel: groupLabels[groupKey],
+        groupLabel: groupLabels[groupKey] ?? groupKey,
         permissions: rolePermissionsInGroup,
       };
     },
@@ -179,7 +189,7 @@ const RoleDetailPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
         rightContent={
-          role.name !== 'ADMIN' ? (
+          role.name !== 'ADMIN' && canEdit ? (
             <Button
               variant="contained"
               startIcon={<EditIcon />}

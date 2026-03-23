@@ -16,10 +16,12 @@ export type Permission =
   | 'MEMBER_LIST'
   | 'MEMBER_VIEW'
   | 'MEMBER_CREATE_APPLICATION'
+  | 'MEMBER_APPLICATIONS_VIEW'
   | 'MEMBER_APPROVE'
   | 'MEMBER_REJECT'
   | 'MEMBER_UPDATE'
   | 'MEMBER_STATUS_CHANGE'
+  | 'MEMBER_HISTORY_VIEW'
   | 'MEMBER_LIST_BY_PROVINCE'
   | 'REGION_LIST'
   | 'BRANCH_MANAGE'
@@ -63,7 +65,9 @@ export type Permission =
   | 'PANEL_USER_APPLICATION_APPROVE'
   | 'PANEL_USER_APPLICATION_REJECT'
   | 'ADVANCE_VIEW'
-  | 'ADVANCE_ADD';
+  | 'ADVANCE_ADD'
+  | 'INVOICE_VIEW'
+  | 'INVOICE_ADD';
 
 export interface RoleScope {
   id?: string;
@@ -171,6 +175,7 @@ export const PERMISSION_GROUPS = {
     'MEMBER_REJECT',
     'MEMBER_UPDATE',
     'MEMBER_STATUS_CHANGE',
+    'MEMBER_HISTORY_VIEW',
     // MEMBER_LIST_BY_PROVINCE artık checkbox'ta gösterilmeyecek, yerine yetki alanı seçimi kullanılacak
     // 'MEMBER_LIST_BY_PROVINCE',
   ] as Permission[],
@@ -241,6 +246,10 @@ export const PERMISSION_GROUPS = {
     'ADVANCE_VIEW',
     'ADVANCE_ADD',
   ] as Permission[],
+  INVOICES: [
+    'INVOICE_VIEW',
+    'INVOICE_ADD',
+  ] as Permission[],
 };
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -259,10 +268,12 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   MEMBER_LIST: 'Üyeleri Listele',
   MEMBER_VIEW: 'Üye Detayı Görüntüle',
   MEMBER_CREATE_APPLICATION: 'Üyelik Başvurusu Oluştur',
+  MEMBER_APPLICATIONS_VIEW: 'Üye Başvurularını Görüntüle',
   MEMBER_APPROVE: 'Üyelik Başvurusu Onayla',
   MEMBER_REJECT: 'Üyelik Başvurusu Reddet',
   MEMBER_UPDATE: 'Üye Güncelle',
   MEMBER_STATUS_CHANGE: 'Üye Durumu Değiştir',
+  MEMBER_HISTORY_VIEW: 'Üye Hareketlerini Görüntüle',
   MEMBER_LIST_BY_PROVINCE: 'Belirli İldeki Üyeleri Görüntüleme',
   REGION_LIST: 'Bölgeleri Listele',
   BRANCH_MANAGE: 'Şube Yönet',
@@ -307,5 +318,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   PANEL_USER_APPLICATION_REJECT: 'Panel Kullanıcı Başvurusu Reddet',
   ADVANCE_VIEW: 'Avansları Görüntüle',
   ADVANCE_ADD: 'Avans Ekle / Güncelle / Sil',
+  INVOICE_VIEW: 'Faturaları Görüntüle',
+  INVOICE_ADD: 'Fatura Ekle / Güncelle / Sil',
 };
 

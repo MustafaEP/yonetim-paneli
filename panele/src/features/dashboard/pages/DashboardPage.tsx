@@ -61,7 +61,10 @@ const DashboardPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const toast = useToast();
 
-  const canViewApplications = hasPermission('MEMBER_APPROVE') || hasPermission('MEMBER_REJECT');
+  const canViewApplications =
+    hasPermission('MEMBER_APPLICATIONS_VIEW') ||
+    hasPermission('MEMBER_APPROVE') ||
+    hasPermission('MEMBER_REJECT');
   const canListMembers = hasPermission('MEMBER_LIST');
   const canCreateMemberApplication = hasPermission('MEMBER_CREATE_APPLICATION');
   const canManageRegions = hasPermission('BRANCH_MANAGE') || hasPermission('REGION_LIST');

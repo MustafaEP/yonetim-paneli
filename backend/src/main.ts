@@ -48,7 +48,8 @@ async function bootstrap() {
     origin: configService.corsOrigin,
     credentials: configService.corsCredentials,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Authorization',
+    allowedHeaders:
+      'Content-Type, Authorization, X-Membership-Inquiry-Token',
   });
 
   // 🔹 Uploads dizinleri - VPS/Docker'da yazma izni ve yol tutarlılığı için startup'ta oluştur
