@@ -25,6 +25,7 @@ import {
   Checkbox,
   FormControlLabel,
   Container,
+  Autocomplete,
   alpha,
   Fade,
   Zoom,
@@ -227,12 +228,12 @@ const RegionsPage: React.FC = () => {
     loadRegionData();
   }, [selectedProvinceId, selectedDistrictId]);
 
-  const handleProvinceChange = (event: any) => {
-    setSelectedProvinceId(event.target.value);
+  const handleProvinceChange = (provinceId: string) => {
+    setSelectedProvinceId(provinceId);
   };
 
-  const handleDistrictChange = (event: any) => {
-    setSelectedDistrictId(event.target.value);
+  const handleDistrictChange = (districtId: string) => {
+    setSelectedDistrictId(districtId);
   };
 
   // Dialog handlers
@@ -542,8 +543,22 @@ const RegionsPage: React.FC = () => {
                     md: 6
                   }}>
                   <Box sx={{ position: 'relative' }}>
-                    <FormControl 
-                      fullWidth
+                    <Autocomplete
+                      options={provinces}
+                      value={provinces.find((province) => province.id === selectedProvinceId) ?? null}
+                      onChange={(_, value) => handleProvinceChange(value?.id || '')}
+                      getOptionLabel={(option) =>
+                        `${option.name}${option.code ? ` (${option.code})` : ''}`
+                      }
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      loading={loadingProvinces}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="İl Seçin"
+                          placeholder="İl ara..."
+                        />
+                      )}
                       sx={{
                         minWidth: { xs: '100%', sm: 280 },
                         '& .MuiOutlinedInput-root': {
@@ -554,30 +569,10 @@ const RegionsPage: React.FC = () => {
                           },
                           '&.Mui-focused': {
                             boxShadow: (theme) => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                          }
-                        }
+                          },
+                        },
                       }}
-                    >
-                      <InputLabel>İl Seçin</InputLabel>
-                      <Select
-                        value={selectedProvinceId}
-                        onChange={handleProvinceChange}
-                        label="İl Seçin"
-                        disabled={loadingProvinces}
-                      >
-                        <MenuItem value="">
-                          <em>Tüm İller</em>
-                        </MenuItem>
-                        {provinces.map((province) => (
-                          <MenuItem key={province.id} value={province.id}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <LocationOnIcon sx={{ fontSize: 18, color: 'primary.main' }} />
-                              {province.name} {province.code && <Chip label={province.code} size="small" />}
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    />
                     {loadingProvinces && (
                       <Box sx={{ position: 'absolute', right: 16, top: 16 }}>
                         <CircularProgress size={20} />
@@ -592,9 +587,21 @@ const RegionsPage: React.FC = () => {
                     md: 6
                   }}>
                   <Box sx={{ position: 'relative' }}>
-                    <FormControl 
-                      fullWidth 
+                    <Autocomplete
+                      options={districts}
+                      value={districts.find((district) => district.id === selectedDistrictId) ?? null}
+                      onChange={(_, value) => handleDistrictChange(value?.id || '')}
+                      getOptionLabel={(option) => option.name}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      loading={loadingDistricts}
                       disabled={!selectedProvinceId || loadingDistricts}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="İlçe Seçin (Opsiyonel)"
+                          placeholder="İlçe ara..."
+                        />
+                      )}
                       sx={{
                         minWidth: { xs: '100%', sm: 280 },
                         '& .MuiOutlinedInput-root': {
@@ -605,26 +612,10 @@ const RegionsPage: React.FC = () => {
                           },
                           '&.Mui-focused': {
                             boxShadow: (theme) => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                          }
-                        }
+                          },
+                        },
                       }}
-                    >
-                      <InputLabel>İlçe Seçin (Opsiyonel)</InputLabel>
-                      <Select
-                        value={selectedDistrictId}
-                        onChange={handleDistrictChange}
-                        label="İlçe Seçin (Opsiyonel)"
-                      >
-                        <MenuItem value="">
-                          <em>Tüm İlçeler</em>
-                        </MenuItem>
-                        {districts.map((district) => (
-                          <MenuItem key={district.id} value={district.id}>
-                            {district.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    />
                     {loadingDistricts && (
                       <Box sx={{ position: 'absolute', right: 16, top: 16 }}>
                         <CircularProgress size={20} />

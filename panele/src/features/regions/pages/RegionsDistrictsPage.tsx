@@ -4,10 +4,8 @@ import {
   Box,
   Card,
   Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Autocomplete,
+  TextField,
   useTheme,
   alpha,
   Paper,
@@ -138,9 +136,20 @@ const RegionsDistrictsPage: React.FC = () => {
               Filtreler
             </Typography>
           </Box>
-          <FormControl
-            size="small"
-            fullWidth
+          <Autocomplete
+            options={provinces}
+            value={provinces.find((province) => province.id === selectedProvinceId) ?? null}
+            onChange={(_, value) => setSelectedProvinceId(value?.id || '')}
+            getOptionLabel={(option) => `${option.name}${option.code ? ` (${option.code})` : ''}`}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                size="small"
+                label="İl Filtresi"
+                placeholder="İl ara..."
+              />
+            )}
             sx={{
               maxWidth: { sm: 400 },
               '& .MuiOutlinedInput-root': {
@@ -153,23 +162,7 @@ const RegionsDistrictsPage: React.FC = () => {
                 },
               },
             }}
-          >
-            <InputLabel>İl Filtresi</InputLabel>
-            <Select
-              label="İl Filtresi"
-              value={selectedProvinceId}
-              onChange={(e) => setSelectedProvinceId(e.target.value as string)}
-            >
-              <MenuItem value="">
-                <em>Tümü</em>
-              </MenuItem>
-              {provinces.map((p) => (
-                <MenuItem key={p.id} value={p.id}>
-                  {p.name} {p.code ? `(${p.code})` : ''}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          />
         </Box>
 
         {/* İçerik Bölümü */}

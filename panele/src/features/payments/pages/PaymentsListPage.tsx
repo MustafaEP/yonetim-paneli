@@ -725,10 +725,22 @@ const PaymentsListPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl 
-            size="medium" 
-            sx={{ 
-              minWidth: { xs: '100%', sm: 200 },
+          <Autocomplete
+            options={institutions}
+            value={institutions.find((institution) => institution.id === selectedInstitutionId) ?? null}
+            onChange={(_, value) => setSelectedInstitutionId(value?.id || '')}
+            getOptionLabel={(option) => option.name}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            clearOnEscape
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Kurum"
+                placeholder="Kurum ara..."
+              />
+            )}
+            sx={{
+              minWidth: { xs: '100%', sm: 260 },
               '& .MuiOutlinedInput-root': {
                 backgroundColor: '#fff',
                 borderRadius: 2.5,
@@ -738,21 +750,7 @@ const PaymentsListPage: React.FC = () => {
                 },
               },
             }}
-          >
-            <InputLabel>Kurum</InputLabel>
-            <Select
-              value={selectedInstitutionId || ''}
-              label="Kurum"
-              onChange={(e) => setSelectedInstitutionId(e.target.value)}
-            >
-              <MenuItem value="">Tümü</MenuItem>
-              {institutions.map((institution) => (
-                <MenuItem key={institution.id} value={institution.id}>
-                  {institution.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          />
           <FormControl 
             size="medium" 
             sx={{ 
