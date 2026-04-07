@@ -94,7 +94,7 @@ export class ReportsService {
       }),
       this.prisma.memberPayment.aggregate({
         where: {
-          member: where.provinceId || where.districtId ? where : undefined,
+          member: Object.keys(where).length > 0 ? where : undefined,
         },
         _sum: {
           amount: true,

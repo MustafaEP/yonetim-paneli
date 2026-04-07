@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Box, CircularProgress, Typography } from '@mui/material';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+const CDN_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 const isWorkerInitError = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
@@ -63,15 +65,31 @@ export function DraftPdfCanvasPreview({
             throw workerError;
           }
 
-          // Some VPS/Nginx setups do not serve emitted .mjs worker assets correctly.
-          // Fallback to worker-less mode so preview keeps working.
+          // Local .mjs failed (VPS/Nginx MIME issue) — retry with CDN worker
           loadingTask.destroy();
+          pdfjsLib.GlobalWorkerOptions.workerSrc = CDN_WORKER_URL;
           loadingTask = pdfjsLib.getDocument({
             url: blobUrl,
             isEvalSupported: false,
-            disableWorker: true,
           });
-          doc = await loadingTask.promise;
+
+          try {
+            doc = await loadingTask.promise;
+          } catch (cdnError) {
+            if (!isWorkerInitError(cdnError)) {
+              throw cdnError;
+            }
+
+            // CDN also failed — last resort: worker-less mode
+            loadingTask.destroy();
+            pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+            loadingTask = pdfjsLib.getDocument({
+              url: blobUrl,
+              isEvalSupported: false,
+              disableWorker: true,
+            } as Parameters<typeof pdfjsLib.getDocument>[0]);
+            doc = await loadingTask.promise;
+          }
         }
         if (cancelled) {
           await doc.destroy().catch(() => {});
