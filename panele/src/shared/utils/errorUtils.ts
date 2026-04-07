@@ -30,7 +30,7 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   };
   // 413: VPS'te nginx client_max_body_size varsayılan 1MB; logo/antet yükleme başarısız olabilir
   if (err?.response?.status === 413) {
-    return 'Dosya boyutu sunucu limitini aşıyor. Daha küçük bir dosya seçin veya sunucuda client_max_body_size artırılmalı (örn. 10m).';
+    return 'Dosya boyutu sunucu limitini aşıyor. Daha küçük bir dosya seçin veya sunucuda client_max_body_size artırılmalı (örn. 50m).';
   }
   const raw = err?.response?.data?.message ?? err?.response?.data?.error;
   if (typeof raw === 'string' && raw.trim()) return raw.trim();
