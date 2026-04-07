@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -12,6 +12,8 @@ import {
   Skeleton,
   Tooltip,
   IconButton,
+  Autocomplete,
+  TextField,
 } from '@mui/material';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import PeopleIcon from '@mui/icons-material/People';
@@ -28,6 +30,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import ClearIcon from '@mui/icons-material/Clear';
 import {
   ResponsiveContainer,
   BarChart,
@@ -61,7 +65,13 @@ import {
   type QuickAlerts,
   type DuesReport,
   type RegionReport,
+  type ReportFilterParams,
 } from '../services/reportsApi';
+import { getProvinces, getDistricts, getInstitutions } from '../../regions/services/regionsApi';
+import { getBranches } from '../../regions/services/branchesApi';
+import type { Province, District } from '../../../types/region';
+import type { Branch } from '../../regions/services/branchesApi';
+import type { Institution } from '../../../types/region';
 
 const MONTH_NAMES = [
   '', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -353,6 +363,19 @@ const PieTooltipContent = ({ active, payload }: any) => {
 const ReportsPage: React.FC = () => {
   const theme = useTheme();
 
+  // Filter options
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+
+  // Filter selections
+  const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<District | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+  const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
+
+  // Report data
   const [globalReport, setGlobalReport] = useState<GlobalReport | null>(null);
   const [memberStatus, setMemberStatus] = useState<MemberStatusReport[]>([]);
   const [memberGrowth, setMemberGrowth] = useState<MemberGrowthMonth[]>([]);
@@ -363,17 +386,70 @@ const ReportsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const activeFilters: ReportFilterParams = useMemo(() => ({
+    provinceId: selectedProvince?.id,
+    districtId: selectedDistrict?.id,
+    branchId: selectedBranch?.id,
+    institutionId: selectedInstitution?.id,
+  }), [selectedProvince, selectedDistrict, selectedBranch, selectedInstitution]);
+
+  const hasActiveFilter = !!(selectedProvince || selectedDistrict || selectedBranch || selectedInstitution);
+
+  // Load filter options once
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      try {
+        const [prov, br, inst] = await Promise.all([
+          getProvinces(),
+          getBranches(),
+          getInstitutions(),
+        ]);
+        setProvinces(prov);
+        setBranches(br);
+        setInstitutions(inst);
+      } catch {
+        // Filter options are non-critical
+      }
+    };
+    loadFilterOptions();
+  }, []);
+
+  // Load districts + narrow institutions when province changes
+  useEffect(() => {
+    if (selectedProvince) {
+      getDistricts(selectedProvince.id).then(setDistricts).catch(() => setDistricts([]));
+      getInstitutions({ provinceId: selectedProvince.id }).then(setInstitutions).catch(() => setInstitutions([]));
+      setSelectedDistrict(null);
+      setSelectedInstitution(null);
+    } else {
+      setDistricts([]);
+      setSelectedDistrict(null);
+      getInstitutions().then(setInstitutions).catch(() => setInstitutions([]));
+    }
+  }, [selectedProvince]);
+
+  // Narrow institutions further when district changes
+  useEffect(() => {
+    if (selectedProvince && selectedDistrict) {
+      getInstitutions({ provinceId: selectedProvince.id, districtId: selectedDistrict.id })
+        .then(setInstitutions)
+        .catch(() => setInstitutions([]));
+      setSelectedInstitution(null);
+    }
+  }, [selectedDistrict, selectedProvince]);
+
+  const loadData = useCallback(async (filters?: ReportFilterParams) => {
     try {
       setLoading(true);
       setError(null);
+      const f = filters;
       const [global, status, growth, trend, alert, dues, regions] = await Promise.all([
-        fetchGlobalReport(),
-        fetchMemberStatusReport(),
-        fetchMemberGrowthStats(),
-        fetchTrendStats(),
-        fetchQuickAlerts(),
-        fetchDuesReport(),
+        fetchGlobalReport(f),
+        fetchMemberStatusReport(f),
+        fetchMemberGrowthStats(f),
+        fetchTrendStats(f),
+        fetchQuickAlerts(f),
+        fetchDuesReport(f),
         fetchRegionReport(),
       ]);
       setGlobalReport(global);
@@ -391,8 +467,15 @@ const ReportsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData(activeFilters);
+  }, [loadData, activeFilters]);
+
+  const handleClearFilters = () => {
+    setSelectedProvince(null);
+    setSelectedDistrict(null);
+    setSelectedBranch(null);
+    setSelectedInstitution(null);
+  };
 
   // ── Derived data for charts ──
 
@@ -447,7 +530,7 @@ const ReportsPage: React.FC = () => {
             lightColor={theme.palette.primary.light}
           />
           <Alert severity="error" action={
-            <IconButton color="inherit" size="small" onClick={loadData}>
+            <IconButton color="inherit" size="small" onClick={() => loadData(activeFilters)}>
               <RefreshIcon />
             </IconButton>
           }>
@@ -471,7 +554,7 @@ const ReportsPage: React.FC = () => {
           rightContent={
             <Tooltip title="Verileri yenile">
               <IconButton
-                onClick={loadData}
+                onClick={() => loadData(activeFilters)}
                 disabled={loading}
                 sx={{
                   backgroundColor: alpha('#fff', 0.15),
@@ -484,6 +567,97 @@ const ReportsPage: React.FC = () => {
             </Tooltip>
           }
         />
+
+        {/* ── Filter Panel ── */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            borderRadius: 2,
+            border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+            boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.06)}`,
+            backgroundColor: '#ffffff',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <FilterListIcon sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>
+              Filtreler
+            </Typography>
+            {hasActiveFilter && (
+              <Chip
+                label="Temizle"
+                size="small"
+                icon={<ClearIcon sx={{ fontSize: '14px !important' }} />}
+                onClick={handleClearFilters}
+                sx={{
+                  ml: 'auto',
+                  height: 26,
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                }}
+              />
+            )}
+          </Box>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Autocomplete
+                size="small"
+                options={provinces}
+                value={selectedProvince}
+                onChange={(_, value) => {
+                  setSelectedProvince(value);
+                  setSelectedDistrict(null);
+                  setSelectedInstitution(null);
+                }}
+                getOptionLabel={(o) => o.name}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                renderInput={(params) => <TextField {...params} label="İl" placeholder="İl ara..." />}
+                noOptionsText="İl bulunamadı"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Autocomplete
+                size="small"
+                options={districts}
+                value={selectedDistrict}
+                onChange={(_, value) => {
+                  setSelectedDistrict(value);
+                  setSelectedInstitution(null);
+                }}
+                getOptionLabel={(o) => o.name}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                disabled={!selectedProvince}
+                renderInput={(params) => <TextField {...params} label="İlçe" placeholder="İlçe ara..." />}
+                noOptionsText={selectedProvince ? 'İlçe bulunamadı' : 'Önce il seçin'}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Autocomplete
+                size="small"
+                options={branches}
+                value={selectedBranch}
+                onChange={(_, value) => setSelectedBranch(value)}
+                getOptionLabel={(o) => o.name}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                renderInput={(params) => <TextField {...params} label="Şube" placeholder="Şube ara..." />}
+                noOptionsText="Şube bulunamadı"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Autocomplete
+                size="small"
+                options={institutions}
+                value={selectedInstitution}
+                onChange={(_, value) => setSelectedInstitution(value)}
+                getOptionLabel={(o) => o.name}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                renderInput={(params) => <TextField {...params} label="Kurum" placeholder="Kurum ara..." />}
+                noOptionsText="Kurum bulunamadı"
+              />
+            </Grid>
+          </Grid>
+        </Paper>
 
         {/* ── KPI Cards ── */}
         <Grid container spacing={2}>

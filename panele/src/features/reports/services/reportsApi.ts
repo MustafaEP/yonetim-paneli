@@ -1,5 +1,23 @@
 import httpClient from '../../../shared/services/httpClient';
 
+// ── Filter Params ──
+
+export interface ReportFilterParams {
+  provinceId?: string;
+  districtId?: string;
+  branchId?: string;
+  institutionId?: string;
+}
+
+function buildFilterQuery(filters?: ReportFilterParams): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filters?.provinceId) params.provinceId = filters.provinceId;
+  if (filters?.districtId) params.districtId = filters.districtId;
+  if (filters?.branchId) params.branchId = filters.branchId;
+  if (filters?.institutionId) params.institutionId = filters.institutionId;
+  return params;
+}
+
 // ── Response Types ──
 
 export interface GlobalReport {
@@ -88,33 +106,33 @@ export interface RegionReport {
 
 // ── API Calls ──
 
-export const fetchGlobalReport = async (): Promise<GlobalReport> => {
-  const { data } = await httpClient.get<GlobalReport>('/reports/global');
+export const fetchGlobalReport = async (filters?: ReportFilterParams): Promise<GlobalReport> => {
+  const { data } = await httpClient.get<GlobalReport>('/reports/global', { params: buildFilterQuery(filters) });
   return data;
 };
 
-export const fetchMemberStatusReport = async (): Promise<MemberStatusReport[]> => {
-  const { data } = await httpClient.get<MemberStatusReport[]>('/reports/member-status');
+export const fetchMemberStatusReport = async (filters?: ReportFilterParams): Promise<MemberStatusReport[]> => {
+  const { data } = await httpClient.get<MemberStatusReport[]>('/reports/member-status', { params: buildFilterQuery(filters) });
   return data;
 };
 
-export const fetchMemberGrowthStats = async (): Promise<MemberGrowthMonth[]> => {
-  const { data } = await httpClient.get<MemberGrowthMonth[]>('/reports/member-growth');
+export const fetchMemberGrowthStats = async (filters?: ReportFilterParams): Promise<MemberGrowthMonth[]> => {
+  const { data } = await httpClient.get<MemberGrowthMonth[]>('/reports/member-growth', { params: buildFilterQuery(filters) });
   return data;
 };
 
-export const fetchTrendStats = async (): Promise<TrendStats> => {
-  const { data } = await httpClient.get<TrendStats>('/reports/trends');
+export const fetchTrendStats = async (filters?: ReportFilterParams): Promise<TrendStats> => {
+  const { data } = await httpClient.get<TrendStats>('/reports/trends', { params: buildFilterQuery(filters) });
   return data;
 };
 
-export const fetchQuickAlerts = async (): Promise<QuickAlerts> => {
-  const { data } = await httpClient.get<QuickAlerts>('/reports/alerts');
+export const fetchQuickAlerts = async (filters?: ReportFilterParams): Promise<QuickAlerts> => {
+  const { data } = await httpClient.get<QuickAlerts>('/reports/alerts', { params: buildFilterQuery(filters) });
   return data;
 };
 
-export const fetchDuesReport = async (year?: number, month?: number): Promise<DuesReport> => {
-  const params: Record<string, string> = {};
+export const fetchDuesReport = async (filters?: ReportFilterParams, year?: number, month?: number): Promise<DuesReport> => {
+  const params: Record<string, string> = { ...buildFilterQuery(filters) };
   if (year) params.year = String(year);
   if (month) params.month = String(month);
   const { data } = await httpClient.get<DuesReport>('/reports/dues', { params });

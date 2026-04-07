@@ -4,9 +4,11 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ReportsService } from './reports.service';
+import type { ReportFilterParams } from './reports.service';
 import { ExcelExportService } from './services/excel-export.service';
 import { PdfReportService } from './services/pdf-report.service';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -24,12 +26,28 @@ export class ReportsController {
     private readonly pdfReportService: PdfReportService,
   ) {}
 
+  private parseFilters(
+    provinceId?: string,
+    districtId?: string,
+    branchId?: string,
+    institutionId?: string,
+  ): ReportFilterParams | undefined {
+    if (!provinceId && !districtId && !branchId && !institutionId) return undefined;
+    return { provinceId, districtId, branchId, institutionId };
+  }
+
   @Permissions(Permission.REPORT_GLOBAL_VIEW)
   @Get('global')
   @ApiOperation({ summary: 'Genel rapor' })
   @ApiResponse({ status: 200 })
-  async getGlobalReport(@CurrentUser() user?: CurrentUserData) {
-    return this.reportsService.getGlobalReport(user);
+  async getGlobalReport(
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+    @Query('branchId') branchId?: string,
+    @Query('institutionId') institutionId?: string,
+    @CurrentUser() user?: CurrentUserData,
+  ) {
+    return this.reportsService.getGlobalReport(user, this.parseFilters(provinceId, districtId, branchId, institutionId));
   }
 
   @Permissions(Permission.REPORT_REGION_VIEW)
@@ -47,8 +65,14 @@ export class ReportsController {
   @Get('member-status')
   @ApiOperation({ summary: 'Üye durum raporu' })
   @ApiResponse({ status: 200 })
-  async getMemberStatusReport(@CurrentUser() user?: CurrentUserData) {
-    return this.reportsService.getMemberStatusReport(user);
+  async getMemberStatusReport(
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+    @Query('branchId') branchId?: string,
+    @Query('institutionId') institutionId?: string,
+    @CurrentUser() user?: CurrentUserData,
+  ) {
+    return this.reportsService.getMemberStatusReport(user, this.parseFilters(provinceId, districtId, branchId, institutionId));
   }
 
   @Permissions(Permission.REPORT_DUES_VIEW)
@@ -58,13 +82,17 @@ export class ReportsController {
   async getDuesReport(
     @Query('year') year?: string,
     @Query('month') month?: string,
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+    @Query('branchId') branchId?: string,
+    @Query('institutionId') institutionId?: string,
     @CurrentUser() user?: CurrentUserData,
   ) {
     const params = {
       year: year ? parseInt(year, 10) : undefined,
       month: month ? parseInt(month, 10) : undefined,
     };
-    return this.reportsService.getDuesReport(user, params);
+    return this.reportsService.getDuesReport(user, params, this.parseFilters(provinceId, districtId, branchId, institutionId));
   }
 
   // Excel Export Endpoints
@@ -262,23 +290,41 @@ export class ReportsController {
   @Get('member-growth')
   @ApiOperation({ summary: 'Üye artış/azalış istatistikleri' })
   @ApiResponse({ status: 200 })
-  async getMemberGrowthStats(@CurrentUser() user?: CurrentUserData) {
-    return this.reportsService.getMemberGrowthStats(user);
+  async getMemberGrowthStats(
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+    @Query('branchId') branchId?: string,
+    @Query('institutionId') institutionId?: string,
+    @CurrentUser() user?: CurrentUserData,
+  ) {
+    return this.reportsService.getMemberGrowthStats(user, this.parseFilters(provinceId, districtId, branchId, institutionId));
   }
 
   @Permissions(Permission.REPORT_GLOBAL_VIEW)
   @Get('trends')
   @ApiOperation({ summary: 'Trend istatistikleri' })
   @ApiResponse({ status: 200 })
-  async getTrendStats(@CurrentUser() user?: CurrentUserData) {
-    return this.reportsService.getTrendStats(user);
+  async getTrendStats(
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+    @Query('branchId') branchId?: string,
+    @Query('institutionId') institutionId?: string,
+    @CurrentUser() user?: CurrentUserData,
+  ) {
+    return this.reportsService.getTrendStats(user, this.parseFilters(provinceId, districtId, branchId, institutionId));
   }
 
   @Permissions(Permission.REPORT_GLOBAL_VIEW)
   @Get('alerts')
   @ApiOperation({ summary: 'Hızlı uyarılar' })
   @ApiResponse({ status: 200 })
-  async getQuickAlerts(@CurrentUser() user?: CurrentUserData) {
-    return this.reportsService.getQuickAlerts(user);
+  async getQuickAlerts(
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+    @Query('branchId') branchId?: string,
+    @Query('institutionId') institutionId?: string,
+    @CurrentUser() user?: CurrentUserData,
+  ) {
+    return this.reportsService.getQuickAlerts(user, this.parseFilters(provinceId, districtId, branchId, institutionId));
   }
 }

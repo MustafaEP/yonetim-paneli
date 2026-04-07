@@ -4,10 +4,16 @@ import { MemberScopeService } from '../members/member-scope.service';
 import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
 import { MemberStatus } from '@prisma/client';
 
+export interface ReportFilterParams {
+  provinceId?: string;
+  districtId?: string;
+  branchId?: string;
+  institutionId?: string;
+}
+
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
-  // Varsayılan aylık Kesinti miktarı (TL) - Sistem ayarlarından alınabilir
   private readonly DEFAULT_MONTHLY_DUES = 50;
 
   constructor(
@@ -15,18 +21,36 @@ export class ReportsService {
     private memberScopeService: MemberScopeService,
   ) {}
 
-  async getGlobalReport(user?: CurrentUserData) {
+  private async buildMemberWhere(
+    user?: CurrentUserData,
+    filters?: ReportFilterParams,
+  ): Promise<any> {
     const scopeIds = user
       ? await this.memberScopeService.getUserScopeIds(user)
       : {};
 
     const where: any = {};
-    if (scopeIds.provinceId) {
+    if (filters?.provinceId) {
+      where.provinceId = filters.provinceId;
+    } else if (scopeIds.provinceId) {
       where.provinceId = scopeIds.provinceId;
     }
-    if (scopeIds.districtId) {
+    if (filters?.districtId) {
+      where.districtId = filters.districtId;
+    } else if (scopeIds.districtId) {
       where.districtId = scopeIds.districtId;
     }
+    if (filters?.branchId) {
+      where.branchId = filters.branchId;
+    }
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+    return where;
+  }
+
+  async getGlobalReport(user?: CurrentUserData, filters?: ReportFilterParams) {
+    const where = await this.buildMemberWhere(user, filters);
 
     const [
       totalMembers,
@@ -250,18 +274,8 @@ export class ReportsService {
     return regionReports;
   }
 
-  async getMemberStatusReport(user?: CurrentUserData) {
-    const scopeIds = user
-      ? await this.memberScopeService.getUserScopeIds(user)
-      : {};
-
-    const where: any = {};
-    if (scopeIds.provinceId) {
-      where.provinceId = scopeIds.provinceId;
-    }
-    if (scopeIds.districtId) {
-      where.districtId = scopeIds.districtId;
-    }
+  async getMemberStatusReport(user?: CurrentUserData, filters?: ReportFilterParams) {
+    const where = await this.buildMemberWhere(user, filters);
 
     const [statusCounts, totalMembers] = await Promise.all([
       this.prisma.member.groupBy({
@@ -285,17 +299,13 @@ export class ReportsService {
   async getDuesReport(
     user?: CurrentUserData,
     params?: { year?: number; month?: number },
+    filters?: ReportFilterParams,
   ) {
-    const scopeIds = user
-      ? await this.memberScopeService.getUserScopeIds(user)
-      : {};
+    const memberWhere = await this.buildMemberWhere(user, filters);
 
     const where: any = {};
-    if (scopeIds.provinceId) {
-      where.member = { provinceId: scopeIds.provinceId };
-    }
-    if (scopeIds.districtId) {
-      where.member = { ...where.member, districtId: scopeIds.districtId };
+    if (Object.keys(memberWhere).length > 0) {
+      where.member = memberWhere;
     }
 
     // Tarih filtresi
@@ -313,15 +323,6 @@ export class ReportsService {
         amount: true,
       },
     });
-
-    // Kesinti yapan ve yapmayan üye sayıları
-    const memberWhere: any = {};
-    if (scopeIds.provinceId) {
-      memberWhere.provinceId = scopeIds.provinceId;
-    }
-    if (scopeIds.districtId) {
-      memberWhere.districtId = scopeIds.districtId;
-    }
 
     const [paidMembers, unpaidMembers] = await Promise.all([
       this.prisma.member.count({
@@ -372,16 +373,8 @@ export class ReportsService {
       memberCount: number;
     }> = [];
 
-    // Borç hesaplama
-    const memberWhereForDebt: any = {};
-    if (scopeIds.provinceId) {
-      memberWhereForDebt.provinceId = scopeIds.provinceId;
-    }
-    if (scopeIds.districtId) {
-      memberWhereForDebt.districtId = scopeIds.districtId;
-    }
     const totalDebt = await this.calculateTotalDebt(
-      memberWhereForDebt,
+      memberWhere,
       params?.year,
       params?.month,
     );
@@ -528,18 +521,8 @@ export class ReportsService {
   /**
    * Üye artış/azalış istatistikleri (son 6 ay)
    */
-  async getMemberGrowthStats(user?: CurrentUserData) {
-    const scopeIds = user
-      ? await this.memberScopeService.getUserScopeIds(user)
-      : {};
-
-    const where: any = {};
-    if (scopeIds.provinceId) {
-      where.provinceId = scopeIds.provinceId;
-    }
-    if (scopeIds.districtId) {
-      where.districtId = scopeIds.districtId;
-    }
+  async getMemberGrowthStats(user?: CurrentUserData, filters?: ReportFilterParams) {
+    const where = await this.buildMemberWhere(user, filters);
 
     const now = new Date();
     const monthsData: {
@@ -614,18 +597,8 @@ export class ReportsService {
   /**
    * Trend istatistikleri (son 30 gün karşılaştırmalı)
    */
-  async getTrendStats(user?: CurrentUserData) {
-    const scopeIds = user
-      ? await this.memberScopeService.getUserScopeIds(user)
-      : {};
-
-    const where: any = {};
-    if (scopeIds.provinceId) {
-      where.provinceId = scopeIds.provinceId;
-    }
-    if (scopeIds.districtId) {
-      where.districtId = scopeIds.districtId;
-    }
+  async getTrendStats(user?: CurrentUserData, filters?: ReportFilterParams) {
+    const where = await this.buildMemberWhere(user, filters);
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -738,18 +711,8 @@ export class ReportsService {
   /**
    * Hızlı uyarılar ve önemli bilgiler
    */
-  async getQuickAlerts(user?: CurrentUserData) {
-    const scopeIds = user
-      ? await this.memberScopeService.getUserScopeIds(user)
-      : {};
-
-    const where: any = {};
-    if (scopeIds.provinceId) {
-      where.provinceId = scopeIds.provinceId;
-    }
-    if (scopeIds.districtId) {
-      where.districtId = scopeIds.districtId;
-    }
+  async getQuickAlerts(user?: CurrentUserData, filters?: ReportFilterParams) {
+    const where = await this.buildMemberWhere(user, filters);
 
     const now = new Date();
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
