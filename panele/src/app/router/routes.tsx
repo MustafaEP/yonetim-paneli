@@ -18,6 +18,7 @@ import ActiveWaitingMembersPage from '../../features/members/pages/ActiveWaiting
 import MemberApplicationCreatePage from '../../features/members/pages/MemberApplicationCreatePage';
 import BulkMemberRegistrationPage from '../../features/members/pages/BulkMemberRegistrationPage';
 import MemberHistoryPage from '../../features/members/pages/MemberHistoryPage';
+import KbsDataPage from '../../features/members/pages/KbsDataPage';
 import UsersListPage from '../../features/users/pages/UsersListPage';
 import PanelUserApplicationsPage from '../../features/users/pages/PanelUserApplicationsPage';
 import RolesListPage from '../../features/roles/pages/RolesListPage';
@@ -50,6 +51,8 @@ import QuickPaymentEntryPage from '../../features/payments/pages/QuickPaymentEnt
 import RecentPaymentsPage from '../../features/payments/pages/RecentPaymentsPage';
 import ProfilePage from '../../features/profile/pages/ProfilePage';
 import InvoicesPage from '../../features/invoices/pages/InvoicesPage';
+import WhatsAppSmsPage from '../../features/messaging/pages/WhatsAppSmsPage';
+import KepPage from '../../features/kep/pages/KepPage';
 
 const AppRoutes: React.FC = () => (
   <Routes>
@@ -73,6 +76,10 @@ const AppRoutes: React.FC = () => (
 
         <Route element={<ProtectedRoute requiredPermission="MEMBER_HISTORY_VIEW" />}>
           <Route path="/members/status" element={<MemberHistoryPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute requiredPermission="MEMBER_LIST" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
+          <Route path="/members/kbs" element={<KbsDataPage />} />
         </Route>
 
         {/* Bekleyen başvurular: görüntüleme izni veya onay/red (MEMBER_LIST tek başına yetmez) */}
@@ -175,6 +182,9 @@ const AppRoutes: React.FC = () => (
         <Route path="/notifications" element={<MyNotificationsPage />} />
         <Route path="/notifications/send" element={<Navigate to="/notifications" replace />} />
         <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
+
+        <Route path="/messaging" element={<WhatsAppSmsPage />} />
+        <Route path="/kep" element={<KepPage />} />
 
         <Route element={<ProtectedRoute requiredPermission="SYSTEM_SETTINGS_VIEW" />}>
           <Route path="/system/settings" element={<SystemSettingsPage />} />

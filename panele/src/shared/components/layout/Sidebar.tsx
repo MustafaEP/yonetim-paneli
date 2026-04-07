@@ -29,6 +29,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 import DescriptionIcon from '@mui/icons-material/Description';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -36,6 +37,8 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import BadgeIcon from '@mui/icons-material/Badge';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import HistoryIcon from '@mui/icons-material/History';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -325,6 +328,27 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                   </ListItemIcon>
                   <ListItemText
                     primary="Üye Hareketleri"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
+
+              {showMembersList && (
+                <ListItemButton
+                  component={Link}
+                  to="/members/kbs"
+                  selected={location.pathname.startsWith('/members/kbs')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <CloudDownloadIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="KBS Veri Çekme"
                     primaryTypographyProps={{
                       fontSize: '0.9rem',
                       fontWeight: 500,
@@ -688,6 +712,54 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
             </ListItemIcon>
             <ListItemText
               primary="Bildirimler"
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            />
+          </ListItemButton>
+        </List>
+      )}
+
+      {/* 8.5. WhatsApp & SMS */}
+      {showNotifications && (
+        <List sx={{ px: 1 }}>
+          <ListItemButton
+            component={Link}
+            to="/messaging"
+            selected={location.pathname.startsWith('/messaging')}
+            onClick={handleLinkClick}
+            sx={getNavItemSx(theme)}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <WhatsAppIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="WhatsApp & SMS"
+              primaryTypographyProps={{
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            />
+          </ListItemButton>
+        </List>
+      )}
+
+      {/* 8.6. KEP Sistemi */}
+      {showNotifications && (
+        <List sx={{ px: 1 }}>
+          <ListItemButton
+            component={Link}
+            to="/kep"
+            selected={location.pathname.startsWith('/kep')}
+            onClick={handleLinkClick}
+            sx={getNavItemSx(theme)}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <MarkEmailReadIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="KEP Sistemi"
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
