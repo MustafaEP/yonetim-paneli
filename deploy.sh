@@ -181,9 +181,32 @@ if [ -n "$PROXY_CONTAINER" ]; then
     fi
 fi
 
-# 12. Reverse proxy'yi yeniden başlat (502 hatasını önlemek için)
-echo -e "${YELLOW}🔄 Reverse proxy yeniden başlatılıyor...${NC}"
-docker restart reverse-proxy 2>/dev/null && echo -e "${GREEN}✅ Reverse proxy yeniden başlatıldı${NC}" || echo -e "${YELLOW}⚠️  reverse-proxy container bulunamadı veya yeniden başlatılamadı${NC}"
+# 12. Reverse proxy nginx config test + reload (zero-downtime); gerekirse restart fallback
+echo -e "${YELLOW}🔄 Reverse proxy nginx doğrulama/reload...${NC}"
+PROXY_RELOADED=false
+for CANDIDATE in reverse-proxy "$PROXY_CONTAINER"; do
+    if [ -z "$CANDIDATE" ]; then
+        continue
+    fi
+    if ! docker ps --format "{{.Names}}" | grep -q "^${CANDIDATE}$"; then
+        continue
+    fi
+
+    if docker exec "$CANDIDATE" nginx -t >/dev/null 2>&1; then
+        if docker exec "$CANDIDATE" nginx -s reload >/dev/null 2>&1; then
+            echo -e "${GREEN}✅ Nginx reload başarılı (${CANDIDATE})${NC}"
+            PROXY_RELOADED=true
+            break
+        fi
+    fi
+done
+
+if ! $PROXY_RELOADED; then
+    echo -e "${YELLOW}⚠️  Nginx reload yapılamadı, restart fallback deneniyor...${NC}"
+    docker restart reverse-proxy 2>/dev/null && \
+        echo -e "${GREEN}✅ Reverse proxy yeniden başlatıldı${NC}" || \
+        echo -e "${YELLOW}⚠️  reverse-proxy container bulunamadı veya yeniden başlatılamadı${NC}"
+fi
 
 # 13. Sonuç ve durum
 END_TIME=$(date +%s)
