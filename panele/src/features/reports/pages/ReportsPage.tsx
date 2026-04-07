@@ -18,7 +18,6 @@ import PeopleIcon from '@mui/icons-material/People';
 import PersonIcon from '@mui/icons-material/Person';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
@@ -88,8 +87,6 @@ const STATUS_COLORS: Record<string, string> = {
   EXPELLED: '#d32f2f',
   REJECTED: '#e91e63',
 };
-
-const PIE_COLORS = ['#4caf50', '#ff9800', '#2196f3', '#9e9e9e', '#f44336', '#d32f2f', '#e91e63'];
 
 interface KpiCardProps {
   title: string;
@@ -490,7 +487,7 @@ const ReportsPage: React.FC = () => {
 
         {/* ── KPI Cards ── */}
         <Grid container spacing={2}>
-          <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <KpiCard
               title="Toplam Üye"
               value={globalReport?.totalMembers ?? 0}
@@ -499,7 +496,7 @@ const ReportsPage: React.FC = () => {
               loading={loading}
             />
           </Grid>
-          <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <KpiCard
               title="Aktif Üye"
               value={globalReport?.activeMembers ?? 0}
@@ -508,7 +505,7 @@ const ReportsPage: React.FC = () => {
               loading={loading}
             />
           </Grid>
-          <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <KpiCard
               title="Ayrılan Üye"
               value={globalReport?.cancelledMembers ?? 0}
@@ -517,22 +514,12 @@ const ReportsPage: React.FC = () => {
               loading={loading}
             />
           </Grid>
-          <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <KpiCard
               title="Toplam Kesinti"
               value={globalReport?.totalPayments ?? 0}
               icon={<AccountBalanceWalletIcon />}
               color="#2196f3"
-              loading={loading}
-              formatAsCurrency
-            />
-          </Grid>
-          <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
-            <KpiCard
-              title="Toplam Borç"
-              value={globalReport?.totalDebt ?? 0}
-              icon={<MoneyOffIcon />}
-              color="#ff9800"
               loading={loading}
               formatAsCurrency
             />
@@ -749,7 +736,7 @@ const ReportsPage: React.FC = () => {
         {/* ── Dues Paid vs Unpaid ── */}
         {duesReport && (
           <Grid container spacing={2}>
-            <Grid size={{ xs: 6, sm: 3 }}>
+            <Grid size={{ xs: 6, sm: 4 }}>
               <KpiCard
                 title="Kesinti Yapan Üye"
                 value={duesReport.paidMembers}
@@ -758,7 +745,7 @@ const ReportsPage: React.FC = () => {
                 loading={loading}
               />
             </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
+            <Grid size={{ xs: 6, sm: 4 }}>
               <KpiCard
                 title="Kesinti Yapmayan Üye"
                 value={duesReport.unpaidMembers}
@@ -767,22 +754,12 @@ const ReportsPage: React.FC = () => {
                 loading={loading}
               />
             </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <KpiCard
                 title="Toplam Kesinti Tutarı"
                 value={duesReport.totalPayments}
                 icon={<AccountBalanceWalletIcon />}
                 color="#2196f3"
-                formatAsCurrency
-                loading={loading}
-              />
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <KpiCard
-                title="Toplam Borç Tutarı"
-                value={duesReport.totalDebt}
-                icon={<MoneyOffIcon />}
-                color="#ff9800"
                 formatAsCurrency
                 loading={loading}
               />
@@ -842,7 +819,6 @@ const ReportsPage: React.FC = () => {
                     <th>Aktif Üye</th>
                     <th>Ayrılan Üye</th>
                     <th>Toplam Kesinti</th>
-                    <th>Toplam Borç</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -894,14 +870,6 @@ const ReportsPage: React.FC = () => {
                         <td>
                           <Typography variant="body2">
                             ₺{r.totalPayments.toLocaleString('tr-TR')}
-                          </Typography>
-                        </td>
-                        <td>
-                          <Typography
-                            variant="body2"
-                            sx={{ color: r.totalDebt > 0 ? '#ff9800' : 'text.secondary', fontWeight: r.totalDebt > 0 ? 600 : 400 }}
-                          >
-                            ₺{r.totalDebt.toLocaleString('tr-TR')}
                           </Typography>
                         </td>
                       </tr>
