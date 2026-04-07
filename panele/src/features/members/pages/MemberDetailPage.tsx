@@ -142,6 +142,13 @@ const MemberDetailPage = () => {
   const canUploadDocument = hasPermission('DOCUMENT_GENERATE_PDF');
   const canChangeStatus = hasPermission('MEMBER_STATUS_CHANGE');
   const canViewMember = hasPermission('MEMBER_VIEW');
+  const canEditMember = hasPermission('MEMBER_UPDATE');
+  const canViewMembershipDocuments = hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW');
+  const canViewPaymentHistory =
+    hasPermission('MEMBER_PAYMENT_VIEW') || hasPermission('MEMBER_PAYMENT_LIST');
+  const canViewMemberHistory = hasPermission('MEMBER_HISTORY_VIEW');
+  const canViewAdvances = hasPermission('ADVANCE_VIEW');
+  const canViewPanelUserDetails = hasPermission('USER_VIEW');
   const canCreatePanelUserApplication = hasPermission('PANEL_USER_APPLICATION_CREATE');
   const canAssignRole = hasPermission('USER_ASSIGN_ROLE');
   const { user: currentUser } = useAuth();
@@ -180,10 +187,14 @@ const MemberDetailPage = () => {
       const data = await getMemberById(id);
       setMember(data);
       
-      // Eğer üye bir panel kullanıcısıysa, tam kullanıcı detaylarını yükle
-      if (data.user?.id) {
+      // Eğer üye bir panel kullanıcısıysa ve kullanıcı görüntüleme izni varsa detayları yükle
+      if (data.user?.id && canViewPanelUserDetails) {
         loadUserDetail(data.user.id);
         loadUserScopes(data.user.id);
+      } else {
+        setUserDetail(null);
+        setScopes([]);
+        setRoles([]);
       }
     } catch (error) {
       console.error('Üye detayı alınırken hata:', error);
@@ -240,7 +251,11 @@ const MemberDetailPage = () => {
 
   // Kesintileri yükle
   useEffect(() => {
-    if (!id) return;
+    if (!id || !canViewPaymentHistory) {
+      setPayments([]);
+      setLoadingPayments(false);
+      return;
+    }
 
     const loadPayments = async () => {
       setLoadingPayments(true);
@@ -255,11 +270,15 @@ const MemberDetailPage = () => {
     };
 
     loadPayments();
-  }, [id]);
+  }, [id, canViewPaymentHistory]);
 
   // Evrakları yükle
   useEffect(() => {
-    if (!id) return;
+    if (!id || !canViewMembershipDocuments) {
+      setDocuments([]);
+      setLoadingDocuments(false);
+      return;
+    }
 
     const loadDocuments = async () => {
       setLoadingDocuments(true);
@@ -274,11 +293,15 @@ const MemberDetailPage = () => {
     };
 
     loadDocuments();
-  }, [id]);
+  }, [id, canViewMembershipDocuments]);
 
   // Üye geçmişini yükle
   useEffect(() => {
-    if (!id) return;
+    if (!id || !canViewMemberHistory) {
+      setMemberHistory([]);
+      setLoadingHistory(false);
+      return;
+    }
 
     const loadHistory = async () => {
       setLoadingHistory(true);
@@ -294,7 +317,7 @@ const MemberDetailPage = () => {
     };
 
     loadHistory();
-  }, [id]);
+  }, [id, canViewMemberHistory]);
 
   // Panel kullanıcı başvurusu kontrolü
   useEffect(() => {
@@ -1117,29 +1140,31 @@ const MemberDetailPage = () => {
         lightColor={alpha(statusConfig.headerShadow, 0.1)}
         rightContent={
           <Stack direction="row" spacing={1.5}>
-            <Button
-              variant="contained"
-              startIcon={<EditIcon />}
-              onClick={() => navigate(`/members/${id}/edit`)}
-              sx={{
-                borderRadius: 2.5,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                py: 1.25,
-                fontSize: '0.95rem',
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.45)}`,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-                },
-              }}
-            >
-              Düzenle
-            </Button>
+            {canEditMember && (
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/members/${id}/edit`)}
+                sx={{
+                  borderRadius: 2.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.25,
+                  fontSize: '0.95rem',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.45)}`,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  },
+                }}
+              >
+                Düzenle
+              </Button>
+            )}
             {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
               <Button
                 variant="contained"
@@ -1169,23 +1194,25 @@ const MemberDetailPage = () => {
         }
         mobileContent={
           <Stack spacing={1.5}>
-            <Button
-              variant="contained"
-              startIcon={<EditIcon />}
-              fullWidth
-              onClick={() => navigate(`/members/${id}/edit`)}
-              sx={{
-                borderRadius: 2.5,
-                textTransform: 'none',
-                fontWeight: 600,
-                py: 1.5,
-                fontSize: '0.95rem',
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
-              }}
-            >
-              Düzenle
-            </Button>
+            {canEditMember && (
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                fullWidth
+                onClick={() => navigate(`/members/${id}/edit`)}
+                sx={{
+                  borderRadius: 2.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  py: 1.5,
+                  fontSize: '0.95rem',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                }}
+              >
+                Düzenle
+              </Button>
+            )}
             {canChangeStatus && member?.status !== 'PENDING' && member?.status !== 'APPROVED' && (
               <Button
                 variant="contained"
@@ -1211,6 +1238,7 @@ const MemberDetailPage = () => {
 
       {/* Panel Kullanıcı Bilgileri - Detaylı */}
       {member.user ? (
+        canViewPanelUserDetails ? (
         <>
           <Card
             elevation={0}
@@ -1646,6 +1674,7 @@ const MemberDetailPage = () => {
             />
           )}
         </>
+        ) : null
       ) : (
         <>
           {/* Terfi Et Kartı - Sadece panel kullanıcısı değilse ve koşullar uygunsa
@@ -1893,7 +1922,7 @@ const MemberDetailPage = () => {
                     >
                       {member.status === 'EXPELLED' ? 'İhraç Nedeni' : 'İstifa Nedeni'}
                     </Typography>
-                    {!editingReason && hasPermission('members:update') && (
+                    {!editingReason && canEditMember && (
                       <Tooltip title="Sebebi düzenle">
                         <IconButton
                           size="small"
@@ -2336,7 +2365,7 @@ const MemberDetailPage = () => {
           </Box>
         </Box>
 
-        {advances.length > 0 && (
+        {canViewAdvances && advances.length > 0 && (
           <SectionCard title="Avans Bilgileri" icon={<PaymentIcon />}>
             {/* Özet Kartlar */}
             <Box
@@ -2525,7 +2554,8 @@ const MemberDetailPage = () => {
         )}
 
         {/* Üyelik Geçmişi / Hareketler */}
-        <SectionCard title="Üyelik Geçmişi / Hareketler" icon={<TimelineIcon />}>
+        {canViewMemberHistory && (
+          <SectionCard title="Üyelik Geçmişi / Hareketler" icon={<TimelineIcon />}>
           {(() => {
             const periods = member?.membershipPeriods ?? [];
             const currentRegNo = member?.registrationNumber;
@@ -2717,10 +2747,12 @@ const MemberDetailPage = () => {
               </Box>
             );
           })()}
-        </SectionCard>
+          </SectionCard>
+        )}
 
         {/* Üyelik Evrakları */}
-        <SectionCard title="Üyelik Evrakları" icon={<AssignmentIcon />}>
+        {canViewMembershipDocuments && (
+          <SectionCard title="Üyelik Evrakları" icon={<AssignmentIcon />}>
           {loadingDocuments ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <CircularProgress />
@@ -2892,10 +2924,12 @@ const MemberDetailPage = () => {
               </Table>
             </TableContainer>
           )}
-        </SectionCard>
+          </SectionCard>
+        )}
 
         {/* Kesintiler */}
-        <SectionCard title="Kesinti / Kesinti Geçmişi" icon={<PaymentIcon />}>
+        {canViewPaymentHistory && (
+          <SectionCard title="Kesinti / Kesinti Geçmişi" icon={<PaymentIcon />}>
             {loadingPayments ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
@@ -3072,9 +3106,11 @@ const MemberDetailPage = () => {
               </TableContainer>
             )}
           </SectionCard>
+        )}
 
         {/* Üyelik İstatistikleri */}
-        <SectionCard title="Üyelik ve Zaman İstatistikleri" icon={<CalendarTodayIcon />}>
+        {canViewMemberHistory && (
+          <SectionCard title="Üyelik ve Zaman İstatistikleri" icon={<CalendarTodayIcon />}>
           {loadingHistory ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress size={32} />
@@ -3128,7 +3164,8 @@ const MemberDetailPage = () => {
               />
             </Box>
           )}
-        </SectionCard>
+          </SectionCard>
+        )}
 
         {/* Onay Bilgileri */}
         {member?.approvedBy && member?.approvedAt && (
