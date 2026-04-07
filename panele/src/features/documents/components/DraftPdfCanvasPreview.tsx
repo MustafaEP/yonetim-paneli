@@ -5,6 +5,15 @@ import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
+const isWorkerInitError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes('Setting up fake worker failed') ||
+    message.includes('Failed to fetch dynamically imported module') ||
+    message.includes('pdf.worker')
+  );
+};
+
 /** draft: PDF Oluştur taslak önizlemesi; document: kayıtlı belge / ödeme belgesi / antetli kağıt vb. */
 export type PdfCanvasPreviewVariant = 'draft' | 'document';
 
@@ -47,7 +56,23 @@ export function DraftPdfCanvasPreview({
           url: blobUrl,
           isEvalSupported: false,
         });
-        doc = await loadingTask.promise;
+        try {
+          doc = await loadingTask.promise;
+        } catch (workerError) {
+          if (!isWorkerInitError(workerError)) {
+            throw workerError;
+          }
+
+          // Some VPS/Nginx setups do not serve emitted .mjs worker assets correctly.
+          // Fallback to worker-less mode so preview keeps working.
+          loadingTask.destroy();
+          loadingTask = pdfjsLib.getDocument({
+            url: blobUrl,
+            isEvalSupported: false,
+            disableWorker: true,
+          });
+          doc = await loadingTask.promise;
+        }
         if (cancelled) {
           await doc.destroy().catch(() => {});
           doc = null;
