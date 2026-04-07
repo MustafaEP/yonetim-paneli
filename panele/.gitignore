@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Build sırasında otomatik oluşturulan pdf worker kopyası
+public/pdf-worker.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
