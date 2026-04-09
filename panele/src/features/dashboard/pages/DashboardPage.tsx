@@ -53,12 +53,14 @@ import type { MemberListItem } from '../../../types/member';
 import type { MemberPayment } from '../../payments/services/paymentsApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
+import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { hasPermission } = useAuth();
+  const { getSettingValue } = useSystemSettings();
   const toast = useToast();
 
   const canViewApplications =
@@ -66,9 +68,20 @@ const DashboardPage: React.FC = () => {
     hasPermission('MEMBER_APPROVE') ||
     hasPermission('MEMBER_REJECT');
   const canListMembers = hasPermission('MEMBER_LIST');
+  /** Kesinti listesi / detay — dashboard’daki tahsilat ve kesinti kartları için */
+  const canViewMemberPayments =
+    hasPermission('MEMBER_PAYMENT_LIST') || hasPermission('MEMBER_PAYMENT_VIEW');
   const canCreateMemberApplication = hasPermission('MEMBER_CREATE_APPLICATION');
   const canManageRegions = hasPermission('BRANCH_MANAGE') || hasPermission('REGION_LIST');
   const canListUsers = hasPermission('USER_LIST');
+  const showQuickActions = getSettingValue('DASHBOARD_SHOW_QUICK_ACTIONS', 'true') === 'true';
+  const showStatCards = getSettingValue('DASHBOARD_SHOW_STAT_CARDS', 'true') === 'true';
+  const showRecentMembers = getSettingValue('DASHBOARD_SHOW_RECENT_MEMBERS', 'true') === 'true';
+  const showRecentPayments = getSettingValue('DASHBOARD_SHOW_RECENT_PAYMENTS', 'true') === 'true';
+  const showPaymentStats = getSettingValue('DASHBOARD_SHOW_PAYMENT_STATS', 'true') === 'true';
+  const showMemberStats = getSettingValue('DASHBOARD_SHOW_MEMBER_STATS', 'true') === 'true';
+  const showApplicationManagement = getSettingValue('DASHBOARD_SHOW_APPLICATION_MANAGEMENT', 'true') === 'true';
+  const showUserStats = getSettingValue('DASHBOARD_SHOW_USER_STATS', 'true') === 'true';
 
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState<number>(0);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
@@ -173,7 +186,7 @@ const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     const loadPayments = async () => {
-      if (!canListMembers) return;
+      if (!canViewMemberPayments) return;
       setPaymentsLoading(true);
       try {
         const data = await getPayments();
@@ -218,7 +231,7 @@ const DashboardPage: React.FC = () => {
     };
 
     loadPayments();
-  }, [canListMembers]);
+  }, [canViewMemberPayments]);
 
   const hasAnyPermission = canViewApplications || canListMembers || canListUsers || canCreateMemberApplication || canManageRegions;
   
@@ -295,8 +308,9 @@ const DashboardPage: React.FC = () => {
         lightColor={theme.palette.primary.light}
       />
       {/* Hızlı Aksiyon Kartları */}
-      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
-        {quickActions.filter(action => action.show).map((action) => (
+      {showQuickActions && (
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
+          {quickActions.filter(action => action.show).map((action) => (
           <Grid
             key={action.path}
             size={{
@@ -391,10 +405,12 @@ const DashboardPage: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-        ))}
-      </Grid>
+          ))}
+        </Grid>
+      )}
       {/* Statistics Cards */}
-      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
+      {showStatCards && (
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         {/* Pending Applications */}
         {canViewApplications && (
           <Grid
@@ -544,7 +560,7 @@ const DashboardPage: React.FC = () => {
         )}
 
         {/* Total Payments */}
-        {canListMembers && (
+        {canViewMemberPayments && (
           <Grid
             size={{
               xs: 12,
@@ -693,11 +709,12 @@ const DashboardPage: React.FC = () => {
             </Card>
           </Grid>
         )}
-      </Grid>
+        </Grid>
+      )}
       {/* Detailed Statistics Section */}
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
         {/* Recent Members */}
-        {canListMembers && (
+        {canListMembers && showRecentMembers && (
           <Grid
             size={{
               xs: 12,
@@ -831,7 +848,7 @@ const DashboardPage: React.FC = () => {
         )}
 
         {/* Recent Payments */}
-        {canListMembers && (
+        {canViewMemberPayments && showRecentPayments && (
           <Grid
             size={{
               xs: 12,
@@ -990,7 +1007,7 @@ const DashboardPage: React.FC = () => {
         )}
 
         {/* Payment Statistics */}
-        {canListMembers && (
+        {canViewMemberPayments && showPaymentStats && (
           <Grid
             size={{
               xs: 12,
@@ -1107,7 +1124,7 @@ const DashboardPage: React.FC = () => {
           </Grid>
         )}
         {/* Member Statistics */}
-        {canListMembers && (
+        {canListMembers && showMemberStats && (
           <Grid
             size={{
               xs: 12,
@@ -1248,7 +1265,7 @@ const DashboardPage: React.FC = () => {
         )}
 
         {/* Quick Info & Applications */}
-        {canViewApplications && (
+        {canViewApplications && showApplicationManagement && (
           <Grid
             size={{
               xs: 12,
@@ -1364,7 +1381,7 @@ const DashboardPage: React.FC = () => {
         )}
 
         {/* User Statistics */}
-        {canListUsers && (
+        {canListUsers && showUserStats && (
           <Grid
             size={{
               xs: 12,

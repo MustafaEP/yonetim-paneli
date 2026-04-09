@@ -21,6 +21,8 @@ import {
 import { Prisma } from '@prisma/client';
 import { ProvinceApplicationService } from './application/services/province-application.service';
 import { DistrictApplicationService } from './application/services/district-application.service';
+import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
+import { Permission } from '../auth/permission.enum';
 
 @Injectable()
 export class RegionsService {
@@ -30,9 +32,49 @@ export class RegionsService {
     private districtService: DistrictApplicationService,
   ) {}
 
+  private needsScopeRestriction(user?: CurrentUserData): boolean {
+    if (!user) return false;
+    if (user.roles?.includes('ADMIN')) return false;
+    const permissions = user.permissions ?? [];
+    const hasScopedAccess = permissions.includes(Permission.MEMBER_LIST_BY_PROVINCE);
+    return hasScopedAccess;
+  }
+
+  private async getActiveUserScopes(userId: string) {
+    return this.prisma.userScope.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+      },
+      select: {
+        provinceId: true,
+        districtId: true,
+      },
+    });
+  }
+
   // ---------- PROVINCE ----------
-  async listProvinces() {
+  async listProvinces(user?: CurrentUserData) {
+    if (!this.needsScopeRestriction(user)) {
+      return this.prisma.province.findMany({
+        orderBy: { name: 'asc' },
+      });
+    }
+    if (!user) return [];
+
+    const scopes = await this.getActiveUserScopes(user.userId);
+    const provinceIds = Array.from(
+      new Set(scopes.map((s) => s.provinceId).filter((id): id is string => Boolean(id))),
+    );
+
+    if (!provinceIds.length) {
+      return this.prisma.province.findMany({
+        orderBy: { name: 'asc' },
+      });
+    }
+
     return this.prisma.province.findMany({
+      where: { id: { in: provinceIds } },
       orderBy: { name: 'asc' },
     });
   }
@@ -84,9 +126,63 @@ export class RegionsService {
   }
 
   // ---------- DISTRICT ----------
-  async listDistricts(provinceId?: string) {
+  async listDistricts(provinceId?: string, user?: CurrentUserData) {
     const where: Prisma.DistrictWhereInput = {};
-    if (provinceId) where.provinceId = provinceId;
+
+    if (!this.needsScopeRestriction(user)) {
+      if (provinceId) where.provinceId = provinceId;
+      return this.prisma.district.findMany({
+        where,
+        orderBy: { name: 'asc' },
+      });
+    }
+    if (!user) return [];
+
+    const scopes = await this.getActiveUserScopes(user.userId);
+    const scopedProvinceIds = Array.from(
+      new Set(scopes.map((s) => s.provinceId).filter((id): id is string => Boolean(id))),
+    );
+
+    if (!scopedProvinceIds.length) {
+      if (provinceId) where.provinceId = provinceId;
+      return this.prisma.district.findMany({
+        where,
+        orderBy: { name: 'asc' },
+      });
+    }
+
+    const fullProvinceIds = new Set(
+      scopes
+        .filter((s) => s.provinceId && !s.districtId)
+        .map((s) => s.provinceId as string),
+    );
+
+    const scopedDistrictIds = new Set(
+      scopes.map((s) => s.districtId).filter((id): id is string => Boolean(id)),
+    );
+
+    if (provinceId) {
+      if (!scopedProvinceIds.includes(provinceId)) {
+        return [];
+      }
+
+      if (fullProvinceIds.has(provinceId)) {
+        where.provinceId = provinceId;
+      } else {
+        where.provinceId = provinceId;
+        where.id = { in: Array.from(scopedDistrictIds) };
+      }
+    } else {
+      where.provinceId = { in: scopedProvinceIds };
+      if (fullProvinceIds.size > 0) {
+        where.OR = [
+          { provinceId: { in: Array.from(fullProvinceIds) } },
+          { id: { in: Array.from(scopedDistrictIds) } },
+        ];
+      } else {
+        where.id = { in: Array.from(scopedDistrictIds) };
+      }
+    }
 
     return this.prisma.district.findMany({
       where,

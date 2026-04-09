@@ -17,12 +17,15 @@ import {
   Alert,
   InputAdornment,
   MenuItem,
+  Collapse,
+  IconButton,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import HistoryIcon from '@mui/icons-material/History';
 import StorageIcon from '@mui/icons-material/Storage';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import SecurityIcon from '@mui/icons-material/Security';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { SystemSetting } from '../services/systemApi';
 
 interface AuditSettingsProps {
@@ -39,6 +42,11 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
   const theme = useTheme();
   const [localSettings, setLocalSettings] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    logSettings: false,
+    monitoring: false,
+    info: false,
+  });
 
   const getSetting = (key: string): SystemSetting | undefined => {
     return settings.find((s) => s.key === key);
@@ -89,6 +97,12 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
   };
 
   const hasUnsavedChanges = Object.keys(localSettings).length > 0;
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
 
   return (
     <Stack spacing={3}>
@@ -116,7 +130,7 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
         <Grid
           size={{
             xs: 12,
-            md: 6
+            md: 12
           }}>
           <Card
             elevation={0}
@@ -128,38 +142,57 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
             }}
           >
             <Box
+              onClick={() => toggleSection('logSettings')}
               sx={{
                 p: 2.5,
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 1.5,
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 1.5,
+                      background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <HistoryIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      Loglama Ayarları
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Sistem loglarının yönetimi
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('logSettings');
                   }}
                 >
-                  <HistoryIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    Loglama Ayarları
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Sistem loglarının yönetimi
-                  </Typography>
-                </Box>
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.logSettings ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
-
-            <Box sx={{ p: 3 }}>
+            <Collapse in={expandedSections.logSettings} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
 
               <Stack spacing={2.5}>
                 <FormControlLabel
@@ -229,7 +262,8 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
                   <Chip label="Kaydedilmemiş" size="small" color="warning" />
                 )}
               </Stack>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
 
@@ -237,7 +271,7 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
         <Grid
           size={{
             xs: 12,
-            md: 6
+            md: 12
           }}>
           <Card
             elevation={0}
@@ -249,38 +283,57 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
             }}
           >
             <Box
+              onClick={() => toggleSection('monitoring')}
               sx={{
                 p: 2.5,
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.03)} 0%, ${alpha(theme.palette.secondary.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 1.5,
-                    background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 1.5,
+                      background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <VisibilityIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      İzleme Ayarları
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Hangi olayların loglanacağı
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('monitoring');
                   }}
                 >
-                  <VisibilityIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    İzleme Ayarları
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Hangi olayların loglanacağı
-                  </Typography>
-                </Box>
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.monitoring ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
-
-            <Box sx={{ p: 3 }}>
+            <Collapse in={expandedSections.monitoring} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
 
               <Stack spacing={2.5}>
                 <FormControlLabel
@@ -387,21 +440,85 @@ const AuditSettings: React.FC<AuditSettingsProps> = ({
                   <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ ml: 5 }} />
                 )}
               </Stack>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
 
         {/* Bilgilendirme */}
-        <Grid size={12}>
-          <Alert severity="info" icon={<HistoryIcon />}>
-            <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
-              Log Görüntüleme
-            </Typography>
-            <Typography variant="body2">
-              Sistem loglarını görüntülemek için <strong>Sistem Logları</strong> sayfasını kullanabilirsiniz. 
-              Loglar burada belirlenen saklama süresi ve maksimum kayıt sayısına göre otomatik olarak temizlenir.
-            </Typography>
-          </Alert>
+        <Grid size={{ xs: 12, md: 12 }}>
+          <Card
+            elevation={0}
+            sx={{
+              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              onClick={() => toggleSection('info')}
+              sx={{
+                p: 2.5,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.03)} 0%, ${alpha(theme.palette.info.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 1.5,
+                      background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <SecurityIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      Log Görüntüleme
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Sistem logları hakkında bilgilendirme
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('info');
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.info ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
+              </Box>
+            </Box>
+            <Collapse in={expandedSections.info} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
+                <Alert severity="info" icon={<HistoryIcon />}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+                    Log Görüntüleme
+                  </Typography>
+                  <Typography variant="body2">
+                    Sistem loglarını görüntülemek için <strong>Sistem Logları</strong> sayfasını kullanabilirsiniz.
+                    Loglar burada belirlenen saklama süresi ve maksimum kayıt sayısına göre otomatik olarak temizlenir.
+                  </Typography>
+                </Alert>
+              </Box>
+            </Collapse>
+          </Card>
         </Grid>
       </Grid>
     </Stack>

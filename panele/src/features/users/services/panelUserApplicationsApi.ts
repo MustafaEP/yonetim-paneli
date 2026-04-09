@@ -124,3 +124,29 @@ export const rejectPanelUserApplication = async (
   return res.data;
 };
 
+export interface DirectPromotePanelUserDto {
+  requestedRoleId: string;
+  email: string;
+  password: string;
+  note?: string;
+  scopes?: RoleScopeDto[];
+}
+
+export interface DirectPromoteResult {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+export const directPromoteMemberToPanelUser = async (
+  memberId: string,
+  dto: DirectPromotePanelUserDto,
+): Promise<DirectPromoteResult> => {
+  const res = await httpClient.post<DirectPromoteResult>(
+    `/panel-user-applications/members/${memberId}/direct`,
+    dto,
+  );
+  return res.data;
+};
+

@@ -1,5 +1,5 @@
 /**
- * seed6.ts — Rol kataloğunu sıfırlar ve 3 özel rol + ADMIN oluşturur.
+ * seed6.ts — Rol kataloğunu sıfırlar ve 5 özel rol + ADMIN oluşturur.
  *
  * Yapılanlar:
  *  - Panel kullanıcı başvuruları silinir (rol FK’si kalkmadan önce).
@@ -8,7 +8,7 @@
  *    silinebiliyorsa silinir, FK engellerse pasif + roller temizlenir.
  *  - Admin dışı tüm kullanıcılardan rol atamaları kaldırılır (hesap kalır, izin yok).
  *  - Tüm CustomRole / izin / rol kapsamı kayıtları silinir.
- *  - ADMIN + 3 yeni rol oluşturulur; admin kullanıcıya ADMIN atanır.
+ *  - ADMIN + 5 yeni rol oluşturulur; admin kullanıcıya ADMIN atanır.
  *
  * Çalıştırma: npx ts-node -r tsconfig-paths/register prisma/seed6.ts
  * veya: npm run prisma:seed6
@@ -83,6 +83,8 @@ const ROLE_MERKEZ_OPERASYON = {
     'DOCUMENT_TEMPLATE_MANAGE',
     'DOCUMENT_MEMBER_HISTORY_VIEW',
     'DOCUMENT_GENERATE_PDF',
+    'DOCUMENT_UPLOAD',
+    'DOCUMENT_DOWNLOAD',
     'REPORT_GLOBAL_VIEW',
     'REPORT_REGION_VIEW',
     'REPORT_MEMBER_STATUS_VIEW',
@@ -99,8 +101,20 @@ const ROLE_MERKEZ_OPERASYON = {
     'INSTITUTION_CREATE',
     'INSTITUTION_UPDATE',
     'INSTITUTION_APPROVE',
-    'ACCOUNTING_VIEW',
-    'ACCOUNTING_EXPORT',
+    'PROFESSION_VIEW',
+    'PROFESSION_CREATE',
+    'PROFESSION_UPDATE',
+    'PROFESSION_DELETE',
+    'TEVKIFAT_VIEW',
+    'TEVKIFAT_EXPORT',
+    'TEVKIFAT_TITLE_VIEW',
+    'TEVKIFAT_TITLE_CREATE',
+    'TEVKIFAT_TITLE_UPDATE',
+    'TEVKIFAT_TITLE_DELETE',
+    'TEVKIFAT_CENTER_VIEW',
+    'TEVKIFAT_CENTER_CREATE',
+    'TEVKIFAT_CENTER_UPDATE',
+    'TEVKIFAT_CENTER_DELETE',
     'PANEL_USER_APPLICATION_LIST',
     'PANEL_USER_APPLICATION_VIEW',
     'PANEL_USER_APPLICATION_APPROVE',
@@ -134,6 +148,7 @@ const ROLE_BOLGE_YETKILISI = {
     'NOTIFY_OWN_SCOPE',
     'INSTITUTION_LIST',
     'INSTITUTION_VIEW',
+    'DOCUMENT_UPLOAD',
     'PANEL_USER_APPLICATION_CREATE',
   ],
 };
@@ -146,8 +161,16 @@ const ROLE_MUHASEBE = {
   description: 'Muhasebe: kesintiler, avanslar, faturalar, tevkifat',
   hasScopeRestriction: false,
   permissions: [
-    'ACCOUNTING_VIEW',
-    'ACCOUNTING_EXPORT',
+    'TEVKIFAT_VIEW',
+    'TEVKIFAT_EXPORT',
+    'TEVKIFAT_TITLE_VIEW',
+    'TEVKIFAT_TITLE_CREATE',
+    'TEVKIFAT_TITLE_UPDATE',
+    'TEVKIFAT_TITLE_DELETE',
+    'TEVKIFAT_CENTER_VIEW',
+    'TEVKIFAT_CENTER_CREATE',
+    'TEVKIFAT_CENTER_UPDATE',
+    'TEVKIFAT_CENTER_DELETE',
     'TEVKIFAT_FILE_UPLOAD',
     'TEVKIFAT_FILE_APPROVE',
     'MEMBER_PAYMENT_ADD',
@@ -157,11 +180,51 @@ const ROLE_MUHASEBE = {
     'ADVANCE_VIEW',
     'ADVANCE_ADD',
     'INVOICE_VIEW',
-    'INVOICE_ADD',
+    'INVOICE_CREATE',
+    'INVOICE_UPDATE',
+    'INVOICE_DELETE',
     'REPORT_DUES_VIEW',
     'MEMBER_VIEW',
     'MEMBER_LIST',
   ],
+};
+
+/**
+ * İlçe Temsilcisi: ilçe bazlı (scope zorunlu) üye/evrak/fatura/kurum işlemleri.
+ */
+const ROLE_ILCE_TEMSILCISI = {
+  name: 'ILCE_TEMSILCISI',
+  description:
+    'İlçe bazlı yetki: başvuru, kendi ilçesindeki üyeler, evrak görüntüleme, kurum/tevkifat/fatura ekranları',
+  hasScopeRestriction: true,
+  permissions: [
+    'MEMBER_LIST',
+    'MEMBER_VIEW',
+    'MEMBER_CREATE_APPLICATION',
+    'MEMBER_LIST_BY_PROVINCE',
+    'REGION_LIST',
+    'DOCUMENT_MEMBER_HISTORY_VIEW',
+    'DOCUMENT_UPLOAD',
+    'DOCUMENT_DOWNLOAD',
+    'INSTITUTION_LIST',
+    'INSTITUTION_VIEW',
+    'INSTITUTION_CREATE',
+    'TEVKIFAT_VIEW',
+    'TEVKIFAT_TITLE_VIEW',
+    'TEVKIFAT_CENTER_VIEW',
+    'INVOICE_VIEW',
+  ],
+};
+
+/**
+ * İl Temsilcisi: İlçe Temsilcisi ile aynı yetkiler, il bazlı scope ile kullanılır.
+ */
+const ROLE_IL_TEMSILCISI = {
+  name: 'IL_TEMSILCISI',
+  description:
+    'İl bazlı yetki: ilçe temsilcisi ile aynı izinler, sadece kendi il kapsamındaki veriler',
+  hasScopeRestriction: true,
+  permissions: [...ROLE_ILCE_TEMSILCISI.permissions, 'MEMBER_UPDATE'],
 };
 
 async function disconnectAllCustomRoles(userId: string) {
@@ -350,7 +413,13 @@ async function main() {
   });
   console.log(`   ✅ ${ADMIN_ROLE_NAME}`);
 
-  const templates = [ROLE_MERKEZ_OPERASYON, ROLE_BOLGE_YETKILISI, ROLE_MUHASEBE];
+  const templates = [
+    ROLE_MERKEZ_OPERASYON,
+    ROLE_BOLGE_YETKILISI,
+    ROLE_MUHASEBE,
+    ROLE_ILCE_TEMSILCISI,
+    ROLE_IL_TEMSILCISI,
+  ];
   for (const t of templates) {
     await prisma.customRole.create({
       data: {
@@ -375,7 +444,9 @@ async function main() {
   console.log(`\n👤 Admin kullanıcıya ${ADMIN_ROLE_NAME} atandı: ${adminEmail}\n`);
 
   console.log('✅ seed6 tamamlandı.');
-  console.log('   Oluşturulan roller: ADMIN, MERKEZ_OPERASYON, BOLGE_YETKILISI, MUHASEBE');
+  console.log(
+    '   Oluşturulan roller: ADMIN, MERKEZ_OPERASYON, BOLGE_YETKILISI, MUHASEBE, ILCE_TEMSILCISI, IL_TEMSILCISI',
+  );
   console.log(
     '   Not: Admin dışı kullanıcıların rolü yok; panel erişimi için USER_ASSIGN_ROLE ile yeniden atama yapın.',
   );

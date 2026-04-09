@@ -138,7 +138,7 @@ export class AuthService {
       throw new UnauthorizedException('Kullanıcı bulunamadı');
     }
     if (!user.isActive || user.deletedAt) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('E-posta veya şifre hatalı');
     }
 
     const passwordValid = await this.passwordService.compare(
@@ -146,7 +146,7 @@ export class AuthService {
       user.passwordHash,
     );
     if (!passwordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('E-posta veya şifre hatalı');
     }
 
     return user;
@@ -273,7 +273,7 @@ export class AuthService {
       },
     });
     if (!stored) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException('Geçersiz veya süresi dolmuş yenileme belirteci');
     }
 
     await this.prisma.refreshToken.update({
@@ -283,7 +283,7 @@ export class AuthService {
 
     const user = await this.usersService.findById(userId);
     if (!user || !user.isActive || user.deletedAt) {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException('Geçersiz belirteç');
     }
     this.logRefresh(userId);
     return this.createSession(user as UserWithRoles);

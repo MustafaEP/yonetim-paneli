@@ -11,15 +11,21 @@ import {
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import SecurityIcon from '@mui/icons-material/Security';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import HistoryIcon from '@mui/icons-material/History';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 
 export type SettingsCategory =
   | 'GENERAL'
   | 'MEMBERSHIP'
-  | 'DUES'
+  | 'BULK_REGISTRATION'
+  | 'KBS_DATA'
+  | 'DASHBOARD'
+  | 'REPORTS'
   | 'SECURITY'
   | 'AUDIT'
   | 'MAINTENANCE';
@@ -50,10 +56,28 @@ const categories: CategoryItem[] = [
     description: 'Üye başvuru ve onay',
   },
   {
-    id: 'DUES',
-    label: 'Kesinti',
-    icon: <AccountBalanceIcon />,
-    description: 'Aidat ve ödeme ayarları',
+    id: 'BULK_REGISTRATION',
+    label: 'Toplu Veri Kayıt',
+    icon: <UploadFileIcon />,
+    description: 'CSV ile toplu üye kaydı',
+  },
+  {
+    id: 'KBS_DATA',
+    label: 'KBS Veri Çekme',
+    icon: <CloudDownloadIcon />,
+    description: 'KBS veri entegrasyonu',
+  },
+  {
+    id: 'DASHBOARD',
+    label: 'Dashboard Ayarları',
+    icon: <DashboardIcon />,
+    description: 'Dashboard görünürlük ayarları',
+  },
+  {
+    id: 'REPORTS',
+    label: 'Rapor Ayarları',
+    icon: <BarChartIcon />,
+    description: 'Rapor görünürlük ayarları',
   },
   {
     id: 'SECURITY',

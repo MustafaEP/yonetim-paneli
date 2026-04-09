@@ -28,7 +28,10 @@ import { UserDemotionApplicationService } from '../../application/services/user-
 import { UserMapper } from '../../application/mappers/user.mapper';
 import { UserExceptionFilter } from '../filters/user-exception.filter';
 import { UserValidationPipe } from '../pipes/user-validation.pipe';
-import { UpdateUserRolesDto } from '../../application/dto/create-user.dto';
+import {
+  UpdateUserRolesDto,
+  UpdateUserAccountDto,
+} from '../../application/dto/create-user.dto';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 @ApiTags('Users')
@@ -79,6 +82,14 @@ export class UsersController {
       });
     }
 
+    const userWithMember = dbUser as typeof dbUser & {
+      member?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } | null;
+    };
+
     return {
       id: dbUser.id,
       email: dbUser.email,
@@ -86,6 +97,13 @@ export class UsersController {
       lastName: dbUser.lastName,
       roles: userWithRoles.customRoles?.map((r) => r.name) || [],
       permissions,
+      member: userWithMember.member
+        ? {
+            id: userWithMember.member.id,
+            firstName: userWithMember.member.firstName,
+            lastName: userWithMember.member.lastName,
+          }
+        : null,
     };
   }
 
@@ -289,6 +307,81 @@ export class UsersController {
           r.permissions.map((p) => p.permission),
         ) || [],
       isActive: prismaUser.isActive,
+    };
+  }
+
+  @Permissions(Permission.PANEL_USER_APPLICATION_APPROVE)
+  @Patch(':id/account')
+  @ApiOperation({
+    summary: 'Panel kullanıcı hesap bilgilerini güncelle',
+    description: 'Email ve opsiyonel olarak şifreyi günceller',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Kullanıcı ID',
+    example: 'user-uuid-123',
+  })
+  @ApiBody({ type: UpdateUserAccountDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Kullanıcı hesap bilgileri güncellendi',
+  })
+  async updateUserAccount(
+    @Param('id') id: string,
+    @Body() body: UpdateUserAccountDto,
+  ) {
+    const updated = await this.usersService.updateAccount(id, {
+      email: body.email,
+      password: body.password,
+    });
+
+    if (!updated) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    const userWithRoles = updated as typeof updated & {
+      customRoles?: Array<{
+        name: string;
+        permissions: Array<{ permission: string }>;
+      }>;
+      member?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        nationalId: string;
+        phone: string | null;
+        email: string | null;
+        status: string;
+        registrationNumber: string | null;
+      } | null;
+    };
+
+    return {
+      id: updated.id,
+      email: updated.email,
+      firstName: updated.firstName,
+      lastName: updated.lastName,
+      roles: userWithRoles.customRoles?.map((r) => r.name) || [],
+      permissions:
+        userWithRoles.customRoles?.flatMap((r) =>
+          r.permissions.map((p) => p.permission),
+        ) || [],
+      isActive: updated.isActive,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+      deletedAt: updated.deletedAt?.toISOString() || null,
+      member: userWithRoles.member
+        ? {
+            id: userWithRoles.member.id,
+            firstName: userWithRoles.member.firstName,
+            lastName: userWithRoles.member.lastName,
+            nationalId: userWithRoles.member.nationalId,
+            phone: userWithRoles.member.phone,
+            email: userWithRoles.member.email,
+            status: userWithRoles.member.status,
+            registrationNumber: userWithRoles.member.registrationNumber,
+          }
+        : null,
     };
   }
 }

@@ -34,7 +34,7 @@ const AccountingMembersPage: React.FC = () => {
   const theme = useTheme();
   const { hasPermission } = useAuth();
   const toast = useToast();
-  const canExport = hasPermission('ACCOUNTING_EXPORT');
+  const canExport = hasPermission('TEVKIFAT_EXPORT');
 
   const [members, setMembers] = useState<AccountingMember[]>([]);
   const [loading, setLoading] = useState(true);

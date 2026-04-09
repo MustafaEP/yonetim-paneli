@@ -80,6 +80,8 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       'DOCUMENT_TEMPLATE_MANAGE',
       'DOCUMENT_MEMBER_HISTORY_VIEW',
       'DOCUMENT_GENERATE_PDF',
+      'DOCUMENT_UPLOAD',
+      'DOCUMENT_DOWNLOAD',
     ],
   },
   {
@@ -127,12 +129,31 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     ],
   },
   {
+    id: 'PROFESSIONS',
+    label: 'Meslekler',
+    description: 'Meslek yönetim yetkileri',
+    permissions: [
+      'PROFESSION_VIEW',
+      'PROFESSION_CREATE',
+      'PROFESSION_UPDATE',
+      'PROFESSION_DELETE',
+    ],
+  },
+  {
     id: 'ACCOUNTING',
     label: 'Muhasebe',
     description: 'Muhasebe ve tevkifat yönetim yetkileri',
     permissions: [
-      'ACCOUNTING_VIEW',
-      'ACCOUNTING_EXPORT',
+      'TEVKIFAT_VIEW',
+      'TEVKIFAT_EXPORT',
+      'TEVKIFAT_TITLE_VIEW',
+      'TEVKIFAT_TITLE_CREATE',
+      'TEVKIFAT_TITLE_UPDATE',
+      'TEVKIFAT_TITLE_DELETE',
+      'TEVKIFAT_CENTER_VIEW',
+      'TEVKIFAT_CENTER_CREATE',
+      'TEVKIFAT_CENTER_UPDATE',
+      'TEVKIFAT_CENTER_DELETE',
       'TEVKIFAT_FILE_UPLOAD',
       'TEVKIFAT_FILE_APPROVE',
     ],
@@ -180,7 +201,12 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     id: 'INVOICES',
     label: 'Faturalar',
     description: 'Fatura kayıtları',
-    permissions: ['INVOICE_VIEW', 'INVOICE_ADD'],
+    permissions: [
+      'INVOICE_VIEW',
+      'INVOICE_CREATE',
+      'INVOICE_UPDATE',
+      'INVOICE_DELETE',
+    ],
   },
 ];
 

@@ -90,6 +90,7 @@ const MemberApplicationCreatePage: React.FC = () => {
   const requireInstitutionRegNo = getSettingValue('MEMBERSHIP_REQUIRE_INSTITUTION_REG_NO') === 'true';
 
   const canCreateApplication = hasPermission('MEMBER_CREATE_APPLICATION');
+  const canUploadDocuments = hasPermission('DOCUMENT_UPLOAD');
   const hasMemberListByProvince = hasPermission('MEMBER_LIST_BY_PROVINCE');
   const hasMemberList = hasPermission('MEMBER_LIST');
 
@@ -947,6 +948,12 @@ const MemberApplicationCreatePage: React.FC = () => {
       
       // Dosyaları yükle (eğer varsa)
       if (uploadedFiles.length > 0) {
+        if (!canUploadDocuments) {
+          setError('Uye olusturuldu ancak evrak yukleme yetkiniz olmadigi icin dosyalar yuklenemedi.');
+          setErrorDialogOpen(true);
+          navigate(`/members/${created.id}?source=application`);
+          return;
+        }
         try {
           // Her dosya için belge tipi kontrolü yap
           for (let index = 0; index < uploadedFiles.length; index++) {

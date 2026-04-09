@@ -78,7 +78,7 @@ export class SystemLogInterceptor implements NestInterceptor {
                 details: {
                   email: body?.email,
                   success: false,
-                  error: error.message || 'Invalid credentials',
+                  error: error.message || 'Kimlik doğrulama bilgileri hatalı',
                 },
                 ipAddress,
                 userAgent,
@@ -205,7 +205,7 @@ export class SystemLogInterceptor implements NestInterceptor {
               details: {
                 ...details,
                 responseStatus: 'error',
-                error: error.message || 'Unknown error',
+                error: error.message || 'Bilinmeyen hata',
                 errorStatus: error.status || 500,
               },
               ipAddress: this.getIpAddress(request),

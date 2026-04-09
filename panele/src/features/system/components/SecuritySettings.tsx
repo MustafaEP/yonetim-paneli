@@ -16,11 +16,14 @@ import {
   Chip,
   Alert,
   InputAdornment,
+  Collapse,
+  IconButton,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SecurityIcon from '@mui/icons-material/Security';
 import LockIcon from '@mui/icons-material/Lock';
 import TimerIcon from '@mui/icons-material/Timer';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { SystemSetting } from '../services/systemApi';
 
 interface SecuritySettingsProps {
@@ -37,6 +40,10 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
   const theme = useTheme();
   const [localSettings, setLocalSettings] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    passwordPolicy: false,
+    sessionManagement: false,
+  });
 
   const getSetting = (key: string): SystemSetting | undefined => {
     return settings.find((s) => s.key === key);
@@ -87,6 +94,12 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
   };
 
   const hasUnsavedChanges = Object.keys(localSettings).length > 0;
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
 
   return (
     <Stack spacing={3}>
@@ -114,7 +127,7 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
         <Grid
           size={{
             xs: 12,
-            md: 6
+            md: 12
           }}>
           <Card
             elevation={0}
@@ -126,38 +139,57 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
             }}
           >
             <Box
+              onClick={() => toggleSection('passwordPolicy')}
               sx={{
                 p: 2.5,
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 1.5,
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 1.5,
+                      background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <LockIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      Şifre Politikası
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Şifre gereksinimleri ve kuralları
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('passwordPolicy');
                   }}
                 >
-                  <LockIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    Şifre Politikası
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Şifre gereksinimleri ve kuralları
-                  </Typography>
-                </Box>
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.passwordPolicy ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
-
-            <Box sx={{ p: 3 }}>
+            <Collapse in={expandedSections.passwordPolicy} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
 
               <Stack spacing={2.5}>
                 <TextField
@@ -279,7 +311,8 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
                 <Chip label="Kaydedilmemiş" size="small" color="warning" sx={{ ml: 5 }} />
               )}
               </Stack>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
 
@@ -287,7 +320,7 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
         <Grid
           size={{
             xs: 12,
-            md: 6
+            md: 12
           }}>
           <Card
             elevation={0}
@@ -299,38 +332,57 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
             }}
           >
             <Box
+              onClick={() => toggleSection('sessionManagement')}
               sx={{
                 p: 2.5,
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.03)} 0%, ${alpha(theme.palette.secondary.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 1.5,
-                    background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 1.5,
+                      background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <TimerIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      Oturum Yönetimi
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Oturum zaman aşımı ve erişim kontrolleri
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('sessionManagement');
                   }}
                 >
-                  <TimerIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    Oturum Yönetimi
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Oturum zaman aşımı ve erişim kontrolleri
-                  </Typography>
-                </Box>
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.sessionManagement ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
-
-            <Box sx={{ p: 3 }}>
+            <Collapse in={expandedSections.sessionManagement} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
 
               <Stack spacing={2.5}>
                 <TextField
@@ -386,7 +438,8 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
                   <Chip label="Kaydedilmemiş" size="small" color="warning" />
                 )}
               </Stack>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
       </Grid>

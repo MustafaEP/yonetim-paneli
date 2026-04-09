@@ -63,8 +63,8 @@ export class RegionsController {
     description: 'Tüm illeri listeler',
   })
   @ApiResponse({ status: 200, description: 'İl listesi', type: 'array' })
-  async getProvinces() {
-    return this.regionsService.listProvinces();
+  async getProvinces(@CurrentUser() user: CurrentUserData) {
+    return this.regionsService.listProvinces(user);
   }
 
   @Permissions(Permission.BRANCH_MANAGE)
@@ -126,8 +126,11 @@ export class RegionsController {
     example: 'province-uuid-123',
   })
   @ApiResponse({ status: 200, description: 'İlçe listesi', type: 'array' })
-  async getDistricts(@Query('provinceId') provinceId?: string) {
-    return this.regionsService.listDistricts(provinceId);
+  async getDistricts(
+    @Query('provinceId') provinceId?: string,
+    @CurrentUser() user?: CurrentUserData,
+  ) {
+    return this.regionsService.listDistricts(provinceId, user);
   }
 
   @Permissions(Permission.BRANCH_MANAGE)

@@ -23,12 +23,15 @@ import {
   Chip,
   Fade,
   CircularProgress,
+  Collapse,
+  IconButton,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import DescriptionIcon from '@mui/icons-material/Description';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { SystemSetting } from '../services/systemApi';
 import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
 import MemberGroupsManagement from './MemberGroupsManagement';
@@ -94,6 +97,14 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
   const { refreshSettings } = useSystemSettings();
   const [localSettings, setLocalSettings] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    application: false,
+    regNumber: false,
+    approvalFlow: false,
+    lifecycle: false,
+    requiredFields: false,
+    memberGroups: false,
+  });
 
   const getSetting = (key: string): SystemSetting | undefined => {
     return settings.find((s) => s.key === key);
@@ -175,6 +186,13 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
     }
   };
 
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
+
   const hasUnsavedChanges = Object.keys(localSettings).length > 0;
 
   if (loading) {
@@ -233,8 +251,16 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
         {/* Başvuru Ayarları */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={0} sx={cardSx(theme)}>
-            <Box sx={sectionHeaderSx(theme, theme.palette.primary.main, theme.palette.primary.dark)}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              onClick={() => toggleSection('application')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.primary.main, theme.palette.primary.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={iconBoxSx(theme, theme.palette.primary.main, theme.palette.primary.dark)}>
                   <AssignmentIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
                 </Box>
@@ -247,8 +273,33 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                   </Typography>
                 </Box>
               </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('application');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.primary.main,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.08) },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.application ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
+              </Box>
             </Box>
-            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+            <Collapse in={expandedSections.application} timeout="auto" unmountOnExit>
+              <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
               <Box
                 sx={{
                   mb: 3,
@@ -259,19 +310,6 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                   justifyContent: 'space-between',
                 }}
               >
-                <Typography variant="body2" color="text.secondary">
-                  Birden fazla üyeyi CSV dosyası ile toplu olarak sisteme kaydetmek için toplu üye kayıt
-                  sayfasını kullanabilirsiniz.
-                </Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<PeopleIcon fontSize="small" />}
-                  component={RouterLink}
-                  to="/members/bulk-registration"
-                >
-                  Toplu Üye Kayıt Sayfası
-                </Button>
               </Box>
               <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -345,14 +383,23 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
               </Grid>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
         {/* Kayıt Numarası Ayarları */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={0} sx={cardSx(theme)}>
-            <Box sx={sectionHeaderSx(theme, theme.palette.info.main, theme.palette.info.dark)}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              onClick={() => toggleSection('regNumber')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.info.main, theme.palette.info.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={iconBoxSx(theme, theme.palette.info.main, theme.palette.info.dark)}>
                   <PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
                 </Box>
@@ -365,8 +412,33 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                   </Typography>
                 </Box>
               </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('regNumber');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.info.main,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': { backgroundColor: alpha(theme.palette.info.main, 0.08) },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.regNumber ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
+              </Box>
             </Box>
-            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+            <Collapse in={expandedSections.regNumber} timeout="auto" unmountOnExit>
+              <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
               <Grid container spacing={3}>
             <Grid
               size={{
@@ -469,14 +541,23 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               )}
             </Grid>
               </Grid>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
         {/* Onay Akışı Ayarları */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={0} sx={cardSx(theme)}>
-            <Box sx={sectionHeaderSx(theme, theme.palette.success.main, theme.palette.success.dark)}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              onClick={() => toggleSection('approvalFlow')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.success.main, theme.palette.success.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={iconBoxSx(theme, theme.palette.success.main, theme.palette.success.dark)}>
                   <AccountTreeIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
                 </Box>
@@ -489,8 +570,33 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                   </Typography>
                 </Box>
               </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('approvalFlow');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.success.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.success.main,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': { backgroundColor: alpha(theme.palette.success.main, 0.08) },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.approvalFlow ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
+              </Box>
             </Box>
-            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+            <Collapse in={expandedSections.approvalFlow} timeout="auto" unmountOnExit>
+              <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
               <Stack spacing={2.5}>
             <FormControlLabel
               control={
@@ -553,14 +659,23 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               Onay akışı aktif olduğunda, üye başvuruları onaylanana kadar PENDING durumunda kalır.
             </Alert>
               </Stack>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
         {/* Üyelik Yaşam Döngüsü */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={0} sx={cardSx(theme)}>
-            <Box sx={sectionHeaderSx(theme, theme.palette.warning.main, theme.palette.warning.dark)}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              onClick={() => toggleSection('lifecycle')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.warning.main, theme.palette.warning.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={iconBoxSx(theme, theme.palette.warning.main, theme.palette.warning.dark)}>
                   <DescriptionIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
                 </Box>
@@ -573,8 +688,33 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                   </Typography>
                 </Box>
               </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('lifecycle');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.warning.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.warning.dark,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': { backgroundColor: alpha(theme.palette.warning.main, 0.08) },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.lifecycle ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
+              </Box>
             </Box>
-            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+            <Collapse in={expandedSections.lifecycle} timeout="auto" unmountOnExit>
+              <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
               <Stack spacing={2.5}>
             <FormControlLabel
               control={
@@ -650,14 +790,23 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               <Chip label="Kaydedilmemiş" size="small" color="warning" />
             )}
               </Stack>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
         {/* Zorunlu Alanlar */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={0} sx={cardSx(theme)}>
-            <Box sx={sectionHeaderSx(theme, theme.palette.secondary.main, theme.palette.secondary.dark)}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              onClick={() => toggleSection('requiredFields')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.secondary.main, theme.palette.secondary.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={iconBoxSx(theme, theme.palette.secondary.main, theme.palette.secondary.dark)}>
                   <AssignmentIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
                 </Box>
@@ -670,8 +819,33 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
                   </Typography>
                 </Box>
               </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('requiredFields');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.secondary.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.secondary.main,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': { backgroundColor: alpha(theme.palette.secondary.main, 0.08) },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.requiredFields ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
+              </Box>
             </Box>
-            <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+            <Collapse in={expandedSections.requiredFields} timeout="auto" unmountOnExit>
+              <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
               <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
             Aşağıdaki alanlar üye başvurusu için her zaman zorunludur: TC Kimlik No, Ad, Soyad,
             Çalıştığı İl, Çalıştığı İlçe, Kurum, Kadro Ünvanı, Bağlı Olduğu Şube
@@ -713,12 +887,66 @@ const MembershipSettings: React.FC<MembershipSettingsProps> = ({
               </Grid>
             ))}
               </Grid>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
         {/* Üye Grupları Yönetimi */}
         <Grid size={{ xs: 12 }}>
-          <MemberGroupsManagement canManage={canManage} />
+          <Card elevation={0} sx={cardSx(theme)}>
+            <Box
+              onClick={() => toggleSection('memberGroups')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.primary.main, theme.palette.primary.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={iconBoxSx(theme, theme.palette.primary.main, theme.palette.primary.dark)}>
+                    <PeopleIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                      Üye Grupları Yönetimi
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                      Üye gruplarını listeleyin, düzenleyin ve yönetin
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('memberGroups');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.primary.main,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.08) },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.memberGroups ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
+              </Box>
+            </Box>
+            <Collapse in={expandedSections.memberGroups} timeout="auto" unmountOnExit>
+              <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+                <MemberGroupsManagement canManage={canManage} />
+              </Box>
+            </Collapse>
+          </Card>
         </Grid>
       </Grid>
     </Fade>

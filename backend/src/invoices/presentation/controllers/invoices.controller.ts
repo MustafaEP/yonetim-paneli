@@ -59,7 +59,7 @@ export class InvoicesController {
     });
   }
 
-  @Permissions(Permission.INVOICE_ADD)
+  @Permissions(Permission.INVOICE_CREATE)
   @Post()
   @ApiOperation({ summary: 'Yeni fatura oluştur' })
   @ApiResponse({ status: 201, description: 'Fatura oluşturuldu' })
@@ -70,7 +70,7 @@ export class InvoicesController {
     return this.invoicesService.createInvoice(dto, user.userId);
   }
 
-  @Permissions(Permission.INVOICE_ADD)
+  @Permissions(Permission.INVOICE_CREATE, Permission.INVOICE_UPDATE)
   @Post('upload-document')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
@@ -109,7 +109,7 @@ export class InvoicesController {
     await this.invoicesService.viewInvoiceDocument(id, res);
   }
 
-  @Permissions(Permission.INVOICE_VIEW)
+  @Permissions(Permission.DOCUMENT_DOWNLOAD)
   @Get(':id/document/download')
   @ApiOperation({ summary: 'Fatura belgesi indir' })
   @ApiParam({ name: 'id', description: 'Fatura ID' })
@@ -125,7 +125,7 @@ export class InvoicesController {
     return this.invoicesService.getInvoiceById(id);
   }
 
-  @Permissions(Permission.INVOICE_ADD)
+  @Permissions(Permission.INVOICE_UPDATE)
   @Patch(':id')
   @ApiOperation({ summary: 'Faturayı güncelle' })
   @ApiParam({ name: 'id', description: 'Fatura ID' })
@@ -133,7 +133,7 @@ export class InvoicesController {
     return this.invoicesService.updateInvoice(id, dto);
   }
 
-  @Permissions(Permission.INVOICE_ADD)
+  @Permissions(Permission.INVOICE_DELETE)
   @Delete(':id')
   @ApiOperation({ summary: 'Faturayı sil (soft delete)' })
   @ApiParam({ name: 'id', description: 'Fatura ID' })

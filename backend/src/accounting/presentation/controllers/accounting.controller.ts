@@ -58,7 +58,7 @@ export class AccountingController {
   ) {}
 
   // Legacy endpoints - using legacy service for backward compatibility
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_VIEW)
   @Get('members')
   @ApiOperation({
     summary: 'Muhasebe üyeleri listele',
@@ -106,7 +106,7 @@ export class AccountingController {
     return this.accountingService.uploadTevkifatFile(dto, user.userId);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_VIEW)
   @Get('tevkifat-files/:id/download')
   @ApiOperation({ summary: 'Tevkifat dosyası/evrakı indir' })
   @ApiParam({ name: 'id', description: 'Tevkifat dosya ID' })
@@ -119,7 +119,7 @@ export class AccountingController {
     await this.accountingService.downloadTevkifatFile(id, res);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_VIEW)
   @Get('tevkifat-files')
   @ApiOperation({
     summary: 'Tevkifat dosyalarını listele',
@@ -168,7 +168,7 @@ export class AccountingController {
   }
 
   // Tevkifat Merkezleri CRUD - Using new application service
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_CENTER_VIEW)
   @Get('tevkifat-centers')
   @ApiOperation({ summary: 'Tevkifat merkezlerini listele' })
   @ApiQuery({
@@ -192,15 +192,16 @@ export class AccountingController {
     @Query('provinceId') provinceId?: string,
     @Query('districtId') districtId?: string,
     @Query('activeOnly') activeOnly?: string,
+    @CurrentUser() user?: CurrentUserData,
   ) {
     return this.accountingService.listTevkifatCenters({
       provinceId,
       districtId,
       activeOnly: activeOnly === 'true',
-    });
+    }, user);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_CENTER_VIEW)
   @Get('tevkifat-centers/:id')
   @ApiOperation({ summary: 'Tevkifat merkezi detayını getir' })
   @ApiParam({ name: 'id', description: 'Tevkifat merkezi ID' })
@@ -210,7 +211,7 @@ export class AccountingController {
     return this.accountingService.getTevkifatCenterById(id);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_CENTER_CREATE)
   @Post('tevkifat-centers')
   @ApiOperation({ summary: 'Tevkifat merkezi oluştur' })
   @ApiResponse({ status: 201, description: 'Tevkifat merkezi oluşturuldu' })
@@ -224,7 +225,7 @@ export class AccountingController {
     return this.accountingService.getTevkifatCenterById(center.id);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_CENTER_UPDATE)
   @Patch('tevkifat-centers/:id')
   @ApiOperation({ summary: 'Tevkifat merkezi güncelle' })
   @ApiParam({ name: 'id', description: 'Tevkifat merkezi ID' })
@@ -247,7 +248,7 @@ export class AccountingController {
     return this.accountingService.getTevkifatCenterById(center.id);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_CENTER_DELETE)
   @Delete('tevkifat-centers/:id')
   @ApiOperation({
     summary: 'Tevkifat merkezi sil (pasif yap)',
@@ -272,7 +273,7 @@ export class AccountingController {
     return this.accountingService.getTevkifatCenterById(id);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_CENTER_UPDATE)
   @Post('tevkifat-centers/:id/upload-document')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
@@ -337,7 +338,7 @@ export class AccountingController {
   }
 
   // Tevkifat Unvanları CRUD - Using new application service
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_TITLE_VIEW)
   @Get('tevkifat-titles')
   @ApiOperation({ summary: 'Tevkifat unvanlarını listele' })
   @ApiResponse({ status: 200, description: 'Tevkifat unvanları listesi' })
@@ -346,7 +347,7 @@ export class AccountingController {
     return this.accountingService.listTevkifatTitles();
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_TITLE_VIEW)
   @Get('tevkifat-titles/:id')
   @ApiOperation({ summary: 'Tevkifat unvanı detayını getir' })
   @ApiParam({ name: 'id', description: 'Tevkifat unvanı ID' })
@@ -357,7 +358,7 @@ export class AccountingController {
     return this.accountingService.getTevkifatTitleById(id);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_TITLE_CREATE)
   @Post('tevkifat-titles')
   @ApiOperation({ summary: 'Tevkifat unvanı oluştur' })
   @ApiResponse({ status: 201, description: 'Tevkifat unvanı oluşturuldu' })
@@ -371,7 +372,7 @@ export class AccountingController {
     );
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_TITLE_UPDATE)
   @Patch('tevkifat-titles/:id')
   @ApiOperation({ summary: 'Tevkifat unvanı güncelle' })
   @ApiParam({ name: 'id', description: 'Tevkifat unvanı ID' })
@@ -389,7 +390,7 @@ export class AccountingController {
     return this.accountingService.getTevkifatTitleById(id);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_TITLE_DELETE)
   @Delete('tevkifat-titles/:id')
   @ApiOperation({ summary: 'Tevkifat unvanı sil (kalıcı silme)' })
   @ApiParam({ name: 'id', description: 'Tevkifat unvanı ID' })

@@ -87,6 +87,12 @@ export class MemberUpdateApplicationService {
 
       // 4. Domain Entity'de update method'unu çağır
       member.update(updateData);
+      const newData = this.prepareHistoryData(member);
+      if (!this.hasMeaningfulChanges(oldData, newData)) {
+        throw new BadRequestException(
+          'Gönderilen bilgiler mevcut verilerle aynı. Güncellenecek bir alan bulunamadı.',
+        );
+      }
 
       // 4b. İstifa/ihraç/pasif: Üyelik Geçmişi için MemberMembershipPeriod kaydı oluştur (veritabanına yaz)
       if (isCancellationStatus && (regNo || member.id)) {
@@ -111,7 +117,6 @@ export class MemberUpdateApplicationService {
       await this.memberRepository.save(member);
 
       // 6. History log
-      const newData = this.prepareHistoryData(member);
       await this.memberHistoryService.logMemberUpdate(
         member.id,
         command.updatedByUserId,
@@ -142,6 +147,7 @@ export class MemberUpdateApplicationService {
     return {
       firstName: dto.firstName,
       lastName: dto.lastName,
+      nationalId: dto.nationalId,
       phone: dto.phone,
       email: dto.email,
       motherName: dto.motherName,
@@ -180,8 +186,10 @@ export class MemberUpdateApplicationService {
     return {
       firstName: member.firstName,
       lastName: member.lastName,
+      nationalId: member.nationalId.getValue(),
       phone: member.phone,
       email: member.email,
+      birthDate: member.birthDate,
       status: member.status.toString(),
       approvedByUserId: member.approvedByUserId,
       approvedAt: member.approvedAt,
@@ -210,5 +218,24 @@ export class MemberUpdateApplicationService {
       cancelledAt: member.cancelledAt,
       cancellationReason: member.cancellationReason,
     };
+  }
+
+  private hasMeaningfulChanges(
+    oldData: Record<string, any>,
+    newData: Record<string, any>,
+  ): boolean {
+    const normalize = (v: unknown): unknown => {
+      if (v instanceof Date) return v.toISOString();
+      if (v === undefined) return null;
+      return v;
+    };
+
+    const keys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+    for (const key of keys) {
+      if (normalize(oldData[key]) !== normalize(newData[key])) {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -93,6 +93,9 @@ export interface MemberDetail extends MemberListItem {
     firstName: string;
     lastName: string;
     email: string;
+    customRoles?: Array<{
+      name: string;
+    }>;
   } | null;
   approvedBy?: {
     id: string;

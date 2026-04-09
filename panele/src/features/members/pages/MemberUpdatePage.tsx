@@ -5,11 +5,8 @@ import {
   Card,
   Typography,
   TextField,
-  MenuItem,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
+  Autocomplete,
   useTheme,
   alpha,
   InputAdornment,
@@ -138,6 +135,24 @@ const MemberUpdatePage: React.FC = () => {
   const [tevkifatCenters, setTevkifatCenters] = useState<TevkifatCenter[]>([]);
   const [tevkifatTitles, setTevkifatTitles] = useState<TevkifatTitle[]>([]);
   const [memberGroups, setMemberGroups] = useState<Array<{ id: string; name: string }>>([]);
+
+  const genderOptions: Array<{
+    value: 'MALE' | 'FEMALE' | 'OTHER';
+    label: string;
+  }> = [
+    { value: 'MALE', label: 'Erkek' },
+    { value: 'FEMALE', label: 'Kadın' },
+    { value: 'OTHER', label: 'Diğer' },
+  ];
+
+  const educationOptions: Array<{
+    value: 'PRIMARY' | 'HIGH_SCHOOL' | 'COLLEGE';
+    label: string;
+  }> = [
+    { value: 'PRIMARY', label: 'İlkokul' },
+    { value: 'HIGH_SCHOOL', label: 'Lise' },
+    { value: 'COLLEGE', label: 'Yüksekokul/Üniversite' },
+  ];
 
   // Dropdown'da: sadece aktif merkezler + üyenin mevcut merkezi (kaldırılmışsa " (Kaldırılmış)" ile)
   const tevkifatCentersForSelect = useMemo(() => {
@@ -367,6 +382,23 @@ const MemberUpdatePage: React.FC = () => {
     loadForInstitutionProvince();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.institutionProvinceId]);
+
+  // Bölge Bilgileri'ndeki İl/İlçe değiştiğinde Kurum İli/İlçesi'ni otomatik eşitle
+  useEffect(() => {
+    setForm((prev) => {
+      if (
+        prev.institutionProvinceId === prev.provinceId &&
+        prev.institutionDistrictId === prev.districtId
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        institutionProvinceId: prev.provinceId,
+        institutionDistrictId: prev.districtId,
+      };
+    });
+  }, [form.provinceId, form.districtId]);
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({
@@ -740,20 +772,19 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={genderOptions}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                value={genderOptions.find((option) => option.value === form.gender) ?? null}
+                onChange={(_, value) => handleChange('gender', value?.value ?? '')}
+                renderInput={(params) => <TextField {...params} label="Cinsiyet" placeholder="Seçiniz" />}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Cinsiyet</InputLabel>
-                <Select
-                  value={form.gender}
-                  onChange={(e) => handleChange('gender', e.target.value)}
-                  label="Cinsiyet"
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -765,14 +796,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  <MenuItem value="MALE">Erkek</MenuItem>
-                  <MenuItem value="FEMALE">Kadın</MenuItem>
-                  <MenuItem value="OTHER">Diğer</MenuItem>
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             <Grid
@@ -938,20 +964,21 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={educationOptions}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                value={educationOptions.find((option) => option.value === form.educationStatus) ?? null}
+                onChange={(_, value) => handleChange('educationStatus', value?.value ?? '')}
+                renderInput={(params) => (
+                  <TextField {...params} label="Öğrenim Durumu" placeholder="Seçiniz" />
+                )}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Öğrenim Durumu</InputLabel>
-                <Select
-                  value={form.educationStatus}
-                  onChange={(e) => handleChange('educationStatus', e.target.value)}
-                  label="Öğrenim Durumu"
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -963,14 +990,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  <MenuItem value="PRIMARY">İlkokul</MenuItem>
-                  <MenuItem value="HIGH_SCHOOL">Lise</MenuItem>
-                  <MenuItem value="COLLEGE">Yüksekokul/Üniversite</MenuItem>
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             <Grid
@@ -979,20 +1001,21 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={provinces}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={provinces.find((province) => province.id === form.provinceId) ?? null}
+                onChange={(_, value) => handleChange('provinceId', value?.id ?? '')}
+                renderInput={(params) => (
+                  <TextField {...params} label="Bölge İl" placeholder="Seçiniz" />
+                )}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>İl (Kayıtlı Olduğu Yer)</InputLabel>
-                <Select
-                  value={form.provinceId}
-                  onChange={(e) => handleChange('provinceId', e.target.value)}
-                  label="İl (Kayıtlı Olduğu Yer)"
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1004,16 +1027,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {provinces.map((province) => (
-                    <MenuItem key={province.id} value={province.id}>
-                      {province.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             <Grid
@@ -1022,21 +1038,22 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={districts}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={districts.find((district) => district.id === form.districtId) ?? null}
+                onChange={(_, value) => handleChange('districtId', value?.id ?? '')}
+                disabled={!form.provinceId}
+                renderInput={(params) => (
+                  <TextField {...params} label="Bölge İlçe" placeholder="Seçiniz" />
+                )}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>İlçe (Kayıtlı Olduğu Yer)</InputLabel>
-                <Select
-                  value={form.districtId}
-                  onChange={(e) => handleChange('districtId', e.target.value)}
-                  label="İlçe (Kayıtlı Olduğu Yer)"
-                  disabled={!form.provinceId}
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1048,16 +1065,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {districts.map((district) => (
-                    <MenuItem key={district.id} value={district.id}>
-                      {district.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
           </Grid>
 
@@ -1144,20 +1154,19 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={memberGroups}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={memberGroups.find((group) => group.id === form.memberGroupId) ?? null}
+                onChange={(_, value) => handleChange('memberGroupId', value?.id ?? '')}
+                renderInput={(params) => <TextField {...params} label="Üye Grubu" placeholder="Seçiniz" />}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Üye Grubu</InputLabel>
-                <Select
-                  value={form.memberGroupId}
-                  onChange={(e) => handleChange('memberGroupId', e.target.value)}
-                  label="Üye Grubu"
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.success.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1169,16 +1178,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {memberGroups.map((group) => (
-                    <MenuItem key={group.id} value={group.id}>
-                      {group.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             <Grid
@@ -1187,20 +1189,19 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={branches}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={branches.find((branch) => branch.id === form.branchId) ?? null}
+                onChange={(_, value) => handleChange('branchId', value?.id ?? '')}
+                renderInput={(params) => <TextField {...params} label="Şube" placeholder="Seçiniz" />}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Şube</InputLabel>
-                <Select
-                  value={form.branchId}
-                  onChange={(e) => handleChange('branchId', e.target.value)}
-                  label="Şube"
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.success.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1212,16 +1213,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {branches.map((branch) => (
-                    <MenuItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             <Grid
@@ -1338,21 +1332,22 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={institutions}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={institutions.find((institution) => institution.id === form.institutionId) ?? null}
+                onChange={(_, value) => handleChange('institutionId', value?.id ?? '')}
+                onOpen={() => {
+                  void loadInstitutions();
+                }}
+                renderInput={(params) => <TextField {...params} label="Kurum" placeholder="Seçiniz" />}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Kurum</InputLabel>
-                <Select
-                  value={form.institutionId}
-                  onChange={(e) => handleChange('institutionId', e.target.value)}
-                  onOpen={() => loadInstitutions()}
-                  label="Kurum"
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1364,16 +1359,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {institutions.map((institution) => (
-                    <MenuItem key={institution.id} value={institution.id}>
-                      {institution.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             {/* Görev Birimi */}
@@ -1424,25 +1412,38 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={professions}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={professions.find((profession) => profession.id === form.professionId) ?? null}
+                onChange={(_, value) => handleChange('professionId', value?.id ?? '')}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Meslek(Unvan)"
+                    placeholder="Meslek/Unvan Seçin"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <BadgeIcon
+                              sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }}
+                            />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Meslek(Unvan)</InputLabel>
-                <Select
-                  value={form.professionId}
-                  onChange={(e) => handleChange('professionId', e.target.value)}
-                  label="Meslek(Unvan)"
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <BadgeIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1454,16 +1455,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Meslek/Unvan Seçin</MenuItem>
-                  {professions.map((profession) => (
-                    <MenuItem key={profession.id} value={profession.id}>
-                      {profession.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             {/* Kurum Adresi */}
@@ -1508,25 +1502,42 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={institutionProvinces}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={
+                  institutionProvinces.find((province) => province.id === form.institutionProvinceId) ??
+                  null
+                }
+                onChange={(_, value) => handleChange('institutionProvinceId', value?.id ?? '')}
+                disabled
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kurum İli"
+                    placeholder="İl Seçin"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <PlaceIcon
+                              sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }}
+                            />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Kurum İli</InputLabel>
-                <Select
-                  value={form.institutionProvinceId}
-                  onChange={(e) => handleChange('institutionProvinceId', e.target.value)}
-                  label="Kurum İli"
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1538,16 +1549,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">İl Seçin</MenuItem>
-                  {institutionProvinces.map((province) => (
-                    <MenuItem key={province.id} value={province.id}>
-                      {province.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             <Grid
@@ -1556,26 +1560,43 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={institutionDistricts}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={
+                  institutionDistricts.find(
+                    (district) => district.id === form.institutionDistrictId,
+                  ) ?? null
+                }
+                onChange={(_, value) => handleChange('institutionDistrictId', value?.id ?? '')}
+                disabled
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Kurum İlçesi"
+                    placeholder="İlçe Seçin"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <PlaceIcon
+                              sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }}
+                            />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Kurum İlçesi</InputLabel>
-                <Select
-                  value={form.institutionDistrictId}
-                  onChange={(e) => handleChange('institutionDistrictId', e.target.value)}
-                  label="Kurum İlçesi"
-                  disabled={!form.institutionProvinceId}
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <PlaceIcon sx={{ color: theme.palette.warning.main, fontSize: '1.3rem', ml: 1 }} />
-                    </InputAdornment>
-                  }
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.warning.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1587,16 +1608,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.warning.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">İlçe Seçin</MenuItem>
-                  {institutionDistricts.map((district) => (
-                    <MenuItem key={district.id} value={district.id}>
-                      {district.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             {/* Kurum Sicil No - Kadro Unvan Kodu */}
@@ -1724,20 +1738,24 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={tevkifatCentersForSelect}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={
+                  tevkifatCentersForSelect.find((center) => center.id === form.tevkifatCenterId) ??
+                  null
+                }
+                onChange={(_, value) => handleChange('tevkifatCenterId', value?.id ?? '')}
+                renderInput={(params) => (
+                  <TextField {...params} label="Tevkifat Kurumu" placeholder="Seçiniz" />
+                )}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Tevkifat Kurumu</InputLabel>
-                <Select
-                  value={form.tevkifatCenterId}
-                  onChange={(e) => handleChange('tevkifatCenterId', e.target.value)}
-                  label="Tevkifat Kurumu"
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.info.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1749,16 +1767,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.info.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {tevkifatCentersForSelect.map((center) => (
-                    <MenuItem key={center.id} value={center.id}>
-                      {center.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
 
             <Grid
@@ -1767,20 +1778,21 @@ const MemberUpdatePage: React.FC = () => {
                 sm: 6,
                 md: 4
               }}>
-              <FormControl 
+              <Autocomplete
+                options={tevkifatTitles}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={tevkifatTitles.find((title) => title.id === form.tevkifatTitleId) ?? null}
+                onChange={(_, value) => handleChange('tevkifatTitleId', value?.id ?? '')}
+                renderInput={(params) => (
+                  <TextField {...params} label="Tevkifat Ünvanı" placeholder="Seçiniz" />
+                )}
                 sx={{
                   width: '100%',
                   minWidth: '250px',
                   maxWidth: '400px',
                   flexShrink: 0,
-                }}
-              >
-                <InputLabel>Tevkifat Ünvanı</InputLabel>
-                <Select
-                  value={form.tevkifatTitleId}
-                  onChange={(e) => handleChange('tevkifatTitleId', e.target.value)}
-                  label="Tevkifat Ünvanı"
-                  sx={{
+                  '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
                     backgroundColor: alpha(theme.palette.info.main, 0.02),
                     transition: 'all 0.3s ease',
@@ -1792,16 +1804,9 @@ const MemberUpdatePage: React.FC = () => {
                       backgroundColor: '#fff',
                       boxShadow: `0 4px 16px ${alpha(theme.palette.info.main, 0.2)}`,
                     },
-                  }}
-                >
-                  <MenuItem value="">Seçiniz</MenuItem>
-                  {tevkifatTitles.map((title) => (
-                    <MenuItem key={title.id} value={title.id}>
-                      {title.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  },
+                }}
+              />
             </Grid>
           </Grid>
 

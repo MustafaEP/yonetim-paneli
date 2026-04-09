@@ -16,11 +16,10 @@ import MembersApplicationsPage from '../../features/members/pages/MembersApplica
 import ApprovedMembersPage from '../../features/members/pages/ApprovedMembersPage';
 import ActiveWaitingMembersPage from '../../features/members/pages/ActiveWaitingMembersPage';
 import MemberApplicationCreatePage from '../../features/members/pages/MemberApplicationCreatePage';
-import BulkMemberRegistrationPage from '../../features/members/pages/BulkMemberRegistrationPage';
 import MemberHistoryPage from '../../features/members/pages/MemberHistoryPage';
-import KbsDataPage from '../../features/members/pages/KbsDataPage';
 import UsersListPage from '../../features/users/pages/UsersListPage';
 import PanelUserApplicationsPage from '../../features/users/pages/PanelUserApplicationsPage';
+import PanelUserDetailPage from '../../features/users/pages/PanelUserDetailPage';
 import RolesListPage from '../../features/roles/pages/RolesListPage';
 import RoleDetailPage from '../../features/roles/pages/RoleDetailPage';
 import RoleCreateEditPage from '../../features/roles/pages/RoleCreateEditPage';
@@ -42,7 +41,6 @@ import SystemLogsPage from '../../features/system/pages/SystemLogsPage';
 import TevkifatCentersPage from '../../features/accounting/pages/TevkifatCentersPage';
 import TevkifatCenterDetailPage from '../../features/accounting/pages/TevkifatCenterDetailPage';
 import TevkifatCenterCreatePage from '../../features/accounting/pages/TevkifatCenterCreatePage';
-import TevkifatTitlesPage from '../../features/accounting/pages/TevkifatTitlesPage';
 import AdvancesPage from '../../features/accounting/pages/AdvancesPage';
 import PaymentsListPage from '../../features/payments/pages/PaymentsListPage';
 import PaymentDetailPage from '../../features/payments/pages/PaymentDetailPage';
@@ -78,10 +76,6 @@ const AppRoutes: React.FC = () => (
           <Route path="/members/status" element={<MemberHistoryPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="MEMBER_LIST" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
-          <Route path="/members/kbs" element={<KbsDataPage />} />
-        </Route>
-
         {/* Bekleyen başvurular: görüntüleme izni veya onay/red (MEMBER_LIST tek başına yetmez) */}
         <Route
           element={
@@ -115,18 +109,21 @@ const AppRoutes: React.FC = () => (
 
         <Route element={<ProtectedRoute requiredPermission="MEMBER_CREATE_APPLICATION" />}>
           <Route path="/members/applications/new" element={<MemberApplicationCreatePage />} />
-          <Route path="/members/bulk-registration" element={<BulkMemberRegistrationPage />} />
         </Route>
 
         <Route element={<ProtectedRoute requiredPermission="USER_LIST" />}>
           <Route path="/users" element={<UsersListPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="PANEL_USER_APPLICATION_LIST" />}>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/users/panel/:id" element={<PanelUserDetailPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute requiredPermission="PANEL_USER_APPLICATION_APPROVE" />}>
           <Route path="/users/applications" element={<PanelUserApplicationsPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="ROLE_LIST" alternativePermission="MEMBER_LIST_BY_PROVINCE" />}>
+        <Route element={<ProtectedRoute requiredPermission="ROLE_LIST" />}>
           <Route path="/roles" element={<RolesListPage />} />
         </Route>
         <Route element={<ProtectedRoute requiredPermission="ROLE_CREATE" />}>
@@ -154,7 +151,7 @@ const AppRoutes: React.FC = () => (
           <Route path="/institutions/:id" element={<InstitutionDetailPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="MEMBER_CREATE_APPLICATION" alternativePermission="MEMBER_UPDATE" />}>
+        <Route element={<ProtectedRoute requiredPermission="PROFESSION_VIEW" />}>
           <Route path="/professions" element={<ProfessionsPage />} />
         </Route>
 
@@ -188,18 +185,48 @@ const AppRoutes: React.FC = () => (
 
         <Route element={<ProtectedRoute requiredPermission="SYSTEM_SETTINGS_VIEW" />}>
           <Route path="/system/settings" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/user" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/dashboard-settings" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/reports" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/security" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/audit" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/maintenance" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/bulk-registration" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/kbs" element={<SystemSettingsPage />} />
         </Route>
 
         <Route element={<ProtectedRoute requiredPermission="LOG_VIEW_ALL" alternativePermission="LOG_VIEW_OWN_SCOPE" />}>
           <Route path="/system/logs" element={<SystemLogsPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermission="ACCOUNTING_VIEW" />}>
-          <Route path="/accounting/tevkifat-centers/new" element={<TevkifatCenterCreatePage />} />
-          <Route path="/accounting/tevkifat-centers/:id/edit" element={<TevkifatCenterCreatePage />} />
-          <Route path="/accounting/tevkifat-centers/:id" element={<TevkifatCenterDetailPage />} />
+        <Route
+          element={
+            <ProtectedRoute
+              requiredAnyOf={[
+                'TEVKIFAT_CENTER_VIEW',
+                'TEVKIFAT_CENTER_CREATE',
+                'TEVKIFAT_CENTER_UPDATE',
+                'TEVKIFAT_CENTER_DELETE',
+              ]}
+            />
+          }
+        >
           <Route path="/accounting/tevkifat-centers" element={<TevkifatCentersPage />} />
-          <Route path="/accounting/tevkifat-titles" element={<TevkifatTitlesPage />} />
+          <Route
+            path="/accounting/tevkifat-centers/:id"
+            element={<TevkifatCenterDetailPage />}
+          />
+        </Route>
+        <Route element={<ProtectedRoute requiredPermission="TEVKIFAT_CENTER_CREATE" />}>
+          <Route path="/accounting/tevkifat-centers/new" element={<TevkifatCenterCreatePage />} />
+        </Route>
+        <Route element={<ProtectedRoute requiredPermission="TEVKIFAT_CENTER_UPDATE" />}>
+          <Route
+            path="/accounting/tevkifat-centers/:id/edit"
+            element={<TevkifatCenterCreatePage />}
+          />
+        </Route>
+        <Route element={<ProtectedRoute requiredPermission="TEVKIFAT_VIEW" />}>
           <Route path="/accounting/advances" element={<AdvancesPage />} />
         </Route>
 

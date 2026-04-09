@@ -38,7 +38,7 @@ export class ProfessionsController {
     private readonly prisma: PrismaService,
   ) {}
 
-  @Permissions(Permission.MEMBER_CREATE_APPLICATION, Permission.MEMBER_UPDATE)
+  @Permissions(Permission.PROFESSION_VIEW)
   @Get()
   @ApiOperation({
     summary: 'Meslek/Unvan listesini getir',
@@ -49,7 +49,7 @@ export class ProfessionsController {
     return this.professionsService.listProfessions();
   }
 
-  @Permissions(Permission.MEMBER_UPDATE)
+  @Permissions(Permission.PROFESSION_VIEW)
   @Get('all')
   @ApiOperation({
     summary: 'Tüm meslek/unvanları listele',
@@ -60,7 +60,7 @@ export class ProfessionsController {
     return this.professionsService.listAllProfessions();
   }
 
-  @Permissions(Permission.MEMBER_UPDATE)
+  @Permissions(Permission.PROFESSION_VIEW)
   @Get(':id')
   @ApiOperation({ summary: 'Meslek/Unvan detayını getir' })
   @ApiParam({ name: 'id', description: 'Meslek/Unvan ID' })
@@ -70,7 +70,7 @@ export class ProfessionsController {
     return this.professionsService.getProfessionById(id);
   }
 
-  @Permissions(Permission.MEMBER_UPDATE)
+  @Permissions(Permission.PROFESSION_CREATE)
   @Post()
   @UsePipes(ProfessionValidationPipe)
   @ApiOperation({ summary: 'Meslek/Unvan oluştur' })
@@ -85,7 +85,7 @@ export class ProfessionsController {
     });
   }
 
-  @Permissions(Permission.MEMBER_UPDATE)
+  @Permissions(Permission.PROFESSION_UPDATE)
   @Patch(':id')
   @UsePipes(ProfessionValidationPipe)
   @ApiOperation({ summary: 'Meslek/Unvan güncelle' })
@@ -108,7 +108,7 @@ export class ProfessionsController {
     });
   }
 
-  @Permissions(Permission.MEMBER_UPDATE)
+  @Permissions(Permission.PROFESSION_DELETE)
   @Delete(':id')
   @ApiOperation({
     summary: 'Meslek/Unvan sil',

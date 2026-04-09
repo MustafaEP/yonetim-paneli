@@ -163,6 +163,12 @@ const MainLayout: React.FC = () => {
     templates: 'PDF Şablonları',
     notifications: 'Bildirimler',
     settings: 'Sistem Ayarları',
+    user: 'Üyelik',
+    security: 'Güvenlik',
+    audit: 'Loglama',
+    maintenance: 'Bakım',
+    kbs: 'KBS Veri Çekme',
+    'dashboard-settings': 'Dashboard Ayarları',
     logs: 'Sistem Logları',
   };
 

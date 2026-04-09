@@ -255,6 +255,128 @@ export class PanelUserApplicationApplicationService {
     return application;
   }
 
+  async directPromote(data: {
+    memberId: string;
+    requestedRoleId: string;
+    email: string;
+    password: string;
+    note?: string | null;
+    scopes?: Array<{ provinceId?: string; districtId?: string }>;
+    reviewedByUserId: string;
+  }): Promise<{ userId: string; email: string; firstName: string; lastName: string }> {
+    // Üye kontrolü
+    const member = await this.prisma.member.findUnique({
+      where: { id: data.memberId },
+      include: { user: true },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Üye bulunamadı');
+    }
+
+    if (member.status !== 'ACTIVE') {
+      throw new BadRequestException('Sadece aktif üyeler panel kullanıcısına terfi ettirilebilir.');
+    }
+
+    if (member.userId) {
+      throw new ConflictException('Bu üye zaten panel kullanıcısına bağlı.');
+    }
+
+    // Mevcut başvuru kontrolü (PENDING veya APPROVED)
+    const existing = await this.repository.findByMemberId(data.memberId);
+    if (
+      existing &&
+      (existing.status === PanelUserApplicationStatus.PENDING ||
+        existing.status === PanelUserApplicationStatus.APPROVED)
+    ) {
+      throw new ConflictException('Bu üye için zaten bir başvuru veya panel kullanıcısı mevcut.');
+    }
+
+    // Rol kontrolü
+    const role = await this.prisma.customRole.findUnique({
+      where: { id: data.requestedRoleId },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Seçilen rol bulunamadı');
+    }
+
+    if (role.name.toUpperCase() === 'ADMIN') {
+      throw new BadRequestException('ADMIN rolü bu işlem ile seçilemez.');
+    }
+
+    // Scope validasyonu
+    if (role.hasScopeRestriction) {
+      if (!data.scopes || data.scopes.length === 0) {
+        throw new BadRequestException('Bu rol için yetki alanı seçimi zorunludur.');
+      }
+
+      for (const scope of data.scopes) {
+        if (!scope.provinceId && !scope.districtId) {
+          throw new BadRequestException('Her yetki alanı için en az bir il veya ilçe seçmelisiniz.');
+        }
+        if (scope.districtId && !scope.provinceId) {
+          throw new BadRequestException('İlçe seçmek için önce il seçmelisiniz.');
+        }
+        if (scope.districtId && scope.provinceId) {
+          const district = await this.prisma.district.findUnique({
+            where: { id: scope.districtId },
+          });
+          if (district && district.provinceId !== scope.provinceId) {
+            throw new BadRequestException('Seçilen ilçe, seçilen ile ait değil.');
+          }
+        }
+      }
+    }
+
+    // Email benzersizlik kontrolü
+    const existingUser = await this.prisma.user.findFirst({
+      where: { email: data.email, deletedAt: null },
+    });
+    if (existingUser) {
+      throw new ConflictException('Bu email adresi zaten kullanılıyor.');
+    }
+
+    // Kullanıcı oluştur
+    const scopesToUse = role.hasScopeRestriction ? data.scopes : undefined;
+    const newUser = await this.usersService.create(
+      {
+        email: data.email,
+        password: data.password,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        customRoleIds: [data.requestedRoleId],
+        scopes: scopesToUse,
+      },
+      data.memberId,
+    );
+
+    if (!newUser) {
+      throw new Error('Kullanıcı oluşturma başarısız oldu');
+    }
+
+    // Denetim kaydı için PanelUserApplication kaydı oluştur (APPROVED olarak)
+    await this.prisma.panelUserApplication.create({
+      data: {
+        memberId: data.memberId,
+        requestedRoleId: data.requestedRoleId,
+        status: 'APPROVED',
+        requestNote: data.note || null,
+        reviewedBy: data.reviewedByUserId,
+        reviewedAt: new Date(),
+        reviewNote: data.note || null,
+        createdUserId: newUser.id,
+      },
+    });
+
+    return {
+      userId: newUser.id,
+      email: newUser.email,
+      firstName: member.firstName,
+      lastName: member.lastName,
+    };
+  }
+
   async rejectApplication(
     id: string,
     reviewNote: string | null,

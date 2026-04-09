@@ -434,6 +434,37 @@ const LoginPage: React.FC = () => {
               >
                 {submitting ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
               </Button>
+
+              <Button
+                variant="outlined"
+                fullWidth
+                size="medium"
+                onClick={() => navigate('/uyelik-sorgula')}
+                disabled={submitting}
+                sx={{
+                  mt: 0.5,
+                  py: 1.1,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: theme.palette.success.main,
+                  borderColor: alpha(theme.palette.success.main, 0.5),
+                  backgroundColor: alpha(theme.palette.success.main, 0.04),
+                  transition: 'all 0.25s ease',
+                  '&:hover': {
+                    borderColor: theme.palette.success.main,
+                    backgroundColor: alpha(theme.palette.success.main, 0.1),
+                    transform: 'translateY(-1px)',
+                  },
+                  '&.Mui-disabled': {
+                    color: alpha(theme.palette.text.disabled, 0.7),
+                    borderColor: alpha(theme.palette.action.disabled, 0.25),
+                  },
+                }}
+              >
+                Üyelik Sorgula
+              </Button>
             </Box>
             {/* Footer */}
             <Box sx={{ mt: 4, pt: 3, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>

@@ -10,7 +10,9 @@ import {
 import type { Permission } from '../permission.enum';
 import { TOKEN_TYPE_ACCESS } from '../domain/types/token-payload.types';
 
-const USER_CACHE_TTL_MS = 60 * 1000; // 1 dakika – DB yükünü azaltır
+// Üyeliğe düşürme gibi güvenlik kritik işlemlerden sonra kullanıcıyı anında düşürmek için
+// access token doğrulamasında cache kapalı tutulur.
+const USER_CACHE_TTL_MS = 0;
 
 interface CachedUser {
   userId: string;
@@ -44,12 +46,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // type claim'i olmayan eski token'lar da kabul edilir (geriye uyumluluk).
     if (payload?.type && payload.type !== TOKEN_TYPE_ACCESS) {
       throw new UnauthorizedException(
-        'Invalid token type: expected access token',
+        'Geçersiz belirteç türü: erişim belirteci bekleniyor',
       );
     }
 
     const userId = payload?.sub;
-    if (!userId) throw new UnauthorizedException('Invalid token');
+    if (!userId) throw new UnauthorizedException('Geçersiz belirteç');
 
     const now = Date.now();
     const slot = this.userCache.get(userId);
@@ -60,7 +62,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const dbUser = await this.usersService.findById(userId);
     if (!dbUser || !dbUser.isActive || dbUser.deletedAt) {
       this.userCache.delete(userId);
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException('Geçersiz belirteç');
     }
 
     let roles: string[] = Array.isArray(payload?.roles) ? payload.roles : [];

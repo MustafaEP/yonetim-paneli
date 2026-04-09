@@ -194,7 +194,7 @@ export class PaymentsController {
     return this.paymentsService.deletePayment(id);
   }
 
-  @Permissions(Permission.ACCOUNTING_VIEW)
+  @Permissions(Permission.TEVKIFAT_VIEW)
   @Get('accounting/list')
   @ApiOperation({
     summary: 'Muhasebe Kesinti listesi',

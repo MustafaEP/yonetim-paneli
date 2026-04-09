@@ -32,6 +32,8 @@ export type Permission =
   | 'DOCUMENT_TEMPLATE_MANAGE'
   | 'DOCUMENT_MEMBER_HISTORY_VIEW'
   | 'DOCUMENT_GENERATE_PDF'
+  | 'DOCUMENT_UPLOAD'
+  | 'DOCUMENT_DOWNLOAD'
   | 'REPORT_GLOBAL_VIEW'
   | 'REPORT_REGION_VIEW'
   | 'REPORT_MEMBER_STATUS_VIEW'
@@ -48,8 +50,20 @@ export type Permission =
   | 'INSTITUTION_CREATE'
   | 'INSTITUTION_UPDATE'
   | 'INSTITUTION_APPROVE'
-  | 'ACCOUNTING_VIEW'
-  | 'ACCOUNTING_EXPORT'
+  | 'PROFESSION_VIEW'
+  | 'PROFESSION_CREATE'
+  | 'PROFESSION_UPDATE'
+  | 'PROFESSION_DELETE'
+  | 'TEVKIFAT_VIEW'
+  | 'TEVKIFAT_EXPORT'
+  | 'TEVKIFAT_TITLE_VIEW'
+  | 'TEVKIFAT_TITLE_CREATE'
+  | 'TEVKIFAT_TITLE_UPDATE'
+  | 'TEVKIFAT_TITLE_DELETE'
+  | 'TEVKIFAT_CENTER_VIEW'
+  | 'TEVKIFAT_CENTER_CREATE'
+  | 'TEVKIFAT_CENTER_UPDATE'
+  | 'TEVKIFAT_CENTER_DELETE'
   | 'TEVKIFAT_FILE_UPLOAD'
   | 'TEVKIFAT_FILE_APPROVE'
   | 'MEMBER_PAYMENT_ADD'
@@ -67,7 +81,9 @@ export type Permission =
   | 'ADVANCE_VIEW'
   | 'ADVANCE_ADD'
   | 'INVOICE_VIEW'
-  | 'INVOICE_ADD';
+  | 'INVOICE_CREATE'
+  | 'INVOICE_UPDATE'
+  | 'INVOICE_DELETE';
 
 export interface RoleScope {
   id?: string;
@@ -193,6 +209,8 @@ export const PERMISSION_GROUPS = {
     'DOCUMENT_TEMPLATE_MANAGE',
     'DOCUMENT_MEMBER_HISTORY_VIEW',
     'DOCUMENT_GENERATE_PDF',
+    'DOCUMENT_UPLOAD',
+    'DOCUMENT_DOWNLOAD',
   ] as Permission[],
   REPORTS: [
     'REPORT_GLOBAL_VIEW',
@@ -218,9 +236,23 @@ export const PERMISSION_GROUPS = {
     'INSTITUTION_UPDATE',
     'INSTITUTION_APPROVE',
   ] as Permission[],
+  PROFESSION_MANAGEMENT: [
+    'PROFESSION_VIEW',
+    'PROFESSION_CREATE',
+    'PROFESSION_UPDATE',
+    'PROFESSION_DELETE',
+  ] as Permission[],
   ACCOUNTING: [
-    'ACCOUNTING_VIEW',
-    'ACCOUNTING_EXPORT',
+    'TEVKIFAT_VIEW',
+    'TEVKIFAT_EXPORT',
+    'TEVKIFAT_TITLE_VIEW',
+    'TEVKIFAT_TITLE_CREATE',
+    'TEVKIFAT_TITLE_UPDATE',
+    'TEVKIFAT_TITLE_DELETE',
+    'TEVKIFAT_CENTER_VIEW',
+    'TEVKIFAT_CENTER_CREATE',
+    'TEVKIFAT_CENTER_UPDATE',
+    'TEVKIFAT_CENTER_DELETE',
     'TEVKIFAT_FILE_UPLOAD',
     'TEVKIFAT_FILE_APPROVE',
   ] as Permission[],
@@ -248,7 +280,9 @@ export const PERMISSION_GROUPS = {
   ] as Permission[],
   INVOICES: [
     'INVOICE_VIEW',
-    'INVOICE_ADD',
+    'INVOICE_CREATE',
+    'INVOICE_UPDATE',
+    'INVOICE_DELETE',
   ] as Permission[],
 };
 
@@ -284,6 +318,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   DOCUMENT_TEMPLATE_MANAGE: 'Doküman Şablonu Yönet',
   DOCUMENT_MEMBER_HISTORY_VIEW: 'Üye Doküman Geçmişini Görüntüle',
   DOCUMENT_GENERATE_PDF: 'PDF Oluştur',
+  DOCUMENT_UPLOAD: 'Evrak Yükle',
+  DOCUMENT_DOWNLOAD: 'Evrak İndir',
   REPORT_GLOBAL_VIEW: 'Genel Rapor Görüntüle',
   REPORT_REGION_VIEW: 'Bölge Raporu Görüntüle',
   REPORT_MEMBER_STATUS_VIEW: 'Üye Durum Raporu Görüntüle',
@@ -300,8 +336,20 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   INSTITUTION_CREATE: 'Kurum Oluştur',
   INSTITUTION_UPDATE: 'Kurum Güncelle',
   INSTITUTION_APPROVE: 'Kurum Onayla',
-  ACCOUNTING_VIEW: 'Muhasebe Görüntüle',
-  ACCOUNTING_EXPORT: 'Muhasebe Dışa Aktar',
+  PROFESSION_VIEW: 'Meslekleri Görüntüle',
+  PROFESSION_CREATE: 'Meslek Oluştur',
+  PROFESSION_UPDATE: 'Meslek Güncelle',
+  PROFESSION_DELETE: 'Meslek Sil',
+  TEVKIFAT_VIEW: 'Tevkifat Görüntüle',
+  TEVKIFAT_EXPORT: 'Tevkifat Dışa Aktar',
+  TEVKIFAT_TITLE_VIEW: 'Tevkifat Unvanlarını Görüntüle',
+  TEVKIFAT_TITLE_CREATE: 'Tevkifat Unvanı Oluştur',
+  TEVKIFAT_TITLE_UPDATE: 'Tevkifat Unvanı Güncelle',
+  TEVKIFAT_TITLE_DELETE: 'Tevkifat Unvanı Sil',
+  TEVKIFAT_CENTER_VIEW: 'Tevkifat Merkezi Görüntüle',
+  TEVKIFAT_CENTER_CREATE: 'Tevkifat Merkezi Oluştur',
+  TEVKIFAT_CENTER_UPDATE: 'Tevkifat Merkezi Güncelle',
+  TEVKIFAT_CENTER_DELETE: 'Tevkifat Merkezi Sil',
   TEVKIFAT_FILE_UPLOAD: 'Tevkifat Dosyası Yükle',
   TEVKIFAT_FILE_APPROVE: 'Tevkifat Dosyası Onayla',
   MEMBER_PAYMENT_ADD: 'Üye Kesintisi Ekle',
@@ -319,6 +367,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   ADVANCE_VIEW: 'Avansları Görüntüle',
   ADVANCE_ADD: 'Avans Ekle / Güncelle / Sil',
   INVOICE_VIEW: 'Faturaları Görüntüle',
-  INVOICE_ADD: 'Fatura Ekle / Güncelle / Sil',
+  INVOICE_CREATE: 'Fatura Ekle',
+  INVOICE_UPDATE: 'Fatura Güncelle',
+  INVOICE_DELETE: 'Fatura Sil',
 };
 

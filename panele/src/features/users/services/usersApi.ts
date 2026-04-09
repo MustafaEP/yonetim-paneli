@@ -23,6 +23,19 @@ export const updateUserRoles = async (
   return res.data;
 };
 
+export interface UpdateUserAccountDto {
+  email: string;
+  password?: string;
+}
+
+export const updateUserAccount = async (
+  id: string,
+  dto: UpdateUserAccountDto,
+): Promise<UserDetail> => {
+  const res = await httpClient.patch<UserDetail>(`/users/${id}/account`, dto);
+  return res.data;
+};
+
 /** Üyeye bağlı panel hesabını kapatır; kişi yalnız üye kalır ve yeniden başvuru yapılabilir. */
 export const demoteUserToMember = async (userId: string): Promise<void> => {
   await httpClient.post(`/users/${userId}/demote-to-member`);

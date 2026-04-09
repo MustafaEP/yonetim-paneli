@@ -49,7 +49,7 @@ export class RolesController {
   ) {}
 
   @Get()
-  @Permissions(Permission.ROLE_LIST, Permission.MEMBER_LIST_BY_PROVINCE)
+  @Permissions(Permission.ROLE_LIST)
   @ApiOperation({
     summary: 'Tüm rolleri listele',
     description: 'Sistem rolleri ve custom rolleri birlikte listeler',

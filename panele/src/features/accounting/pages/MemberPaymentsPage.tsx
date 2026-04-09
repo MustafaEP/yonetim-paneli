@@ -37,7 +37,7 @@ const MemberPaymentsPage: React.FC = () => {
   const theme = useTheme();
   const { hasPermission } = useAuth();
   const toast = useToast();
-  const canExport = hasPermission('ACCOUNTING_EXPORT');
+  const canExport = hasPermission('TEVKIFAT_EXPORT');
 
   const [payments, setPayments] = useState<MemberPayment[]>([]);
   const [loading, setLoading] = useState(true);

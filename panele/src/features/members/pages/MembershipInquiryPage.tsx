@@ -19,7 +19,7 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import SearchIcon from '@mui/icons-material/Search';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getPublicSystemInfo } from '../../system/services/systemApi';
 import { useDocumentHead } from '../../../shared/hooks/useDocumentHead';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
@@ -39,6 +39,7 @@ function formatMemberSinceTr(iso: string): string {
 }
 
 const MembershipInquiryPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const theme = useTheme();
   const [siteName, setSiteName] = useState('Sendika Yönetim Paneli');
@@ -342,6 +343,31 @@ const MembershipInquiryPage: React.FC = () => {
                 }}
               >
                 {submitting ? 'Sorgulanıyor...' : 'Sorgula'}
+              </Button>
+
+              <Button
+                variant="outlined"
+                fullWidth
+                size="medium"
+                onClick={() => navigate('/login')}
+                disabled={submitting}
+                sx={{
+                  py: 1.1,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: theme.palette.text.secondary,
+                  borderColor: alpha(theme.palette.text.secondary, 0.35),
+                  backgroundColor: alpha(theme.palette.text.secondary, 0.02),
+                  '&:hover': {
+                    borderColor: theme.palette.primary.main,
+                    color: theme.palette.primary.main,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.06),
+                  },
+                }}
+              >
+                Giriş Sayfasına Dön
               </Button>
             </Box>
 

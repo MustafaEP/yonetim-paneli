@@ -17,12 +17,15 @@ import {
   MenuItem,
   Chip,
   CircularProgress,
+  Collapse,
+  IconButton,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import StorageIcon from '@mui/icons-material/Storage';
 import InfoIcon from '@mui/icons-material/Info';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { SystemSetting } from '../services/systemApi';
 
 interface MaintenanceSettingsProps {
@@ -39,6 +42,12 @@ const MaintenanceSettings: React.FC<MaintenanceSettingsProps> = ({
   const theme = useTheme();
   const [localSettings, setLocalSettings] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    systemInfo: false,
+    uploadLimits: false,
+    developer: false,
+    info: false,
+  });
 
   const getSetting = (key: string): SystemSetting | undefined =>
     settings.find((s) => s.key === key);
@@ -100,6 +109,12 @@ const MaintenanceSettings: React.FC<MaintenanceSettingsProps> = ({
 
   const hasUnsavedChanges = Object.keys(localSettings).length > 0;
   const isDisabled = !onUpdate || loading;
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
 
   const cardHeaderSx = {
     p: 2.5,
@@ -156,27 +171,46 @@ const MaintenanceSettings: React.FC<MaintenanceSettingsProps> = ({
             }}
           >
             <Box
+              onClick={() => toggleSection('systemInfo')}
               sx={{
                 ...cardHeaderSx,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.03)} 0%, ${alpha(theme.palette.info.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box sx={iconBoxSx(theme.palette.info.main, theme.palette.info.dark)}>
-                  <InfoIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={iconBoxSx(theme.palette.info.main, theme.palette.info.dark)}>
+                    <InfoIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      Sistem Bilgileri
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Mevcut sistem durumu ve sürüm bilgisi
+                    </Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    Sistem Bilgileri
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Mevcut sistem durumu ve sürüm bilgisi
-                  </Typography>
-                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('systemInfo');
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.systemInfo ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
-
-            <Box sx={{ p: 3 }}>
+            <Collapse in={expandedSections.systemInfo} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
               <Grid container spacing={2}>
                 {[
                   { label: 'Sistem Adı', value: siteName },
@@ -217,12 +251,13 @@ const MaintenanceSettings: React.FC<MaintenanceSettingsProps> = ({
                   </Grid>
                 ))}
               </Grid>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
 
         {/* Dosya Yükleme Limiti */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, md: 12 }}>
           <Card
             elevation={0}
             sx={{
@@ -233,27 +268,46 @@ const MaintenanceSettings: React.FC<MaintenanceSettingsProps> = ({
             }}
           >
             <Box
+              onClick={() => toggleSection('uploadLimits')}
               sx={{
                 ...cardHeaderSx,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box sx={iconBoxSx(theme.palette.primary.main, theme.palette.primary.dark)}>
-                  <StorageIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={iconBoxSx(theme.palette.primary.main, theme.palette.primary.dark)}>
+                    <StorageIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      Dosya Yükleme Limitleri
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Sisteme yüklenebilecek dosya boyutu sınırı
+                    </Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    Dosya Yükleme Limitleri
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Sisteme yüklenebilecek dosya boyutu sınırı
-                  </Typography>
-                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('uploadLimits');
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.uploadLimits ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
-
-            <Box sx={{ p: 3 }}>
+            <Collapse in={expandedSections.uploadLimits} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
               <Stack spacing={2.5}>
                 <TextField
                   label="Maksimum Dosya Yükleme Boyutu"
@@ -291,12 +345,13 @@ const MaintenanceSettings: React.FC<MaintenanceSettingsProps> = ({
                   </Button>
                 )}
               </Stack>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
 
         {/* Geliştirici Ayarları */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, md: 12 }}>
           <Card
             elevation={0}
             sx={{
@@ -307,27 +362,46 @@ const MaintenanceSettings: React.FC<MaintenanceSettingsProps> = ({
             }}
           >
             <Box
+              onClick={() => toggleSection('developer')}
               sx={{
                 ...cardHeaderSx,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.03)} 0%, ${alpha(theme.palette.secondary.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box sx={iconBoxSx(theme.palette.secondary.main, theme.palette.secondary.dark)}>
-                  <BugReportIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={iconBoxSx(theme.palette.secondary.main, theme.palette.secondary.dark)}>
+                    <BugReportIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      Geliştirici Ayarları
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Debug modu ve log seviyesi
+                    </Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    Geliştirici Ayarları
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Debug modu ve log seviyesi
-                  </Typography>
-                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('developer');
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.developer ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
-
-            <Box sx={{ p: 3 }}>
+            <Collapse in={expandedSections.developer} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
               <Stack spacing={2.5}>
                 <FormControlLabel
                   control={
@@ -419,21 +493,74 @@ const MaintenanceSettings: React.FC<MaintenanceSettingsProps> = ({
                   </Button>
                 )}
               </Stack>
-            </Box>
+              </Box>
+            </Collapse>
           </Card>
         </Grid>
 
         {/* Bilgilendirme */}
-        <Grid size={12}>
-          <Alert severity="info" icon={<AssessmentIcon />}>
-            <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
-              Bakım Modu
-            </Typography>
-            <Typography variant="body2">
-              Sistemin bakım modunu aktifleştirmek için <strong>Genel Sistem</strong> sekmesindeki{' '}
-              <strong>Bakım Modu</strong> kartını kullanabilirsiniz.
-            </Typography>
-          </Alert>
+        <Grid size={{ xs: 12, md: 12 }}>
+          <Card
+            elevation={0}
+            sx={{
+              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              onClick={() => toggleSection('info')}
+              sx={{
+                ...cardHeaderSx,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.03)} 0%, ${alpha(theme.palette.warning.light, 0.02)} 100%)`,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={iconBoxSx(theme.palette.warning.main, theme.palette.warning.dark)}>
+                    <AssessmentIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                      Bakım Modu Bilgilendirme
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Bakım modu kullanım bilgileri
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('info');
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.info ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
+              </Box>
+            </Box>
+            <Collapse in={expandedSections.info} timeout="auto" unmountOnExit>
+              <Box sx={{ p: 3 }}>
+                <Alert severity="info" icon={<AssessmentIcon />}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+                    Bakım Modu
+                  </Typography>
+                  <Typography variant="body2">
+                    Sistemin bakım modunu aktifleştirmek için <strong>Genel Sistem</strong> sekmesindeki{' '}
+                    <strong>Bakım Modu</strong> kartını kullanabilirsiniz.
+                  </Typography>
+                </Alert>
+              </Box>
+            </Collapse>
+          </Card>
         </Grid>
       </Grid>
     </Stack>

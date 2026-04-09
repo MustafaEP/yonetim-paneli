@@ -23,6 +23,7 @@ import { PanelUserApplicationsService } from '../../panel-user-applications.serv
 import { CreatePanelUserApplicationDto } from '../../dto/create-panel-user-application.dto';
 import { ApprovePanelUserApplicationDto } from '../../dto/approve-panel-user-application.dto';
 import { RejectPanelUserApplicationDto } from '../../dto/reject-panel-user-application.dto';
+import { DirectPromotePanelUserDto } from '../../dto/direct-promote-panel-user.dto';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import type { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
 import { Permissions } from '../../../auth/decorators/permissions.decorator';
@@ -71,6 +72,40 @@ export class PanelUserApplicationsController {
     });
     // Return Prisma format for backward compatibility
     return this.service.create(memberId, dto, user.userId);
+  }
+
+  @Permissions(Permission.PANEL_USER_APPLICATION_APPROVE)
+  @Post('members/:memberId/direct')
+  @ApiOperation({
+    summary: 'Üyeyi direkt panel kullanıcısına terfi ettir',
+    description: 'Başvuru süreci olmaksızın üyeyi direkt panel kullanıcısına terfi ettirir',
+  })
+  @ApiParam({
+    name: 'memberId',
+    description: 'Üye ID',
+    example: 'member-id-123',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Kullanıcı başarıyla oluşturuldu',
+  })
+  @ApiResponse({ status: 400, description: 'Geçersiz veri veya üye aktif değil' })
+  @ApiResponse({ status: 404, description: 'Üye veya rol bulunamadı' })
+  @ApiResponse({ status: 409, description: 'Üye zaten panel kullanıcısı veya email kullanımda' })
+  async directPromote(
+    @Param('memberId') memberId: string,
+    @Body() dto: DirectPromotePanelUserDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.applicationService.directPromote({
+      memberId,
+      requestedRoleId: dto.requestedRoleId,
+      email: dto.email,
+      password: dto.password,
+      note: dto.note,
+      scopes: dto.scopes,
+      reviewedByUserId: user.userId,
+    });
   }
 
   @Permissions(Permission.PANEL_USER_APPLICATION_LIST)

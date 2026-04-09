@@ -58,12 +58,14 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   DOCUMENT_TEMPLATE_MANAGE: ['DOCUMENT_SYSTEM_ACCESS'],
   DOCUMENT_MEMBER_HISTORY_VIEW: ['DOCUMENT_SYSTEM_ACCESS', 'MEMBER_VIEW'], // Doküman geçmişi için üye detayı gerekir
   DOCUMENT_GENERATE_PDF: ['DOCUMENT_SYSTEM_ACCESS', 'MEMBER_VIEW'], // PDF oluşturmak için üye detayı gerekir
+  DOCUMENT_UPLOAD: ['DOCUMENT_SYSTEM_ACCESS'], // Üye evrakı yüklemek için doküman sistemi erişimi gerekir
+  DOCUMENT_DOWNLOAD: ['DOCUMENT_SYSTEM_ACCESS', 'DOCUMENT_MEMBER_HISTORY_VIEW'], // İndirme için doküman geçmişi görünürlüğü gerekir
 
   // Raporlar & Dashboard
   REPORT_GLOBAL_VIEW: [],
   REPORT_REGION_VIEW: ['REGION_LIST'], // Bölge raporu için bölge listesi gerekir
   REPORT_MEMBER_STATUS_VIEW: ['MEMBER_LIST'], // Üye durum raporu için üye listesi gerekir
-  REPORT_DUES_VIEW: ['ACCOUNTING_VIEW'], // Kesinti raporu için muhasebe görüntüleme gerekir
+  REPORT_DUES_VIEW: ['TEVKIFAT_VIEW'], // Kesinti raporu için tevkifat görüntüleme gerekir
 
   // Bildirim & İletişim
   NOTIFY_ALL_MEMBERS: ['MEMBER_LIST'], // Tüm üyelere bildirim için üye listesi gerekir
@@ -82,10 +84,22 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   INSTITUTION_CREATE: ['REGION_LIST'], // Kurum oluşturmak için bölge listesi gerekir
   INSTITUTION_UPDATE: ['INSTITUTION_VIEW'], // Güncellemek için görüntüleme gerekir
   INSTITUTION_APPROVE: ['INSTITUTION_VIEW'], // Onaylamak için görüntüleme gerekir
+  PROFESSION_VIEW: [],
+  PROFESSION_CREATE: ['PROFESSION_VIEW'],
+  PROFESSION_UPDATE: ['PROFESSION_VIEW'],
+  PROFESSION_DELETE: ['PROFESSION_VIEW'],
 
   // Muhasebe - Frontend'de eksik, ekleyeceğiz
-  ACCOUNTING_VIEW: [],
-  ACCOUNTING_EXPORT: ['ACCOUNTING_VIEW'],
+  TEVKIFAT_VIEW: [],
+  TEVKIFAT_EXPORT: ['TEVKIFAT_VIEW'],
+  TEVKIFAT_TITLE_VIEW: ['TEVKIFAT_VIEW'],
+  TEVKIFAT_TITLE_CREATE: ['TEVKIFAT_TITLE_VIEW'],
+  TEVKIFAT_TITLE_UPDATE: ['TEVKIFAT_TITLE_VIEW'],
+  TEVKIFAT_TITLE_DELETE: ['TEVKIFAT_TITLE_VIEW'],
+  TEVKIFAT_CENTER_VIEW: ['TEVKIFAT_VIEW'],
+  TEVKIFAT_CENTER_CREATE: ['TEVKIFAT_CENTER_VIEW'],
+  TEVKIFAT_CENTER_UPDATE: ['TEVKIFAT_CENTER_VIEW'],
+  TEVKIFAT_CENTER_DELETE: ['TEVKIFAT_CENTER_VIEW'],
   TEVKIFAT_FILE_UPLOAD: [],
   TEVKIFAT_FILE_APPROVE: ['TEVKIFAT_FILE_UPLOAD'],
 
@@ -113,7 +127,9 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
 
   // Faturalar
   INVOICE_VIEW: [],
-  INVOICE_ADD: ['INVOICE_VIEW'],
+  INVOICE_CREATE: ['INVOICE_VIEW'],
+  INVOICE_UPDATE: ['INVOICE_VIEW'],
+  INVOICE_DELETE: ['INVOICE_VIEW'],
 };
 
 /**

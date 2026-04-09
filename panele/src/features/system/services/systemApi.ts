@@ -6,7 +6,7 @@ export interface SystemSetting {
   key: string;
   value: string;
   description?: string;
-  category: 'GENERAL' | 'EMAIL' | 'SMS' | 'MEMBERSHIP' | 'DUES' | 'SECURITY' | 'NOTIFICATION' | 'UI' | 'INTEGRATION' | 'OTHER';
+  category: 'GENERAL' | 'EMAIL' | 'SMS' | 'DASHBOARD' | 'MEMBERSHIP' | 'DUES' | 'SECURITY' | 'NOTIFICATION' | 'UI' | 'INTEGRATION' | 'AUDIT' | 'REPORTS' | 'OTHER';
   isEditable: boolean;
   isCritical?: boolean;
   requiresApproval?: boolean;

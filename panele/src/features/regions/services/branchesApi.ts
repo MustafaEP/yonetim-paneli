@@ -4,6 +4,7 @@ import httpClient from '../../../shared/services/httpClient';
 export interface Branch {
   id: string;
   name: string;
+  code?: string | null;
   presidentId?: string;
   president?: {
     id: string;

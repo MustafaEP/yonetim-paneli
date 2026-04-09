@@ -126,6 +126,11 @@ export class ConfigService implements OnModuleInit {
   }
 
   // Redis Configuration
+  get redisEnabled(): boolean {
+    const value = (process.env.REDIS_ENABLED || 'false').toLowerCase();
+    return value === 'true' || value === '1';
+  }
+
   get redisHost(): string {
     return process.env.REDIS_HOST || 'localhost';
   }

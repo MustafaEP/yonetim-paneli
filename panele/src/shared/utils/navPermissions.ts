@@ -3,12 +3,17 @@
  * İzin kodları backend Permission enum ile aynıdır.
  */
 export type PermissionCheck = (permission: string) => boolean;
+export type RoleCheck = (role: string) => boolean;
 
 export interface SidebarNavFlags {
   showNewMemberApplication: boolean;
   showMemberApplications: boolean;
   showMembersList: boolean;
   showMemberHistory: boolean;
+  /** Haber / duyuru / etkinlik (CONTENT_MANAGE) */
+  showContent: boolean;
+  /** Meslek listesi */
+  showProfessions: boolean;
   showRegions: boolean;
   showRoles: boolean;
   showDocumentsSection: boolean;
@@ -30,7 +35,10 @@ export interface SidebarNavFlags {
   showInstitutions: boolean;
 }
 
-export function getSidebarNavFlags(hasPermission: PermissionCheck): SidebarNavFlags {
+export function getSidebarNavFlags(
+  hasPermission: PermissionCheck,
+  _hasRole: RoleCheck,
+): SidebarNavFlags {
   // Üye Başvuruları: MEMBER_APPLICATIONS_VIEW veya onay/red (üye listesi izni yetmez)
   const showMemberApplications =
     hasPermission('MEMBER_APPLICATIONS_VIEW') ||
@@ -42,11 +50,16 @@ export function getSidebarNavFlags(hasPermission: PermissionCheck): SidebarNavFl
 
   const showMemberHistory = hasPermission('MEMBER_HISTORY_VIEW');
 
+  const showContent = hasPermission('CONTENT_MANAGE');
+
+  const showProfessions = hasPermission('PROFESSION_VIEW');
+
   const showDocumentsSection =
     hasPermission('DOCUMENT_SYSTEM_ACCESS') ||
     hasPermission('DOCUMENT_TEMPLATE_MANAGE') ||
     hasPermission('DOCUMENT_MEMBER_HISTORY_VIEW') ||
-    hasPermission('DOCUMENT_GENERATE_PDF');
+    hasPermission('DOCUMENT_GENERATE_PDF') ||
+    hasPermission('DOCUMENT_UPLOAD');
 
   const showDocumentTemplates =
     hasPermission('DOCUMENT_TEMPLATE_MANAGE') || hasPermission('DOCUMENT_SYSTEM_ACCESS');
@@ -59,16 +72,21 @@ export function getSidebarNavFlags(hasPermission: PermissionCheck): SidebarNavFl
     showMemberApplications,
     showMembersList,
     showMemberHistory,
-    showRegions: hasPermission('REGION_LIST') || hasPermission('BRANCH_MANAGE'),
-    showRoles: hasPermission('ROLE_LIST') || hasPermission('MEMBER_LIST_BY_PROVINCE'),
+    showContent,
+    showProfessions,
+    showRegions:
+      hasPermission('REGION_LIST') ||
+      hasPermission('BRANCH_MANAGE') ||
+      hasPermission('MEMBER_LIST_BY_PROVINCE'),
+    showRoles: hasPermission('ROLE_LIST'),
     showDocumentsSection,
     showPdfGenerate: hasPermission('DOCUMENT_GENERATE_PDF'),
     showDocumentTemplates,
     showDocumentMemberHistory,
     showUsers: hasPermission('USER_LIST'),
-    showPanelUserApplications: hasPermission('PANEL_USER_APPLICATION_LIST'),
+    showPanelUserApplications: hasPermission('PANEL_USER_APPLICATION_APPROVE'),
     showBranches: hasPermission('BRANCH_MANAGE'),
-    showAccounting: hasPermission('ACCOUNTING_VIEW'),
+    showAccounting: hasPermission('TEVKIFAT_VIEW'),
     showPaymentsList: hasPermission('MEMBER_PAYMENT_LIST'),
     showPaymentQuickEntry:
       hasPermission('MEMBER_PAYMENT_ADD') || hasPermission('MEMBER_PAYMENT_LIST'),

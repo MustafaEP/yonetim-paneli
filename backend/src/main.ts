@@ -41,7 +41,12 @@ async function bootstrap() {
   app.set('trust proxy', 1);
 
   // 🔹 HTTP güvenlik başlıkları (CSP, HSTS, X-Frame-Options vb.)
-  app.use(helmet());
+  app.use(
+    helmet({
+      // Frontend (5173) -> backend static (/uploads) görselleri için CORP engelini kaldır
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // 🔹 CORS ayarları - static dosya yanıtlarına da uygulanması için useStaticAssets'tan ÖNCE
   app.enableCors({

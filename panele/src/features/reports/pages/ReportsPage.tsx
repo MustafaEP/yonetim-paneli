@@ -72,6 +72,7 @@ import { getBranches } from '../../regions/services/branchesApi';
 import type { Province, District } from '../../../types/region';
 import type { Branch } from '../../regions/services/branchesApi';
 import type { Institution } from '../../../types/region';
+import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
 
 const MONTH_NAMES = [
   '', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -362,6 +363,7 @@ const PieTooltipContent = ({ active, payload }: any) => {
 
 const ReportsPage: React.FC = () => {
   const theme = useTheme();
+  const { getSettingValue } = useSystemSettings();
 
   // Filter options
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -394,6 +396,22 @@ const ReportsPage: React.FC = () => {
   }), [selectedProvince, selectedDistrict, selectedBranch, selectedInstitution]);
 
   const hasActiveFilter = !!(selectedProvince || selectedDistrict || selectedBranch || selectedInstitution);
+  const isVisible = useCallback(
+    (key: string) => getSettingValue(key, 'true') === 'true',
+    [getSettingValue],
+  );
+
+  const showRefreshButton = isVisible('REPORTS_SHOW_REFRESH_BUTTON');
+  const showFilterPanel = isVisible('REPORTS_SHOW_FILTER_PANEL');
+  const showKpiCards = isVisible('REPORTS_SHOW_KPI_CARDS');
+  const showTrendCards = isVisible('REPORTS_SHOW_TREND_CARDS');
+  const showAlertCards = isVisible('REPORTS_SHOW_ALERT_CARDS');
+  const showMemberGrowthChart = isVisible('REPORTS_SHOW_MEMBER_GROWTH_CHART');
+  const showMemberStatusPie = isVisible('REPORTS_SHOW_MEMBER_STATUS_PIE');
+  const showProvinceDistributionChart = isVisible('REPORTS_SHOW_PROVINCE_DISTRIBUTION_CHART');
+  const showDuesChart = isVisible('REPORTS_SHOW_DUES_CHART');
+  const showDuesSummaryCards = isVisible('REPORTS_SHOW_DUES_SUMMARY_CARDS');
+  const showRegionTable = isVisible('REPORTS_SHOW_REGION_TABLE');
 
   // Load filter options once
   useEffect(() => {
@@ -551,7 +569,7 @@ const ReportsPage: React.FC = () => {
           color={theme.palette.primary.main}
           darkColor={theme.palette.primary.dark}
           lightColor={theme.palette.primary.light}
-          rightContent={
+          rightContent={showRefreshButton ? (
             <Tooltip title="Verileri yenile">
               <IconButton
                 onClick={() => loadData(activeFilters)}
@@ -565,11 +583,11 @@ const ReportsPage: React.FC = () => {
                 <RefreshIcon sx={{ animation: loading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
               </IconButton>
             </Tooltip>
-          }
+          ) : undefined}
         />
 
         {/* ── Filter Panel ── */}
-        <Paper
+        {showFilterPanel && (<Paper
           elevation={0}
           sx={{
             p: 2,
@@ -657,10 +675,10 @@ const ReportsPage: React.FC = () => {
               />
             </Grid>
           </Grid>
-        </Paper>
+        </Paper>)}
 
         {/* ── KPI Cards ── */}
-        <Grid container spacing={2}>
+        {showKpiCards && (<Grid container spacing={2}>
           <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <KpiCard
               title="Toplam Üye"
@@ -698,10 +716,10 @@ const ReportsPage: React.FC = () => {
               formatAsCurrency
             />
           </Grid>
-        </Grid>
+        </Grid>)}
 
         {/* ── Trend Cards ── */}
-        <Grid container spacing={2}>
+        {showTrendCards && (<Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 4 }}>
             <TrendCard
               title="Üye Artışı (30 gün)"
@@ -733,10 +751,10 @@ const ReportsPage: React.FC = () => {
               loading={loading}
             />
           </Grid>
-        </Grid>
+        </Grid>)}
 
         {/* ── Alert Cards ── */}
-        <Grid container spacing={2}>
+        {showAlertCards && (<Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 4 }}>
             <AlertCard
               title="Kesintisiz Üyeler"
@@ -767,10 +785,10 @@ const ReportsPage: React.FC = () => {
               loading={loading}
             />
           </Grid>
-        </Grid>
+        </Grid>)}
 
         {/* ── Member Growth Chart ── */}
-        <ChartPaper title="Üye Artış/Azalış Grafiği" subtitle="Son 6 aylık üye hareketleri">
+        {showMemberGrowthChart && (<ChartPaper title="Üye Artış/Azalış Grafiği" subtitle="Son 6 aylık üye hareketleri">
           {loading ? (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
               <CircularProgress />
@@ -793,11 +811,11 @@ const ReportsPage: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           )}
-        </ChartPaper>
+        </ChartPaper>)}
 
         {/* ── Status Pie + Province Bar ── */}
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 5 }}>
+        {(showMemberStatusPie || showProvinceDistributionChart) && (<Grid container spacing={2}>
+          {showMemberStatusPie && (<Grid size={{ xs: 12, md: showProvinceDistributionChart ? 5 : 12 }}>
             <ChartPaper title="Üye Durum Dağılımı" subtitle={`Toplam ${totalStatusCount.toLocaleString('tr-TR')} üye`} height={320}>
               {loading ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -853,8 +871,8 @@ const ReportsPage: React.FC = () => {
                 </Box>
               )}
             </ChartPaper>
-          </Grid>
-          <Grid size={{ xs: 12, md: 7 }}>
+          </Grid>)}
+          {showProvinceDistributionChart && (<Grid size={{ xs: 12, md: showMemberStatusPie ? 7 : 12 }}>
             <ChartPaper title="İl Bazlı Üye Dağılımı" subtitle="En yüksek üye sayısına sahip 15 il" height={320}>
               {loading ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -878,11 +896,11 @@ const ReportsPage: React.FC = () => {
                 </ResponsiveContainer>
               )}
             </ChartPaper>
-          </Grid>
-        </Grid>
+          </Grid>)}
+        </Grid>)}
 
         {/* ── Dues Chart ── */}
-        <ChartPaper title="Aylık Kesinti Grafiği" subtitle="Aylara göre kesinti toplam ve işlem sayısı">
+        {showDuesChart && (<ChartPaper title="Aylık Kesinti Grafiği" subtitle="Aylara göre kesinti toplam ve işlem sayısı">
           {loading ? (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
               <CircularProgress />
@@ -905,10 +923,10 @@ const ReportsPage: React.FC = () => {
               </LineChart>
             </ResponsiveContainer>
           )}
-        </ChartPaper>
+        </ChartPaper>)}
 
         {/* ── Dues Paid vs Unpaid ── */}
-        {duesReport && (
+        {showDuesSummaryCards && duesReport && (
           <Grid container spacing={2}>
             <Grid size={{ xs: 6, sm: 4 }}>
               <KpiCard
@@ -942,7 +960,7 @@ const ReportsPage: React.FC = () => {
         )}
 
         {/* ── Region Table Summary ── */}
-        {regionReports.length > 0 && (
+        {showRegionTable && regionReports.length > 0 && (
           <Paper
             elevation={0}
             sx={{

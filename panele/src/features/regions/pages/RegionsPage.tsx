@@ -1,14 +1,10 @@
 // src/pages/regions/RegionsPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Card,
   CardContent,
   Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Button,
   Grid,
   CircularProgress,
@@ -43,10 +39,11 @@ import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 
-import type { Province, District } from '../../../types/region';
+import type { Province, District, UserScope } from '../../../types/region';
 import { 
   getProvinces, 
   getDistricts,
+  getUserScopes,
   updateInstitution,
 } from '../services/regionsApi';
 import { 
@@ -72,9 +69,14 @@ import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 const RegionsPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasRole, user } = useAuth();
   const toast = useToast();
-  const canSeeRegions = hasPermission('REGION_LIST') || hasPermission('MEMBER_LIST_BY_PROVINCE');
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+  const hasRegionList = hasPermission('REGION_LIST');
+  const hasScopedRegionAccess = hasPermission('MEMBER_LIST_BY_PROVINCE');
+  const isAdmin = hasRole('ADMIN');
+  const canSeeRegions = hasRegionList || hasScopedRegionAccess;
 
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -83,6 +85,8 @@ const RegionsPage: React.FC = () => {
 
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [selectedDistrictId, setSelectedDistrictId] = useState<string>('');
+  const [userScopes, setUserScopes] = useState<UserScope[]>([]);
+  const shouldRestrictByScope = hasScopedRegionAccess && !isAdmin && userScopes.length > 0;
 
   // İle bağlı listeler
   const [tevkifatCenters, setTevkifatCenters] = useState<TevkifatCenter[]>([]);
@@ -119,6 +123,69 @@ const RegionsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const allowedProvinceIds = React.useMemo(() => {
+    if (!shouldRestrictByScope) return null;
+    return new Set(
+      userScopes
+        .map((scope) => scope.province?.id)
+        .filter((id): id is string => Boolean(id)),
+    );
+  }, [shouldRestrictByScope, userScopes]);
+
+  const districtScopeByProvince = React.useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    if (!shouldRestrictByScope) return map;
+
+    userScopes.forEach((scope) => {
+      const provinceId = scope.province?.id;
+      if (!provinceId) return;
+      if (!map.has(provinceId)) map.set(provinceId, new Set<string>());
+      if (scope.district?.id) {
+        map.get(provinceId)?.add(scope.district.id);
+      }
+    });
+
+    return map;
+  }, [shouldRestrictByScope, userScopes]);
+
+  const provinceHasFullAccess = React.useMemo(() => {
+    const set = new Set<string>();
+    if (!shouldRestrictByScope) return set;
+
+    userScopes.forEach((scope) => {
+      const provinceId = scope.province?.id;
+      if (provinceId && !scope.district?.id) {
+        set.add(provinceId);
+      }
+    });
+
+    return set;
+  }, [shouldRestrictByScope, userScopes]);
+
+  const visibleProvinces = React.useMemo(() => {
+    if (!shouldRestrictByScope || !allowedProvinceIds) return provinces;
+    return provinces.filter((province) => allowedProvinceIds.has(province.id));
+  }, [provinces, shouldRestrictByScope, allowedProvinceIds]);
+
+  const preferredScopedSelection = React.useMemo(() => {
+    if (!shouldRestrictByScope || userScopes.length === 0) return null;
+    const firstWithDistrict = userScopes.find(
+      (scope) => scope.province?.id && scope.district?.id,
+    );
+    if (firstWithDistrict?.province?.id) {
+      return {
+        provinceId: firstWithDistrict.province.id,
+        districtId: firstWithDistrict.district?.id ?? '',
+      };
+    }
+    const firstProvinceOnly = userScopes.find((scope) => scope.province?.id);
+    if (!firstProvinceOnly?.province?.id) return null;
+    return {
+      provinceId: firstProvinceOnly.province.id,
+      districtId: '',
+    };
+  }, [shouldRestrictByScope, userScopes]);
+
   // İlleri yükle
   useEffect(() => {
     if (!canSeeRegions) return;
@@ -140,6 +207,48 @@ const RegionsPage: React.FC = () => {
     loadProvinces();
   }, [canSeeRegions]);
 
+  // Scope kısıtlı kullanıcı için sadece kendi il/ilçe kapsamını al
+  useEffect(() => {
+    if (!hasScopedRegionAccess || isAdmin || !user?.id) {
+      setUserScopes([]);
+      return;
+    }
+
+    const loadUserScopes = async () => {
+      try {
+        const scopes = await getUserScopes(user.id);
+        setUserScopes(Array.isArray(scopes) ? scopes : []);
+      } catch (e: unknown) {
+        console.error('Kullanıcı scope bilgisi alınırken hata:', e);
+        toastRef.current.showError(getApiErrorMessage(e, 'Kullanıcı yetki kapsamı alınamadı.'));
+        setUserScopes([]);
+      }
+    };
+
+    loadUserScopes();
+  }, [hasScopedRegionAccess, isAdmin, user?.id]);
+
+  // Scope değişince seçili il kapsam dışı kaldıysa temizle; boşsa ilk izinli ili seç
+  useEffect(() => {
+    if (!shouldRestrictByScope) return;
+
+    if (!visibleProvinces.length) {
+      setSelectedProvinceId('');
+      setSelectedDistrictId('');
+      return;
+    }
+
+    if (!selectedProvinceId || !visibleProvinces.some((p) => p.id === selectedProvinceId)) {
+      const preferredProvinceId =
+        preferredScopedSelection?.provinceId &&
+        visibleProvinces.some((p) => p.id === preferredScopedSelection.provinceId)
+          ? preferredScopedSelection.provinceId
+          : visibleProvinces[0].id;
+      setSelectedProvinceId(preferredProvinceId);
+      setSelectedDistrictId('');
+    }
+  }, [shouldRestrictByScope, visibleProvinces, selectedProvinceId, preferredScopedSelection]);
+
   // İl seçildiğinde ilçeleri yükle
   useEffect(() => {
     if (!selectedProvinceId) {
@@ -152,8 +261,50 @@ const RegionsPage: React.FC = () => {
       setLoadingDistricts(true);
       try {
         const data = await getDistricts(selectedProvinceId);
-        setDistricts(data);
-        setSelectedDistrictId(''); // İl değişince ilçe seçimini sıfırla
+        let visibleDistricts = data;
+
+        if (shouldRestrictByScope) {
+          if (provinceHasFullAccess.has(selectedProvinceId)) {
+            visibleDistricts = data;
+          } else {
+            const allowedDistricts = districtScopeByProvince.get(selectedProvinceId);
+            visibleDistricts = allowedDistricts
+              ? data.filter((district) => allowedDistricts.has(district.id))
+              : [];
+          }
+        }
+
+        setDistricts(visibleDistricts);
+        if (!shouldRestrictByScope) {
+          setSelectedDistrictId('');
+          return;
+        }
+
+        if (provinceHasFullAccess.has(selectedProvinceId)) {
+          setSelectedDistrictId((prev) =>
+            prev && visibleDistricts.some((district) => district.id === prev)
+              ? prev
+              : '',
+          );
+          return;
+        }
+
+        const preferredDistrictId = userScopes.find(
+          (scope) => scope.province?.id === selectedProvinceId && scope.district?.id,
+        )?.district?.id;
+
+        setSelectedDistrictId((prev) => {
+          if (prev && visibleDistricts.some((district) => district.id === prev)) {
+            return prev;
+          }
+          if (
+            preferredDistrictId &&
+            visibleDistricts.some((district) => district.id === preferredDistrictId)
+          ) {
+            return preferredDistrictId;
+          }
+          return visibleDistricts[0]?.id ?? '';
+        });
       } catch (e: unknown) {
         console.error('İlçeler alınırken hata:', e);
         const err = e as { response?: { data?: { message?: string } } };
@@ -164,7 +315,7 @@ const RegionsPage: React.FC = () => {
     };
 
     loadDistricts();
-  }, [selectedProvinceId]);
+  }, [selectedProvinceId, shouldRestrictByScope, provinceHasFullAccess, districtScopeByProvince, userScopes]);
 
   // İl veya ilçe seçildiğinde tevkifat merkezleri, kurumlar ve şubeleri yükle
   useEffect(() => {
@@ -545,8 +696,8 @@ const RegionsPage: React.FC = () => {
                   }}>
                   <Box sx={{ position: 'relative' }}>
                     <Autocomplete
-                      options={provinces}
-                      value={provinces.find((province) => province.id === selectedProvinceId) ?? null}
+                      options={visibleProvinces}
+                      value={visibleProvinces.find((province) => province.id === selectedProvinceId) ?? null}
                       onChange={(_, value) => handleProvinceChange(value?.id || '')}
                       getOptionLabel={(option) =>
                         `${option.name}${option.code ? ` (${option.code})` : ''}`

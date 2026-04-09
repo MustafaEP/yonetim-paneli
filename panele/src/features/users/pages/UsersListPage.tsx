@@ -6,10 +6,6 @@ import {
   Typography,
   Chip,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   IconButton,
   Tooltip,
   InputAdornment,
@@ -29,13 +25,10 @@ import { useNavigate } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PeopleIcon from '@mui/icons-material/People';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 
 import type { UserListItem } from '../../../types/user';
-import { getUsers, getUserById, demoteUserToMember } from '../services/usersApi';
+import { getUsers, demoteUserToMember } from '../services/usersApi';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
@@ -115,20 +108,12 @@ const UsersListPage: React.FC = () => {
   const [rows, setRows] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [demoteTarget, setDemoteTarget] = useState<UserListItem | null>(null);
   const [demoteSubmitting, setDemoteSubmitting] = useState(false);
 
   // Filtrelenmiş veriler
   const filteredRows = useMemo(() => {
     let filtered = rows;
-
-    // Durum filtresi
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter((row) =>
-        statusFilter === 'ACTIVE' ? row.isActive : !row.isActive,
-      );
-    }
 
     // Arama filtresi
     if (searchText.trim()) {
@@ -143,7 +128,7 @@ const UsersListPage: React.FC = () => {
     }
 
     return filtered;
-  }, [rows, statusFilter, searchText]);
+  }, [rows, searchText]);
 
   const columns: GridColDef<UserListItem>[] = [
     {
@@ -192,37 +177,6 @@ const UsersListPage: React.FC = () => {
       ),
     },
     {
-      field: 'isActive',
-      headerName: 'Durum',
-      width: 130,
-      align: 'center',
-      headerAlign: 'center',
-      renderCell: (params: GridRenderCellParams<UserListItem>) =>
-        params.row.isActive ? (
-          <Chip 
-            icon={<CheckCircleIcon />}
-            label="Aktif" 
-            color="success" 
-            size="small" 
-            sx={{ 
-              fontWeight: 600,
-              '& .MuiChip-icon': { fontSize: '1rem' }
-            }} 
-          />
-        ) : (
-          <Chip 
-            icon={<CancelIcon />}
-            label="Pasif" 
-            color="default"
-            size="small"
-            sx={{ 
-              fontWeight: 600,
-              '& .MuiChip-icon': { fontSize: '1rem' }
-            }}
-          />
-        ),
-    },
-    {
       field: 'actions',
       headerName: 'İşlemler',
       width: canDemoteToMember ? 140 : 100,
@@ -254,21 +208,9 @@ const UsersListPage: React.FC = () => {
             <Tooltip title="Detay Görüntüle" arrow placement="top">
               <IconButton
                 size="small"
-                onClick={async (e) => {
+                onClick={(e) => {
                   e.stopPropagation();
-                  try {
-                    const userDetail = await getUserById(params.row.id);
-                    if (userDetail.member?.id) {
-                      navigate(`/members/${userDetail.member.id}`);
-                    } else {
-                      toast.showWarning(
-                        'Bu kullanıcının üye bilgisi bulunmuyor. Admin kullanıcılar üye detay sayfasına sahip değildir.',
-                      );
-                    }
-                  } catch (error) {
-                    console.error('Kullanıcı detayı alınırken hata:', error);
-                    toast.showError('Kullanıcı bilgileri alınırken bir hata oluştu.');
-                  }
+                  navigate(`/users/panel/${params.row.id}`);
                 }}
                 sx={{
                   color: theme.palette.primary.main,
@@ -428,53 +370,6 @@ const UsersListPage: React.FC = () => {
                   },
                 }}
               />
-              <FormControl
-                size="medium"
-                sx={{
-                  minWidth: { xs: '100%', sm: 240 },
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#fff',
-                    borderRadius: 2,
-                    transition: 'all 0.3s',
-                    '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
-                    },
-                  },
-                }}
-              >
-                <InputLabel>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <FilterListIcon fontSize="small" />
-                    Durum Filtrele
-                  </Box>
-                </InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Durum Filtrele"
-                  onChange={(e) =>
-                    setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
-                  }
-                >
-                  <MenuItem value="ALL">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <PeopleIcon fontSize="small" />
-                      Tüm Kullanıcılar
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="ACTIVE">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CheckCircleIcon fontSize="small" sx={{ color: theme.palette.success.main }} />
-                      Aktif
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="INACTIVE">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CancelIcon fontSize="small" sx={{ color: theme.palette.grey[500] }} />
-                      Pasif
-                    </Box>
-                  </MenuItem>
-                </Select>
-              </FormControl>
             </Stack>
           </Box>
 
@@ -549,21 +444,8 @@ const UsersListPage: React.FC = () => {
               }}
               pageSizeOptions={[10, 25, 50, 100]}
               disableRowSelectionOnClick
-              onRowClick={async (params) => {
-                try {
-                  // Kullanıcı detayını çek ve member bilgisini kontrol et
-                  const userDetail = await getUserById(params.row.id);
-                  if (userDetail.member?.id) {
-                    // Üye varsa üye detay sayfasına yönlendir
-                    navigate(`/members/${userDetail.member.id}`);
-                  } else {
-                    // Admin kullanıcı veya üye bilgisi yok
-                    toast.showWarning('Bu kullanıcının üye bilgisi bulunmuyor. Admin kullanıcılar üye detay sayfasına sahip değildir.');
-                  }
-                } catch (error) {
-                  console.error('Kullanıcı detayı alınırken hata:', error);
-                  toast.showError('Kullanıcı bilgileri alınırken bir hata oluştu.');
-                }
+              onRowClick={(params) => {
+                navigate(`/users/panel/${params.row.id}`);
               }}
             />
           </Box>

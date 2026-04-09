@@ -7,6 +7,31 @@ import { Permission } from '../permission.enum';
 export class PermissionsGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
+  private hasPermissionWithLegacySupport(
+    userPermissions: Permission[],
+    requiredPermission: Permission,
+  ): boolean {
+    if (userPermissions.includes(requiredPermission)) {
+      return true;
+    }
+
+    // Backward compatibility for renamed tevkifat permissions
+    if (
+      requiredPermission === Permission.TEVKIFAT_VIEW &&
+      userPermissions.includes('ACCOUNTING_VIEW' as Permission)
+    ) {
+      return true;
+    }
+    if (
+      requiredPermission === Permission.TEVKIFAT_EXPORT &&
+      userPermissions.includes('ACCOUNTING_EXPORT' as Permission)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
   canActivate(ctx: ExecutionContext): boolean {
     const requiredPermissions = this.reflector.getAllAndOverride<Permission[]>(
       PERMISSIONS_KEY,
@@ -39,6 +64,8 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const userPermissions: Permission[] = user.permissions;
-    return requiredPermissions.some((p) => userPermissions.includes(p));
+    return requiredPermissions.some((p) =>
+      this.hasPermissionWithLegacySupport(userPermissions, p),
+    );
   }
 }

@@ -16,7 +16,6 @@ import {
 } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
-import SettingsIcon from '@mui/icons-material/Settings';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthContext';
 
@@ -41,19 +40,20 @@ const ProfileMenu: React.FC = () => {
     navigate('/profile');
   };
 
-  const handleSettings = () => {
-    handleClose();
-    navigate('/notifications/settings');
-  };
-
   const handleLogout = () => {
     handleClose();
     logout();
   };
 
-  const initials = user
-    ? `${user.firstName?.[0] ?? '}${user.lastName?.[0] ?? '}`.toUpperCase()
-    : '?';
+  const firstName = user?.firstName?.trim() ?? '';
+  const lastName = user?.lastName?.trim() ?? '';
+  const hasName = Boolean(firstName || lastName);
+  const isAdmin = user?.roles?.some((role) => role?.toUpperCase() === 'ADMIN') ?? false;
+  const displayName = hasName ? `${firstName} ${lastName}`.trim() : isAdmin ? 'Admin' : 'Kullanıcı';
+
+  const initials = hasName
+    ? `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase() || '?'
+    : displayName[0]?.toUpperCase() ?? '?';
 
   return (
     <>
@@ -176,7 +176,7 @@ const ProfileMenu: React.FC = () => {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {user ? `${user.firstName} ${user.lastName}` : 'Kullanıcı'}
+                {displayName}
               </Typography>
               <Typography
                 variant="caption"
@@ -242,34 +242,6 @@ const ProfileMenu: React.FC = () => {
           </ListItemIcon>
           <ListItemText
             primary="Profilim"
-            primaryTypographyProps={{
-              fontSize: '0.875rem',
-              fontWeight: 500,
-            }}
-          />
-        </MenuItem>
-
-        <MenuItem
-          onClick={handleSettings}
-          sx={{
-            py: 1.25,
-            px: 2,
-            borderRadius: 1.5,
-            mx: 1,
-            my: 0.5,
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-              '& .MuiListItemIcon-root': {
-                color: theme.palette.primary.main,
-              },
-            },
-          }}
-        >
-          <ListItemIcon sx={{ minWidth: 36 }}>
-            <SettingsIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText
-            primary="Ayarlar"
             primaryTypographyProps={{
               fontSize: '0.875rem',
               fontWeight: 500,

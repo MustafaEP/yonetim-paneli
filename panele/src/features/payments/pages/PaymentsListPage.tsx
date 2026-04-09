@@ -118,7 +118,7 @@ const PaymentsListPage: React.FC = () => {
   });
 
   const canView = hasPermission('MEMBER_PAYMENT_LIST');
-  const canExport = hasPermission('ACCOUNTING_EXPORT');
+  const canExport = hasPermission('TEVKIFAT_EXPORT');
   const canAddPayment = hasPermission('MEMBER_PAYMENT_ADD');
   const canEdit = hasPermission('MEMBER_PAYMENT_UPDATE') || hasPermission('MEMBER_PAYMENT_ADD');
   const canDelete = hasPermission('MEMBER_PAYMENT_DELETE') || hasPermission('MEMBER_PAYMENT_ADD');

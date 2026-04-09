@@ -50,6 +50,7 @@ export interface Institution {
 export interface Branch {
   id: string;
   name: string;
+  code?: string | null;
   presidentId?: string | null;
   isActive: boolean;
   branchSharePercent: number;
@@ -76,6 +77,7 @@ export interface Branch {
 export interface TevkifatCenter {
   id: string;
   name: string;
+  title?: string | null;
   isActive: boolean;
   provinceId?: string | null;
   districtId?: string | null;

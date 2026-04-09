@@ -100,8 +100,13 @@ const TevkifatCenterDetailPage: React.FC = () => {
   });
   const [tevkifatTitles, setTevkifatTitles] = useState<any[]>([]);
 
-  const canView = hasPermission('ACCOUNTING_VIEW');
-  const canManage = hasPermission('ACCOUNTING_VIEW');
+  const canView =
+    hasPermission('TEVKIFAT_CENTER_VIEW') ||
+    hasPermission('TEVKIFAT_CENTER_UPDATE') ||
+    hasPermission('TEVKIFAT_CENTER_DELETE');
+  const canUpdate = hasPermission('TEVKIFAT_CENTER_UPDATE');
+  const canDelete = hasPermission('TEVKIFAT_CENTER_DELETE');
+  const canUploadDocument = canUpdate;
 
   useEffect(() => {
     if (id && canView) {
@@ -219,6 +224,10 @@ const TevkifatCenterDetailPage: React.FC = () => {
   };
 
   const handleUploadDocument = async () => {
+    if (!canUploadDocument) {
+      toast.showError('Tevkifat merkezi evrakı yükleme yetkiniz bulunmuyor');
+      return;
+    }
     if (!id || !selectedFile) {
       toast.showError('Lütfen bir PDF dosyası seçin');
       return;
@@ -358,28 +367,30 @@ const TevkifatCenterDetailPage: React.FC = () => {
                   color: center.isActive ? theme.palette.success.main : theme.palette.text.secondary,
                 }}
               />
-              {canManage && (
+              {(canUpdate || canDelete) && (
                 <>
-                    <Button
-                      variant="contained"
-                      startIcon={<EditIcon />}
-                      onClick={() => navigate(`/accounting/tevkifat-centers/${id}/edit`)}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        backgroundColor: 'white',
-                        color: theme.palette.primary.main,
-                        boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
-                        '&:hover': {
-                          backgroundColor: alpha('#fff', 0.9),
-                          boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
-                        },
-                      }}
-                    >
-                      Düzenle
-                    </Button>
-                    {center.isActive && (
+                    {canUpdate && (
+                      <Button
+                        variant="contained"
+                        startIcon={<EditIcon />}
+                        onClick={() => navigate(`/accounting/tevkifat-centers/${id}/edit`)}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          backgroundColor: 'white',
+                          color: theme.palette.primary.main,
+                          boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                          '&:hover': {
+                            backgroundColor: alpha('#fff', 0.9),
+                            boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                          },
+                        }}
+                      >
+                        Düzenle
+                      </Button>
+                    )}
+                    {canDelete && center.isActive && (
                       <Button
                         variant="outlined"
                         color="warning"
@@ -1002,7 +1013,7 @@ const TevkifatCenterDetailPage: React.FC = () => {
                     Bağlı Dosyalar
                   </Typography>
                 </Box>
-                {canManage && (
+                {canUploadDocument && (
                   <Button
                     variant="contained"
                     startIcon={<CloudUploadIcon />}

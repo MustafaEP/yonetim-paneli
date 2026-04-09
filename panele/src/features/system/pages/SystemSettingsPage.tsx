@@ -1,14 +1,8 @@
 // src/features/system/pages/SystemSettingsPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Box,
-  Alert,
-  useTheme,
-  alpha,
-  Paper,
-  CircularProgress,
-} from '@mui/material';
+import { Box, Alert, useTheme } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
@@ -20,15 +14,16 @@ import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { getSystemSettings, updateSystemSetting } from '../services/systemApi';
 import type { SystemSetting } from '../services/systemApi';
 import SettingsSidebar, { type SettingsCategory } from '../components/SettingsSidebar';
-import GeneralSettings from '../components/GeneralSettings';
-import MembershipSettings from '../components/MembershipSettings';
-import DuesSettings from '../components/DuesSettings';
-import SecuritySettings from '../components/SecuritySettings';
-import AuditSettings from '../components/AuditSettings';
-import MaintenanceSettings from '../components/MaintenanceSettings';
+import SystemSettingsContent from '../components/SystemSettingsContent';
+import {
+  getCategoryFromPath,
+  getPathFromCategory,
+} from '../constants/settingsNavigation';
 
 const SystemSettingsPage: React.FC = () => {
   const theme = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const { refreshSettings } = useSystemSettings();
   const toast = useToast();
@@ -36,7 +31,9 @@ const SystemSettingsPage: React.FC = () => {
   const canView = hasPermission('SYSTEM_SETTINGS_VIEW');
   const canManage = hasPermission('SYSTEM_SETTINGS_MANAGE');
 
-  const [selectedCategory, setSelectedCategory] = useState<SettingsCategory>('GENERAL');
+  const [selectedCategory, setSelectedCategory] = useState<SettingsCategory>(() =>
+    getCategoryFromPath(location.pathname),
+  );
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +56,21 @@ const SystemSettingsPage: React.FC = () => {
       loadSettings();
     }
   }, [canView, loadSettings]);
+
+  useEffect(() => {
+    setSelectedCategory(getCategoryFromPath(location.pathname));
+  }, [location.pathname]);
+
+  const handleCategoryChange = useCallback(
+    (category: SettingsCategory) => {
+      setSelectedCategory(category);
+      const nextPath = getPathFromCategory(category);
+      if (location.pathname !== nextPath) {
+        navigate(nextPath);
+      }
+    },
+    [location.pathname, navigate],
+  );
 
   const handleUpdate = useCallback(
     async (key: string, value: string) => {
@@ -116,86 +128,18 @@ const SystemSettingsPage: React.FC = () => {
 
         <SettingsSidebar
           selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
+          onCategoryChange={handleCategoryChange}
         />
 
-        <Paper
-          elevation={0}
-          sx={{
-            borderRadius: 2,
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            overflow: 'hidden',
-            backgroundColor: theme.palette.background.paper,
-            minHeight: 400,
-          }}
-        >
-          {loading ? (
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: 400,
-                py: 6,
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Box sx={{ p: 3 }}>
-              <Alert severity="error" onClose={() => setError(null)}>
-                {error}
-              </Alert>
-            </Box>
-          ) : (
-            <Box sx={{ p: { xs: 2, sm: 3 } }}>
-              {selectedCategory === 'GENERAL' && (
-                <GeneralSettings
-                  settings={settings}
-                  onUpdate={handleUpdate}
-                  loading={false}
-                />
-              )}
-              {selectedCategory === 'MEMBERSHIP' && (
-                <MembershipSettings
-                  settings={settings}
-                  onUpdate={canManage ? handleUpdate : undefined}
-                  loading={false}
-                  canManage={canManage}
-                />
-              )}
-              {selectedCategory === 'DUES' && (
-                <DuesSettings
-                  settings={settings}
-                  onUpdate={handleUpdate}
-                  loading={false}
-                  canManage={canManage}
-                />
-              )}
-              {selectedCategory === 'SECURITY' && (
-                <SecuritySettings
-                  settings={settings}
-                  onUpdate={canManage ? handleUpdate : undefined}
-                  loading={false}
-                />
-              )}
-              {selectedCategory === 'AUDIT' && (
-                <AuditSettings
-                  settings={settings}
-                  onUpdate={canManage ? handleUpdate : undefined}
-                  loading={false}
-                />
-              )}
-              {selectedCategory === 'MAINTENANCE' && (
-                <MaintenanceSettings
-                  settings={settings}
-                  onUpdate={canManage ? handleUpdate : undefined}
-                  loading={false}
-                />
-              )}
-            </Box>
-          )}
-        </Paper>
+        <SystemSettingsContent
+          loading={loading}
+          error={error}
+          onClearError={() => setError(null)}
+          selectedCategory={selectedCategory}
+          settings={settings}
+          canManage={canManage}
+          onUpdate={handleUpdate}
+        />
       </Box>
     </PageLayout>
   );

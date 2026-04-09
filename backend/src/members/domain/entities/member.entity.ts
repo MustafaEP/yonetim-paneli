@@ -66,10 +66,12 @@ export interface CancellationData {
 export interface UpdateMemberData {
   firstName?: string;
   lastName?: string;
+  nationalId?: string;
   phone?: string;
   email?: string;
   motherName?: string;
   fatherName?: string;
+  birthDate?: Date | string;
   birthplace?: string;
   gender?: GenderEnum;
   educationStatus?: EducationStatusEnum;
@@ -724,6 +726,9 @@ export class Member {
     if (updateData.lastName !== undefined) {
       this._lastName = updateData.lastName;
     }
+    if (updateData.nationalId !== undefined) {
+      this._nationalId = NationalId.create(updateData.nationalId);
+    }
     if (updateData.phone !== undefined) {
       this._phone = updateData.phone;
     }
@@ -744,6 +749,12 @@ export class Member {
     }
     if (updateData.educationStatus !== undefined) {
       this._educationStatus = updateData.educationStatus;
+    }
+    if (updateData.birthDate !== undefined) {
+      this._birthDate =
+        updateData.birthDate instanceof Date
+          ? updateData.birthDate
+          : new Date(updateData.birthDate);
     }
     if (updateData.institutionId !== undefined) {
       this._institutionId = updateData.institutionId;

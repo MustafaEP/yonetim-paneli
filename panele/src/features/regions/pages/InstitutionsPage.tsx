@@ -1,5 +1,5 @@
 // src/pages/regions/InstitutionsPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Card,
@@ -39,7 +39,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import WorkIcon from '@mui/icons-material/Work';
 import EditIcon from '@mui/icons-material/Edit';
-import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SearchIcon from '@mui/icons-material/Search';
@@ -52,11 +51,12 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 
-import type { Province, District, Institution } from '../../../types/region';
+import type { Province, District, Institution, UserScope } from '../../../types/region';
 import {
   getProvinces,
   getDistricts,
   getInstitutions,
+  getUserScopes,
   createInstitution,
   approveInstitution,
   deleteInstitution,
@@ -114,22 +114,96 @@ const InstitutionsPage: React.FC = () => {
   const [professionForm, setProfessionForm] = useState<{ name: string; isActive: boolean }>({ name: '', isActive: true });
   const [savingProfession, setSavingProfession] = useState(false);
   const [deleteProfessionDialogOpen, setDeleteProfessionDialogOpen] = useState(false);
-  const [deactivateProfessionDialogOpen, setDeactivateProfessionDialogOpen] = useState(false);
   const [deletingProfession, setDeletingProfession] = useState<Profession | null>(null);
-  const [deactivatingProfession, setDeactivatingProfession] = useState<Profession | null>(null);
 
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasRole, user } = useAuth();
   const toast = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   const canManageInstitution = hasPermission('INSTITUTION_CREATE') || hasPermission('INSTITUTION_UPDATE');
   const canListInstitution = hasPermission('INSTITUTION_LIST');
   const canApproveInstitution = hasPermission('INSTITUTION_APPROVE');
   const canDeleteInstitution = hasPermission('INSTITUTION_UPDATE');
   const canViewInstitution = hasPermission('INSTITUTION_LIST');
+  const canViewProfession = hasPermission('PROFESSION_VIEW');
+  const canCreateProfession = hasPermission('PROFESSION_CREATE');
+  const canUpdateProfession = hasPermission('PROFESSION_UPDATE');
+  const canDeleteProfession = hasPermission('PROFESSION_DELETE');
+  const canShowProfessionActions = canUpdateProfession || canDeleteProfession;
+  const hasScopedRegionAccess = hasPermission('MEMBER_LIST_BY_PROVINCE');
+  const isAdmin = hasRole('ADMIN');
+  const [userScopes, setUserScopes] = useState<UserScope[]>([]);
+  const shouldRestrictByScope = hasScopedRegionAccess && !isAdmin && userScopes.length > 0;
+
+  const allowedProvinceIds = React.useMemo(() => {
+    if (!shouldRestrictByScope) return null;
+    return new Set(
+      userScopes
+        .map((scope) => scope.province?.id)
+        .filter((id): id is string => Boolean(id)),
+    );
+  }, [shouldRestrictByScope, userScopes]);
+
+  const districtScopeByProvince = React.useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    if (!shouldRestrictByScope) return map;
+    userScopes.forEach((scope) => {
+      const provinceId = scope.province?.id;
+      if (!provinceId) return;
+      if (!map.has(provinceId)) map.set(provinceId, new Set<string>());
+      if (scope.district?.id) {
+        map.get(provinceId)?.add(scope.district.id);
+      }
+    });
+    return map;
+  }, [shouldRestrictByScope, userScopes]);
+
+  const provinceHasFullAccess = React.useMemo(() => {
+    const set = new Set<string>();
+    if (!shouldRestrictByScope) return set;
+    userScopes.forEach((scope) => {
+      const provinceId = scope.province?.id;
+      if (provinceId && !scope.district?.id) set.add(provinceId);
+    });
+    return set;
+  }, [shouldRestrictByScope, userScopes]);
+
+  const filterInstitutionsByScope = React.useCallback(
+    (data: Institution[]) => {
+      if (!shouldRestrictByScope || !allowedProvinceIds) return data;
+      return data.filter((inst) => {
+        const provinceId = inst.provinceId ?? inst.province?.id ?? '';
+        if (!provinceId || !allowedProvinceIds.has(provinceId)) return false;
+        if (provinceHasFullAccess.has(provinceId)) return true;
+        const allowedDistricts = districtScopeByProvince.get(provinceId);
+        if (!allowedDistricts || allowedDistricts.size === 0) return false;
+        const districtId = inst.districtId ?? inst.district?.id ?? '';
+        return Boolean(districtId && allowedDistricts.has(districtId));
+      });
+    },
+    [shouldRestrictByScope, allowedProvinceIds, provinceHasFullAccess, districtScopeByProvince],
+  );
+
+  const filterDistrictsByScope = React.useCallback(
+    (provinceId: string, data: District[]) => {
+      if (!shouldRestrictByScope) return data;
+      if (provinceHasFullAccess.has(provinceId)) return data;
+      const allowedDistricts = districtScopeByProvince.get(provinceId);
+      if (!allowedDistricts) return [];
+      return data.filter((district) => allowedDistricts.has(district.id));
+    },
+    [shouldRestrictByScope, provinceHasFullAccess, districtScopeByProvince],
+  );
 
   const loadProvinces = async () => {
     try {
       const data = await getProvinces();
-      setProvinces(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      const scopedList =
+        shouldRestrictByScope && allowedProvinceIds
+          ? list.filter((province) => allowedProvinceIds.has(province.id))
+          : list;
+      setProvinces(scopedList);
     } catch (e: unknown) {
       console.error('İller alınırken hata:', e);
       setProvinces([]);
@@ -145,7 +219,8 @@ const InstitutionsPage: React.FC = () => {
     }
     try {
       const data = await getDistricts(provinceId);
-      setDistricts(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setDistricts(filterDistrictsByScope(provinceId, list));
     } catch (e: unknown) {
       console.error('İlçeler alınırken hata:', e);
       setDistricts([]);
@@ -162,7 +237,8 @@ const InstitutionsPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await getInstitutions({ provinceId, districtId, isActive });
-      setRows(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setRows(filterInstitutionsByScope(list));
     } catch (e: unknown) {
       console.error('Kurumlar alınırken hata:', e);
       setRows([]);
@@ -174,11 +250,31 @@ const InstitutionsPage: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!hasScopedRegionAccess || isAdmin || !user?.id) {
+      setUserScopes([]);
+      return;
+    }
+
+    const loadScopes = async () => {
+      try {
+        const scopes = await getUserScopes(user.id);
+        setUserScopes(Array.isArray(scopes) ? scopes : []);
+      } catch (e: unknown) {
+        console.error('Kullanıcı scope bilgisi alınırken hata:', e);
+        setUserScopes([]);
+        toastRef.current.showError(getApiErrorMessage(e, 'Kullanıcı kapsam bilgileri alınamadı.'));
+      }
+    };
+
+    loadScopes();
+  }, [hasScopedRegionAccess, isAdmin, user?.id]);
+
+  useEffect(() => {
     loadProvinces();
     loadInstitutions();
     loadProfessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInactiveProfessions]);
+  }, [showInactiveProfessions, shouldRestrictByScope, allowedProvinceIds, userScopes.length]);
 
   const handleOpenNew = () => {
     if (!hasPermission('INSTITUTION_CREATE')) {
@@ -283,7 +379,7 @@ const InstitutionsPage: React.FC = () => {
     setDeleteTargetInstitutionId('');
     // Mevcut kurumu listeden çıkararak hedef kurum listesini hazırla
     const allInstitutions = await getInstitutions();
-    const filtered = allInstitutions.filter(i => i.id !== inst.id && i.isActive);
+    const filtered = filterInstitutionsByScope(allInstitutions).filter(i => i.id !== inst.id && i.isActive);
     setAvailableInstitutions(filtered);
     setDeleteDialogOpen(true);
   };
@@ -323,6 +419,11 @@ const InstitutionsPage: React.FC = () => {
 
   // Meslek/Unvanlar handler'ları
   const loadProfessions = async () => {
+    if (!canViewProfession) {
+      setProfessions([]);
+      setLoadingProfessions(false);
+      return;
+    }
     setLoadingProfessions(true);
     try {
       const data = showInactiveProfessions ? await getAllProfessions() : await getProfessions();
@@ -337,6 +438,8 @@ const InstitutionsPage: React.FC = () => {
   };
 
   const handleOpenProfessionDialog = (profession?: Profession) => {
+    if (profession && !canUpdateProfession) return;
+    if (!profession && !canCreateProfession) return;
     if (profession) {
       setEditingProfession(profession);
       setProfessionForm({ name: profession.name, isActive: profession.isActive });
@@ -367,9 +470,17 @@ const InstitutionsPage: React.FC = () => {
       };
 
       if (editingProfession) {
+        if (!canUpdateProfession) {
+          toast.showError('Meslek/Unvan güncelleme yetkiniz yok');
+          return;
+        }
         await updateProfession(editingProfession.id, payload);
         toast.showSuccess('Meslek/Unvan başarıyla güncellendi');
       } else {
+        if (!canCreateProfession) {
+          toast.showError('Meslek/Unvan oluşturma yetkiniz yok');
+          return;
+        }
         await createProfession({ name: payload.name });
         toast.showSuccess('Meslek/Unvan başarıyla oluşturuldu');
       }
@@ -383,25 +494,11 @@ const InstitutionsPage: React.FC = () => {
     }
   };
 
-  const handleDeactivateProfession = async () => {
-    if (!deactivatingProfession) return;
-
-    setDeleting(true);
-    try {
-      await updateProfession(deactivatingProfession.id, { isActive: false });
-      toast.showSuccess('Meslek/Unvan pasif yapıldı');
-      setDeactivateProfessionDialogOpen(false);
-      setDeactivatingProfession(null);
-      loadProfessions();
-    } catch (e: unknown) {
-      console.error('Meslek/Unvan pasifleştirilirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Meslek/Unvan pasifleştirilirken bir hata oluştu'));
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   const handleDeleteProfession = async () => {
+    if (!canDeleteProfession) {
+      toast.showError('Meslek/Unvan silme yetkiniz yok');
+      return;
+    }
     if (!deletingProfession) return;
 
     setDeleting(true);
@@ -420,6 +517,10 @@ const InstitutionsPage: React.FC = () => {
   };
 
   const handleActivateProfession = async (profession: Profession) => {
+    if (!canUpdateProfession) {
+      toast.showError('Meslek/Unvan güncelleme yetkiniz yok');
+      return;
+    }
     setDeleting(true);
     try {
       await updateProfession(profession.id, { isActive: true });
@@ -567,7 +668,7 @@ const InstitutionsPage: React.FC = () => {
             >
               Yeni Kurum
             </Button>
-          ) : canManageInstitution && activeTab === 1 ? (
+          ) : canCreateProfession && activeTab === 1 ? (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -872,7 +973,7 @@ const InstitutionsPage: React.FC = () => {
                       >
                         <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Meslek/Unvan Adı</TableCell>
                         <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
-                        {canManageInstitution && (
+                        {canShowProfessionActions && (
                           <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
                         )}
                       </TableRow>
@@ -880,7 +981,7 @@ const InstitutionsPage: React.FC = () => {
                     <TableBody>
                       {professions.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={canManageInstitution ? 3 : 2} align="center" sx={{ py: 6 }}>
+                          <TableCell colSpan={canShowProfessionActions ? 3 : 2} align="center" sx={{ py: 6 }}>
                             <WorkIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
                             <Typography variant="body2" color="text.secondary">
                               Henüz meslek/unvan eklenmemiş
@@ -915,76 +1016,65 @@ const InstitutionsPage: React.FC = () => {
                                 sx={{ fontWeight: 600 }}
                               />
                             </TableCell>
-                            {canManageInstitution && (
+                            {canShowProfessionActions && (
                               <TableCell align="left">
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1 }}>
-                                  <Tooltip title="Düzenle" arrow>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => handleOpenProfessionDialog(profession)}
-                                      sx={{ 
-                                        color: theme.palette.primary.main,
-                                        '&:hover': {
-                                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                        },
-                                      }}
-                                    >
-                                      <EditIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                  {profession.isActive ? (
-                                    <>
-                                      <Tooltip title="Pasif Yap" arrow>
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => {
-                                            setDeactivatingProfession(profession);
-                                            setDeactivateProfessionDialogOpen(true);
-                                          }}
-                                          sx={{ 
-                                            color: theme.palette.warning.main,
-                                            '&:hover': {
-                                              backgroundColor: alpha(theme.palette.warning.main, 0.1),
-                                            },
-                                          }}
-                                        >
-                                          <BlockIcon fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
-                                      <Tooltip title="Sil" arrow>
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => {
-                                            setDeletingProfession(profession);
-                                            setDeleteProfessionDialogOpen(true);
-                                          }}
-                                          sx={{ 
-                                            color: theme.palette.error.main,
-                                            '&:hover': {
-                                              backgroundColor: alpha(theme.palette.error.main, 0.1),
-                                            },
-                                          }}
-                                        >
-                                          <DeleteIcon fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
-                                    </>
-                                  ) : (
-                                    <Tooltip title="Aktifleştir" arrow>
+                                  {canUpdateProfession && (
+                                    <Tooltip title="Düzenle" arrow>
                                       <IconButton
                                         size="small"
-                                        onClick={() => handleActivateProfession(profession)}
-                                        disabled={deleting}
+                                        onClick={() => handleOpenProfessionDialog(profession)}
                                         sx={{ 
-                                          color: theme.palette.success.main,
+                                          color: theme.palette.primary.main,
                                           '&:hover': {
-                                            backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
                                           },
                                         }}
                                       >
-                                        <RestoreIcon fontSize="small" />
+                                        <EditIcon fontSize="small" />
                                       </IconButton>
                                     </Tooltip>
+                                  )}
+                                  {profession.isActive ? (
+                                    <>
+                                      {canDeleteProfession && (
+                                        <Tooltip title="Sil" arrow>
+                                          <IconButton
+                                            size="small"
+                                            onClick={() => {
+                                              setDeletingProfession(profession);
+                                              setDeleteProfessionDialogOpen(true);
+                                            }}
+                                            sx={{ 
+                                              color: theme.palette.error.main,
+                                              '&:hover': {
+                                                backgroundColor: alpha(theme.palette.error.main, 0.1),
+                                              },
+                                            }}
+                                          >
+                                            <DeleteIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
+                                      )}
+                                    </>
+                                  ) : (
+                                    canUpdateProfession && (
+                                      <Tooltip title="Aktifleştir" arrow>
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => handleActivateProfession(profession)}
+                                          disabled={deleting}
+                                          sx={{ 
+                                            color: theme.palette.success.main,
+                                            '&:hover': {
+                                              backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                            },
+                                          }}
+                                        >
+                                          <RestoreIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )
                                   )}
                                 </Box>
                               </TableCell>
@@ -1473,71 +1563,6 @@ const InstitutionsPage: React.FC = () => {
             }}
           >
             {savingProfession ? 'Kaydediliyor...' : editingProfession ? 'Güncelle' : 'Ekle'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      {/* Meslek/Unvan Pasifleştir Dialog */}
-      <Dialog 
-        open={deactivateProfessionDialogOpen} 
-        onClose={() => setDeactivateProfessionDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, 0.2)}`,
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          background: `linear-gradient(135deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
-          color: 'white',
-          py: 2.5,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-        }}>
-          <BlockIcon />
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>Meslek/Unvanı Pasif Yap</Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Typography sx={{ mb: 1 }}>
-            "{deactivatingProfession?.name}" adlı meslek/unvanı pasif yapmak istediğinize emin misiniz?
-          </Typography>
-          <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-            Pasif yapılan meslek/unvanlar listede görünmeye devam eder ancak yeni işlemler için kullanılamaz.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2.5, background: alpha(theme.palette.warning.main, 0.04) }}>
-          <Button 
-            onClick={() => setDeactivateProfessionDialogOpen(false)} 
-            disabled={deleting}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleDeactivateProfession}
-            color="warning"
-            variant="contained"
-            disabled={deleting}
-            startIcon={deleting ? <CircularProgress size={16} /> : <BlockIcon />}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 160,
-              boxShadow: 'none',
-              '&:hover': {
-                boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.3)}`,
-              }
-            }}
-          >
-            {deleting ? 'Pasif Yapılıyor...' : 'Pasif Yap'}
           </Button>
         </DialogActions>
       </Dialog>

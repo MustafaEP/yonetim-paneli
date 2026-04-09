@@ -54,7 +54,7 @@ const PaymentInquiryPage: React.FC = () => {
   const [searched, setSearched] = useState(false);
 
   const canView = hasPermission('MEMBER_PAYMENT_LIST');
-  const canExport = hasPermission('ACCOUNTING_EXPORT');
+  const canExport = hasPermission('TEVKIFAT_EXPORT');
 
   useEffect(() => {
     if (searchType === 'name' && members.length === 0) {

@@ -41,6 +41,20 @@ function isTokenExpired(token: string): boolean {
 // ─── httpClient ↔ AuthContext senkronizasyon event'leri ───
 import { AUTH_EVENTS } from '../../shared/constants/authEvents';
 
+type UserMeResponse = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roles: string[];
+  permissions: string[];
+  member?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+};
+
 interface AuthContextValue {
   user: BackendUser | null;
   accessToken: string | null;
@@ -67,6 +81,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+  }, []);
+
+  const fetchCurrentUserProfile = useCallback(async (): Promise<BackendUser | null> => {
+    try {
+      const { httpClient } = await import('../../shared/services/httpClient');
+      const { data } = await httpClient.get<UserMeResponse>('/users/me');
+      const firstName = data.member?.firstName?.trim() || data.firstName?.trim() || '';
+      const lastName = data.member?.lastName?.trim() || data.lastName?.trim() || '';
+
+      return {
+        id: data.id,
+        email: data.email,
+        firstName,
+        lastName,
+        roles: (data.roles ?? []) as Role[],
+        permissions: data.permissions ?? [],
+      };
+    } catch {
+      return null;
+    }
   }, []);
 
   // ─── İlk yükleme: localStorage'daki token'ları doğrula ───
@@ -107,8 +141,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               localStorage.setItem('refreshToken', data.refreshToken);
             }
             if (data.user) {
-              localStorage.setItem('user', JSON.stringify(data.user));
-              setUser(data.user);
+              const refreshedUser: BackendUser = {
+                id: data.user.id,
+                email: data.user.email,
+                firstName: data.user.firstName ?? '',
+                lastName: data.user.lastName ?? '',
+                roles: (data.user.roles ?? []) as Role[],
+                permissions: data.user.permissions ?? [],
+              };
+              localStorage.setItem('user', JSON.stringify(refreshedUser));
+              setUser(refreshedUser);
             } else {
               try {
                 setUser(JSON.parse(storedUser));
@@ -157,11 +199,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           roles: string[];
           permissions: string[];
         }>('/auth/me');
-        // Backend'den gelen güncel rolleri/izinleri uygula
+        const profile = await fetchCurrentUserProfile();
+        // Backend'den gelen güncel rolleri/izinleri + kullanıcı profilini uygula.
+        // Üyeye bağlı panel kullanıcılarında isim/soyisim member kaydından gelir.
         const updatedUser: BackendUser = {
-          ...parsedUser,
-          roles: (data.roles ?? parsedUser.roles) as Role[],
-          permissions: data.permissions ?? parsedUser.permissions,
+          ...(profile ?? parsedUser),
+          id: data.userId ?? profile?.id ?? parsedUser.id,
+          email: data.email ?? profile?.email ?? parsedUser.email,
+          roles: (data.roles ?? profile?.roles ?? parsedUser.roles) as Role[],
+          permissions: data.permissions ?? profile?.permissions ?? parsedUser.permissions,
         };
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -175,7 +221,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initAuth();
-  }, [clearSession]);
+  }, [clearSession, fetchCurrentUserProfile]);
 
   // ─── httpClient'tan gelen senkronizasyon event'lerini dinle ───
   useEffect(() => {
@@ -209,10 +255,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (credentials: LoginRequest) => {
     const data: LoginResponse = await loginApi(credentials);
+    const loginUser: BackendUser = {
+      id: data.user.id,
+      email: data.user.email,
+      firstName: data.user.firstName ?? '',
+      lastName: data.user.lastName ?? '',
+      roles: (data.user.roles ?? []) as Role[],
+      permissions: data.user.permissions ?? [],
+    };
+
+    const profileUser = await fetchCurrentUserProfile();
+    const mergedUser: BackendUser = profileUser
+      ? {
+          ...profileUser,
+          roles: profileUser.roles?.length
+            ? profileUser.roles
+            : loginUser.roles,
+          permissions: profileUser.permissions?.length
+            ? profileUser.permissions
+            : loginUser.permissions,
+        }
+      : loginUser;
+
     setAccessToken(data.accessToken);
-    setUser(data.user);
+    setUser(mergedUser);
     localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('user', JSON.stringify(mergedUser));
     if (data.refreshToken) {
       localStorage.setItem('refreshToken', data.refreshToken);
     }
@@ -238,7 +306,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const hasPermission = (permission: string) => {
     if (!user) return false;
     if (user.roles?.includes('ADMIN')) return true;
-    return user.permissions?.includes(permission) ?? false;
+    const permissions = user.permissions ?? [];
+    if (permissions.includes(permission)) return true;
+
+    // Backward compatibility for renamed tevkifat permissions
+    if (permission === 'TEVKIFAT_VIEW' && permissions.includes('ACCOUNTING_VIEW')) {
+      return true;
+    }
+    if (permission === 'TEVKIFAT_EXPORT' && permissions.includes('ACCOUNTING_EXPORT')) {
+      return true;
+    }
+    if (permission === 'ACCOUNTING_VIEW' && permissions.includes('TEVKIFAT_VIEW')) {
+      return true;
+    }
+    if (permission === 'ACCOUNTING_EXPORT' && permissions.includes('TEVKIFAT_EXPORT')) {
+      return true;
+    }
+
+    return false;
   };
 
   const hasRole = (role: Role) => {

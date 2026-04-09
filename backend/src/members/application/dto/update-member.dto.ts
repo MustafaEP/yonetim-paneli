@@ -29,6 +29,16 @@ export class UpdateMemberDto {
   lastName?: string;
 
   @ApiProperty({
+    description: 'TC Kimlik Numarası',
+    example: '12345678901',
+    type: String,
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  nationalId?: string;
+
+  @ApiProperty({
     description: 'Telefon numarası',
     example: '05551234567',
     type: String,

@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsEmail,
+  MinLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { RoleScopeDto } from '../../../roles/application/dto/role-scope.dto';
 
@@ -90,4 +97,22 @@ export class UpdateUserRolesDto {
   })
   @IsArray()
   customRoleIds: string[];
+}
+
+export class UpdateUserAccountDto {
+  @ApiProperty({
+    description: 'Kullanıcı e-posta adresi',
+    example: 'user@example.com',
+  })
+  @IsEmail()
+  email: string;
+
+  @ApiPropertyOptional({
+    description: 'Yeni şifre (girilirse güncellenir)',
+    example: 'NewPassword123!',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  password?: string;
 }

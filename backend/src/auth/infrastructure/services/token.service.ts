@@ -61,7 +61,7 @@ export class TokenService {
     const payload = await this.jwtService.verifyAsync<RefreshPayload>(token);
     if (payload.type !== TOKEN_TYPE_REFRESH) {
       throw new UnauthorizedException(
-        'Invalid token type: expected refresh token',
+        'Geçersiz belirteç türü: yenileme belirteci bekleniyor',
       );
     }
     return payload;

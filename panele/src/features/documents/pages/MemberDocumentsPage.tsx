@@ -58,6 +58,7 @@ const MemberDocumentsPage: React.FC = () => {
   const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
 
   const canManageDocuments = hasPermission('DOCUMENT_GENERATE_PDF');
+  const canDownloadDocuments = hasPermission('DOCUMENT_DOWNLOAD');
 
   const loadMembers = async () => {
     try {
@@ -241,12 +242,13 @@ const MemberDocumentsPage: React.FC = () => {
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title="PDF İndir">
+            <Tooltip title={canDownloadDocuments ? 'PDF İndir' : 'Evrak indirme yetkiniz yok'}>
               <span>
                 <IconButton
                   size="small"
-                  disabled={isDeleting || isDownloading}
+                  disabled={isDeleting || isDownloading || !canDownloadDocuments}
                   onClick={async () => {
+                    if (!canDownloadDocuments) return;
                     const baseName = doc.fileName?.replace(/\.pdf$/i, '') || 'belge';
                     const safeName = baseName.endsWith('.pdf') ? baseName : `${baseName}.pdf`;
                     setDownloadingDocumentId(doc.id);

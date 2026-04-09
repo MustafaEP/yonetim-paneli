@@ -85,6 +85,12 @@ const RoleCreateEditPage: React.FC = () => {
   // Yetki alanı state'i
   const [hasScopeRestriction, setHasScopeRestriction] = useState(false);
 
+  const normalizePermission = (permission: string): PermissionType | null => {
+    if (permission === 'ACCOUNTING_VIEW') return 'TEVKIFAT_VIEW';
+    if (permission === 'ACCOUNTING_EXPORT') return 'TEVKIFAT_EXPORT';
+    return permission in PERMISSION_LABELS ? (permission as PermissionType) : null;
+  };
+
   useEffect(() => {
     if (isEditMode && id) {
       const fetchRole = async () => {
@@ -98,7 +104,10 @@ const RoleCreateEditPage: React.FC = () => {
           setName(role.name);
             setDescription(role.description || '');
           setIsActive(role.isActive);
-          setSelectedPermissions(new Set(role.permissions));
+          const normalizedPermissions = role.permissions
+            .map((permission) => normalizePermission(permission))
+            .filter((permission): permission is PermissionType => permission !== null);
+          setSelectedPermissions(new Set(normalizedPermissions));
           
           // Yetki alanı bilgilerini yükle
           if (role.hasScopeRestriction) {
@@ -197,7 +206,9 @@ const RoleCreateEditPage: React.FC = () => {
     setError(null);
 
     try {
-      const permissionsArray = Array.from(selectedPermissions);
+      const permissionsArray = Array.from(selectedPermissions)
+        .map((permission) => normalizePermission(permission))
+        .filter((permission): permission is PermissionType => permission !== null);
 
       if (isEditMode && id) {
         const updateDto: UpdateRoleDto = {
@@ -248,7 +259,8 @@ const RoleCreateEditPage: React.FC = () => {
     NOTIFICATIONS: 'Bildirimler',
     SYSTEM: 'Sistem',
     INSTITUTION_MANAGEMENT: 'Kurum Yönetimi',
-    ACCOUNTING: 'Muhasebe',
+    PROFESSION_MANAGEMENT: 'Meslek Yönetimi',
+    ACCOUNTING: 'Tevkifat',
     MEMBER_PAYMENTS: 'Üye Kesintileri',
     APPROVALS: 'Onay Süreçleri',
     PANEL_USER_APPLICATIONS: 'Panel Kullanıcı Başvuruları',

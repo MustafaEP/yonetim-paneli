@@ -42,6 +42,7 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FeedIcon from '@mui/icons-material/Feed';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthContext';
 import type { SxProps, Theme } from '@mui/material';
@@ -90,14 +91,15 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { hasPermission } = useAuth();
-  const nav = getSidebarNavFlags(hasPermission);
+  const { hasPermission, hasRole } = useAuth();
+  const nav = getSidebarNavFlags(hasPermission, hasRole);
 
   const {
     showNewMemberApplication,
     showMemberApplications,
     showMembersList,
     showMemberHistory,
+    showContent,
     showRegions,
     showRoles,
     showDocumentsSection,
@@ -136,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
   React.useEffect(() => {
     const path = location.pathname;
 
-    if (path.startsWith('/members')) {
+    if (path.startsWith('/members') || path.startsWith('/professions')) {
       setOpenSection('members');
     } else if (
       path.startsWith('/regions') ||
@@ -169,8 +171,10 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
     showAdvances ||
     showInvoices;
   const hasMembersGroup =
-    showMemberApplications || showMembersList || showMemberHistory;
-  const hasContentGroup = showDocumentsSection;
+    showMemberApplications ||
+    showMembersList ||
+    showMemberHistory;
+  const hasContentGroup = showDocumentsSection || showContent;
   const hasUserManagementGroup = showUsers || showRoles || showPanelUserApplications;
   const hasSystemGroup = showSystemSettings || showSystemLogs;
 
@@ -295,7 +299,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                     (location.pathname.startsWith('/members/waiting') &&
                       !location.pathname.startsWith('/members/applications') &&
                       !location.pathname.startsWith('/members/waiting') &&
-                      !location.pathname.startsWith('/members/bulk-registration') &&
                       !location.pathname.startsWith('/members/status') &&
                       /^\/members\/[^/]+$/.test(location.pathname))
                   }
@@ -336,26 +339,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                 </ListItemButton>
               )}
 
-              {showMembersList && (
-                <ListItemButton
-                  component={Link}
-                  to="/members/kbs"
-                  selected={location.pathname.startsWith('/members/kbs')}
-                  onClick={handleLinkClick}
-                  sx={getNavItemSx(theme)}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <CloudDownloadIcon />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="KBS Veri Çekme"
-                    primaryTypographyProps={{
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                    }}
-                  />
-                </ListItemButton>
-              )}
             </List>
           </Collapse>
         </List>
@@ -608,6 +591,26 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
 
           <Collapse in={openSection === 'content-docs'} timeout="auto" unmountOnExit>
             <List component="div" disablePadding sx={{ pl: 4 }}>
+              {showContent && (
+                <ListItemButton
+                  component={Link}
+                  to="/content"
+                  selected={location.pathname.startsWith('/content')}
+                  onClick={handleLinkClick}
+                  sx={getNavItemSx(theme)}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <FeedIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="İçerik Yönetimi"
+                    primaryTypographyProps={{
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              )}
               {showPdfGenerate && (
                 <ListItemButton
                   component={Link}
@@ -828,7 +831,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
                     <BadgeIcon />
                   </ListItemIcon>
                   <ListItemText
-                    primary="Panel Kullanıcı Başvuruları"
+                    primary="Panel Kullanıcı Ekle"
                     primaryTypographyProps={{
                       fontSize: '0.9rem',
                       fontWeight: 500,

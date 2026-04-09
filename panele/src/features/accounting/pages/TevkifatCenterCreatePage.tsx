@@ -58,7 +58,9 @@ const TevkifatCenterCreatePage: React.FC = () => {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
 
-  const canManage = hasPermission('ACCOUNTING_VIEW'); // ACCOUNTING_VIEW yetkisi yeterli
+  const canCreate = hasPermission('TEVKIFAT_CENTER_CREATE');
+  const canUpdate = hasPermission('TEVKIFAT_CENTER_UPDATE');
+  const canManage = isEditMode ? canUpdate : canCreate;
 
   useEffect(() => {
     if (canManage) {

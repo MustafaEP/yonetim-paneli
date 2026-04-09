@@ -195,6 +195,7 @@ export const updateMember = async (
   data: {
     firstName?: string;
     lastName?: string;
+    nationalId?: string;
     phone?: string;
     email?: string;
     membershipInfoOptionId?: string;

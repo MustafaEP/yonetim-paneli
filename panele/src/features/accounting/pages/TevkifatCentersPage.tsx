@@ -36,7 +36,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import BusinessIcon from '@mui/icons-material/Business';
 import DeleteIcon from '@mui/icons-material/Delete';
-import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
 import BadgeIcon from '@mui/icons-material/Badge';
 import { useAuth } from '../../../app/providers/AuthContext';
@@ -79,20 +78,33 @@ const TevkifatCentersPage: React.FC = () => {
   const [titleForm, setTitleForm] = useState<CreateTevkifatTitleDto>({ name: '' });
   const [savingTitle, setSavingTitle] = useState(false);
   const [deleteTitleDialogOpen, setDeleteTitleDialogOpen] = useState(false);
-  const [deactivateTitleDialogOpen, setDeactivateTitleDialogOpen] = useState(false);
   const [deletingTitle, setDeletingTitle] = useState<TevkifatTitle | null>(null);
-  const [deactivatingTitle, setDeactivatingTitle] = useState<TevkifatTitle | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const canView = hasPermission('ACCOUNTING_VIEW');
-  const canManage = hasPermission('ACCOUNTING_VIEW'); // Admin yetkisi
+  const canViewCenter =
+    hasPermission('TEVKIFAT_CENTER_VIEW') ||
+    hasPermission('TEVKIFAT_CENTER_CREATE') ||
+    hasPermission('TEVKIFAT_CENTER_UPDATE') ||
+    hasPermission('TEVKIFAT_CENTER_DELETE');
+  const canCreateCenter = hasPermission('TEVKIFAT_CENTER_CREATE');
+  const canUpdateCenter = hasPermission('TEVKIFAT_CENTER_UPDATE');
+  const canDeleteCenter = hasPermission('TEVKIFAT_CENTER_DELETE');
+  const canViewTitles = hasPermission('TEVKIFAT_TITLE_VIEW');
+  const canCreateTitle = hasPermission('TEVKIFAT_TITLE_CREATE');
+  const canUpdateTitle = hasPermission('TEVKIFAT_TITLE_UPDATE');
+  const canDeleteTitle = hasPermission('TEVKIFAT_TITLE_DELETE');
+  const canManageTitles =
+    canCreateTitle || canUpdateTitle || canDeleteTitle;
+  const canShowTitleActions = canUpdateTitle || canDeleteTitle;
 
   useEffect(() => {
-    if (canView) {
+    if (canViewCenter) {
       loadCenters();
-      loadTitles();
+      if (canViewTitles || canManageTitles) {
+        loadTitles();
+      }
     }
-  }, [canView]);
+  }, [canViewCenter, canViewTitles, canManageTitles]);
 
   const loadCenters = async () => {
     setLoading(true);
@@ -134,6 +146,8 @@ const TevkifatCentersPage: React.FC = () => {
 
   // Tevkifat Unvanları handler'ları
   const handleOpenTitleDialog = (title?: TevkifatTitle) => {
+    if (title && !canUpdateTitle) return;
+    if (!title && !canCreateTitle) return;
     if (title) {
       setEditingTitle(title);
       setTitleForm({ name: title.name });
@@ -159,9 +173,17 @@ const TevkifatCentersPage: React.FC = () => {
     setSavingTitle(true);
     try {
       if (editingTitle) {
+        if (!canUpdateTitle) {
+          toast.showError('Tevkifat unvanı güncelleme yetkiniz yok');
+          return;
+        }
         await updateTevkifatTitle(editingTitle.id, titleForm);
         toast.showSuccess('Tevkifat unvanı güncellendi');
       } else {
+        if (!canCreateTitle) {
+          toast.showError('Tevkifat unvanı oluşturma yetkiniz yok');
+          return;
+        }
         await createTevkifatTitle(titleForm);
         toast.showSuccess('Tevkifat unvanı oluşturuldu');
       }
@@ -175,25 +197,11 @@ const TevkifatCentersPage: React.FC = () => {
     }
   };
 
-  const handleDeactivateTitle = async () => {
-    if (!deactivatingTitle) return;
-
-    setDeleting(true);
-    try {
-      await updateTevkifatTitle(deactivatingTitle.id, { isActive: false });
-      toast.showSuccess('Tevkifat unvanı pasif yapıldı');
-      setDeactivateTitleDialogOpen(false);
-      setDeactivatingTitle(null);
-      loadTitles();
-    } catch (e: unknown) {
-      console.error('Tevkifat unvanı pasifleştirilirken hata:', e);
-      toast.showError(getApiErrorMessage(e, 'Tevkifat unvanı pasifleştirilirken bir hata oluştu'));
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   const handleDeleteTitle = async () => {
+    if (!canDeleteTitle) {
+      toast.showError('Tevkifat unvanı silme yetkiniz yok');
+      return;
+    }
     if (!deletingTitle) return;
 
     setDeleting(true);
@@ -212,6 +220,10 @@ const TevkifatCentersPage: React.FC = () => {
   };
 
   const handleActivateTitle = async (title: TevkifatTitle) => {
+    if (!canUpdateTitle) {
+      toast.showError('Tevkifat unvanı güncelleme yetkiniz yok');
+      return;
+    }
     setDeleting(true);
     try {
       await updateTevkifatTitle(title.id, { isActive: true });
@@ -259,39 +271,43 @@ const TevkifatCentersPage: React.FC = () => {
                 <VisibilityIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            {canManage && (
+            {(canUpdateCenter || canDeleteCenter) && (
               <>
-                <Tooltip title="Düzenle" arrow>
-                  <IconButton
-                    size="small"
-                    onClick={() => navigate(`/accounting/tevkifat-centers/${center.id}/edit`)}
-                    sx={{
-                      color: theme.palette.primary.main,
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                      },
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Kaldır" arrow>
-                  <IconButton
-                    size="small"
-                    onClick={() => {
-                      setDeletingCenter(center);
-                      setDeleteDialogOpen(true);
-                    }}
-                    sx={{
-                      color: theme.palette.error.main,
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.error.main, 0.08),
-                      },
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {canUpdateCenter && (
+                  <Tooltip title="Düzenle" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => navigate(`/accounting/tevkifat-centers/${center.id}/edit`)}
+                      sx={{
+                        color: theme.palette.primary.main,
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                        },
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {canDeleteCenter && (
+                  <Tooltip title="Kaldır" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setDeletingCenter(center);
+                        setDeleteDialogOpen(true);
+                      }}
+                      sx={{
+                        color: theme.palette.error.main,
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.error.main, 0.08),
+                        },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </>
             )}
           </Box>
@@ -300,7 +316,7 @@ const TevkifatCentersPage: React.FC = () => {
     },
   ];
 
-  if (!canView) {
+  if (!canViewCenter) {
     return (
       <Box sx={{ p: { xs: 2, sm: 3 } }}>
         <Paper
@@ -335,7 +351,7 @@ const TevkifatCentersPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
         rightContent={
-          canManage ? (
+          (activeTab === 0 ? canCreateCenter : canCreateTitle) ? (
             <Button
               variant="contained"
                 startIcon={<AddIcon />}
@@ -370,7 +386,7 @@ const TevkifatCentersPage: React.FC = () => {
             ) : undefined
         }
         mobileContent={
-          canManage ? (
+          (activeTab === 0 ? canCreateCenter : canCreateTitle) ? (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -652,7 +668,7 @@ const TevkifatCentersPage: React.FC = () => {
                       >
                         <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Unvan Adı</TableCell>
                         <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>Durum</TableCell>
-                        {canManage && (
+                        {canShowTitleActions && (
                           <TableCell align="left" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>İşlemler</TableCell>
                         )}
                       </TableRow>
@@ -660,7 +676,7 @@ const TevkifatCentersPage: React.FC = () => {
                     <TableBody>
                       {titles.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={canManage ? 3 : 2} align="center" sx={{ py: 6 }}>
+                          <TableCell colSpan={canShowTitleActions ? 3 : 2} align="center" sx={{ py: 6 }}>
                             <BadgeIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
                             <Typography variant="body2" color="text.secondary">
                               Henüz unvan eklenmemiş
@@ -691,76 +707,65 @@ const TevkifatCentersPage: React.FC = () => {
                             sx={{ fontWeight: 600 }}
                           />
                         </TableCell>
-                        {canManage && (
+                        {canShowTitleActions && (
                           <TableCell align="left">
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1 }}>
-                              <Tooltip title="Düzenle" arrow>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleOpenTitleDialog(title)}
-                                  sx={{ 
-                                    color: theme.palette.primary.main,
-                                    '&:hover': {
-                                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                    },
-                                  }}
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              {title.isActive ? (
-                                <>
-                                  <Tooltip title="Pasif Yap" arrow>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => {
-                                        setDeactivatingTitle(title);
-                                        setDeactivateTitleDialogOpen(true);
-                                      }}
-                                      sx={{ 
-                                        color: theme.palette.warning.main,
-                                        '&:hover': {
-                                          backgroundColor: alpha(theme.palette.warning.main, 0.1),
-                                        },
-                                      }}
-                                    >
-                                      <BlockIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Sil" arrow>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => {
-                                        setDeletingTitle(title);
-                                        setDeleteTitleDialogOpen(true);
-                                      }}
-                                      sx={{ 
-                                        color: theme.palette.error.main,
-                                        '&:hover': {
-                                          backgroundColor: alpha(theme.palette.error.main, 0.1),
-                                        },
-                                      }}
-                                    >
-                                      <DeleteIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                </>
-                              ) : (
-                                <Tooltip title="Aktifleştir" arrow>
+                              {canUpdateTitle && (
+                                <Tooltip title="Düzenle" arrow>
                                   <IconButton
                                     size="small"
-                                    onClick={() => handleActivateTitle(title)}
-                                    disabled={deleting}
+                                    onClick={() => handleOpenTitleDialog(title)}
                                     sx={{ 
-                                      color: theme.palette.success.main,
+                                      color: theme.palette.primary.main,
                                       '&:hover': {
-                                        backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
                                       },
                                     }}
                                   >
-                                    <RestoreIcon fontSize="small" />
+                                    <EditIcon fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
+                              )}
+                              {title.isActive ? (
+                                <>
+                                  {canDeleteTitle && (
+                                    <Tooltip title="Sil" arrow>
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => {
+                                          setDeletingTitle(title);
+                                          setDeleteTitleDialogOpen(true);
+                                        }}
+                                        sx={{ 
+                                          color: theme.palette.error.main,
+                                          '&:hover': {
+                                            backgroundColor: alpha(theme.palette.error.main, 0.1),
+                                          },
+                                        }}
+                                      >
+                                        <DeleteIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                </>
+                              ) : (
+                                canUpdateTitle && (
+                                  <Tooltip title="Aktifleştir" arrow>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => handleActivateTitle(title)}
+                                      disabled={deleting}
+                                      sx={{ 
+                                        color: theme.palette.success.main,
+                                        '&:hover': {
+                                          backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                        },
+                                      }}
+                                    >
+                                      <RestoreIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                )
                               )}
                             </Box>
                           </TableCell>
@@ -848,71 +853,6 @@ const TevkifatCentersPage: React.FC = () => {
             }}
           >
             {savingTitle ? 'Kaydediliyor...' : editingTitle ? 'Güncelle' : 'Ekle'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      {/* Unvan Pasifleştir Dialog */}
-      <Dialog 
-        open={deactivateTitleDialogOpen} 
-        onClose={() => setDeactivateTitleDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, 0.2)}`,
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          background: `linear-gradient(135deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
-          color: 'white',
-          py: 2.5,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-        }}>
-          <BlockIcon />
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>Tevkifat Unvanını Pasif Yap</Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Typography sx={{ mb: 1 }}>
-            "{deactivatingTitle?.name}" adlı tevkifat unvanını pasif yapmak istediğinize emin misiniz?
-          </Typography>
-          <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-            Pasif yapılan unvanlar listede görünmeye devam eder ancak yeni işlemler için kullanılamaz.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2.5, background: alpha(theme.palette.warning.main, 0.04) }}>
-          <Button 
-            onClick={() => setDeactivateTitleDialogOpen(false)} 
-            disabled={deleting}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-            }}
-          >
-            İptal
-          </Button>
-          <Button
-            onClick={handleDeactivateTitle}
-            color="warning"
-            variant="contained"
-            disabled={deleting}
-            startIcon={deleting ? <CircularProgress size={16} /> : <BlockIcon />}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 160,
-              boxShadow: 'none',
-              '&:hover': {
-                boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.3)}`,
-              }
-            }}
-          >
-            {deleting ? 'Pasif Yapılıyor...' : 'Pasif Yap'}
           </Button>
         </DialogActions>
       </Dialog>

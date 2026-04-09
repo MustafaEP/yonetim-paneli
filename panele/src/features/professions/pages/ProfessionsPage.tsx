@@ -61,8 +61,12 @@ const ProfessionsPage: React.FC = () => {
 
   const { hasPermission } = useAuth();
   const toast = useToast();
-  const canManageProfession = hasPermission('MEMBER_UPDATE');
-  const canListProfession = hasPermission('MEMBER_CREATE_APPLICATION') || hasPermission('MEMBER_UPDATE');
+  const canListProfession = hasPermission('PROFESSION_VIEW');
+  const canCreateProfession = hasPermission('PROFESSION_CREATE');
+  const canUpdateProfession = hasPermission('PROFESSION_UPDATE');
+  const canDeleteProfession = hasPermission('PROFESSION_DELETE');
+  const canManageProfession = canCreateProfession || canUpdateProfession || canDeleteProfession;
+  const canShowActionButtons = canUpdateProfession || canDeleteProfession;
 
   const loadProfessions = async () => {
     if (!canListProfession) {
@@ -88,7 +92,7 @@ const ProfessionsPage: React.FC = () => {
   }, [showInactive]);
 
   const handleOpenNew = () => {
-    if (!canManageProfession) {
+    if (!canCreateProfession) {
       toast.showError('Meslek/Unvan oluşturmak için yetkiniz yok.');
       return;
     }
@@ -101,7 +105,7 @@ const ProfessionsPage: React.FC = () => {
   };
 
   const handleOpenEdit = (profession: Profession) => {
-    if (!canManageProfession) return;
+    if (!canUpdateProfession) return;
     setEditingProfession(profession);
     setForm({
       name: profession.name,
@@ -136,7 +140,7 @@ const ProfessionsPage: React.FC = () => {
       };
 
       if (editingProfession) {
-        if (!canManageProfession) {
+        if (!canUpdateProfession) {
           toast.showError('Meslek/Unvan güncellemek için yetkiniz yok.');
           setSaving(false);
           return;
@@ -144,7 +148,7 @@ const ProfessionsPage: React.FC = () => {
         await updateProfession(editingProfession.id, payload);
         toast.showSuccess('Meslek/Unvan başarıyla güncellendi.');
       } else {
-        if (!canManageProfession) {
+        if (!canCreateProfession) {
           toast.showError('Meslek/Unvan oluşturmak için yetkiniz yok.');
           setSaving(false);
           return;
@@ -164,7 +168,7 @@ const ProfessionsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!canManageProfession) {
+    if (!canDeleteProfession) {
       toast.showError('Meslek/Unvan silmek için yetkiniz yok.');
       return;
     }
@@ -214,41 +218,45 @@ const ProfessionsPage: React.FC = () => {
         />
       ),
     },
-    {
-      field: 'actions',
-      headerName: 'İşlemler',
-      flex: 1,
-      minWidth: 150,
-      sortable: false,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {canManageProfession && (
-            <IconButton
-              size="small"
-              color="primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenEdit(params.row);
-              }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-          )}
-          {canManageProfession && (
-            <IconButton
-              size="small"
-              color="error"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete(params.row.id);
-              }}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          )}
-        </Box>
-      ),
-    },
+    ...(canShowActionButtons
+      ? [
+          {
+            field: 'actions',
+            headerName: 'İşlemler',
+            flex: 1,
+            minWidth: 150,
+            sortable: false,
+            renderCell: (params: { row: Profession }) => (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {canUpdateProfession && (
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenEdit(params.row);
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                )}
+                {canDeleteProfession && (
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(params.row.id);
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            ),
+          } as GridColDef<Profession>,
+        ]
+      : []),
   ];
 
   if (!canListProfession) {
@@ -284,7 +292,7 @@ const ProfessionsPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
         rightContent={
-          hasPermission('MEMBER_UPDATE') ? (
+          canCreateProfession ? (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -401,7 +409,7 @@ const ProfessionsPage: React.FC = () => {
                 fontSize: '0.875rem',
               },
               '& .MuiDataGrid-row': {
-                cursor: canManageProfession ? 'pointer' : 'default',
+                cursor: canUpdateProfession ? 'pointer' : 'default',
                 '&:hover': {
                   backgroundColor: alpha(theme.palette.primary.main, 0.02),
                 },
@@ -419,7 +427,7 @@ const ProfessionsPage: React.FC = () => {
               loading={loading}
               onRowDoubleClick={(params) => {
                 const profession = rows.find((x) => x.id === params.id);
-                if (profession && canManageProfession) handleOpenEdit(profession);
+                if (profession && canUpdateProfession) handleOpenEdit(profession);
               }}
               initialState={{
                 pagination: {

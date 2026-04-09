@@ -19,37 +19,45 @@ import { NotificationRepository } from './domain/repositories/notification.repos
 import { NotificationExceptionFilter } from './presentation/filters/notification-exception.filter';
 import { NotificationValidationPipe } from './presentation/pipes/notification-validation.pipe';
 
+const isRedisEnabled =
+  (process.env.REDIS_ENABLED || 'false').toLowerCase() === 'true' ||
+  process.env.REDIS_ENABLED === '1';
+
 @Module({
   imports: [
     PrismaModule,
     ConfigModule,
     MembersModule,
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.redisHost,
-          port: configService.redisPort,
-          password: configService.redisPassword,
-          maxRetriesPerRequest: null, // BullMQ requires this to be null
-          retryStrategy: (times) => {
-            // Exponential backoff with max delay
-            const delay = Math.min(times * 50, 5000);
-            return delay;
-          },
-          enableOfflineQueue: false, // Redis yoksa job'ları queue'ya ekleme
-        },
-      }),
-    }),
-    BullModule.registerQueue({
-      name: NOTIFICATION_QUEUE_NAME,
-    }),
+    ...(isRedisEnabled
+      ? [
+          BullModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+              connection: {
+                host: configService.redisHost,
+                port: configService.redisPort,
+                password: configService.redisPassword,
+                maxRetriesPerRequest: null, // BullMQ requires this to be null
+                retryStrategy: (times) => {
+                  // Exponential backoff with max delay
+                  const delay = Math.min(times * 50, 5000);
+                  return delay;
+                },
+                enableOfflineQueue: false, // Redis yoksa job'ları queue'ya ekleme
+              },
+            }),
+          }),
+          BullModule.registerQueue({
+            name: NOTIFICATION_QUEUE_NAME,
+          }),
+        ]
+      : []),
   ],
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
-    NotificationProcessor,
+    ...(isRedisEnabled ? [NotificationProcessor] : []),
     NotificationQueue,
     EmailService,
     SmsService,

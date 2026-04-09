@@ -28,6 +28,10 @@ import {
   useTheme,
   alpha,
   Fade,
+  TextField,
+  Alert,
+  InputAdornment,
+  Collapse,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -40,10 +44,18 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import BadgeIcon from '@mui/icons-material/Badge';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import type { UserDetail } from '../../../types/user';
-import { getUserById } from '../services/usersApi';
+import {
+  getUserById,
+  updateUserAccount,
+  demoteUserToMember,
+} from '../services/usersApi';
 import { getRoles } from '../../roles/services/rolesApi';
 import type { CustomRole } from '../../../types/role';
 import type {
@@ -59,8 +71,8 @@ import {
   updateUserScope,
   deleteUserScope,
 } from '../../regions/services/regionsApi';
-import { useAuth } from '../../app/providers/AuthContext';
-import { canManageBranches } from '../../shared/utils/permissions';
+import { useAuth } from '../../../app/providers/AuthContext';
+import { canManageBranches } from '../../../shared/utils/permissions';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 
@@ -83,6 +95,7 @@ const UserDetailPage: React.FC = () => {
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingScopes, setLoadingScopes] = useState(true);
   const [roles, setRoles] = useState<CustomRole[]>([]);
+  const [editableRoles, setEditableRoles] = useState<CustomRole[]>([]);
 
   // 🔹 Mevcut user (login olan) & branch manage kontrolü
   const { user: currentUser } = useAuth();
@@ -106,7 +119,29 @@ const UserDetailPage: React.FC = () => {
 
   const { hasPermission } = useAuth();
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
+  const [headerEditOpen, setHeaderEditOpen] = useState(false);
+  const [headerEditSaving, setHeaderEditSaving] = useState(false);
+  const [headerEditRoleId, setHeaderEditRoleId] = useState('');
+  const [headerEditEmail, setHeaderEditEmail] = useState('');
+  const [headerEditPassword, setHeaderEditPassword] = useState('');
+  const [headerEditPasswordConfirm, setHeaderEditPasswordConfirm] = useState('');
+  const [headerEditScopes, setHeaderEditScopes] = useState<
+    Array<{ provinceId?: string; districtId?: string }>
+  >([]);
+  const [headerEditDistrictsMap, setHeaderEditDistrictsMap] = useState<
+    Record<string, District[]>
+  >({});
+  const [showHeaderEditPassword, setShowHeaderEditPassword] = useState(false);
+  const [showHeaderEditPasswordConfirm, setShowHeaderEditPasswordConfirm] =
+    useState(false);
+  const [roleSectionOpen, setRoleSectionOpen] = useState(true);
+  const [demoteDialogOpen, setDemoteDialogOpen] = useState(false);
+  const [demoteSubmitting, setDemoteSubmitting] = useState(false);
   const canAssignRole = hasPermission('USER_ASSIGN_ROLE');
+  const canHeaderEditPanelUser = hasPermission('PANEL_USER_APPLICATION_APPROVE');
+  const canDemoteToMember =
+    hasPermission('USER_SOFT_DELETE') ||
+    hasPermission('PANEL_USER_APPLICATION_APPROVE');
 
   const handleSaveRoles = async (customRoleIds: string[]) => {
     if (!user) return;
@@ -131,16 +166,24 @@ const UserDetailPage: React.FC = () => {
         setUser(data);
         
         // Rolleri detaylı olarak çek
-        if (data.roles && data.roles.length > 0) {
-          try {
-            const allRoles = await getRoles();
-            const userRoleDetails = allRoles
-              .filter((r): r is CustomRole => 'id' in r && data.roles.some(roleName => typeof roleName === 'string' && r.name === roleName))
-              .map(r => r as CustomRole);
-            setRoles(userRoleDetails);
-          } catch (e) {
-            console.error('Roller alınırken hata:', e);
-          }
+        try {
+          const allRoles = await getRoles();
+          const customRoles = allRoles
+            .filter((r): r is CustomRole => 'id' in r)
+            .map((r) => r as CustomRole);
+          const userRoleDetails = customRoles.filter((r) =>
+            data.roles.some(
+              (roleName) => typeof roleName === 'string' && r.name === roleName,
+            ),
+          );
+          setRoles(userRoleDetails);
+          setEditableRoles(
+            customRoles.filter(
+              (r) => r.isActive && r.name.toUpperCase() !== 'ADMIN',
+            ),
+          );
+        } catch (e) {
+          console.error('Roller alınırken hata:', e);
         }
       } catch (e) {
         console.error('Kullanıcı detay alınırken hata:', e);
@@ -332,6 +375,159 @@ const UserDetailPage: React.FC = () => {
     }
   };
 
+  const ensureHeaderEditDistrictsLoaded = async (provinceId?: string) => {
+    if (!provinceId || headerEditDistrictsMap[provinceId]) return;
+    try {
+      const districts = await getDistricts(provinceId);
+      setHeaderEditDistrictsMap((prev) => ({ ...prev, [provinceId]: districts }));
+    } catch {
+      // ignore
+    }
+  };
+
+  const openHeaderEditDialog = async () => {
+    if (!user) return;
+    const selectedRole =
+      editableRoles.find((r) => user.roles.includes(r.name)) ?? editableRoles[0];
+    setHeaderEditRoleId(selectedRole?.id ?? '');
+    setHeaderEditEmail(user.email ?? '');
+    setHeaderEditPassword('');
+    setHeaderEditPasswordConfirm('');
+
+    if (scopeProvinces.length === 0) {
+      try {
+        const provinces = await getProvinces();
+        setScopeProvinces(provinces);
+      } catch {
+        // ignore
+      }
+    }
+
+    const initialScopes =
+      scopes.length > 0
+        ? scopes.map((s) => ({
+            provinceId: s.province?.id,
+            districtId: s.district?.id,
+          }))
+        : [{ provinceId: undefined, districtId: undefined }];
+    setHeaderEditScopes(initialScopes);
+
+    for (const scope of initialScopes) {
+      if (scope.provinceId) {
+        await ensureHeaderEditDistrictsLoaded(scope.provinceId);
+      }
+    }
+    setHeaderEditOpen(true);
+  };
+
+  const handleHeaderEditSave = async () => {
+    if (!user) return;
+    const selectedRole = editableRoles.find((r) => r.id === headerEditRoleId);
+    if (!selectedRole) {
+      toast.showError('Rol seçimi zorunludur');
+      return;
+    }
+
+    const email = headerEditEmail.trim();
+    if (!email) {
+      toast.showError('Email zorunludur');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.showError('Geçerli bir email adresi girin');
+      return;
+    }
+
+    if (headerEditPassword) {
+      if (headerEditPassword.length < 8) {
+        toast.showError('Şifre en az 8 karakter olmalıdır');
+        return;
+      }
+      if (headerEditPassword !== headerEditPasswordConfirm) {
+        toast.showError('Şifreler eşleşmiyor');
+        return;
+      }
+    }
+
+    const cleanedScopes = headerEditScopes.filter(
+      (s) => s.provinceId || s.districtId,
+    );
+    if (selectedRole.hasScopeRestriction && cleanedScopes.length === 0) {
+      toast.showError('Bu rol için en az bir yetki alanı seçmelisiniz');
+      return;
+    }
+
+    setHeaderEditSaving(true);
+    try {
+      await updateUserRoles(user.id, [selectedRole.id]);
+
+      const existingScopeKeys = new Map(
+        scopes.map((s) => [
+          `${s.province?.id ?? ''}:${s.district?.id ?? ''}`,
+          s.id,
+        ]),
+      );
+      const targetScopeKeys = new Set(
+        selectedRole.hasScopeRestriction
+          ? cleanedScopes.map(
+              (s) => `${s.provinceId ?? ''}:${s.districtId ?? ''}`,
+            )
+          : [],
+      );
+
+      for (const scope of scopes) {
+        const key = `${scope.province?.id ?? ''}:${scope.district?.id ?? ''}`;
+        if (!targetScopeKeys.has(key)) {
+          await deleteUserScope(scope.id);
+        }
+      }
+
+      if (selectedRole.hasScopeRestriction) {
+        for (const scope of cleanedScopes) {
+          const key = `${scope.provinceId ?? ''}:${scope.districtId ?? ''}`;
+          if (!existingScopeKeys.has(key)) {
+            await createUserScope({
+              userId: user.id,
+              provinceId: scope.provinceId,
+              districtId: scope.districtId,
+            });
+          }
+        }
+      }
+
+      const updatedUser = await updateUserAccount(user.id, {
+        email,
+        password: headerEditPassword || undefined,
+      });
+      setUser(updatedUser);
+      await reloadScopes();
+      toast.showSuccess('Panel kullanıcı bilgileri güncellendi');
+      setHeaderEditOpen(false);
+    } catch (e) {
+      toast.showError(getApiErrorMessage(e, 'Güncelleme sırasında hata oluştu'));
+    } finally {
+      setHeaderEditSaving(false);
+    }
+  };
+
+  const handleConfirmDemoteToMember = async () => {
+    if (!user) return;
+    setDemoteSubmitting(true);
+    try {
+      await demoteUserToMember(user.id);
+      toast.showSuccess(
+        `${user.firstName} ${user.lastName} artık yalnızca üye; panel hesabı kapatıldı.`,
+      );
+      setDemoteDialogOpen(false);
+      navigate(`/members/${user.member?.id ?? ''}`);
+    } catch (e: unknown) {
+      toast.showError(getApiErrorMessage(e, 'İşlem sırasında bir hata oluştu.'));
+    } finally {
+      setDemoteSubmitting(false);
+    }
+  };
+
   // 🔹 Render kısmı – hook'lardan SONRA koşullu return
   if (loadingUser) {
     return (
@@ -379,17 +575,32 @@ const UserDetailPage: React.FC = () => {
           darkColor={theme.palette.primary.dark}
           lightColor={theme.palette.primary.light}
           rightContent={
-            <Chip
-              icon={user.isActive ? <CheckCircleIcon /> : <CancelIcon />}
-              label={user.isActive ? 'Aktif' : 'Pasif'}
-              color={user.isActive ? 'success' : 'default'}
-              sx={{ 
-                fontWeight: 600,
-                height: 36,
-                fontSize: '0.875rem',
-                '& .MuiChip-icon': { fontSize: '1.1rem' }
-              }}
-            />
+            <Stack direction="row" spacing={1}>
+              {canHeaderEditPanelUser && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<EditIcon />}
+                  onClick={openHeaderEditDialog}
+                  sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
+                >
+                  Düzenle
+                </Button>
+              )}
+              {canDemoteToMember &&
+                user.member?.id &&
+                user.id !== currentUser?.id && (
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    size="small"
+                    onClick={() => setDemoteDialogOpen(true)}
+                    sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
+                  >
+                    Üyeliğe Düşür
+                  </Button>
+                )}
+            </Stack>
           }
         />
 
@@ -450,103 +661,117 @@ const UserDetailPage: React.FC = () => {
               </Paper>
             </Box>
 
-            <Divider sx={{ my: 3 }} />
+          </CardContent>
+        </Card>
 
-            {/* Roller Bölümü */}
-            <Box sx={{ mb: 3 }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  mb: 2,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <SecurityIcon sx={{ fontSize: '1.25rem', color: theme.palette.primary.main, mr: 1 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Roller</Typography>
-                </Box>
-                {canAssignRole && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<EditIcon />}
-                    onClick={() => setRolesDialogOpen(true)}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 600,
-                    }}
-                  >
-                    Rolleri Düzenle
-                  </Button>
-                )}
+        {/* Rol Bilgileri (Açılır/Kapanır) */}
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.08)}`,
+            overflow: 'hidden',
+            mb: 3,
+          }}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+              }}
+              onClick={() => setRoleSectionOpen((prev) => !prev)}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <SecurityIcon
+                  sx={{ fontSize: '1.5rem', color: theme.palette.primary.main, mr: 1 }}
+                />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
+                  Rol
+                </Typography>
               </Box>
-              {user?.roles && user.roles.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {user.roles.map((roleName) => {
-                    const roleDetail = roles.find(r => r.name === roleName);
-                    return (
-                      <Box key={roleName} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Chip 
-                          label={roleName} 
-                          sx={{
-                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                            color: theme.palette.primary.main,
-                            fontWeight: 600,
-                            height: 32,
-                          }}
-                        />
-                        {roleDetail?.districtId && roleDetail?.district ? (
-                          <Chip
-                            icon={<LocationOnIcon />}
-                            label={`${roleDetail.district.name} (İlçe)`}
-                            size="small"
-                            color="secondary"
-                            variant="outlined"
-                            sx={{ 
-                              fontSize: '0.7rem',
-                              '& .MuiChip-icon': { fontSize: '0.9rem' }
-                            }}
-                          />
-                        ) : roleDetail?.provinceId && roleDetail?.province ? (
-                          <Chip
-                            icon={<LocationOnIcon />}
-                            label={`${roleDetail.province.name} (İl)`}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                            sx={{ 
-                              fontSize: '0.7rem',
-                              '& .MuiChip-icon': { fontSize: '0.9rem' }
-                            }}
-                          />
-                        ) : null}
-                      </Box>
-                    );
-                  })}
-                </Box>
-              ) : (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    background: alpha(theme.palette.grey[500], 0.05),
-                    border: `1px dashed ${alpha(theme.palette.grey[500], 0.2)}`,
-                  }}
-                >
-                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
-                    Bu kullanıcıya henüz rol atanmamış.
-                  </Typography>
-                </Paper>
-              )}
+              <IconButton size="small">
+                {roleSectionOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+              </IconButton>
             </Box>
 
-            <Divider sx={{ my: 3 }} />
+            <Collapse in={roleSectionOpen} timeout="auto" unmountOnExit>
+              <Box sx={{ mt: 2 }}>
+                {user?.roles && user.roles.length > 0 ? (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {user.roles.map((roleName) => {
+                      const roleDetail = roles.find((r) => r.name === roleName);
+                      return (
+                        <Box
+                          key={roleName}
+                          sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                        >
+                          <Chip
+                            label={roleName}
+                            sx={{
+                              bgcolor: alpha(theme.palette.primary.main, 0.1),
+                              color: theme.palette.primary.main,
+                              fontWeight: 600,
+                              height: 32,
+                            }}
+                          />
+                          {roleDetail?.districtId && roleDetail?.district ? (
+                            <Chip
+                              icon={<LocationOnIcon />}
+                              label={`${roleDetail.district.name} (İlçe)`}
+                              size="small"
+                              color="secondary"
+                              variant="outlined"
+                              sx={{
+                                fontSize: '0.7rem',
+                                '& .MuiChip-icon': { fontSize: '0.9rem' },
+                              }}
+                            />
+                          ) : roleDetail?.provinceId && roleDetail?.province ? (
+                            <Chip
+                              icon={<LocationOnIcon />}
+                              label={`${roleDetail.province.name} (İl)`}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{
+                                fontSize: '0.7rem',
+                                '& .MuiChip-icon': { fontSize: '0.9rem' },
+                              }}
+                            />
+                          ) : null}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ) : (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      background: alpha(theme.palette.grey[500], 0.05),
+                      border: `1px dashed ${alpha(theme.palette.grey[500], 0.2)}`,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}
+                    >
+                      Bu kullanıcıya henüz rol atanmamış.
+                    </Typography>
+                  </Paper>
+                )}
 
-            {/* İzinler Bölümü */}
-            <UserPermissionsSection permissions={user?.permissions} />
+                <Divider sx={{ my: 3 }} />
+
+                {/* İzinler Bölümü */}
+                <UserPermissionsSection permissions={user?.permissions} />
+              </Box>
+            </Collapse>
           </CardContent>
         </Card>
 
@@ -744,22 +969,6 @@ const UserDetailPage: React.FC = () => {
                 </Typography>
               </Box>
 
-              {isBranchManager && (
-                <Button
-                  variant="contained"
-                  size="medium"
-                  startIcon={<AddLocationIcon />}
-                  onClick={() => openScopeDialog()}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
-                  }}
-                >
-                  Scope Ekle
-                </Button>
-              )}
             </Box>
 
             {loadingScopes ? (
@@ -1022,6 +1231,221 @@ const UserDetailPage: React.FC = () => {
           onClose={() => setRolesDialogOpen(false)}
           onSave={handleSaveRoles}
         />
+
+        <Dialog
+          open={headerEditOpen}
+          onClose={() => !headerEditSaving && setHeaderEditOpen(false)}
+          fullWidth
+          maxWidth="md"
+        >
+          <DialogTitle>Panel Kullanıcıyı Düzenle</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Alert severity="info">
+              Rol, yetki alanı, email ve şifre bilgilerini bu pencereden güncelleyebilirsiniz.
+            </Alert>
+
+            <FormControl fullWidth>
+              <InputLabel>Rol</InputLabel>
+              <Select
+                label="Rol"
+                value={headerEditRoleId}
+                onChange={(e) => setHeaderEditRoleId(e.target.value)}
+              >
+                {editableRoles.map((role) => (
+                  <MenuItem key={role.id} value={role.id}>
+                    {role.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {editableRoles.find((r) => r.id === headerEditRoleId)?.hasScopeRestriction && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Yetki Alanları
+                </Typography>
+                <Stack spacing={1}>
+                  {headerEditScopes.map((scope, index) => (
+                    <Box key={index} sx={{ display: 'flex', gap: 1 }}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>İl</InputLabel>
+                        <Select
+                          label="İl"
+                          value={scope.provinceId ?? ''}
+                          onChange={async (e) => {
+                            const provinceId = e.target.value || undefined;
+                            const next = [...headerEditScopes];
+                            next[index] = { provinceId, districtId: undefined };
+                            setHeaderEditScopes(next);
+                            await ensureHeaderEditDistrictsLoaded(provinceId);
+                          }}
+                        >
+                          <MenuItem value="">
+                            <em>İl Seçin</em>
+                          </MenuItem>
+                          {scopeProvinces.map((p) => (
+                            <MenuItem key={p.id} value={p.id}>
+                              {p.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth size="small" disabled={!scope.provinceId}>
+                        <InputLabel>İlçe</InputLabel>
+                        <Select
+                          label="İlçe"
+                          value={scope.districtId ?? ''}
+                          onChange={(e) => {
+                            const next = [...headerEditScopes];
+                            next[index] = {
+                              ...next[index],
+                              districtId: e.target.value || undefined,
+                            };
+                            setHeaderEditScopes(next);
+                          }}
+                        >
+                          <MenuItem value="">
+                            <em>Tüm İlçeler</em>
+                          </MenuItem>
+                          {(scope.provinceId
+                            ? headerEditDistrictsMap[scope.provinceId] ?? []
+                            : []
+                          ).map((d) => (
+                            <MenuItem key={d.id} value={d.id}>
+                              {d.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      {headerEditScopes.length > 1 && (
+                        <IconButton
+                          color="error"
+                          onClick={() =>
+                            setHeaderEditScopes((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            )
+                          }
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      )}
+                    </Box>
+                  ))}
+                </Stack>
+                <Button
+                  size="small"
+                  startIcon={<AddLocationIcon />}
+                  sx={{ mt: 1, textTransform: 'none' }}
+                  onClick={() =>
+                    setHeaderEditScopes((prev) => [
+                      ...prev,
+                      { provinceId: undefined, districtId: undefined },
+                    ])
+                  }
+                >
+                  Yetki Alanı Ekle
+                </Button>
+              </Box>
+            )}
+
+            <TextField
+              fullWidth
+              label="Email"
+              type="email"
+              value={headerEditEmail}
+              onChange={(e) => setHeaderEditEmail(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Yeni Şifre (opsiyonel)"
+              type={showHeaderEditPassword ? 'text' : 'password'}
+              value={headerEditPassword}
+              onChange={(e) => setHeaderEditPassword(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowHeaderEditPassword((v) => !v)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showHeaderEditPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Yeni Şifre Tekrar"
+              type={showHeaderEditPasswordConfirm ? 'text' : 'password'}
+              value={headerEditPasswordConfirm}
+              onChange={(e) => setHeaderEditPasswordConfirm(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() =>
+                        setShowHeaderEditPasswordConfirm((v) => !v)
+                      }
+                      edge="end"
+                      size="small"
+                    >
+                      {showHeaderEditPasswordConfirm ? (
+                        <VisibilityOff />
+                      ) : (
+                        <Visibility />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setHeaderEditOpen(false)} disabled={headerEditSaving}>
+              İptal
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleHeaderEditSave}
+              disabled={headerEditSaving}
+            >
+              {headerEditSaving ? 'Kaydediliyor...' : 'Kaydet'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={demoteDialogOpen}
+          onClose={() => !demoteSubmitting && setDemoteDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Panel erişimini kaldır</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary">
+              <strong>
+                {user.firstName} {user.lastName}
+              </strong>{' '}
+              kullanıcısının panel hesabı kapatılacak; kişi yalnızca üye olarak kalacak.
+              Devam edilsin mi?
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setDemoteDialogOpen(false)} disabled={demoteSubmitting}>
+              Vazgeç
+            </Button>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={() => void handleConfirmDemoteToMember()}
+              disabled={demoteSubmitting}
+            >
+              {demoteSubmitting ? <CircularProgress size={22} color="inherit" /> : 'Evet, üyeliğe düşür'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </PageLayout>
     </Fade>
   );

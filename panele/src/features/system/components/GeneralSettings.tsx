@@ -19,6 +19,7 @@ import {
   InputLabel,
   Stack,
   Fade,
+  Collapse,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -33,6 +34,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import type { SystemSetting } from '../services/systemApi';
 import { uploadHeaderPaper } from '../services/systemApi';
 import { useToast } from '../../../shared/hooks/useToast';
@@ -107,6 +109,11 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
   const [headerPaperBlobUrl, setHeaderPaperBlobUrl] = useState<string | null>(null);
   const [headerPaperLoading, setHeaderPaperLoading] = useState(false);
   const [headerPaperIsPdf, setHeaderPaperIsPdf] = useState(true);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    identity: false,
+    contact: false,
+    maintenance: false,
+  });
 
   const getSetting = (key: string): SystemSetting | undefined =>
     settings.find((s) => s.key === key);
@@ -212,6 +219,13 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
     }
   };
 
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
+
   const envValue = getValue('ENVIRONMENT') || 'Production';
 
   if (loading) {
@@ -229,21 +243,56 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
         {/* Sistem Kimliği */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={0} sx={cardSx(theme)}>
-            <Box sx={sectionHeaderSx(theme, theme.palette.primary.main, theme.palette.primary.dark)}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={iconBoxSx(theme, theme.palette.primary.main, theme.palette.primary.dark)}>
-                  <BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+            <Box
+              onClick={() => toggleSection('identity')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.primary.main, theme.palette.primary.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={iconBoxSx(theme, theme.palette.primary.main, theme.palette.primary.dark)}>
+                    <BusinessIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                      Sistem Kimliği
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                      Temel tanımlama ve görüntülenme bilgileri
+                    </Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
-                    Sistem Kimliği
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                    Temel tanımlama ve görüntülenme bilgileri
-                  </Typography>
-                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('identity');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.primary.main,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.identity ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
+            <Collapse in={expandedSections.identity} timeout="auto" unmountOnExit>
             <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
@@ -436,27 +485,63 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 </Grid>
               </Grid>
             </Box>
+            </Collapse>
           </Card>
         </Grid>
 
         {/* İletişim & Kurumsal Bilgiler */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={0} sx={cardSx(theme)}>
-            <Box sx={sectionHeaderSx(theme, theme.palette.info.main, theme.palette.info.dark)}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={iconBoxSx(theme, theme.palette.info.main, theme.palette.info.dark)}>
-                  <ContactMailIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+            <Box
+              onClick={() => toggleSection('contact')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.info.main, theme.palette.info.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={iconBoxSx(theme, theme.palette.info.main, theme.palette.info.dark)}>
+                    <ContactMailIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                      İletişim & Kurumsal Bilgiler
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                      PDF, e-posta ve raporlarda kullanılır
+                    </Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
-                    İletişim & Kurumsal Bilgiler
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                    PDF, e-posta ve raporlarda kullanılır
-                  </Typography>
-                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('contact');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.info.main,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.info.main, 0.08),
+                    },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.contact ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
+            <Collapse in={expandedSections.contact} timeout="auto" unmountOnExit>
             <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
@@ -530,27 +615,63 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 </Grid>
               </Grid>
             </Box>
+            </Collapse>
           </Card>
         </Grid>
 
         {/* Bakım Modu */}
         <Grid size={{ xs: 12 }}>
           <Card elevation={0} sx={cardSx(theme)}>
-            <Box sx={sectionHeaderSx(theme, theme.palette.warning.main, theme.palette.warning.dark)}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={iconBoxSx(theme, theme.palette.warning.main, theme.palette.warning.dark)}>
-                  <BuildIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+            <Box
+              onClick={() => toggleSection('maintenance')}
+              sx={{
+                ...sectionHeaderSx(theme, theme.palette.warning.main, theme.palette.warning.dark),
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={iconBoxSx(theme, theme.palette.warning.main, theme.palette.warning.dark)}>
+                    <BuildIcon sx={{ color: '#fff', fontSize: { xs: '1.2rem', sm: '1.35rem' } }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
+                      Bakım Modu
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                      Sistem bakım durumu ve mesajı
+                    </Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.15rem' } }}>
-                    Bakım Modu
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                    Sistem bakım durumu ve mesajı
-                  </Typography>
-                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleSection('maintenance');
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `1px solid ${alpha(theme.palette.warning.main, 0.25)}`,
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.warning.dark,
+                    boxShadow: `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                    },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transform: expandedSections.maintenance ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  />
+                </IconButton>
               </Box>
             </Box>
+            <Collapse in={expandedSections.maintenance} timeout="auto" unmountOnExit>
             <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
               <FormControlLabel
                 control={
@@ -594,6 +715,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
                 </Button>
               )}
             </Box>
+            </Collapse>
           </Card>
         </Grid>
       </Grid>

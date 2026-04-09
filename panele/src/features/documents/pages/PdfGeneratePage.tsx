@@ -72,8 +72,9 @@ const PdfGeneratePage: React.FC = () => {
   /** useToast her render'da yeni nesne döndürür; ref ile useCallback/useEffect döngüsü önlenir */
   const toastRef = useRef(toast);
   toastRef.current = toast;
-  const { hasRole } = useAuth();
+  const { hasRole, hasPermission } = useAuth();
   const isAdmin = hasRole('ADMIN');
+  const canUploadMemberDocument = hasPermission('DOCUMENT_UPLOAD');
 
   const [members, setMembers] = useState<MemberListItem[]>([]);
   const [selectedMember, setSelectedMember] = useState<MemberListItem | null>(null);
@@ -239,6 +240,10 @@ const PdfGeneratePage: React.FC = () => {
   };
 
   const handleOpenUploadDialog = async () => {
+    if (!canUploadMemberDocument) {
+      toast.showError('Evrak yukleme yetkiniz bulunmuyor');
+      return;
+    }
     if (members.length === 0) await loadMembers();
     setUploadDialogOpen(true);
     setSelectedFile(null);
@@ -258,6 +263,10 @@ const PdfGeneratePage: React.FC = () => {
   };
 
   const handleStartUploadPreview = () => {
+    if (!canUploadMemberDocument) {
+      toast.showError('Evrak yukleme yetkiniz bulunmuyor');
+      return;
+    }
     if (!selectedMember || !selectedFile) {
       toast.showError('Lutfen bir uye ve PDF dosyasi secin');
       return;
@@ -314,6 +323,10 @@ const PdfGeneratePage: React.FC = () => {
 
   const handleCommitPreview = async () => {
     if (previewFlow === 'upload') {
+      if (!canUploadMemberDocument) {
+        toast.showError('Evrak yukleme yetkiniz bulunmuyor');
+        return;
+      }
       if (!selectedMember || !selectedFile) {
         toast.showError('Lutfen bir uye ve PDF dosyasi secin');
         return;
@@ -471,7 +484,13 @@ const PdfGeneratePage: React.FC = () => {
           <Button variant="contained" startIcon={<PictureAsPdfIcon />} onClick={handleOpenGenerateDialog}>
             PDF Olustur
           </Button>
-          <Button variant="contained" color="primary" startIcon={<UploadFileIcon />} onClick={handleOpenUploadDialog}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<UploadFileIcon />}
+            onClick={handleOpenUploadDialog}
+            disabled={!canUploadMemberDocument}
+          >
             Dokuman Yukle
           </Button>
           <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={handleOpenListGenerateDialog}>

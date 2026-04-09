@@ -219,7 +219,7 @@ export class DocumentsController {
   }
 
   // Doküman yükle
-  @Permissions(Permission.DOCUMENT_GENERATE_PDF)
+  @Permissions(Permission.DOCUMENT_UPLOAD)
   @Post('members/:memberId/upload')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
@@ -263,10 +263,7 @@ export class DocumentsController {
   }
 
   // PDF indir
-  @Permissions(
-    Permission.DOCUMENT_MEMBER_HISTORY_VIEW,
-    Permission.DOCUMENT_GENERATE_PDF,
-  )
+  @Permissions(Permission.DOCUMENT_DOWNLOAD)
   @Get('download/:documentId')
   @ApiOperation({ summary: 'PDF dokümanı indir' })
   @ApiParam({ name: 'documentId', description: 'Doküman ID' })

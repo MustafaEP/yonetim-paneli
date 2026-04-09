@@ -20,15 +20,12 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  FormControlLabel,
   TablePagination,
   Tooltip,
   Stack,
@@ -37,16 +34,14 @@ import {
 import PaymentIcon from '@mui/icons-material/Payment';
 import SaveIcon from '@mui/icons-material/Save';
 import SearchIcon from '@mui/icons-material/Search';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import WarningIcon from '@mui/icons-material/Warning';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import BusinessIcon from '@mui/icons-material/Business';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getMembers } from '../../members/services/membersApi';
 import { createPayment, updatePayment, getPayments, type PaymentType, type CreateMemberPaymentDto, type UpdateMemberPaymentDto, type MemberPayment } from '../services/paymentsApi';
-import type { MemberListItem } from '../../../types/member';
+import type { MemberListItem, MemberStatus } from '../../../types/member';
 import { getTevkifatCenters } from '../../accounting/services/accountingApi';
 import type { TevkifatCenter } from '../../accounting/services/accountingApi';
 import { getProvinces } from '../../regions/services/regionsApi';
@@ -91,7 +86,6 @@ const QuickPaymentEntryPage: React.FC = () => {
     tevkifatCenterId: '',
     provinceId: '',
   });
-  const [showOnlyUnpaidMembers, setShowOnlyUnpaidMembers] = useState(false);
 
   // Tablo filtreleri
   const [tableFilters, setTableFilters] = useState({
@@ -221,7 +215,7 @@ const QuickPaymentEntryPage: React.FC = () => {
     }
   };
 
-  const loadMembers = async (status: 'ACTIVE' | 'PENDING' | 'APPROVED', excludePaidMembers: boolean = false) => {
+  const loadMembers = async () => {
     if (loadingMembers) {
       return;
     }
@@ -235,11 +229,20 @@ const QuickPaymentEntryPage: React.FC = () => {
         return;
       }
 
-      // Seçilen statüye göre üyeleri yükle (il filtresi varsa backend'e gönder)
-      const allMembers = await getMembers(
-        status,
-        filters.provinceId || undefined,
+      // Reddedilenler ve istifalar hariç tüm üyeleri yükle.
+      const includedStatuses: MemberStatus[] = [
+        'ACTIVE',
+        'PENDING',
+        'APPROVED',
+        'INACTIVE',
+        'EXPELLED',
+      ];
+      const memberGroups = await Promise.all(
+        includedStatuses.map((status) =>
+          getMembers(status, filters.provinceId || undefined),
+        ),
       );
+      const allMembers = memberGroups.flat();
 
       // Tevkifat merkezi filtresi uygula (zorunlu)
       let filteredMembers = allMembers.filter(
@@ -247,27 +250,6 @@ const QuickPaymentEntryPage: React.FC = () => {
       );
 
       // İl filtresi backend'de provinceId parametresi ile uygulanıyor (getMembers'a gönderildi)
-
-      // Eğer "Sadece bu ay Kesinti yapmayan üyeleri göster" seçiliyse, bu ay Kesinti yapmış üyeleri filtrele
-      if (excludePaidMembers) {
-        try {
-          // Bu ay/yıl için Kesintileri getir
-          const payments = await getPayments({
-            year: filters.year,
-            month: filters.month,
-            isApproved: true,
-          });
-
-          // Kesinti yapmış üye ID'lerini topla
-          const paidMemberIds = new Set(payments.map((p) => p.memberId));
-
-          // Kesinti yapmamış üyeleri filtrele
-          filteredMembers = filteredMembers.filter((m) => !paidMemberIds.has(m.id));
-        } catch (e) {
-          console.error('Kesintiler yüklenirken hata:', e);
-          // Hata durumunda tüm üyeleri göster
-        }
-      }
 
       // Mevcut satırlardaki üye ID'lerini topla (duplicate kontrolü için)
       setRows((prevRows) => {
@@ -281,13 +263,11 @@ const QuickPaymentEntryPage: React.FC = () => {
         );
         
         if (membersToAdd.length === 0) {
-          const statusLabel = status === 'ACTIVE' ? 'aktif' : status === 'PENDING' ? 'bekleyen' : 'başvurusu yapılan';
-          const filterLabel = showOnlyUnpaidMembers ? ' (bu ay Kesinti yapmayan)' : '';
           const centerLabel = 'Seçilen tevkifat merkezi için';
           if (filteredMembers.length === 0) {
-            toast.showInfo(`${centerLabel} ${statusLabel} üye bulunamadı${filterLabel}`);
+            toast.showInfo(`${centerLabel} üye bulunamadı.`);
           } else {
-            toast.showInfo(`${centerLabel} Tüm ${statusLabel} üyeler zaten tabloda mevcut${filterLabel}`);
+            toast.showInfo(`${centerLabel} tüm üyeler zaten tabloda mevcut.`);
           }
           return prevRows;
         }
@@ -380,8 +360,6 @@ const QuickPaymentEntryPage: React.FC = () => {
           });
         }
 
-        const statusLabel = status === 'ACTIVE' ? 'aktif' : status === 'PENDING' ? 'bekleyen' : 'başvurusu yapılan';
-          const filterLabel = showOnlyUnpaidMembers ? ' (bu ay Kesinti yapmayan)' : '';
         const centerLabel = 'Seçilen tevkifat merkezi için';
 
         // Başarı mesajını state güncellemesi dışında, bir kez göstermek için
@@ -393,7 +371,7 @@ const QuickPaymentEntryPage: React.FC = () => {
         // Toast'ı sadece gerçek eklenen satır sayısı > 0 ise göster
         if (addedCount > 0) {
           toast.showSuccess(
-            `${centerLabel} ${addedCount} ${statusLabel} üye tabloya ekleniyor${filterLabel}`
+            `${centerLabel} ${addedCount} üye tabloya ekleniyor.`
           );
         }
 
@@ -931,96 +909,28 @@ const QuickPaymentEntryPage: React.FC = () => {
                 />
               )}
             />
-          </Box>
 
-          {/* Üye Filtresi */}
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              background: alpha(theme.palette.warning.main, 0.04),
-              border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}`,
-              mb: 3,
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={showOnlyUnpaidMembers}
-                  onChange={(e) => setShowOnlyUnpaidMembers(e.target.checked)}
-                  size="small"
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                    Sadece bu ay Kesinti yapmayan üyeleri göster
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25, fontSize: '0.75rem' }}>
-                    {monthNames[filters.month - 1]} {filters.year} döneminde Kesinti yapmamış üyeler
-                  </Typography>
-                </Box>
-              }
-              sx={{ m: 0, alignItems: 'flex-start' }}
-            />
-          </Paper>
-
-          {/* Üye Getir Butonları */}
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-            <Button
-              variant="contained"
-              onClick={() => loadMembers('ACTIVE', showOnlyUnpaidMembers)}
-              disabled={loadingMembers || !filters.tevkifatCenterId}
-              startIcon={loadingMembers ? <CircularProgress size={18} color="inherit" /> : <CheckCircleIcon />}
-              sx={{
-                flex: { xs: '1 1 100%', sm: '0 1 auto' },
-                minWidth: { xs: '100%', sm: 160 },
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-              }}
-            >
-              Aktif Üyeleri Getir
-            </Button>
             <Button
               variant="outlined"
-              color="warning"
-              onClick={() => loadMembers('PENDING', showOnlyUnpaidMembers)}
-              disabled={loadingMembers || !filters.tevkifatCenterId}
-              startIcon={loadingMembers ? <CircularProgress size={18} /> : <HourglassEmptyIcon />}
-              sx={{
-                flex: { xs: '1 1 100%', sm: '0 1 auto' },
-                minWidth: { xs: '100%', sm: 160 },
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-              }}
-            >
-              Bekleyen Üyeleri Getir
-            </Button>
-            <Button
-              variant="outlined"
-              color="info"
-              onClick={() => loadMembers('APPROVED', showOnlyUnpaidMembers)}
+              onClick={() => loadMembers()}
               disabled={loadingMembers || !filters.tevkifatCenterId}
               startIcon={loadingMembers ? <CircularProgress size={18} /> : <CheckCircleIcon />}
               sx={{
-                flex: { xs: '1 1 100%', sm: '0 1 auto' },
-                minWidth: { xs: '100%', sm: 200 },
+                minWidth: { xs: '100%', sm: 170 },
+                height: 56,
                 textTransform: 'none',
                 fontWeight: 600,
                 fontSize: '0.875rem',
               }}
             >
-              Başvurusu Yapılan Üyeleri Getir
+              Üyeleri Getir
             </Button>
-            {!filters.tevkifatCenterId && (
-              <Alert severity="warning" sx={{ flex: '1 1 100%', mt: 1 }}>
-                Önce bir tevkifat merkezi seçin; ardından ilgili merkeze bağlı üyeleri getirmek için butonları kullanın.
-              </Alert>
-            )}
           </Box>
+          {!filters.tevkifatCenterId && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Önce bir tevkifat merkezi seçin; ardından üyeleri getirin.
+            </Alert>
+          )}
         </Box>
       </Card>
 

@@ -112,7 +112,7 @@ const MembersApplicationsPage: React.FC = () => {
           row.province?.name.toLowerCase().includes(searchLower) ||
           (row.createdBy && 
             (`${row.createdBy.firstName} ${row.createdBy.lastName}`.toLowerCase().includes(searchLower) ||
-             row.createdBy.email.toLowerCase().includes(searchLower))
+             getCreatedByRoleText(row.createdBy).toLowerCase().includes(searchLower))
           ),
       );
     }
@@ -184,6 +184,11 @@ const MembersApplicationsPage: React.FC = () => {
       default:
         return 'info';
     }
+  };
+
+  const getCreatedByRoleText = (createdBy: MemberApplicationRow['createdBy']): string => {
+    const roles = createdBy?.customRoles?.map((role) => role.name).filter(Boolean) ?? [];
+    return roles.length > 0 ? roles.join(', ') : '-';
   };
 
   const loadApplications = async () => {
@@ -338,7 +343,7 @@ const MembersApplicationsPage: React.FC = () => {
       headerAlign: 'center',
       valueGetter: (_value, row: MemberApplicationRow) => {
         if (row.createdBy) {
-          return `${row.createdBy.firstName} ${row.createdBy.lastName}`;
+          return `${row.createdBy.firstName} ${row.createdBy.lastName} - ${getCreatedByRoleText(row.createdBy)}`;
         }
         return '-';
       },
@@ -357,7 +362,7 @@ const MembersApplicationsPage: React.FC = () => {
               {createdBy.firstName} {createdBy.lastName}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {createdBy.email}
+              {getCreatedByRoleText(createdBy)}
             </Typography>
           </Box>
         );
@@ -707,7 +712,7 @@ const MembersApplicationsPage: React.FC = () => {
             {/* Arama */}
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
               <TextField
-                placeholder="Ad, Soyad, İl veya Email ile arayın..."
+                placeholder="Ad, Soyad, İl veya Rol ile arayın..."
                 size="medium"
                 fullWidth
                 value={searchText}
@@ -893,7 +898,7 @@ const MembersApplicationsPage: React.FC = () => {
                             {user.firstName} {user.lastName}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {user.email}
+                            {getCreatedByRoleText(user)}
                           </Typography>
                         </Box>
                       </MenuItem>

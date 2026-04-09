@@ -63,6 +63,8 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
   DOCUMENT_TEMPLATE_MANAGE: 'PDF Şablonu Yönet',
   DOCUMENT_MEMBER_HISTORY_VIEW: 'Doküman Geçmişi Görüntüle',
   DOCUMENT_GENERATE_PDF: 'PDF Oluştur',
+  DOCUMENT_UPLOAD: 'Evrak Yükle',
+  DOCUMENT_DOWNLOAD: 'Evrak İndir',
   // Raporlar
   REPORT_GLOBAL_VIEW: 'Genel Rapor',
   REPORT_REGION_VIEW: 'Bölge Raporu',
@@ -83,9 +85,22 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
   INSTITUTION_CREATE: 'Kurum Oluştur',
   INSTITUTION_UPDATE: 'Kurum Güncelle',
   INSTITUTION_APPROVE: 'Kurum Onayla',
-  // Muhasebe
-  ACCOUNTING_VIEW: 'Muhasebe Görüntüle',
-  ACCOUNTING_EXPORT: 'Muhasebe Dışa Aktar',
+  // Meslekler
+  PROFESSION_VIEW: 'Meslekleri Görüntüle',
+  PROFESSION_CREATE: 'Meslek Oluştur',
+  PROFESSION_UPDATE: 'Meslek Güncelle',
+  PROFESSION_DELETE: 'Meslek Sil',
+  // Tevkifat
+  TEVKIFAT_VIEW: 'Tevkifat Görüntüle',
+  TEVKIFAT_EXPORT: 'Tevkifat Dışa Aktar',
+  TEVKIFAT_TITLE_VIEW: 'Tevkifat Unvanlarını Görüntüle',
+  TEVKIFAT_TITLE_CREATE: 'Tevkifat Unvanı Oluştur',
+  TEVKIFAT_TITLE_UPDATE: 'Tevkifat Unvanı Güncelle',
+  TEVKIFAT_TITLE_DELETE: 'Tevkifat Unvanı Sil',
+  TEVKIFAT_CENTER_VIEW: 'Tevkifat Merkezi Görüntüle',
+  TEVKIFAT_CENTER_CREATE: 'Tevkifat Merkezi Oluştur',
+  TEVKIFAT_CENTER_UPDATE: 'Tevkifat Merkezi Güncelle',
+  TEVKIFAT_CENTER_DELETE: 'Tevkifat Merkezi Sil',
   TEVKIFAT_FILE_UPLOAD: 'Tevkifat Dosyası Yükle',
   TEVKIFAT_FILE_APPROVE: 'Tevkifat Dosyası Onayla',
   // Üye Kesintileri
@@ -106,6 +121,11 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
   // Avans
   ADVANCE_VIEW: 'Avansları Görüntüle',
   ADVANCE_ADD: 'Avans Ekle / Güncelle / Sil',
+  // Faturalar
+  INVOICE_VIEW: 'Faturaları Görüntüle',
+  INVOICE_CREATE: 'Fatura Ekle',
+  INVOICE_UPDATE: 'Fatura Güncelle',
+  INVOICE_DELETE: 'Fatura Sil',
 };
 
 const getLabelForPermission = (perm: string) =>
@@ -130,6 +150,7 @@ const groupPermissions = (permissions: string[]): GroupedPerms[] => {
       perm.startsWith('ACCOUNTING_') ||
       perm.startsWith('TEVKIFAT_') ||
       perm.startsWith('ADVANCE_') ||
+      perm.startsWith('INVOICE_') ||
       perm.startsWith('APPROVAL_')
     ) {
       groups[2].items.push(perm);

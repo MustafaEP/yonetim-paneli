@@ -25,6 +25,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { CurrentUserData } from '../auth/decorators/current-user.decorator';
+import { Permission } from '../auth/permission.enum';
 import { CreateAdvanceDto } from './dto/create-advance.dto';
 import { UpdateAdvanceDto } from './dto/update-advance.dto';
 
@@ -291,6 +292,29 @@ export class AccountingService {
     return amount * 0.4;
   }
 
+  private needsScopeRestriction(user?: CurrentUserData): boolean {
+    if (!user) return false;
+    if (user.roles?.includes('ADMIN')) return false;
+    const permissions = user.permissions ?? [];
+    return permissions.includes(Permission.MEMBER_LIST_BY_PROVINCE);
+  }
+
+  private async getActiveUserScopeMaps(userId: string) {
+    const scopes = await this.prisma.userScope.findMany({
+      where: { userId, deletedAt: null },
+      select: { provinceId: true, districtId: true },
+    });
+
+    const scopedProvinceIds = new Set(
+      scopes.map((s) => s.provinceId).filter((id): id is string => Boolean(id)),
+    );
+    const scopedDistrictIds = new Set(
+      scopes.map((s) => s.districtId).filter((id): id is string => Boolean(id)),
+    );
+
+    return { scopedProvinceIds, scopedDistrictIds };
+  }
+
   /**
    * Tevkifat merkezlerini listele
    * İl seçildiğinde o ile direkt bağlı olanları ve o ilin ilçelerine bağlı olanları gösterir
@@ -299,7 +323,7 @@ export class AccountingService {
     provinceId?: string;
     districtId?: string;
     activeOnly?: boolean;
-  }) {
+  }, user?: CurrentUserData) {
     const where: any = {};
 
     // Sadece aktif (kaldırılmamış) tevkifat merkezlerini getir
@@ -316,6 +340,74 @@ export class AccountingService {
         { provinceId: filters.provinceId },
         { district: { provinceId: filters.provinceId } },
       ];
+    }
+
+    if (this.needsScopeRestriction(user) && user) {
+      const { scopedProvinceIds, scopedDistrictIds } =
+        await this.getActiveUserScopeMaps(user.userId);
+
+      // Scope kaydı yoksa kapsam filtresi uygulama (global kullanıcı davranışı)
+      if (!scopedProvinceIds.size) {
+        const centers = await this.prisma.tevkifatCenter.findMany({
+          where,
+          include: {
+            province: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            district: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            _count: {
+              select: {
+                members: true,
+                files: true,
+              },
+            },
+            files: {
+              orderBy: [{ year: 'desc' }, { month: 'desc' }],
+              take: 1,
+              select: {
+                year: true,
+                month: true,
+              },
+            },
+          },
+          orderBy: { name: 'asc' },
+        });
+
+        return centers.map((center) => ({
+          id: center.id,
+          name: center.name,
+          isActive: center.isActive,
+          provinceId: center.provinceId,
+          districtId: center.districtId,
+          province: center.province,
+          district: center.district,
+          createdAt: center.createdAt,
+          updatedAt: center.updatedAt,
+          memberCount: center._count.members,
+          lastTevkifatMonth:
+            center.files && center.files[0]
+              ? `${center.files[0].month}/${center.files[0].year}`
+              : null,
+        }));
+      }
+
+      const scopeOr: Prisma.TevkifatCenterWhereInput[] = [];
+      for (const provinceId of scopedProvinceIds) {
+        scopeOr.push({ provinceId });
+      }
+      for (const districtId of scopedDistrictIds) {
+        scopeOr.push({ districtId });
+      }
+
+      where.AND = [...(where.AND ?? []), { OR: scopeOr }];
     }
 
     const centers = await this.prisma.tevkifatCenter.findMany({

@@ -7,12 +7,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './application/dto/create-user.dto';
 import { UserCreationApplicationService } from './application/services/user-creation-application.service';
+import { PasswordService } from '../auth/infrastructure/services/password.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private prisma: PrismaService,
     private userCreationService: UserCreationApplicationService,
+    private passwordService: PasswordService,
   ) {}
 
   async create(dto: CreateUserDto, memberId?: string) {
@@ -174,5 +176,45 @@ export class UsersService {
         },
       },
     });
+  }
+
+  async updateAccount(
+    userId: string,
+    data: { email: string; password?: string },
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const emailOwner = await this.prisma.user.findFirst({
+      where: {
+        email: normalizedEmail,
+        deletedAt: null,
+        id: { not: userId },
+      },
+      select: { id: true },
+    });
+    if (emailOwner) {
+      throw new ConflictException('Bu email adresi başka bir kullanıcıda kayıtlı');
+    }
+
+    const updateData: { email: string; passwordHash?: string } = {
+      email: normalizedEmail,
+    };
+
+    if (data.password && data.password.trim().length > 0) {
+      updateData.passwordHash = await this.passwordService.hashWithPolicy(
+        data.password,
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return this.findById(userId);
   }
 }

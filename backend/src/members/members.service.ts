@@ -169,6 +169,11 @@ export class MembersService {
             firstName: true,
             lastName: true,
             email: true,
+            customRoles: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },

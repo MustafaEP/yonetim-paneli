@@ -35,7 +35,7 @@ let refreshPromise: Promise<string> | null = null;
 async function doRefresh(): Promise<string> {
   const refreshToken = localStorage.getItem('refreshToken');
   if (!refreshToken) {
-    throw new Error('No refresh token');
+    throw new Error('Yenileme belirteci bulunamadı');
   }
   const { data } = await axios.post<{ accessToken: string; refreshToken?: string; user?: unknown }>(
     `${API_BASE_URL}/auth/refresh`,

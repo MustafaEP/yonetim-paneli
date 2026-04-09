@@ -117,7 +117,12 @@ const InvoicesPage: React.FC = () => {
   const toast = useToast();
   const { hasPermission } = useAuth();
 
-  const canEdit = hasPermission('INVOICE_ADD');
+  const canCreate = hasPermission('INVOICE_CREATE');
+  const canUpdate = hasPermission('INVOICE_UPDATE');
+  const canDelete = hasPermission('INVOICE_DELETE');
+  const canViewInvoiceDocument = hasPermission('INVOICE_VIEW');
+  const canDownloadInvoiceDocument = hasPermission('DOCUMENT_DOWNLOAD');
+  const canManageInvoices = canCreate || canUpdate || canDelete;
 
   // ── Tab ──────────────────────────────────────────────────────────────────
   const [tabValue, setTabValue] = useState(0);
@@ -217,6 +222,7 @@ const InvoicesPage: React.FC = () => {
 
   // ── Yeni fatura ───────────────────────────────────────────────────────────
   const handleOpenCreate = () => {
+    if (!canCreate) return;
     setCreatePdfFile(null);
     setCreateForm({
       invoiceNo: '',
@@ -231,6 +237,10 @@ const InvoicesPage: React.FC = () => {
   };
 
   const handleCreateInvoice = async () => {
+    if (!canCreate) {
+      toast.showError('Fatura ekleme yetkiniz bulunmuyor');
+      return;
+    }
     if (!createForm.invoiceNo.trim()) {
       toast.showError('Fatura numarası zorunludur');
       return;
@@ -278,6 +288,7 @@ const InvoicesPage: React.FC = () => {
 
   // ── Düzenle ───────────────────────────────────────────────────────────────
   const handleOpenEdit = (inv: Invoice) => {
+    if (!canUpdate) return;
     setEditingInvoice(inv);
     setEditPdfFile(null);
     setEditClearPdf(false);
@@ -308,6 +319,10 @@ const InvoicesPage: React.FC = () => {
 
   const handleViewPdf = useCallback(
     async (inv: Invoice) => {
+      if (!canViewInvoiceDocument) {
+        toast.showError('Fatura belgesi görüntüleme yetkiniz bulunmuyor');
+        return;
+      }
       if (!inv.documentUrl) {
         toast.showError('Bu fatura için belge yok.');
         return;
@@ -329,10 +344,14 @@ const InvoicesPage: React.FC = () => {
         setLoadingInvoicePdf(false);
       }
     },
-    [toast, closeInvoicePdfViewer],
+    [toast, closeInvoicePdfViewer, canViewInvoiceDocument],
   );
 
   const handleUpdateInvoice = async () => {
+    if (!canUpdate) {
+      toast.showError('Fatura güncelleme yetkiniz bulunmuyor');
+      return;
+    }
     if (!editingInvoice) return;
     if (!editForm.amount?.trim()) {
       toast.showError('Tutar zorunludur');
@@ -375,11 +394,16 @@ const InvoicesPage: React.FC = () => {
 
   // ── Sil ───────────────────────────────────────────────────────────────────
   const handleOpenDelete = (inv: Invoice) => {
+    if (!canDelete) return;
     setDeletingInvoice(inv);
     setDeleteOpen(true);
   };
 
   const handleDeleteInvoice = async () => {
+    if (!canDelete) {
+      toast.showError('Fatura silme yetkiniz bulunmuyor');
+      return;
+    }
     if (!deletingInvoice) return;
     setDeleting(true);
     try {
@@ -462,7 +486,7 @@ const InvoicesPage: React.FC = () => {
         align: 'center',
         headerAlign: 'center',
         renderCell: ({ row }) =>
-          row.documentUrl ? (
+          row.documentUrl && canViewInvoiceDocument ? (
             <Tooltip title="PDF görüntüle">
               <IconButton
                 size="small"
@@ -476,7 +500,7 @@ const InvoicesPage: React.FC = () => {
             <Typography variant="caption" color="text.disabled">—</Typography>
           ),
       },
-      ...(canEdit
+      ...(canManageInvoices
         ? ([
             {
               field: 'actions',
@@ -504,31 +528,35 @@ const InvoicesPage: React.FC = () => {
                       <InfoOutlinedIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Düzenle">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenEdit(row)}
-                      sx={{ color: theme.palette.warning.main }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Sil">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenDelete(row)}
-                      sx={{ color: theme.palette.error.main }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  {canUpdate && (
+                    <Tooltip title="Düzenle">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenEdit(row)}
+                        sx={{ color: theme.palette.warning.main }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {canDelete && (
+                    <Tooltip title="Sil">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenDelete(row)}
+                        sx={{ color: theme.palette.error.main }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </Stack>
               ),
             },
           ] as GridColDef<Invoice>[])
         : []),
     ],
-    [canEdit, theme, handleViewPdf],
+    [canManageInvoices, canUpdate, canDelete, theme, handleViewPdf],
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -547,7 +575,7 @@ const InvoicesPage: React.FC = () => {
         darkColor={theme.palette.primary.dark}
         lightColor={theme.palette.primary.light}
         rightContent={
-          canEdit ? (
+          canCreate ? (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -567,7 +595,7 @@ const InvoicesPage: React.FC = () => {
           ) : undefined
         }
         mobileContent={
-          canEdit ? (
+          canCreate ? (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -1174,32 +1202,38 @@ const InvoicesPage: React.FC = () => {
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
                   Fatura belgesi (PDF)
                 </Typography>
-                {editingInvoice.documentUrl && !editPdfFile && (
+                {editingInvoice.documentUrl &&
+                  !editPdfFile &&
+                  (canViewInvoiceDocument || canDownloadInvoiceDocument) && (
                   <Stack direction="row" spacing={1} sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
-                    <Button
-                      type="button"
-                      size="small"
-                      variant="outlined"
-                      startIcon={<PictureAsPdfIcon />}
-                      onClick={() => void handleViewPdf(editingInvoice)}
-                      sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
-                    >
-                      Görüntüle
-                    </Button>
-                    <Button
-                      type="button"
-                      size="small"
-                      variant="outlined"
-                      startIcon={<DownloadIcon />}
-                      onClick={() =>
-                        void downloadInvoiceDocument(editingInvoice.id).catch((e: unknown) =>
-                          toast.showError(getApiErrorMessage(e, 'İndirilemedi')),
-                        )
-                      }
-                      sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
-                    >
-                      İndir
-                    </Button>
+                    {canViewInvoiceDocument && (
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="outlined"
+                        startIcon={<PictureAsPdfIcon />}
+                        onClick={() => void handleViewPdf(editingInvoice)}
+                        sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
+                      >
+                        Görüntüle
+                      </Button>
+                    )}
+                    {canDownloadInvoiceDocument && (
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="outlined"
+                        startIcon={<DownloadIcon />}
+                        onClick={() =>
+                          void downloadInvoiceDocument(editingInvoice.id).catch((e: unknown) =>
+                            toast.showError(getApiErrorMessage(e, 'İndirilemedi')),
+                          )
+                        }
+                        sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
+                      >
+                        İndir
+                      </Button>
+                    )}
                   </Stack>
                 )}
                 <input
@@ -1362,7 +1396,8 @@ const InvoicesPage: React.FC = () => {
               </Box>
             ))}
 
-            {detailInvoice.documentUrl && (
+            {detailInvoice.documentUrl &&
+              (canViewInvoiceDocument || canDownloadInvoiceDocument) && (
               <Stack
                 direction="row"
                 spacing={1}
@@ -1370,31 +1405,35 @@ const InvoicesPage: React.FC = () => {
                 useFlexGap
                 sx={{ mt: 2, pt: 2, borderTop: `1px solid ${alpha(theme.palette.divider, 0.12)}` }}
               >
-                <Button
-                  type="button"
-                  size="small"
-                  variant="contained"
-                  color="error"
-                  startIcon={<PictureAsPdfIcon />}
-                  onClick={() => void handleViewPdf(detailInvoice)}
-                  sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
-                >
-                  PDF görüntüle
-                </Button>
-                <Button
-                  type="button"
-                  size="small"
-                  variant="outlined"
-                  startIcon={<DownloadIcon />}
-                  onClick={() =>
-                    void downloadInvoiceDocument(detailInvoice.id).catch((e: unknown) =>
-                      toast.showError(getApiErrorMessage(e, 'İndirilemedi')),
-                    )
-                  }
-                  sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
-                >
-                  İndir
-                </Button>
+                {canViewInvoiceDocument && (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="contained"
+                    color="error"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={() => void handleViewPdf(detailInvoice)}
+                    sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                  >
+                    PDF görüntüle
+                  </Button>
+                )}
+                {canDownloadInvoiceDocument && (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="outlined"
+                    startIcon={<DownloadIcon />}
+                    onClick={() =>
+                      void downloadInvoiceDocument(detailInvoice.id).catch((e: unknown) =>
+                        toast.showError(getApiErrorMessage(e, 'İndirilemedi')),
+                      )
+                    }
+                    sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                  >
+                    İndir
+                  </Button>
+                )}
               </Stack>
             )}
           </DialogContent>
@@ -1404,7 +1443,7 @@ const InvoicesPage: React.FC = () => {
           <Button onClick={() => setDetailOpen(false)} variant="outlined" sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}>
             Kapat
           </Button>
-          {canEdit && detailInvoice && (
+          {canUpdate && detailInvoice && (
             <Button
               onClick={() => { setDetailOpen(false); handleOpenEdit(detailInvoice); }}
               variant="contained"

@@ -24,10 +24,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   FormHelperText,
   Divider,
   Tooltip,
@@ -58,11 +54,9 @@ import SecurityIcon from '@mui/icons-material/Security';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { getMemberById, updateMember, approveMember, rejectMember, getMemberHistory, cancelMember } from '../services/membersApi';
 import MemberStatusChangeDialog from '../components/MemberStatusChangeDialog';
-import PromoteToPanelUserDialog from '../components/PromoteToPanelUserDialog';
 import MemberApprovalDialog, { type ApproveFormData } from '../components/MemberApprovalDialog';
 import { ActivateMemberButton } from '../components/ActivateMemberButton';
 import { getMemberPayments, fetchPaymentDocumentBlob } from '../../payments/services/paymentsApi';
-import { getPanelUserApplications } from '../../users/services/panelUserApplicationsApi';
 import {
   getMemberDocuments,
   deleteMemberDocument,
@@ -76,7 +70,11 @@ import { useAuth } from '../../../app/providers/AuthContext';
 import { useToast } from '../../../shared/hooks/useToast';
 import { useSystemSettings } from '../../../app/providers/SystemSettingsContext';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
-import { getUserById, updateUserRoles } from '../../users/services/usersApi';
+import {
+  getUserById,
+  updateUserRoles,
+  demoteUserToMember,
+} from '../../users/services/usersApi';
 import { getRoles } from '../../roles/services/rolesApi';
 import type { CustomRole } from '../../../types/role';
 import type { UserDetail } from '../../../types/user';
@@ -139,7 +137,8 @@ const MemberDetailPage = () => {
   const [scopeForm, setScopeForm] = useState<{ provinceId: string; districtId: string }>({ provinceId: '', districtId: '' });
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
 
-  const canUploadDocument = hasPermission('DOCUMENT_GENERATE_PDF');
+  const canUploadDocument = hasPermission('DOCUMENT_UPLOAD');
+  const canDownloadDocuments = hasPermission('DOCUMENT_DOWNLOAD');
   const canChangeStatus = hasPermission('MEMBER_STATUS_CHANGE');
   const canViewMember = hasPermission('MEMBER_VIEW');
   const canEditMember = hasPermission('MEMBER_UPDATE');
@@ -149,15 +148,14 @@ const MemberDetailPage = () => {
   const canViewMemberHistory = hasPermission('MEMBER_HISTORY_VIEW');
   const canViewAdvances = hasPermission('ADVANCE_VIEW');
   const canViewPanelUserDetails = hasPermission('USER_VIEW');
-  const canCreatePanelUserApplication = hasPermission('PANEL_USER_APPLICATION_CREATE');
   const canAssignRole = hasPermission('USER_ASSIGN_ROLE');
+  const canDemoteToMember =
+    hasPermission('USER_SOFT_DELETE') ||
+    hasPermission('PANEL_USER_APPLICATION_APPROVE');
   const { user: currentUser } = useAuth();
   const isBranchManager = canManageBranches(currentUser);
-
-  // Panel kullanıcı başvurusu state
-  const [promoteDialogOpen, setPromoteDialogOpen] = useState(false);
-  const [hasApplication, setHasApplication] = useState(false);
-  const [applicationStatus, setApplicationStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
+  const [demoteDialogOpen, setDemoteDialogOpen] = useState(false);
+  const [demoteSubmitting, setDemoteSubmitting] = useState(false);
 
   // Durum değiştirme dialog state
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -319,41 +317,6 @@ const MemberDetailPage = () => {
     loadHistory();
   }, [id, canViewMemberHistory]);
 
-  // Panel kullanıcı başvurusu kontrolü
-  useEffect(() => {
-    if (!member?.id) return;
-
-    const checkApplication = async () => {
-      try {
-        const applications = await getPanelUserApplications();
-        const memberApp = applications.find(app => app.memberId === member.id);
-        if (memberApp) {
-          setHasApplication(true);
-          setApplicationStatus(memberApp.status);
-          
-          // Eğer başvuru onaylandıysa ve member'da user yoksa, member'ı yeniden yükle
-          if (memberApp.status === 'APPROVED' && !member.user?.id) {
-            // Member'ı yeniden yükle
-            const updatedMember = await getMemberById(member.id);
-            setMember(updatedMember);
-            
-            // Eğer artık user varsa, user detaylarını yükle
-            if (updatedMember.user?.id) {
-              loadUserDetail(updatedMember.user.id);
-              loadUserScopes(updatedMember.user.id);
-            }
-          }
-        } else {
-          setHasApplication(false);
-          setApplicationStatus(null);
-        }
-      } catch (e) {
-        console.error('Başvuru kontrolü hatası:', e);
-      }
-    };
-    checkApplication();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member?.id]);
 
   // Rol güncelleme handler
   const handleSaveRoles = async (customRoleIds: string[]) => {
@@ -517,6 +480,23 @@ const MemberDetailPage = () => {
     } catch (e) {
       console.error('Scope silinirken hata:', e);
       toast.showError('Yetki alanı silinirken bir hata oluştu.');
+    }
+  };
+
+  const handleConfirmDemoteToMember = async () => {
+    if (!member?.user?.id) return;
+    setDemoteSubmitting(true);
+    try {
+      await demoteUserToMember(member.user.id);
+      toast.showSuccess(
+        `${member.firstName} ${member.lastName} artık yalnızca üye; panel hesabı kapatıldı.`,
+      );
+      setDemoteDialogOpen(false);
+      await loadMember();
+    } catch (e: unknown) {
+      toast.showError(getApiErrorMessage(e, 'İşlem sırasında bir hata oluştu.'));
+    } finally {
+      setDemoteSubmitting(false);
     }
   };
 
@@ -1087,16 +1067,16 @@ const MemberDetailPage = () => {
                 label="Panel Kullanıcısı"
                 size="small"
                 sx={{
-                  bgcolor: alpha('#fff', 0.25),
-                  color: '#fff',
+                  bgcolor: alpha('#fff', 0.92),
+                  color: theme.palette.primary.dark,
                   fontWeight: 700,
-                  border: `2px solid ${alpha('#fff', 0.4)}`,
+                  border: `2px solid ${alpha(theme.palette.primary.dark, 0.18)}`,
                   backdropFilter: 'blur(10px)',
                   boxShadow: `0 4px 12px ${alpha('#000', 0.2)}`,
                   fontSize: '0.75rem',
                   height: 28,
                   '& .MuiChip-icon': { 
-                    color: '#fff',
+                    color: theme.palette.primary.dark,
                     fontSize: '1rem',
                   },
                 }}
@@ -1236,631 +1216,93 @@ const MemberDetailPage = () => {
         }
       />
 
-      {/* Panel Kullanıcı Bilgileri - Detaylı */}
-      {member.user ? (
-        canViewPanelUserDetails ? (
-        <>
-          <Card
-            elevation={0}
-            sx={{
-              mb: 3,
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.08)}`,
-              overflow: 'hidden',
-            }}
-          >
-            <CardContent sx={{ p: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <SecurityIcon sx={{ fontSize: '1.5rem', color: theme.palette.primary.main, mr: 1 }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
-                  Panel Kullanıcı Bilgileri
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, mb: 3 }}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    flex: 1,
-                    p: 2.5,
-                    borderRadius: 2,
-                    background: alpha(theme.palette.primary.main, 0.04),
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  }}
-                >
-                  <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block', mb: 0.5 }}>
-                    Ad Soyad
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-                    {member.user.firstName} {member.user.lastName}
-                  </Typography>
-                </Paper>
-
-                <Paper
-                  elevation={0}
-                  sx={{
-                    flex: 1,
-                    p: 2.5,
-                    borderRadius: 2,
-                    background: alpha(theme.palette.primary.main, 0.04),
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  }}
-                >
-                  <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block', mb: 0.5 }}>
-                    E-posta Adresi
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-                    {member.user.email}
-                  </Typography>
-                </Paper>
-
-                <Paper
-                  elevation={0}
-                  sx={{
-                    flex: 1,
-                    p: 2.5,
-                    borderRadius: 2,
-                    background: alpha(theme.palette.primary.main, 0.04),
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  }}
-                >
-                  <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block', mb: 0.5 }}>
-                    Hesap Durumu
-                  </Typography>
-                  <Chip
-                    icon={member.user.isActive ? <CheckCircleIcon /> : <CancelIcon />}
-                    label={member.user.isActive ? 'Aktif' : 'Pasif'}
-                    color={member.user.isActive ? 'success' : 'default'}
-                    size="small"
-                    sx={{ fontWeight: 600 }}
-                  />
-                </Paper>
-              </Box>
-
-              <Divider sx={{ my: 3 }} />
-
-              {/* Roller Bölümü */}
-              <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <SecurityIcon sx={{ fontSize: '1.25rem', color: theme.palette.primary.main, mr: 1 }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>Roller</Typography>
-                  </Box>
-                  {canAssignRole && userDetail && (
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<EditIcon />}
-                      onClick={() => setRolesDialogOpen(true)}
-                      sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-                    >
-                      Rolleri Düzenle
-                    </Button>
-                  )}
-                </Box>
-                {loadingUserDetail ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                    <CircularProgress size={24} />
-                  </Box>
-                ) : userDetail?.roles && userDetail.roles.length > 0 ? (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {userDetail.roles.map((roleName) => {
-                      const roleDetail = roles.find(r => r.name === roleName);
-                      return (
-                        <Box key={roleName} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Chip 
-                            label={roleName} 
-                            sx={{
-                              bgcolor: alpha(theme.palette.primary.main, 0.1),
-                              color: theme.palette.primary.main,
-                              fontWeight: 600,
-                              height: 32,
-                            }}
-                          />
-                          {roleDetail?.districtId && roleDetail?.district ? (
-                            <Chip
-                              icon={<LocationOnIcon />}
-                              label={`${roleDetail.district.name} (İlçe)`}
-                              size="small"
-                              color="secondary"
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem', '& .MuiChip-icon': { fontSize: '0.9rem' } }}
-                            />
-                          ) : roleDetail?.provinceId && roleDetail?.province ? (
-                            <Chip
-                              icon={<LocationOnIcon />}
-                              label={`${roleDetail.province.name} (İl)`}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem', '& .MuiChip-icon': { fontSize: '0.9rem' } }}
-                            />
-                          ) : null}
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                ) : (
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      background: alpha(theme.palette.grey[500], 0.05),
-                      border: `1px dashed ${alpha(theme.palette.grey[500], 0.2)}`,
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
-                      Bu kullanıcıya henüz rol atanmamış.
-                    </Typography>
-                  </Paper>
-                )}
-              </Box>
-
-              <Divider sx={{ my: 3 }} />
-
-              {/* İzinler Bölümü */}
-              {userDetail && <UserPermissionsSection permissions={userDetail?.permissions} />}
-            </CardContent>
-          </Card>
-
-          {/* Kullanıcı Scope'ları */}
-          <Card
-            elevation={0}
-            sx={{
-              mb: 3,
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              boxShadow: `0 4px 20px ${alpha(theme.palette.info.main, 0.08)}`,
-              overflow: 'hidden',
-            }}
-          >
-            <CardContent sx={{ p: 4 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      {/* Panel kullanıcı bilgileri artık ayrı detay sayfasında */}
+      {member.user && canViewPanelUserDetails && (
+        <Card
+          elevation={0}
+          sx={{
+            mb: 3,
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.08)}`,
+            overflow: 'hidden',
+          }}
+        >
+          <CardContent sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                <SecurityIcon sx={{ fontSize: '1.4rem', color: theme.palette.primary.main }} />
                 <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <LocationOnIcon sx={{ fontSize: '1.5rem', color: theme.palette.info.main, mr: 1 }} />
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
-                      Yetki Alanları (Scope)
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                    Bu kullanıcı, aşağıdaki il / ilçe / işyeri / anlaşmalı kurumlar üzerinde yetkilidir.
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Panel Kullanıcı Detayı
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Bu üyenin panel kullanıcı bilgileri ayrı detay sayfasında görüntülenir.
                   </Typography>
                 </Box>
+              </Box>
 
-                {isBranchManager && userDetail && (
+              <Stack direction="row" spacing={1}>
+                {canDemoteToMember && member.user.id !== currentUser?.id && (
                   <Button
-                    variant="contained"
-                    size="medium"
-                    startIcon={<AddLocationIcon />}
-                    onClick={() => openScopeDialog()}
+                    variant="outlined"
+                    color="warning"
+                    size="small"
+                    onClick={() => setDemoteDialogOpen(true)}
                     sx={{
-                      borderRadius: 2,
                       textTransform: 'none',
                       fontWeight: 600,
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
+                      borderRadius: 2,
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    Scope Ekle
+                    Üyeliğe Düşür
                   </Button>
                 )}
-              </Box>
-
-              {loadingScopes ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-                  <CircularProgress size={40} />
-                </Box>
-              ) : scopes.length === 0 ? null : (
-                <Paper 
-                  elevation={0}
-                  sx={{ 
-                    width: '100%', 
-                    overflowX: 'auto',
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  }}
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => navigate(`/users/panel/${member.user!.id}`)}
+                  sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2, whiteSpace: 'nowrap' }}
                 >
-                  <Table>
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: alpha(theme.palette.info.main, 0.05) }}>
-                        <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary }}>Tür</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary }}>Tanım</TableCell>
-                        {isBranchManager && (
-                          <TableCell align="right" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
-                            İşlemler
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {scopes.map((s) => {
-                        const formatted = formatScopeRow(s);
-                        return (
-                          <TableRow 
-                            key={s.id}
-                            sx={{
-                              '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.03) },
-                              transition: 'all 0.2s',
-                            }}
-                          >
-                            <TableCell>
-                              <Chip
-                                label={formatted.type}
-                                size="small"
-                                sx={{
-                                  bgcolor: alpha(theme.palette.info.main, 0.1),
-                                  color: theme.palette.info.main,
-                                  fontWeight: 600,
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <LocationOnIcon sx={{ fontSize: '1rem', color: theme.palette.text.secondary }} />
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  {formatted.description}
-                                </Typography>
-                              </Box>
-                            </TableCell>
-                            {isBranchManager && (
-                              <TableCell align="right">
-                                <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                  <Tooltip title="Düzenle" arrow>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => openScopeDialog(s)}
-                                      sx={{
-                                        color: theme.palette.primary.main,
-                                        transition: 'all 0.2s',
-                                        '&:hover': {
-                                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                          transform: 'scale(1.1)',
-                                        },
-                                      }}
-                                    >
-                                      <EditIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Sil" arrow>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => handleDeleteScope(s.id)}
-                                      sx={{
-                                        color: theme.palette.error.main,
-                                        transition: 'all 0.2s',
-                                        '&:hover': {
-                                          backgroundColor: alpha(theme.palette.error.main, 0.1),
-                                          transform: 'scale(1.1)',
-                                        },
-                                      }}
-                                    >
-                                      <DeleteIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Stack>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </Paper>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Scope Ekle Dialog */}
-          <Dialog
-            open={scopeDialogOpen}
-            onClose={closeScopeDialog}
-            fullWidth
-            maxWidth="sm"
-            PaperProps={{
-              sx: {
-                borderRadius: 3,
-                boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.15)}`,
-              }
-            }}
-          >
-            <DialogTitle sx={{ pb: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AddLocationIcon sx={{ color: theme.palette.primary.main }} />
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  {editingScope ? 'Scope Düzenle' : 'Yeni Scope Ekle'}
-                </Typography>
-              </Box>
-            </DialogTitle>
-            <Divider />
-            <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  background: alpha(theme.palette.info.main, 0.05),
-                  border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-                }}
-              >
-                <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                  En az bir alan (il veya ilçe) seçmelisiniz. Daha spesifik yetki vermek için il → ilçe şeklinde daraltabilirsiniz.
-                </Typography>
-              </Paper>
-
-              <FormControl fullWidth>
-                <InputLabel>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <LocationOnIcon fontSize="small" />
-                    İl
-                  </Box>
-                </InputLabel>
-                <Select
-                  label="İl"
-                  value={scopeForm.provinceId}
-                  onChange={(e) => handleScopeFormChange('provinceId', e.target.value as string)}
-                  sx={{
-                    borderRadius: 2,
-                    '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
-                    },
-                  }}
-                >
-                  <MenuItem value=""><em>Seçilmedi</em></MenuItem>
-                  {scopeProvinces.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>
-                        {p.name} {p.code ? `(${p.code})` : ''}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth disabled={!scopeForm.provinceId}>
-                <InputLabel>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <LocationOnIcon fontSize="small" />
-                    İlçe
-                  </Box>
-                </InputLabel>
-                <Select
-                  label="İlçe"
-                  value={scopeForm.districtId}
-                  onChange={(e) => handleScopeFormChange('districtId', e.target.value as string)}
-                  sx={{
-                    borderRadius: 2,
-                    '&.Mui-focused': {
-                      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
-                    },
-                  }}
-                >
-                  <MenuItem value=""><em>Seçilmedi</em></MenuItem>
-                  {scopeDistricts.map((d) => (
-                    <MenuItem key={d.id} value={d.id}>
-                      {d.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </DialogContent>
-            <Divider />
-            <DialogActions sx={{ p: 2.5, gap: 1 }}>
-              <Button 
-                onClick={closeScopeDialog} 
-                disabled={scopeSaving}
-                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-              >
-                İptal
-              </Button>
-              <Button
-                onClick={handleScopeSave}
-                disabled={scopeSaving}
-                variant="contained"
-                startIcon={scopeSaving ? <CircularProgress size={16} /> : null}
-                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 100 }}
-              >
-                {scopeSaving ? 'Kaydediliyor...' : 'Kaydet'}
-              </Button>
-            </DialogActions>
-          </Dialog>
-
-          {/* Roller Dialog */}
-          {userDetail && (
-            <UserRolesDialog
-              open={rolesDialogOpen}
-              user={userDetail}
-              onClose={() => setRolesDialogOpen(false)}
-              onSave={handleSaveRoles}
-            />
-          )}
-        </>
-        ) : null
-      ) : (
-        <>
-          {/* Terfi Et Kartı - Sadece panel kullanıcısı değilse ve koşullar uygunsa
-              Not: Başvuru REJECTED ise tekrar başvuru yapılabilsin */}
-          {(!hasApplication || applicationStatus === 'REJECTED') && canCreatePanelUserApplication && member?.status === 'ACTIVE' && (
-            <Card
-              elevation={0}
-              sx={{
-                mb: 3,
-                borderRadius: 3,
-                border: `2px dashed ${alpha(theme.palette.success.main, 0.3)}`,
-                background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.05)} 0%, ${alpha(theme.palette.success.light, 0.02)} 100%)`,
-                boxShadow: `0 4px 20px ${alpha(theme.palette.success.main, 0.08)}`,
-                overflow: 'hidden',
-                position: 'relative',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  borderColor: alpha(theme.palette.success.main, 0.5),
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 8px 28px ${alpha(theme.palette.success.main, 0.15)}`,
-                },
-              }}
-            >
-              {/* Dekoratif arka plan */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: -50,
-                  right: -50,
-                  width: 200,
-                  height: 200,
-                  borderRadius: '50%',
-                  background: alpha(theme.palette.success.main, 0.06),
-                }}
-              />
-              
-              <CardContent sx={{ p: { xs: 2.5, sm: 4 }, position: 'relative', zIndex: 1 }}>
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <Box
-                      sx={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 2.5,
-                        background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        boxShadow: `0 4px 14px ${alpha(theme.palette.success.main, 0.35)}`,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <BadgeIcon sx={{ fontSize: '1.8rem' }} />
-                    </Box>
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.text.primary, mb: 0.5, lineHeight: 1.3 }}>
-                        Panel Kullanıcılığına Terfi Ettir
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: theme.palette.text.secondary, lineHeight: 1.6, maxWidth: 500 }}>
-                        Bu üyeye panel erişimi vererek sisteme giriş yapabilmesini ve yetkilendirilmiş işlemleri gerçekleştirebilmesini sağlayabilirsiniz.
-                      </Typography>
-                      <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        <Chip 
-                          icon={<CheckCircleIcon />} 
-                          label="Aktif Üye" 
-                          size="small" 
-                          color="success" 
-                          variant="outlined"
-                          sx={{ fontWeight: 600 }}
-                        />
-                        <Chip 
-                          icon={<SecurityIcon />} 
-                          label="Panel Erişimi Yok" 
-                          size="small" 
-                          variant="outlined"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      </Box>
-                    </Box>
-                  </Box>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<BadgeIcon />}
-                    onClick={() => setPromoteDialogOpen(true)}
-                    sx={{
-                      borderRadius: 2.5,
-                      textTransform: 'none',
-                      fontWeight: 700,
-                      bgcolor: theme.palette.success.main,
-                      color: '#fff',
-                      px: 3,
-                      py: 1.5,
-                      fontSize: '0.95rem',
-                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
-                      whiteSpace: 'nowrap',
-                      '&:hover': {
-                        bgcolor: theme.palette.success.dark,
-                        transform: 'translateY(-2px)',
-                        boxShadow: `0 8px 20px ${alpha(theme.palette.success.main, 0.4)}`,
-                      },
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    Terfi Ettir
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Başvuru Durumu Alert'leri */}
-          {hasApplication && applicationStatus === 'PENDING' && (
-            <Alert 
-              severity="info" 
-              icon={<WarningIcon />}
-              sx={{ 
-                mb: 3,
-                borderRadius: 3,
-                border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
-                bgcolor: alpha(theme.palette.info.main, 0.08),
-                '& .MuiAlert-icon': { 
-                  fontSize: '1.5rem',
-                  color: theme.palette.info.main,
-                },
-              }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                Panel Kullanıcı Başvurusu Beklemede
-              </Typography>
-              <Typography variant="body2">
-                Bu üye için oluşturulan panel kullanıcı başvurusu onay bekliyor.
-              </Typography>
-            </Alert>
-          )}
-
-          {hasApplication && applicationStatus === 'APPROVED' && (
-            <Alert 
-              severity="success"
-              icon={<CheckCircleIcon />}
-              sx={{ 
-                mb: 3,
-                borderRadius: 3,
-                border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`,
-                bgcolor: alpha(theme.palette.success.main, 0.08),
-                '& .MuiAlert-icon': { 
-                  fontSize: '1.5rem',
-                  color: theme.palette.success.main,
-                },
-              }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                Panel Kullanıcı Başvurusu Onaylandı
-              </Typography>
-              <Typography variant="body2">
-                Bu üye panel kullanıcısı olarak onaylanmış. Kullanıcı hesabı oluşturulmuş olmalı.
-              </Typography>
-            </Alert>
-          )}
-
-          {hasApplication && applicationStatus === 'REJECTED' && (
-            <Alert 
-              severity="warning"
-              icon={<CancelIcon />}
-              sx={{ 
-                mb: 3,
-                borderRadius: 3,
-                border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
-                bgcolor: alpha(theme.palette.warning.main, 0.08),
-                '& .MuiAlert-icon': { 
-                  fontSize: '1.5rem',
-                  color: theme.palette.warning.main,
-                },
-              }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                Panel Kullanıcı Başvurusu Reddedilmiştir
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                Bu üye için oluşturulan panel kullanıcı başvurusu reddedilmiştir. İsterseniz tekrar panel kullanıcılığına terfi etme talebi oluşturabilirsiniz.
-              </Typography>
-            </Alert>
-          )}
-        </>
+                  Panel Kullanıcı Detayına Git
+                </Button>
+              </Stack>
+            </Box>
+          </CardContent>
+        </Card>
       )}
+
+      <Dialog
+        open={demoteDialogOpen}
+        onClose={() => !demoteSubmitting && setDemoteDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Panel erişimini kaldır</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            <strong>
+              {member?.firstName} {member?.lastName}
+            </strong>{' '}
+            kullanıcısının panel hesabı kapatılacak; kişi yalnızca üye olarak kalacak.
+            Devam edilsin mi?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDemoteDialogOpen(false)} disabled={demoteSubmitting}>
+            Vazgeç
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => void handleConfirmDemoteToMember()}
+            disabled={demoteSubmitting}
+          >
+            {demoteSubmitting ? <CircularProgress size={22} color="inherit" /> : 'Evet, üyeliğe düşür'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* İhraç/İstifa Açıklaması */}
@@ -2295,12 +1737,12 @@ const MemberDetailPage = () => {
             <InfoRow label="Telefon" value={member?.phone || '-'} icon={<PhoneIcon />} />
             <InfoRow label="E-posta" value={member?.email || '-'} icon={<EmailIcon />} />
             <InfoRow 
-              label="İl (Kayıtlı Olduğu Yer)" 
+              label="Bölge İl" 
               value={member?.province?.name || '-'} 
               icon={<PlaceIcon />} 
             />
             <InfoRow 
-              label="İlçe (Kayıtlı Olduğu Yer)" 
+              label="Bölge İlçe" 
               value={member?.district?.name || '-'} 
               icon={<PlaceIcon />} 
             />
@@ -2804,7 +2246,9 @@ const MemberDetailPage = () => {
                     <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap' }}>Dosya Adı</TableCell>
                     <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap', display: { xs: 'none', md: 'table-cell' } }}>Oluşturulma Tarihi</TableCell>
                     <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap', display: { xs: 'none', lg: 'table-cell' } }}>Oluşturan</TableCell>
-                    <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap' }}>İşlemler</TableCell>
+                    {(canDownloadDocuments || canUploadDocument) && (
+                      <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.8rem', sm: '0.9rem' }, whiteSpace: 'nowrap' }}>İşlemler</TableCell>
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -2843,81 +2287,85 @@ const MemberDetailPage = () => {
                           {document.generatedByUser ? `${document.generatedByUser.firstName} ${document.generatedByUser.lastName}` : '-'}
                         </Typography>
                       </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            disabled={deletingDocumentId === document.id}
-                            startIcon={<PictureAsPdfIcon />}
-                            onClick={async () => {
-                              try {
-                                setLoadingPdf(true);
-                                const blob = await fetchMemberDocumentBlob(document.id);
-                                const blobUrl = window.URL.createObjectURL(blob);
-                                setPdfUrl(blobUrl);
-                                setPdfTitle(document.fileName || 'Belge');
-                                setPdfViewerOpen(true);
-                              } catch (error) {
-                                console.error('Dosya görüntülenirken hata:', error);
-                                toast.showError('Dosya görüntülenemedi');
-                              } finally {
-                                setLoadingPdf(false);
-                              }
-                            }}
-                            sx={{
-                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                              px: { xs: 1, sm: 1.5 },
-                              py: { xs: 0.5, sm: 0.75 },
-                              minWidth: 'auto',
-                            }}
-                          >
-                            Görüntüle
-                          </Button>
-                          {canUploadDocument && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              disabled={deletingDocumentId === document.id}
-                              startIcon={
-                                deletingDocumentId === document.id ? (
-                                  <CircularProgress size={14} color="inherit" />
-                                ) : (
-                                  <DeleteIcon fontSize="small" />
-                                )
-                              }
-                              onClick={async () => {
-                                const confirmed = window.confirm(
-                                  `"${document.fileName || 'Bu evrak'}" silinecek. Devam etmek istiyor musunuz?`,
-                                );
-                                if (!confirmed || !id) return;
-
-                                setDeletingDocumentId(document.id);
-                                try {
-                                  await deleteMemberDocument(document.id);
-                                  toast.showSuccess('Evrak başarıyla silindi');
-                                  const data = await getMemberDocuments(id);
-                                  setDocuments(data);
-                                } catch (error: unknown) {
-                                  console.error('Evrak silinirken hata:', error);
-                                  toast.showError(getApiErrorMessage(error, 'Evrak silinirken bir hata oluştu'));
-                                } finally {
-                                  setDeletingDocumentId(null);
+                      {(canDownloadDocuments || canUploadDocument) && (
+                        <TableCell>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {canDownloadDocuments && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={deletingDocumentId === document.id}
+                                startIcon={<PictureAsPdfIcon />}
+                                onClick={async () => {
+                                  try {
+                                    setLoadingPdf(true);
+                                    const blob = await fetchMemberDocumentBlob(document.id);
+                                    const blobUrl = window.URL.createObjectURL(blob);
+                                    setPdfUrl(blobUrl);
+                                    setPdfTitle(document.fileName || 'Belge');
+                                    setPdfViewerOpen(true);
+                                  } catch (error) {
+                                    console.error('Dosya görüntülenirken hata:', error);
+                                    toast.showError('Dosya görüntülenemedi');
+                                  } finally {
+                                    setLoadingPdf(false);
+                                  }
+                                }}
+                                sx={{
+                                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                  px: { xs: 1, sm: 1.5 },
+                                  py: { xs: 0.5, sm: 0.75 },
+                                  minWidth: 'auto',
+                                }}
+                              >
+                                Görüntüle
+                              </Button>
+                            )}
+                            {canUploadDocument && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                disabled={deletingDocumentId === document.id}
+                                startIcon={
+                                  deletingDocumentId === document.id ? (
+                                    <CircularProgress size={14} color="inherit" />
+                                  ) : (
+                                    <DeleteIcon fontSize="small" />
+                                  )
                                 }
-                              }}
-                              sx={{
-                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                                px: { xs: 1, sm: 1.5 },
-                                py: { xs: 0.5, sm: 0.75 },
-                                minWidth: 'auto',
-                              }}
-                            >
-                              {deletingDocumentId === document.id ? 'Siliniyor...' : 'Sil'}
-                            </Button>
-                          )}
-                        </Box>
-                      </TableCell>
+                                onClick={async () => {
+                                  const confirmed = window.confirm(
+                                    `"${document.fileName || 'Bu evrak'}" silinecek. Devam etmek istiyor musunuz?`,
+                                  );
+                                  if (!confirmed || !id) return;
+
+                                  setDeletingDocumentId(document.id);
+                                  try {
+                                    await deleteMemberDocument(document.id);
+                                    toast.showSuccess('Evrak başarıyla silindi');
+                                    const data = await getMemberDocuments(id);
+                                    setDocuments(data);
+                                  } catch (error: unknown) {
+                                    console.error('Evrak silinirken hata:', error);
+                                    toast.showError(getApiErrorMessage(error, 'Evrak silinirken bir hata oluştu'));
+                                  } finally {
+                                    setDeletingDocumentId(null);
+                                  }
+                                }}
+                                sx={{
+                                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                  px: { xs: 1, sm: 1.5 },
+                                  py: { xs: 0.5, sm: 0.75 },
+                                  minWidth: 'auto',
+                                }}
+                              >
+                                {deletingDocumentId === document.id ? 'Siliniyor...' : 'Sil'}
+                              </Button>
+                            )}
+                          </Box>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -3522,32 +2970,6 @@ const MemberDetailPage = () => {
             </Button>
           </DialogActions>
         </Dialog>
-      )}
-
-      {/* Panel Kullanıcılığına Terfi Dialog */}
-      {member && (
-        <PromoteToPanelUserDialog
-          open={promoteDialogOpen}
-          onClose={() => setPromoteDialogOpen(false)}
-          memberId={member.id}
-          memberName={`${member.firstName} ${member.lastName}`}
-          onSuccess={() => {
-            // Başvuru durumunu yeniden kontrol et
-            const checkApplication = async () => {
-              try {
-                const applications = await getPanelUserApplications();
-                const memberApp = applications.find(app => app.memberId === member.id);
-                if (memberApp) {
-                  setHasApplication(true);
-                  setApplicationStatus(memberApp.status);
-                }
-              } catch (e) {
-                console.error('Başvuru kontrolü hatası:', e);
-              }
-            };
-            checkApplication();
-          }}
-        />
       )}
 
       {/* PDF Görüntüleme Dialog */}

@@ -56,6 +56,7 @@ import type { Province, District } from '../../../types/region';
 import {
   getProvinces,
   getDistricts,
+  getUserScopes,
 } from '../../regions/services/regionsApi';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import PageLayout from '../../../shared/components/layout/PageLayout';
@@ -63,7 +64,7 @@ import PageLayout from '../../../shared/components/layout/PageLayout';
 const MembersListPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { hasPermission, hasRole } = useAuth();
+  const { user, hasPermission, hasRole } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<MemberListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +79,7 @@ const MembersListPage: React.FC = () => {
   const [districts, setDistricts] = useState<District[]>([]);
   const [institutions, setInstitutions] = useState<Array<{ id: string; name: string }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [scopeFiltersInitialized, setScopeFiltersInitialized] = useState(false);
   
   // Durum değiştirme dialog state
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -180,6 +182,54 @@ const MembersListPage: React.FC = () => {
     };
     loadInstitutions();
   }, []);
+
+  // Scope kısıtlı kullanıcılar için il/ilçe filtrelerini varsayılan seçili getir
+  useEffect(() => {
+    if (!user?.id || scopeFiltersInitialized) return;
+    if (!hasPermission('MEMBER_LIST_BY_PROVINCE') || hasRole('ADMIN')) {
+      setScopeFiltersInitialized(true);
+      return;
+    }
+
+    const loadUserScopeFilters = async () => {
+      try {
+        const scopes = await getUserScopes(user.id);
+        if (!Array.isArray(scopes) || scopes.length === 0) {
+          setScopeFiltersInitialized(true);
+          return;
+        }
+
+        const scopedProvinceIds = Array.from(
+          new Set(
+            scopes
+              .map((scope) => scope.province?.id)
+              .filter((provinceId): provinceId is string => !!provinceId),
+          ),
+        );
+
+        const scopedDistrictIds = Array.from(
+          new Set(
+            scopes
+              .map((scope) => scope.district?.id)
+              .filter((districtId): districtId is string => !!districtId),
+          ),
+        );
+
+        if (scopedProvinceIds.length > 0) {
+          setProvinceFilter((prev) => (prev.length > 0 ? prev : scopedProvinceIds));
+        }
+        if (scopedDistrictIds.length > 0) {
+          setDistrictFilter((prev) => (prev.length > 0 ? prev : scopedDistrictIds));
+        }
+      } catch (e) {
+        console.error('Kullanıcı scope filtreleri alınırken hata:', e);
+      } finally {
+        setScopeFiltersInitialized(true);
+      }
+    };
+
+    loadUserScopeFilters();
+  }, [user?.id, scopeFiltersInitialized, hasPermission, hasRole]);
 
   // Filtrelenmiş veriler
   // Not: Backend status filtresine göre veri döndürür, bu yüzden frontend'de sadece diğer filtreler uygulanır

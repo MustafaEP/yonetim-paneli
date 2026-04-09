@@ -103,6 +103,7 @@ export const rejectTevkifatFile = async (id: string): Promise<TevkifatFile> => {
 export interface TevkifatCenter {
   id: string;
   name: string;
+  title?: string | null;
   isActive: boolean;
   provinceId?: string | null;
   districtId?: string | null;
