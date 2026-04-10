@@ -54,7 +54,7 @@ import {
 import { MAX_FILE_SIZE_MB, MAX_ROWS, PREVIEW_COLUMN_LABELS } from '../constants/memberImportTemplate';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { useToast } from '../../../shared/hooks/useToast';
-import { createInstitution, getDistricts, getProvinces } from '../../regions/services/regionsApi';
+import { approveInstitution, createInstitution, getDistricts, getProvinces } from '../../regions/services/regionsApi';
 import { createTevkifatCenter } from '../../accounting/services/accountingApi';
 
 interface BulkMemberRegistrationPageProps {
@@ -375,7 +375,12 @@ const BulkMemberRegistrationPage: React.FC<BulkMemberRegistrationPageProps> = ({
       const results: BulkRowResult[] = [];
       for (const row of validRows) {
         try {
-          await createInstitution({ name: row.name, provinceId: row.provinceId, districtId: row.districtId });
+          const createdInstitution = await createInstitution({
+            name: row.name,
+            provinceId: row.provinceId,
+            districtId: row.districtId,
+          });
+          await approveInstitution(createdInstitution.id);
           results.push({ line: row.line, name: row.name, status: 'success' });
         } catch (err) {
           results.push({ line: row.line, name: row.name, status: 'error', message: getApiErrorMessage(err, 'Kayıt hatası') });
