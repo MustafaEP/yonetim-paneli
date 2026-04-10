@@ -67,6 +67,7 @@ export class UsersController {
     const userWithRoles = dbUser as typeof dbUser & {
       customRoles?: Array<{
         name: string;
+        hasScopeRestriction: boolean;
         permissions: Array<{ permission: string }>;
       }>;
     };
@@ -90,6 +91,9 @@ export class UsersController {
       } | null;
     };
 
+    const scopeRestricted =
+      userWithRoles.customRoles?.some((r) => r.hasScopeRestriction) ?? false;
+
     return {
       id: dbUser.id,
       email: dbUser.email,
@@ -97,6 +101,7 @@ export class UsersController {
       lastName: dbUser.lastName,
       roles: userWithRoles.customRoles?.map((r) => r.name) || [],
       permissions,
+      scopeRestricted,
       member: userWithMember.member
         ? {
             id: userWithMember.member.id,

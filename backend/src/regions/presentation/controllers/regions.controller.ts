@@ -199,7 +199,11 @@ export class RegionsController {
     return this.regionsService.assignUserScope(dto);
   }
 
-  @Permissions(Permission.BRANCH_MANAGE, Permission.MEMBER_LIST_BY_PROVINCE)
+  @Permissions(
+    Permission.BRANCH_MANAGE,
+    Permission.MEMBER_LIST_BY_PROVINCE,
+    Permission.REGION_LIST,
+  )
   @Get('user-scope/:userId')
   @ApiOperation({
     summary: 'Kullanıcı scope bilgilerini getir',
@@ -222,19 +226,14 @@ export class RegionsController {
     @Param('userId') userId: string,
     @CurrentUser() user: CurrentUserData,
   ) {
-    const hasMemberListByProvince = user.permissions?.includes(
-      Permission.MEMBER_LIST_BY_PROVINCE,
-    );
     const hasBranchManage = user.permissions?.includes(
       Permission.BRANCH_MANAGE,
     );
 
-    if (hasMemberListByProvince && !hasBranchManage) {
-      if (userId !== user.userId) {
-        throw new ForbiddenException(
-          'Bu kullanıcının scope bilgilerini görme yetkiniz yok',
-        );
-      }
+    if (!hasBranchManage && userId !== user.userId) {
+      throw new ForbiddenException(
+        'Bu kullanıcının scope bilgilerini görme yetkiniz yok',
+      );
     }
 
     return this.regionsService.getUserScope(userId);

@@ -32,12 +32,18 @@ export class RegionsService {
     private districtService: DistrictApplicationService,
   ) {}
 
-  private needsScopeRestriction(user?: CurrentUserData): boolean {
+  /** İl/ilçe listesini daralt: MEMBER_LIST_BY_PROVINCE veya atanmış UserScope kaydı varsa */
+  private async shouldApplyScopeFilter(
+    user?: CurrentUserData,
+  ): Promise<boolean> {
     if (!user) return false;
     if (user.roles?.includes('ADMIN')) return false;
     const permissions = user.permissions ?? [];
-    const hasScopedAccess = permissions.includes(Permission.MEMBER_LIST_BY_PROVINCE);
-    return hasScopedAccess;
+    if (permissions.includes(Permission.MEMBER_LIST_BY_PROVINCE)) return true;
+    const scopeCount = await this.prisma.userScope.count({
+      where: { userId: user.userId, deletedAt: null },
+    });
+    return scopeCount > 0;
   }
 
   private async getActiveUserScopes(userId: string) {
@@ -53,24 +59,48 @@ export class RegionsService {
     });
   }
 
+  /**
+   * MEMBER_LIST_BY_PROVINCE kapsamı: doğrudan atanmış iller + ilçe scope'larından çözülen iller.
+   * Sadece ilçe atanmışsa provinceId boş olabilir; ilçe kaydından il id'si alınır.
+   */
+  private async resolveScopedProvinceIds(userId: string): Promise<string[]> {
+    const scopes = await this.getActiveUserScopes(userId);
+    const ids = new Set<string>();
+
+    for (const s of scopes) {
+      if (s.provinceId) {
+        ids.add(s.provinceId);
+      }
+    }
+
+    const districtIds = scopes
+      .map((s) => s.districtId)
+      .filter((id): id is string => Boolean(id));
+
+    if (districtIds.length > 0) {
+      const districts = await this.prisma.district.findMany({
+        where: { id: { in: districtIds } },
+        select: { provinceId: true },
+      });
+      districts.forEach((d) => ids.add(d.provinceId));
+    }
+
+    return Array.from(ids);
+  }
+
   // ---------- PROVINCE ----------
   async listProvinces(user?: CurrentUserData) {
-    if (!this.needsScopeRestriction(user)) {
+    if (!(await this.shouldApplyScopeFilter(user))) {
       return this.prisma.province.findMany({
         orderBy: { name: 'asc' },
       });
     }
     if (!user) return [];
 
-    const scopes = await this.getActiveUserScopes(user.userId);
-    const provinceIds = Array.from(
-      new Set(scopes.map((s) => s.provinceId).filter((id): id is string => Boolean(id))),
-    );
+    const provinceIds = await this.resolveScopedProvinceIds(user.userId);
 
     if (!provinceIds.length) {
-      return this.prisma.province.findMany({
-        orderBy: { name: 'asc' },
-      });
+      return [];
     }
 
     return this.prisma.province.findMany({
@@ -129,7 +159,7 @@ export class RegionsService {
   async listDistricts(provinceId?: string, user?: CurrentUserData) {
     const where: Prisma.DistrictWhereInput = {};
 
-    if (!this.needsScopeRestriction(user)) {
+    if (!(await this.shouldApplyScopeFilter(user))) {
       if (provinceId) where.provinceId = provinceId;
       return this.prisma.district.findMany({
         where,
@@ -139,16 +169,10 @@ export class RegionsService {
     if (!user) return [];
 
     const scopes = await this.getActiveUserScopes(user.userId);
-    const scopedProvinceIds = Array.from(
-      new Set(scopes.map((s) => s.provinceId).filter((id): id is string => Boolean(id))),
-    );
+    const scopedProvinceIds = await this.resolveScopedProvinceIds(user.userId);
 
     if (!scopedProvinceIds.length) {
-      if (provinceId) where.provinceId = provinceId;
-      return this.prisma.district.findMany({
-        where,
-        orderBy: { name: 'asc' },
-      });
+      return [];
     }
 
     const fullProvinceIds = new Set(

@@ -48,6 +48,7 @@ type UserMeResponse = {
   lastName: string;
   roles: string[];
   permissions: string[];
+  scopeRestricted?: boolean;
   member?: {
     id: string;
     firstName: string;
@@ -97,6 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastName,
         roles: (data.roles ?? []) as Role[],
         permissions: data.permissions ?? [],
+        scopeRestricted: data.scopeRestricted ?? false,
       };
     } catch {
       return null;
@@ -262,6 +264,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       lastName: data.user.lastName ?? '',
       roles: (data.user.roles ?? []) as Role[],
       permissions: data.user.permissions ?? [],
+      scopeRestricted: data.user.scopeRestricted ?? false,
     };
 
     const profileUser = await fetchCurrentUserProfile();

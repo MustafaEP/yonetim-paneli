@@ -8,6 +8,8 @@ export interface BackendUser {
   lastName: string;
   roles: Role[];
   permissions: string[];
+  /** En az bir rolü il/ilçe kapsamı gerektiriyorsa (bölgeler sayfasında daraltma için) */
+  scopeRestricted?: boolean;
 }
 
 

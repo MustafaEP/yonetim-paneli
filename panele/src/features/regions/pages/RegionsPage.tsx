@@ -74,9 +74,11 @@ const RegionsPage: React.FC = () => {
   const toastRef = useRef(toast);
   toastRef.current = toast;
   const hasRegionList = hasPermission('REGION_LIST');
-  const hasScopedRegionAccess = hasPermission('MEMBER_LIST_BY_PROVINCE');
+  const hasScopedRegionAccess =
+    hasPermission('MEMBER_LIST_BY_PROVINCE') || Boolean(user?.scopeRestricted);
   const isAdmin = hasRole('ADMIN');
   const canSeeRegions = hasRegionList || hasScopedRegionAccess;
+  const canManageBranches = hasPermission('BRANCH_MANAGE');
 
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -363,22 +365,27 @@ const RegionsPage: React.FC = () => {
         setLoadingInstitutions(false);
       }
 
-      // Şubeler
-      setLoadingBranches(true);
-      try {
-        const branchesData = await getBranches(filters);
-        setBranches(branchesData);
-      } catch (e: unknown) {
-        console.error('Şubeler alınırken hata:', e);
-        const err = e as { response?: { data?: { message?: string } } };
-        toast.showError(err?.response?.data?.message ?? 'Şubeler alınırken bir hata oluştu.');
-      } finally {
+      // Şubeler (BRANCH_MANAGE gerekir)
+      if (canManageBranches) {
+        setLoadingBranches(true);
+        try {
+          const branchesData = await getBranches(filters);
+          setBranches(branchesData);
+        } catch (e: unknown) {
+          console.error('Şubeler alınırken hata:', e);
+          const err = e as { response?: { data?: { message?: string } } };
+          toast.showError(err?.response?.data?.message ?? 'Şubeler alınırken bir hata oluştu.');
+        } finally {
+          setLoadingBranches(false);
+        }
+      } else {
+        setBranches([]);
         setLoadingBranches(false);
       }
     };
 
     loadRegionData();
-  }, [selectedProvinceId, selectedDistrictId]);
+  }, [selectedProvinceId, selectedDistrictId, canManageBranches]);
 
   const handleProvinceChange = (provinceId: string) => {
     setSelectedProvinceId(provinceId);
@@ -434,6 +441,7 @@ const RegionsPage: React.FC = () => {
   };
 
   const handleOpenBranchDialog = async () => {
+    if (!canManageBranches) return;
     setError(null);
     setSelectedBranchIds([]);
     setBranchDialogOpen(true);
@@ -1134,7 +1142,8 @@ const RegionsPage: React.FC = () => {
               </Card>
             </Grid>
 
-            {/* Şubeler */}
+            {/* Şubeler — yalnızca BRANCH_MANAGE */}
+            {canManageBranches && (
             <Grid
               size={{
                 xs: 12,
@@ -1301,6 +1310,7 @@ const RegionsPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
+            )}
           </Grid>
           </Box>
         </Zoom>
