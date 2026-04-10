@@ -39,15 +39,12 @@ export interface BulkImportResult {
 
 /** İsimden id bulmak için normalize: trim, lowercase, Türkçe karakterleri düzelt */
 function normalizeName(s: string): string {
-  return s
+  return (s ?? '')
     .trim()
-    .toLowerCase()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
+    .toLocaleLowerCase('tr-TR')
     .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c');
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 /** CUID benzeri mi (c ile başlar, 25 karakter) */
