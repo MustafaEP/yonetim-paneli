@@ -155,6 +155,7 @@ export class MemberImportController {
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: CurrentUserData,
     @Query('skipErrors') skipErrors?: string,
+    @Query('makeActive') makeActive?: string,
   ) {
     if (!file) {
       throw new BadRequestException('Lütfen bir CSV dosyası seçin.');
@@ -169,6 +170,7 @@ export class MemberImportController {
       file,
       user.userId,
       skipErrors === 'true',
+      makeActive === 'true',
     );
   }
 }

@@ -127,7 +127,7 @@ export class MemberImportValidationService {
   async getTemplateCsv(): Promise<string> {
     const sep = ';';
     const headers =
-      'Ad;Soyad;TC Kimlik No;Telefon;E-posta;Anne Adı;Baba Adı;Doğum Tarihi;Doğum Yeri;Cinsiyet;Öğrenim Durumu;İl;İlçe;Kurum;Şube;Tevkifat Merkezi;Tevkifat Ünvanı;Üye Grubu;Görev Birimi;Kurum Adresi;Kurum İli;Kurum İlçesi;Meslek;Kurum Sicil No;Kadro Unvan Kodu';
+      'Ad;Soyad;Üye Kayıt No;TC Kimlik No;Telefon;E-posta;Anne Adı;Baba Adı;Doğum Tarihi;Doğum Yeri;Cinsiyet;Öğrenim Durumu;İl;İlçe;Kurum;Şube;Tevkifat Merkezi;Tevkifat Ünvanı;Üye Grubu;Görev Birimi;Kurum Adresi;Kurum İli;Kurum İlçesi;Meslek;Kurum Sicil No;Kadro Unvan Kodu';
 
     const province = await this.prisma.province.findFirst({
       orderBy: { name: 'asc' },
@@ -195,6 +195,7 @@ export class MemberImportValidationService {
     const exampleRow = [
       'Mehmet',
       'Demir',
+      'TR-2026-0001',
       '12345678901',
       '05551234567',
       'mehmet@ornek.com',
@@ -230,7 +231,7 @@ export class MemberImportValidationService {
   async getSampleMembersCsv(count = 10): Promise<string> {
     const sep = ';';
     const headers =
-      'Ad;Soyad;TC Kimlik No;Telefon;E-posta;Anne Adı;Baba Adı;Doğum Tarihi;Doğum Yeri;Cinsiyet;Öğrenim Durumu;İl;İlçe;Kurum;Şube;Tevkifat Merkezi;Tevkifat Ünvanı;Üye Grubu;Görev Birimi;Kurum Adresi;Kurum İli;Kurum İlçesi;Meslek;Kurum Sicil No;Kadro Unvan Kodu';
+      'Ad;Soyad;Üye Kayıt No;TC Kimlik No;Telefon;E-posta;Anne Adı;Baba Adı;Doğum Tarihi;Doğum Yeri;Cinsiyet;Öğrenim Durumu;İl;İlçe;Kurum;Şube;Tevkifat Merkezi;Tevkifat Ünvanı;Üye Grubu;Görev Birimi;Kurum Adresi;Kurum İli;Kurum İlçesi;Meslek;Kurum Sicil No;Kadro Unvan Kodu';
 
     // Sadece aktif üyeleri al; silinmiş kurum ve eksik zorunlu alan olanları hariç tut
     // Not: birthDate, provinceId, districtId, institutionId Prisma'da zorunlu alan (non-nullable),
@@ -289,6 +290,7 @@ export class MemberImportValidationService {
       [
         m.firstName ?? '',
         m.lastName ?? '',
+        m.registrationNumber ?? '',
         m.nationalId ?? '',
         normalizePhone(m.phone),
         m.email ?? '',
@@ -409,6 +411,7 @@ export class MemberImportValidationService {
     file: Express.Multer.File,
     userId: string,
     skipErrors: boolean,
+    makeActive = false,
   ): Promise<BulkImportResult> {
     const buffer =
       file?.buffer ?? (file as unknown as { buffer?: Buffer })?.buffer;
@@ -437,6 +440,7 @@ export class MemberImportValidationService {
     const allErrors: { rowIndex: number; column?: string; message: string }[] =
       [];
     const duplicateNationalIds: string[] = [];
+    const existingRegistrationNumbers = new Set<string>();
 
     // Aynı TC ile yeni satır yalnızca iptal sonrası olabilir; import "açık" kayıt varsa engeller
     const existingNationalIds = new Set<string>();
@@ -451,9 +455,21 @@ export class MemberImportValidationService {
       select: { nationalId: true },
     });
     blockingMembers.forEach((m) => existingNationalIds.add(m.nationalId));
+    const membersWithRegistrationNumber = await this.prisma.member.findMany({
+      where: {
+        deletedAt: null,
+        registrationNumber: { not: null },
+      },
+      select: { registrationNumber: true },
+    });
+    membersWithRegistrationNumber.forEach((m) => {
+      const value = m.registrationNumber?.trim();
+      if (value) existingRegistrationNumbers.add(value);
+    });
 
     // CSV içi duplicate kontrolü
     const csvNationalIds = new Set<string>();
+    const csvRegistrationNumbers = new Set<string>();
 
     // Geçerli satırları hazırla
     interface MemberCreateData {
@@ -461,6 +477,7 @@ export class MemberImportValidationService {
       data: {
         firstName: string;
         lastName: string;
+          registrationNumber?: string;
         nationalId: string;
         phone: string;
         email: string | null;
@@ -485,8 +502,10 @@ export class MemberImportValidationService {
         institutionRegNo?: string;
         staffTitleCode?: string;
         source: 'OTHER';
-        status: 'PENDING';
+        status: 'PENDING' | 'ACTIVE';
         createdByUserId: string;
+        approvedByUserId?: string;
+        approvedAt?: Date;
       };
     }
 
@@ -518,6 +537,7 @@ export class MemberImportValidationService {
 
       const get = (key: string) => (data[key] ?? '').trim();
       const nationalId = get('nationalId');
+      const registrationNumber = get('registrationNumber');
 
       // Mevcut üye duplicate kontrolü
       if (existingNationalIds.has(nationalId)) {
@@ -542,6 +562,26 @@ export class MemberImportValidationService {
       }
       csvNationalIds.add(nationalId);
 
+      if (registrationNumber) {
+        if (existingRegistrationNumbers.has(registrationNumber)) {
+          allErrors.push({
+            rowIndex,
+            column: 'registrationNumber',
+            message: `Üye kayıt no zaten kayıtlı: ${registrationNumber}`,
+          });
+          continue;
+        }
+        if (csvRegistrationNumbers.has(registrationNumber)) {
+          allErrors.push({
+            rowIndex,
+            column: 'registrationNumber',
+            message: `Üye kayıt no CSV içinde tekrar ediyor: ${registrationNumber}`,
+          });
+          continue;
+        }
+        csvRegistrationNumbers.add(registrationNumber);
+      }
+
       // Referans alanları çöz (isim → id)
       const resolved = this.resolveRow(data, refs);
       if (!resolved) {
@@ -561,6 +601,7 @@ export class MemberImportValidationService {
         data: {
           firstName: get('firstName'),
           lastName: get('lastName'),
+          registrationNumber: registrationNumber || undefined,
           nationalId,
           phone: normalizePhone(get('phone')),
           email: email || null,
@@ -585,8 +626,10 @@ export class MemberImportValidationService {
           institutionRegNo: get('institutionRegNo') || undefined,
           staffTitleCode: get('staffTitleCode') || undefined,
           source: 'OTHER' as const,
-          status: 'PENDING' as const,
+          status: makeActive ? ('ACTIVE' as const) : ('PENDING' as const),
           createdByUserId: userId,
+          approvedByUserId: makeActive ? userId : undefined,
+          approvedAt: makeActive ? new Date() : undefined,
         },
       });
     }

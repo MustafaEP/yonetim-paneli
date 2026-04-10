@@ -5,6 +5,7 @@
 export const MEMBER_IMPORT_CSV_HEADERS = [
   'firstName',
   'lastName',
+  'registrationNumber',
   'nationalId',
   'phone',
   'email',
@@ -34,6 +35,11 @@ export const MEMBER_IMPORT_CSV_HEADERS = [
 export const MEMBER_IMPORT_HEADER_ALIASES: Record<string, string> = {
   Ad: 'firstName',
   Soyad: 'lastName',
+  'Üye Kayıt No': 'registrationNumber',
+  'Üye Kayıt Numarası': 'registrationNumber',
+  'Kayit No': 'registrationNumber',
+  'Kayıt No': 'registrationNumber',
+  registrationNumber: 'registrationNumber',
   'TC Kimlik No': 'nationalId',
   TC: 'nationalId',
   Telefon: 'phone',

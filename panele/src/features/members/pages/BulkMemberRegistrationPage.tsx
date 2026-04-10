@@ -22,6 +22,13 @@ import {
   Chip,
   Divider,
   Collapse,
+  RadioGroup,
+  Radio,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -91,6 +98,9 @@ const BulkMemberRegistrationPage: React.FC<BulkMemberRegistrationPageProps> = ({
   const [result, setResult] = useState<ValidateMemberImportResponse | null>(null);
   const [importResult, setImportResult] = useState<BulkImportResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [directActiveSave, setDirectActiveSave] = useState(false);
+  const [confirmActiveOpen, setConfirmActiveOpen] = useState(false);
+  const [pendingSkipErrors, setPendingSkipErrors] = useState<boolean | null>(null);
 
   const [embeddedExpanded, setEmbeddedExpanded] = useState(false);
   const [embeddedInstitutionsExpanded, setEmbeddedInstitutionsExpanded] = useState(false);
@@ -259,13 +269,13 @@ const BulkMemberRegistrationPage: React.FC<BulkMemberRegistrationPageProps> = ({
     }
   }, [file, toast]);
 
-  const handleImport = useCallback(async (skipErrors: boolean) => {
+  const executeImport = useCallback(async (skipErrors: boolean) => {
     if (!file) return;
     setImporting(true);
     setError(null);
     setImportResult(null);
     try {
-      const data = await bulkImportMembers(file, skipErrors);
+      const data = await bulkImportMembers(file, skipErrors, directActiveSave);
       setImportResult(data);
       if (data.imported > 0) toast.showSuccess(`${data.imported} üye başarıyla kaydedildi.`);
       if (data.skipped > 0 && data.imported === 0) toast.showWarning('Hiçbir üye kaydedilemedi.');
@@ -276,7 +286,24 @@ const BulkMemberRegistrationPage: React.FC<BulkMemberRegistrationPageProps> = ({
     } finally {
       setImporting(false);
     }
-  }, [file, toast]);
+  }, [file, toast, directActiveSave]);
+
+  const handleImport = useCallback((skipErrors: boolean) => {
+    if (directActiveSave) {
+      setPendingSkipErrors(skipErrors);
+      setConfirmActiveOpen(true);
+      return;
+    }
+    void executeImport(skipErrors);
+  }, [directActiveSave, executeImport]);
+
+  const handleConfirmDirectActive = useCallback(() => {
+    if (pendingSkipErrors === null) return;
+    setConfirmActiveOpen(false);
+    const skipErrors = pendingSkipErrors;
+    setPendingSkipErrors(null);
+    void executeImport(skipErrors);
+  }, [pendingSkipErrors, executeImport]);
 
   // --- Institution handlers ---
 
@@ -854,6 +881,33 @@ const BulkMemberRegistrationPage: React.FC<BulkMemberRegistrationPageProps> = ({
             <>
               <Divider sx={{ my: 2.5 }} />
               <Typography sx={stepTitleSx}>4. Kaydet</Typography>
+              <Box
+                sx={{
+                  mb: 1.5,
+                  p: 1.5,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.25)}`,
+                  backgroundColor: alpha(theme.palette.warning.main, 0.06),
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>
+                  Kayıt tipi
+                </Typography>
+                <RadioGroup
+                  row
+                  value={directActiveSave ? 'ACTIVE' : 'PENDING'}
+                  onChange={(e) => setDirectActiveSave(e.target.value === 'ACTIVE')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                    <Radio value="PENDING" size="small" />
+                    <Typography variant="body2">Normal kayıt (bekleyen başvuru)</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Radio value="ACTIVE" size="small" />
+                    <Typography variant="body2">Doğrudan aktif üye olarak kaydet</Typography>
+                  </Box>
+                </RadioGroup>
+              </Box>
               <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
                 {allValid && (
                   <Button variant="contained" color="success" size="small" startIcon={importing ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />} onClick={() => handleImport(false)} disabled={importing} sx={{ borderRadius: 2 }}>
@@ -910,6 +964,23 @@ const BulkMemberRegistrationPage: React.FC<BulkMemberRegistrationPageProps> = ({
           </Button>
         </Box>
       )}
+
+      <Dialog open={confirmActiveOpen} onClose={() => setConfirmActiveOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Doğrudan Aktif Üye Onayı</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Seçili işlem üyeleri beklemeye almadan doğrudan aktif üye olarak kaydedecek. Devam etmek istediğinize emin misiniz?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmActiveOpen(false)} color="inherit">
+            Vazgeç
+          </Button>
+          <Button onClick={handleConfirmDirectActive} variant="contained" color="warning">
+            Onayla ve Kaydet
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 

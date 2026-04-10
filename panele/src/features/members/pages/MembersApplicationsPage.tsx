@@ -292,6 +292,7 @@ const MembersApplicationsPage: React.FC = () => {
 
     try {
       await rejectMember(id);
+      setConfirmDialog({ open: false, type: null, memberId: null });
       await loadApplications();
       toast.showSuccess('Başvuru başarıyla reddedildi.');
     } catch (e) {

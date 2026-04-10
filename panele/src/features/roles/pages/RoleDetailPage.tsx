@@ -127,6 +127,7 @@ const RoleDetailPage: React.FC = () => {
         NOTIFICATIONS: 'Bildirimler',
         SYSTEM: 'Sistem',
         INSTITUTION_MANAGEMENT: 'Kurum Yönetimi',
+        PROFESSION_MANAGEMENT: 'Meslek Yönetimi',
         ACCOUNTING: 'Muhasebe',
         MEMBER_PAYMENTS: 'Üye Kesintileri',
         APPROVALS: 'Onay Süreçleri',

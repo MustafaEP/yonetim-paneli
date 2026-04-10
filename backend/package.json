@@ -24,6 +24,7 @@
     "prisma:seed4": "ts-node -r tsconfig-paths/register prisma/seed4.ts",
     "prisma:seed5": "ts-node -r tsconfig-paths/register prisma/seed5.ts",
     "prisma:seed6": "ts-node -r tsconfig-paths/register prisma/seed6.ts",
+    "prisma:seed7": "ts-node -r tsconfig-paths/register prisma/seed7.ts",
     "prisma:seed:prod": "node dist/prisma/seed.js",
     "prisma:seed2:prod": "node dist/prisma/seed2.js",
     "prisma:seed3:prod": "node dist/prisma/seed3.js",

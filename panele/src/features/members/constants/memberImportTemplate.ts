@@ -10,6 +10,7 @@ export const PREVIEW_ROWS = 200;
 export const PREVIEW_COLUMN_LABELS: Record<string, string> = {
   firstName: 'Adı',
   lastName: 'Soyadı',
+  registrationNumber: 'Üye Kayıt No',
   nationalId: 'TC Kimlik Numarası',
   phone: 'Telefon',
   email: 'E-posta',

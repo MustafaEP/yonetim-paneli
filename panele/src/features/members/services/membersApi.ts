@@ -396,11 +396,12 @@ export interface BulkImportResponse {
 export const bulkImportMembers = async (
   file: File,
   skipErrors: boolean,
+  makeActive: boolean = false,
 ): Promise<BulkImportResponse> => {
   const formData = new FormData();
   formData.append('file', file);
   const res = await httpClient.post<BulkImportResponse>(
-    `/imports/members/import?skipErrors=${skipErrors}`,
+    `/imports/members/import?skipErrors=${skipErrors}&makeActive=${makeActive}`,
     formData,
   );
   return res.data;
