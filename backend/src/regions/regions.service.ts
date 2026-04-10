@@ -811,9 +811,25 @@ export class RegionsService {
   }
 
   async createInstitution(dto: CreateInstitutionDto, createdBy?: string) {
+    const normalizedName = dto.name.trim();
+    const existingInstitution = await this.prisma.institution.findFirst({
+      where: {
+        deletedAt: null,
+        name: {
+          equals: normalizedName,
+          mode: 'insensitive',
+        },
+      },
+      select: { id: true },
+    });
+
+    if (existingInstitution) {
+      throw new BadRequestException('Aynı isimde kurum zaten kayıtlı.');
+    }
+
     return this.prisma.institution.create({
       data: {
-        name: dto.name,
+        name: normalizedName,
         ...(dto.provinceId ? { provinceId: dto.provinceId } : {}),
         ...(dto.districtId ? { districtId: dto.districtId } : {}),
         ...(createdBy ? { createdBy } : {}),
