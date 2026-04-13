@@ -21,11 +21,28 @@
   - A unique constraint covering the columns `[userId,provinceId,districtId]` on the table `UserScope` will be added. If there are existing duplicate values, this will fail.
 
 */
--- CreateEnum
-CREATE TYPE "MessageDirection" AS ENUM ('INBOUND', 'OUTBOUND');
+-- CreateEnum (idempotent: yarım kalan migration denemelerinde tipler DB'de kalabiliyor)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public' AND t.typname = 'MessageDirection'
+  ) THEN
+    CREATE TYPE "MessageDirection" AS ENUM ('INBOUND', 'OUTBOUND');
+  END IF;
+END $$;
 
--- CreateEnum
-CREATE TYPE "WhatsAppMessageStatus" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED');
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public' AND t.typname = 'WhatsAppMessageStatus'
+  ) THEN
+    CREATE TYPE "WhatsAppMessageStatus" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED');
+  END IF;
+END $$;
 
 -- AlterEnum
 BEGIN;
