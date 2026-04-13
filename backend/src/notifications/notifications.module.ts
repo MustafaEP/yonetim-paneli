@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './presentation/controllers/notifications.controller';
@@ -12,12 +12,17 @@ import {
 } from './queues/notification.queue';
 import { EmailService } from './services/email.service';
 import { SmsService } from './services/sms.service';
+import { WhatsAppService } from './services/whatsapp.service';
+import { WhatsAppChatService } from './services/whatsapp-chat.service';
+import { WhatsAppTemplateService } from './services/whatsapp-template.service';
 import { ConfigService } from '../config/config.service.js';
 import { NotificationApplicationService } from './application/services/notification-application.service';
 import { PrismaNotificationRepository } from './infrastructure/persistence/prisma-notification.repository';
 import { NotificationRepository } from './domain/repositories/notification.repository.interface';
 import { NotificationExceptionFilter } from './presentation/filters/notification-exception.filter';
 import { NotificationValidationPipe } from './presentation/pipes/notification-validation.pipe';
+import { WhatsAppController } from './presentation/controllers/whatsapp.controller';
+import { WhatsAppWebhookController } from './presentation/controllers/whatsapp-webhook.controller';
 
 const isRedisEnabled =
   (process.env.REDIS_ENABLED || 'false').toLowerCase() === 'true' ||
@@ -27,7 +32,7 @@ const isRedisEnabled =
   imports: [
     PrismaModule,
     ConfigModule,
-    MembersModule,
+    forwardRef(() => MembersModule),
     ...(isRedisEnabled
       ? [
           BullModule.forRootAsync({
@@ -54,13 +59,16 @@ const isRedisEnabled =
         ]
       : []),
   ],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, WhatsAppController, WhatsAppWebhookController],
   providers: [
     NotificationsService,
     ...(isRedisEnabled ? [NotificationProcessor] : []),
     NotificationQueue,
     EmailService,
     SmsService,
+    WhatsAppService,
+    WhatsAppChatService,
+    WhatsAppTemplateService,
     NotificationApplicationService,
     {
       provide: 'NotificationRepository',
@@ -70,6 +78,6 @@ const isRedisEnabled =
     NotificationExceptionFilter,
     NotificationValidationPipe,
   ],
-  exports: [NotificationsService, NotificationQueue],
+  exports: [NotificationsService, NotificationQueue, WhatsAppService, WhatsAppTemplateService],
 })
 export class NotificationsModule {}

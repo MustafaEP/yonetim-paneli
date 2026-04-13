@@ -28,6 +28,7 @@ import { MemberHistoryService } from '../../member-history.service';
 import { MemberRegistrationDomainService } from '../../domain/services/member-registration-domain.service';
 import { CreateMemberApplicationDto } from '../dto/create-member-application.dto';
 import { MemberScopeService } from '../../member-scope.service';
+import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
 import { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
 import { MemberSource } from '@prisma/client';
 import { NationalId } from '../../domain/value-objects/national-id.vo';
@@ -52,6 +53,7 @@ export class MemberCreationApplicationService {
     private readonly memberHistoryService: MemberHistoryService,
     private readonly registrationDomainService: MemberRegistrationDomainService,
     private readonly scopeService: MemberScopeService,
+    private readonly whatsAppTemplateService: WhatsAppTemplateService,
   ) {}
 
   /**
@@ -314,6 +316,19 @@ export class MemberCreationApplicationService {
       ipAddress,
       userAgent,
     );
+
+    // WhatsApp otomatik şablon gönderimi (non-blocking)
+    try {
+      await this.whatsAppTemplateService.triggerAutoSend(
+        'MEMBER_APPLICATION',
+        savedMember.id,
+        createdByUserId || 'system',
+      );
+    } catch (err: any) {
+      this.logger.warn(
+        `Üye ${savedMember.id} başvuru WhatsApp şablonu gönderilemedi: ${err.message}`,
+      );
+    }
 
     return savedMember;
   }

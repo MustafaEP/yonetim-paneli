@@ -61,6 +61,12 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sendika.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme-admin-pass}
+      WAHA_API_URL: http://waha:3001
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+      WAHA_SESSION_NAME: ${WAHA_SESSION_NAME:-default}
+      WAHA_WEBHOOK_URL: http://backend:3000
+      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-true}
+      NOTIFICATION_WHATSAPP_ENABLED: ${NOTIFICATION_WHATSAPP_ENABLED:-true}
     volumes:
       - backend-uploads:/app/uploads
     healthcheck:
@@ -92,10 +98,31 @@ services:
       retries: 3
       start_period: 5s
 
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: yonetim-waha
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: WEBJS
+      WAHA_DASHBOARD_ENABLED: "true"
+      WHATSAPP_API_PORT: "3001"
+      WAHA_API_KEY: ${WAHA_API_KEY:-changeme-waha-key}
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME:-admin}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD:-changeme}
+      WHATSAPP_HOOK_URL: http://backend:3000/whatsapp/webhook
+      WHATSAPP_HOOK_EVENTS: "message,message.ack,session.status"
+      WHATSAPP_RESTART_ALL_SESSIONS: "true"
+      WHATSAPP_START_SESSION: ${WAHA_SESSION_NAME:-default}
+    volumes:
+      - waha-data:/app/.sessions
+    restart: unless-stopped
+    networks:
+      - edge
+
 volumes:
   postgres-data:
   redis-data:
   backend-uploads:
+  waha-data:
 
 networks:
   edge:

@@ -22,6 +22,7 @@ import type { MemberRepository } from '../../domain/repositories/member.reposito
 import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import { DocumentsService } from '../../../documents/documents.service';
+import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
 import {
   MemberNotFoundException,
   MemberCannotBeApprovedException,
@@ -64,6 +65,7 @@ export class MemberApprovalApplicationService {
     private readonly membershipPeriodRepository: MemberMembershipPeriodRepository,
     private readonly memberHistoryService: MemberHistoryService,
     private readonly documentsService: DocumentsService,
+    private readonly whatsAppTemplateService: WhatsAppTemplateService,
   ) {}
 
   /**
@@ -152,7 +154,20 @@ export class MemberApprovalApplicationService {
         }
       }
 
-      // 7. Boş bırakılmış başvuru alanlarını bilgilendirme için döndür
+      // 7. WhatsApp otomatik şablon gönderimi (non-blocking)
+      try {
+        await this.whatsAppTemplateService.triggerAutoSend(
+          'MEMBER_APPROVED',
+          member.id,
+          command.approvedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} onay WhatsApp şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      // 8. Boş bırakılmış başvuru alanlarını bilgilendirme için döndür
       const emptyOptionalFields = member.getEmptyApplicationDataFields();
 
       return { member, emptyOptionalFields };
@@ -166,6 +181,20 @@ export class MemberApprovalApplicationService {
       }
       if (error instanceof MemberNotFoundException) {
         throw new NotFoundException(error.message);
+      }
+      // registrationNumber çakışma hatası
+      if (
+        error instanceof Error &&
+        error.message.includes('kayıt numarası')
+      ) {
+        throw new BadRequestException(error.message);
+      }
+      // Prisma unique constraint hatası
+      const prismaError = error as { code?: string; meta?: { target?: string[] } };
+      if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('registrationNumber')) {
+        throw new BadRequestException(
+          'Bu kayıt numarası zaten başka bir üyeye ait',
+        );
       }
       // Diğer exception'ları re-throw et
       throw error;

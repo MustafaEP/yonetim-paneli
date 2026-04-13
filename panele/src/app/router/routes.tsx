@@ -50,6 +50,10 @@ import RecentPaymentsPage from '../../features/payments/pages/RecentPaymentsPage
 import ProfilePage from '../../features/profile/pages/ProfilePage';
 import InvoicesPage from '../../features/invoices/pages/InvoicesPage';
 import WhatsAppSmsPage from '../../features/messaging/pages/WhatsAppSmsPage';
+import WhatsAppChatPage from '../../features/messaging/pages/WhatsAppChatPage';
+import WhatsAppBulkPage from '../../features/messaging/pages/WhatsAppBulkPage';
+import WhatsAppTemplatesPage from '../../features/messaging/pages/WhatsAppTemplatesPage';
+import WhatsAppSettingsPage from '../../features/messaging/pages/WhatsAppSettingsPage';
 import KepPage from '../../features/kep/pages/KepPage';
 
 const AppRoutes: React.FC = () => (
@@ -180,7 +184,13 @@ const AppRoutes: React.FC = () => (
         <Route path="/notifications/send" element={<Navigate to="/notifications" replace />} />
         <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
 
-        <Route path="/messaging" element={<WhatsAppSmsPage />} />
+        <Route path="/messaging" element={<WhatsAppSmsPage />}>
+          <Route path="chat" element={<WhatsAppChatPage />} />
+          <Route path="chat/:conversationId" element={<WhatsAppChatPage />} />
+          <Route path="bulk" element={<WhatsAppBulkPage />} />
+          <Route path="templates" element={<WhatsAppTemplatesPage />} />
+          <Route path="settings" element={<WhatsAppSettingsPage />} />
+        </Route>
         <Route path="/kep" element={<KepPage />} />
 
         <Route element={<ProtectedRoute requiredPermission="SYSTEM_SETTINGS_VIEW" />}>

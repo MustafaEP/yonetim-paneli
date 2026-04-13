@@ -19,6 +19,7 @@ import {
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
+import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
 import {
   MemberNotFoundException,
   MemberCannotBeRejectedException,
@@ -39,6 +40,7 @@ export class MemberRejectionApplicationService {
     @Inject('MemberRepository')
     private readonly memberRepository: MemberRepository,
     private readonly memberHistoryService: MemberHistoryService,
+    private readonly whatsAppTemplateService: WhatsAppTemplateService,
   ) {}
 
   /**
@@ -78,6 +80,19 @@ export class MemberRejectionApplicationService {
         command.ipAddress,
         command.userAgent,
       );
+
+      // WhatsApp otomatik şablon gönderimi (non-blocking)
+      try {
+        await this.whatsAppTemplateService.triggerAutoSend(
+          'MEMBER_REJECTED',
+          member.id,
+          command.rejectedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} red WhatsApp şablonu gönderilemedi: ${err.message}`,
+        );
+      }
 
       return member;
     } catch (error) {

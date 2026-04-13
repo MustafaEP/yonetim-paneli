@@ -186,6 +186,19 @@ export class ConfigService implements OnModuleInit {
     );
   }
 
+  // WAHA (WhatsApp HTTP API) Configuration
+  get wahaApiUrl(): string {
+    return process.env.WAHA_API_URL || 'http://localhost:3001';
+  }
+
+  get wahaApiKey(): string | undefined {
+    return process.env.WAHA_API_KEY;
+  }
+
+  get wahaSessionName(): string {
+    return process.env.WAHA_SESSION_NAME || 'default';
+  }
+
   // JWT Configuration
   get jwtSecret(): string {
     return process.env.JWT_SECRET || 'your-secret-key-change-in-production';

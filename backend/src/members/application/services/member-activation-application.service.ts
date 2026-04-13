@@ -19,6 +19,7 @@ import {
 import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
+import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
 import {
   MemberNotFoundException,
   MemberCannotBeActivatedException,
@@ -40,6 +41,7 @@ export class MemberActivationApplicationService {
     @Inject('MemberRepository')
     private readonly memberRepository: MemberRepository,
     private readonly memberHistoryService: MemberHistoryService,
+    private readonly whatsAppTemplateService: WhatsAppTemplateService,
   ) {}
 
   /**
@@ -79,6 +81,19 @@ export class MemberActivationApplicationService {
         command.ipAddress,
         command.userAgent,
       );
+
+      // WhatsApp otomatik şablon gönderimi (non-blocking)
+      try {
+        await this.whatsAppTemplateService.triggerAutoSend(
+          'MEMBER_ACTIVATED',
+          member.id,
+          command.activatedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} aktifleştirme WhatsApp şablonu gönderilemedi: ${err.message}`,
+        );
+      }
 
       return member;
     } catch (error) {

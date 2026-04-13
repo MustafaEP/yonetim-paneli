@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MembersService } from './members.service';
 import { MembersController } from './presentation/controllers/members.controller';
 import { PublicMembershipController } from './presentation/controllers/public-membership.controller';
@@ -22,11 +22,12 @@ import {
 } from './domain/services/member-registration-domain.service';
 import { PrismaMembershipConfigAdapter } from './infrastructure/config/membership-config.adapter';
 import { RedisModule } from '../redis/redis.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { MembershipInquiryTokenGuard } from './guards/membership-inquiry-token.guard';
 import { MembershipInquiryRateLimitGuard } from './guards/membership-inquiry-rate-limit.guard';
 
 @Module({
-  imports: [DocumentsModule, RedisModule],
+  imports: [DocumentsModule, RedisModule, forwardRef(() => NotificationsModule)],
   providers: [
     MembersService,
     MemberScopeService,

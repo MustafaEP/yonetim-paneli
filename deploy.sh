@@ -98,9 +98,9 @@ fi
 BUILD_TIME=$(date +%s)
 echo -e "${CYAN}⏱  Build süresi: $(( BUILD_TIME - START_TIME )) saniye${NC}"
 
-# 7. Container'ları başlat
+# 7. Container'ları başlat (waha dahil)
 echo -e "${YELLOW}🚀 Container'lar başlatılıyor...${NC}"
-docker compose up -d $BUILD_SERVICES
+docker compose up -d $BUILD_SERVICES waha
 
 # 8. Database container'ın hazır olduğunu doğrula
 echo -e "${YELLOW}⏳ Database hazırlığı kontrol ediliyor...${NC}"

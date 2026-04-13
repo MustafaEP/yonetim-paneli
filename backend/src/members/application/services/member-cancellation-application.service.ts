@@ -20,6 +20,7 @@ import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
+import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
 import {
   MemberNotFoundException,
   MemberCannotBeCancelledException,
@@ -48,6 +49,7 @@ export class MemberCancellationApplicationService {
     @Inject('MemberMembershipPeriodRepository')
     private readonly membershipPeriodRepository: MemberMembershipPeriodRepository,
     private readonly memberHistoryService: MemberHistoryService,
+    private readonly whatsAppTemplateService: WhatsAppTemplateService,
   ) {}
 
   /**
@@ -112,6 +114,19 @@ export class MemberCancellationApplicationService {
         command.ipAddress,
         command.userAgent,
       );
+
+      // WhatsApp otomatik şablon gönderimi (non-blocking)
+      try {
+        await this.whatsAppTemplateService.triggerAutoSend(
+          'MEMBER_CANCELLED',
+          member.id,
+          command.cancelledByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} iptal WhatsApp şablonu gönderilemedi: ${err.message}`,
+        );
+      }
 
       return member;
     } catch (error) {

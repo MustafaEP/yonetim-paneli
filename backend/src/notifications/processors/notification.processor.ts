@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../services/email.service';
 import { SmsService } from '../services/sms.service';
+import { WhatsAppService } from '../services/whatsapp.service';
 import { NotificationType, NotificationStatus } from '@prisma/client';
 
 export interface NotificationJobData {
@@ -25,6 +26,7 @@ export class NotificationProcessor extends WorkerHost {
     private prisma: PrismaService,
     private emailService: EmailService,
     private smsService: SmsService,
+    private whatsAppService: WhatsAppService,
   ) {
     super();
   }
@@ -89,8 +91,15 @@ export class NotificationProcessor extends WorkerHost {
           break;
 
         case NotificationType.WHATSAPP:
-          // WhatsApp implementasyonu gelecekte eklenecek
-          this.logger.warn('WhatsApp notification type is not yet implemented');
+          if (!recipientPhone) {
+            throw new Error(
+              'Phone number is required for WHATSAPP notification',
+            );
+          }
+          await this.whatsAppService.sendText(
+            recipientPhone,
+            `${title}\n\n${message}`,
+          );
           break;
 
         default:

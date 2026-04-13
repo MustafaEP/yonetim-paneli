@@ -95,6 +95,9 @@ model User {
 
   // 🔹 Fatura ilişkileri
   createdInvoices Invoice[]
+
+  // 🔹 WhatsApp mesaj ilişkileri
+  whatsappMessagesSent WhatsAppMessage[] @relation("WhatsAppMessageSentBy")
 }
 
 // 🔹 Refresh Token – JWT refresh için; logout'ta revoke edilir
@@ -251,6 +254,9 @@ model Member {
 
   // 🔹 Panel kullanıcı başvurusu
   panelUserApplication PanelUserApplication?
+
+  // 🔹 WhatsApp konuşmaları
+  whatsappConversations WhatsAppConversation[]
 
   isActive  Boolean   @default(true)
   deletedAt DateTime?
@@ -1192,4 +1198,79 @@ model PanelUserApplicationScope {
   @@index([applicationId])
   @@index([provinceId])
   @@index([districtId])
+}
+
+// 🔹 WhatsApp Mesajlaşma Sistemi (Evolution API)
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WhatsAppMessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model WhatsAppConversation {
+  id            String    @id @default(cuid())
+  memberId      String?
+  member        Member?   @relation(fields: [memberId], references: [id])
+  remoteJid     String    @unique // WhatsApp JID (orn: 905551234567@s.whatsapp.net)
+  contactName   String? // WhatsApp profil adi
+  contactPhone  String? // Telefon numarasi (normalize edilmis)
+  lastMessageAt DateTime?
+  lastMessage   String?   @db.Text
+  unreadCount   Int       @default(0)
+  isArchived    Boolean   @default(false)
+
+  messages WhatsAppMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([lastMessageAt])
+  @@index([isArchived])
+}
+
+model WhatsAppMessage {
+  id              String                @id @default(cuid())
+  conversationId  String
+  conversation    WhatsAppConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  whatsappMsgId   String?               @unique // Evolution API mesaj ID (dedup icin)
+  direction       MessageDirection
+  content         String                @db.Text
+  status          WhatsAppMessageStatus @default(PENDING)
+  sentById        String? // Gonderen kullanici (outbound icin)
+  sentBy          User?                 @relation("WhatsAppMessageSentBy", fields: [sentById], references: [id])
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  errorMessage    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([whatsappMsgId])
+  @@index([direction])
+}
+
+model WhatsAppTemplate {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique // orn: "member_welcome", "payment_reminder"
+  content      String   @db.Text // Sablon icerigi, {{degisken}} yer tutucular
+  description  String?
+  isActive     Boolean  @default(true)
+  triggerEvent String? // orn: "MEMBER_APPROVED", "PAYMENT_DUE" - otomatik gonderim icin
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([triggerEvent])
+  @@index([isActive])
 }
