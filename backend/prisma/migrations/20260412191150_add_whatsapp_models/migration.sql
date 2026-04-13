@@ -234,6 +234,9 @@ CREATE INDEX "Notification_scheduledFor_idx" ON "Notification"("scheduledFor");
 CREATE INDEX "UserNotification_createdAt_idx" ON "UserNotification"("createdAt");
 
 -- CreateIndex
+-- 20260106201139_update_user_scope_model already created this name as a partial unique index (WHERE deletedAt IS NULL).
+-- Prisma @@unique([userId, provinceId, districtId]) expects a full unique index; replace in place.
+DROP INDEX IF EXISTS "UserScope_userId_provinceId_districtId_key";
 CREATE UNIQUE INDEX "UserScope_userId_provinceId_districtId_key" ON "UserScope"("userId", "provinceId", "districtId");
 
 -- AddForeignKey
