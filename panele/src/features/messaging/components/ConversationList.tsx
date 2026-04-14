@@ -7,24 +7,62 @@ import {
   List,
   CircularProgress,
   alpha,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { useConversations } from '../hooks/useWhatsApp';
+import { useConversations, useDeleteConversation } from '../hooks/useWhatsApp';
 import ConversationItem from './ConversationItem';
+import type { WhatsAppConversation } from '../types/whatsapp.types';
+import { useToast } from '../../../shared/hooks/useToast';
+import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 
 interface ConversationListProps {
   selectedId?: string;
   onSelect: (id: string) => void;
+  onConversationDeleted?: (id: string) => void;
 }
 
 const ConversationList: React.FC<ConversationListProps> = ({
   selectedId,
   onSelect,
+  onConversationDeleted,
 }) => {
   const [search, setSearch] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<WhatsAppConversation | null>(null);
   const { data, isLoading } = useConversations({
     search: search || undefined,
   });
+  const deleteConversation = useDeleteConversation();
+  const toast = useToast();
+
+  const openDeleteDialog = (conversation: WhatsAppConversation) => {
+    setConversationToDelete(conversation);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleteConversation.isPending) return;
+    setDeleteDialogOpen(false);
+    setConversationToDelete(null);
+  };
+
+  const confirmDeleteConversation = async () => {
+    if (!conversationToDelete) return;
+    try {
+      await deleteConversation.mutateAsync(conversationToDelete.id);
+      toast.success('Sohbet geçmişi silindi');
+      onConversationDeleted?.(conversationToDelete.id);
+      closeDeleteDialog();
+    } catch (e: unknown) {
+      toast.error(getApiErrorMessage(e, 'Sohbet silinirken bir hata oluştu'));
+    }
+  };
 
   return (
     <Box
@@ -81,11 +119,40 @@ const ConversationList: React.FC<ConversationListProps> = ({
                 conversation={conversation}
                 isSelected={conversation.id === selectedId}
                 onClick={() => onSelect(conversation.id)}
+                onDelete={openDeleteDialog}
+                deleting={deleteConversation.isPending && conversationToDelete?.id === conversation.id}
               />
             ))}
           </List>
         )}
       </Box>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={closeDeleteDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Sohbeti Sil</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bu sohbetin tum mesaj gecmisini kalici olarak silmek istiyor musunuz?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog} disabled={deleteConversation.isPending}>
+            Vazgec
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={confirmDeleteConversation}
+            disabled={deleteConversation.isPending}
+          >
+            Sil
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -77,6 +77,9 @@ export const archiveConversation = (id: string, archive: boolean) =>
     .patch(`/whatsapp/conversations/${id}/archive`, { archive })
     .then((r) => r.data);
 
+export const deleteConversation = (id: string) =>
+  httpClient.delete(`/whatsapp/conversations/${id}`).then((r) => r.data);
+
 // ─── Mesaj Gonderimi ───
 
 export const sendToPhone = (phone: string, content: string) =>

@@ -6,14 +6,19 @@ import {
   Avatar,
   Badge,
   alpha,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { WhatsAppConversation } from '../types/whatsapp.types';
 
 interface ConversationItemProps {
   conversation: WhatsAppConversation;
   isSelected: boolean;
   onClick: () => void;
+  onDelete: (conversation: WhatsAppConversation) => void;
+  deleting?: boolean;
 }
 
 function formatTime(dateStr: string | null): string {
@@ -61,6 +66,8 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   conversation,
   isSelected,
   onClick,
+  onDelete,
+  deleting = false,
 }) => {
   const displayName = getDisplayName(conversation);
   const isMember = !!conversation.member;
@@ -74,6 +81,9 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
         px: 2,
         py: 1.5,
         gap: 1.5,
+        '&:hover .conversation-delete-btn': {
+          opacity: 1,
+        },
         '&.Mui-selected': {
           backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
         },
@@ -145,6 +155,31 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
           {conversation.lastMessage || 'Henüz mesaj yok'}
         </Typography>
       </Box>
+
+      <Tooltip title="Sohbeti sil">
+        <span>
+          <IconButton
+            className="conversation-delete-btn"
+            size="small"
+            disabled={deleting}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(conversation);
+            }}
+            sx={{
+              opacity: 0,
+              transition: 'opacity 0.2s ease',
+              color: 'text.secondary',
+              '&:hover': {
+                color: 'error.main',
+                backgroundColor: (theme) => alpha(theme.palette.error.main, 0.08),
+              },
+            }}
+          >
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
     </ListItemButton>
   );
 };

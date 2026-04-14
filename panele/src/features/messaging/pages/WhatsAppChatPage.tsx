@@ -24,6 +24,13 @@ const WhatsAppChatPage: React.FC = () => {
     setMobileShowChat(false);
   };
 
+  const handleConversationDeleted = (deletedId: string) => {
+    if (conversationId === deletedId) {
+      navigate('/messaging/chat');
+      setMobileShowChat(false);
+    }
+  };
+
   return (
     <Paper
       elevation={0}
@@ -52,6 +59,7 @@ const WhatsAppChatPage: React.FC = () => {
         <ConversationList
           selectedId={conversationId}
           onSelect={handleSelect}
+          onConversationDeleted={handleConversationDeleted}
         />
       </Box>
 

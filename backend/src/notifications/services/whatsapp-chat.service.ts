@@ -334,6 +334,21 @@ export class WhatsAppChatService {
   }
 
   /**
+   * Konusmayi ve tum mesaj gecmisini sil
+   */
+  async deleteConversation(conversationId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.whatsAppMessage.deleteMany({
+        where: { conversationId },
+      });
+
+      await tx.whatsAppConversation.delete({
+        where: { id: conversationId },
+      });
+    });
+  }
+
+  /**
    * Toplam okunmamis mesaj sayisi
    */
   async getTotalUnreadCount(): Promise<number> {

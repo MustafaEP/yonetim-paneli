@@ -189,6 +189,18 @@ export class WhatsAppController {
     return { message: body.archive ? 'Archived' : 'Unarchived' };
   }
 
+  @Delete('conversations/:id')
+  @Permissions(
+    Permission.NOTIFY_ALL_MEMBERS,
+    Permission.NOTIFY_REGION,
+    Permission.NOTIFY_OWN_SCOPE,
+  )
+  @ApiOperation({ summary: 'Konuşmayı ve mesaj geçmişini sil' })
+  async deleteConversation(@Param('id') id: string) {
+    await this.chatService.deleteConversation(id);
+    return { message: 'Deleted' };
+  }
+
   // ─── Mesaj Gonderimi ───
 
   @Post('send')

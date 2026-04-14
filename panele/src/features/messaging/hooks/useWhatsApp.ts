@@ -150,6 +150,17 @@ export function useArchiveConversation() {
   });
 }
 
+export function useDeleteConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => whatsappApi.deleteConversation(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['whatsapp', 'conversations'] });
+      qc.invalidateQueries({ queryKey: KEYS.unreadCount });
+    },
+  });
+}
+
 // ─── Mesaj Gonderimi ───
 
 export function useSendToPhone() {
