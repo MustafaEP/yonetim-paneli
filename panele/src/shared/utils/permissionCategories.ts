@@ -100,6 +100,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     label: 'Bildirim & İletişim',
     description: 'Toplu bildirim gönderme yetkileri',
     permissions: [
+      'WHATSAPP_ACCESS',
       'NOTIFY_ALL_MEMBERS',
       'NOTIFY_REGION',
       'NOTIFY_OWN_SCOPE',

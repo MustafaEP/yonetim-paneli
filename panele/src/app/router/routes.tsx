@@ -184,12 +184,14 @@ const AppRoutes: React.FC = () => (
         <Route path="/notifications/send" element={<Navigate to="/notifications" replace />} />
         <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
 
-        <Route path="/messaging" element={<WhatsAppSmsPage />}>
-          <Route path="chat" element={<WhatsAppChatPage />} />
-          <Route path="chat/:conversationId" element={<WhatsAppChatPage />} />
-          <Route path="bulk" element={<WhatsAppBulkPage />} />
-          <Route path="templates" element={<WhatsAppTemplatesPage />} />
-          <Route path="settings" element={<WhatsAppSettingsPage />} />
+        <Route element={<ProtectedRoute requiredPermission="WHATSAPP_ACCESS" />}>
+          <Route path="/messaging" element={<WhatsAppSmsPage />}>
+            <Route path="chat" element={<WhatsAppChatPage />} />
+            <Route path="chat/:conversationId" element={<WhatsAppChatPage />} />
+            <Route path="bulk" element={<WhatsAppBulkPage />} />
+            <Route path="templates" element={<WhatsAppTemplatesPage />} />
+            <Route path="settings" element={<WhatsAppSettingsPage />} />
+          </Route>
         </Route>
         <Route path="/kep" element={<KepPage />} />
 

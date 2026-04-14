@@ -116,6 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
     showInvoices,
     showReports,
     showNotifications,
+    showMessaging,
     showSystemSettings,
     showSystemLogs,
     showInstitutions,
@@ -725,7 +726,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
       )}
 
       {/* 8.5. WhatsApp & SMS */}
-      {showNotifications && (
+      {showMessaging && (
         <List sx={{ px: 1 }}>
           <ListItemButton
             component={Link}

@@ -3,6 +3,10 @@
  *
  * Eklenenler:
  *  - Üye Bilgileri belgesi (MEMBER_CERTIFICATE)
+ *  - Kesinti Listesi Şablonu (LETTER)
+ *  - Toplu Üye Listesi Üst Yazısı (BULK_MEMBER_LIST)
+ *  - İl Disiplin Katılım Belgesi (LETTER)
+ *  - Şablonlar
  */
 
 import { PrismaClient, DocumentTemplateType } from '@prisma/client';

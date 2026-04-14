@@ -24,6 +24,13 @@ export class WhatsAppService {
   private apiKey!: string;
   private sessionName!: string;
 
+  /**
+   * LID (@lid) -> telefon numarasi cache'i.
+   * WhatsApp yeni surumlerde @lid kullanir, bu telefon numarasi icermez.
+   * Bir kez cozumlenen LID burada saklanir.
+   */
+  private lidPhoneCache = new Map<string, string>();
+
   constructor(private configService: ConfigService) {
     this.initializeClient();
   }
@@ -397,5 +404,114 @@ export class WhatsAppService {
     }
 
     return phoneNumber;
+  }
+
+  // ─── LID (Linked Identity) Cozumleme ───
+
+  /**
+   * Cache'den LID -> telefon numarasi getir
+   */
+  getCachedPhoneForLid(lid: string): string | null {
+    return this.lidPhoneCache.get(lid) || null;
+  }
+
+  /**
+   * LID -> telefon numarasi eslemesini cache'e kaydet
+   */
+  cacheLidPhone(lid: string, phone: string): void {
+    this.lidPhoneCache.set(lid, phone);
+    this.logger.log(`Cached LID mapping: ${lid} -> ${phone}`);
+  }
+
+  /**
+   * WAHA API uzerinden @lid JID'yi telefon numarasina cozumle.
+   *
+   * Sirasyla dener:
+   * 1. In-memory cache
+   * 2. WAHA /api/{session}/contacts/{contactId} endpoint
+   * 3. WAHA /api/{session}/chats listesinden eslestirme
+   *
+   * Basarili olursa cache'e kaydeder.
+   */
+  async resolveLidToPhone(lidJid: string): Promise<string | null> {
+    const lid = lidJid.replace('@lid', '');
+
+    // 1. Cache kontrol
+    const cached = this.lidPhoneCache.get(lid);
+    if (cached) return cached;
+
+    // 2. WAHA contact API ile dene
+    try {
+      const resp = await this.httpClient.get(
+        `/api/contacts`,
+        {
+          params: { session: this.sessionName, contactId: lidJid },
+          timeout: 5000,
+        },
+      );
+
+      const contact = resp.data;
+      // WAHA contact response: { id, number, name, pushname, ... }
+      const phoneNumber = contact?.number || contact?.id?.user;
+      if (phoneNumber && /^\d{10,15}$/.test(phoneNumber.replace(/\D/g, ''))) {
+        const clean = phoneNumber.replace(/\D/g, '');
+        this.lidPhoneCache.set(lid, clean);
+        this.logger.log(`Resolved LID via contacts API: ${lid} -> ${clean}`);
+        return clean;
+      }
+
+      // Contact response id format: "905XX@c.us"
+      const contactId =
+        typeof contact?.id === 'string'
+          ? contact.id
+          : contact?.id?._serialized || contact?.id?.user;
+      if (contactId && !contactId.includes('@lid')) {
+        const clean = String(contactId).replace(/@.*$/, '').replace(/\D/g, '');
+        if (clean.length >= 10) {
+          this.lidPhoneCache.set(lid, clean);
+          this.logger.log(`Resolved LID via contact id: ${lid} -> ${clean}`);
+          return clean;
+        }
+      }
+    } catch (error: any) {
+      this.logger.debug(
+        `Contact API lookup failed for ${lidJid}: ${error.message}`,
+      );
+    }
+
+    // 3. WAHA chats API ile dene - chat listesinde phone bazli ID bul
+    try {
+      const resp = await this.httpClient.get(
+        `/api/${this.sessionName}/chats`,
+        { timeout: 10000 },
+      );
+
+      const chats = Array.isArray(resp.data) ? resp.data : [];
+      for (const chat of chats) {
+        const chatId =
+          typeof chat.id === 'string'
+            ? chat.id
+            : chat.id?._serialized || '';
+
+        // Chat'in participant/contact bilgisinde LID var mi kontrol et
+        const chatLid = chat.id?.user || '';
+        if (chatLid === lid || chat.contactId === lidJid) {
+          // Bu chat'in telefon bazli ID'sini bul
+          if (chatId.includes('@c.us') || chatId.includes('@s.whatsapp.net')) {
+            const phone = chatId.replace(/@.*$/, '');
+            this.lidPhoneCache.set(lid, phone);
+            this.logger.log(`Resolved LID via chats API: ${lid} -> ${phone}`);
+            return phone;
+          }
+        }
+      }
+    } catch (error: any) {
+      this.logger.debug(
+        `Chats API lookup failed for ${lidJid}: ${error.message}`,
+      );
+    }
+
+    this.logger.warn(`Could not resolve LID to phone: ${lidJid}`);
+    return null;
   }
 }

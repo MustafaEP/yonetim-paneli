@@ -38,6 +38,7 @@ export type Permission =
   | 'REPORT_REGION_VIEW'
   | 'REPORT_MEMBER_STATUS_VIEW'
   | 'REPORT_DUES_VIEW'
+  | 'WHATSAPP_ACCESS'
   | 'NOTIFY_ALL_MEMBERS'
   | 'NOTIFY_REGION'
   | 'NOTIFY_OWN_SCOPE'
@@ -219,6 +220,7 @@ export const PERMISSION_GROUPS = {
     'REPORT_DUES_VIEW',
   ] as Permission[],
   NOTIFICATIONS: [
+    'WHATSAPP_ACCESS',
     'NOTIFY_ALL_MEMBERS',
     'NOTIFY_REGION',
     'NOTIFY_OWN_SCOPE',
@@ -324,6 +326,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   REPORT_REGION_VIEW: 'Bölge Raporu Görüntüle',
   REPORT_MEMBER_STATUS_VIEW: 'Üye Durum Raporu Görüntüle',
   REPORT_DUES_VIEW: 'Kesinti Raporu Görüntüle',
+  WHATSAPP_ACCESS: 'WhatsApp Sayfasına Erişim',
   NOTIFY_ALL_MEMBERS: 'Tüm Üyelere Bildirim Gönder',
   NOTIFY_REGION: 'Bölgeye Bildirim Gönder',
   NOTIFY_OWN_SCOPE: 'Kendi Kapsamına Bildirim Gönder',

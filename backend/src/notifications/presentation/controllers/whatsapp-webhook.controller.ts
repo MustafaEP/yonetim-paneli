@@ -8,6 +8,7 @@ import {
 import { ApiTags, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { Public } from '../../../auth/decorators/public.decorator';
 import { WhatsAppChatService } from '../../services/whatsapp-chat.service';
+import { WhatsAppService } from '../../services/whatsapp.service';
 import { WhatsAppMessageStatus } from '@prisma/client';
 
 @ApiTags('WhatsApp Webhook')
@@ -15,7 +16,10 @@ import { WhatsAppMessageStatus } from '@prisma/client';
 export class WhatsAppWebhookController {
   private readonly logger = new Logger(WhatsAppWebhookController.name);
 
-  constructor(private readonly chatService: WhatsAppChatService) {}
+  constructor(
+    private readonly chatService: WhatsAppChatService,
+    private readonly whatsAppService: WhatsAppService,
+  ) {}
 
   /**
    * WAHA webhook endpoint'i
@@ -163,10 +167,26 @@ export class WhatsAppWebhookController {
     if (payload.fromMe) return;
 
     // Telefon bazli JID'yi coz (@lid -> @c.us/@s.whatsapp.net)
-    const remoteJid = this.resolvePhoneJid(payload);
+    let remoteJid = this.resolvePhoneJid(payload);
     if (!remoteJid) {
       this.logger.warn('Incoming message: could not resolve remote JID');
       return;
+    }
+
+    // Hala @lid ise WAHA API uzerinden telefon numarasini cozumle
+    if (remoteJid.includes('@lid')) {
+      const resolvedPhone = await this.whatsAppService.resolveLidToPhone(remoteJid);
+      if (resolvedPhone) {
+        remoteJid = `${resolvedPhone}@s.whatsapp.net`;
+        this.logger.log(
+          `Resolved @lid via WAHA API: ${payload.from} -> ${remoteJid}`,
+        );
+      } else {
+        this.logger.warn(
+          `Could not resolve @lid ${payload.from}, will try phone-based matching`,
+        );
+        // remoteJid hala @lid - chat service contactPhone ile eslestirmeyi deneyecek
+      }
     }
 
     // Status mesajlarini ve grup mesajlarini atla

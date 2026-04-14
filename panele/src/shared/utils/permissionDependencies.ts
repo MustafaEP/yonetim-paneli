@@ -68,6 +68,7 @@ export const PERMISSION_DEPENDENCIES: Record<Permission, Permission[]> = {
   REPORT_DUES_VIEW: ['TEVKIFAT_VIEW'], // Kesinti raporu için tevkifat görüntüleme gerekir
 
   // Bildirim & İletişim
+  WHATSAPP_ACCESS: [],
   NOTIFY_ALL_MEMBERS: ['MEMBER_LIST'], // Tüm üyelere bildirim için üye listesi gerekir
   NOTIFY_REGION: ['REGION_LIST'], // Bölgeye bildirim için bölge listesi gerekir
   NOTIFY_OWN_SCOPE: [],

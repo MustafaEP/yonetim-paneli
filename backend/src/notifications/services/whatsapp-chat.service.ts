@@ -451,10 +451,28 @@ export class WhatsAppChatService {
     });
     if (existing) return existing;
 
-    const phone = this.extractPhoneFromJid(remoteJid);
+    // @lid JID ise WAHA API ile telefon numarasini coz
+    let effectiveJid = remoteJid;
+    let phone = this.extractPhoneFromJid(remoteJid);
+
+    if (remoteJid.includes('@lid')) {
+      // WAHA API ile cozumle (webhook controller'da basarisiz olduysa burada tekrar dene)
+      const resolvedPhone = await this.whatsAppService.resolveLidToPhone(remoteJid);
+      if (resolvedPhone) {
+        effectiveJid = `${resolvedPhone}@s.whatsapp.net`;
+        phone = resolvedPhone;
+        this.logger.log(`LID resolved in processIncoming: ${remoteJid} -> ${effectiveJid}`);
+      } else {
+        // Son care: @lid numarasindan telefon cikaramadik
+        // LID'yi phone olarak kullanma, sadece JID eslestirmesi yapilacak
+        phone = '';
+        this.logger.warn(`Cannot resolve LID ${remoteJid}, using JID-only matching`);
+      }
+    }
+
     const conversation = await this.findOrCreateConversation(
-      remoteJid,
-      phone,
+      effectiveJid,
+      phone || undefined,
     );
 
     // pushName varsa ve contactName yoksa guncelle

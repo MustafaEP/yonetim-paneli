@@ -71,6 +71,7 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
   REPORT_MEMBER_STATUS_VIEW: 'Üye Durum Raporu',
   REPORT_DUES_VIEW: 'Kesinti Raporu',
   // Bildirimler
+  WHATSAPP_ACCESS: 'WhatsApp Sayfasına Erişim',
   NOTIFY_ALL_MEMBERS: 'Tüm Üyelere Bildirim',
   NOTIFY_REGION: 'Bölgeye Bildirim',
   NOTIFY_OWN_SCOPE: 'Kapsama Bildirim',

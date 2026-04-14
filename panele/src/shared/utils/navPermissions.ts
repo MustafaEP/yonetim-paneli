@@ -30,6 +30,7 @@ export interface SidebarNavFlags {
   showInvoices: boolean;
   showReports: boolean;
   showNotifications: boolean;
+  showMessaging: boolean;
   showSystemSettings: boolean;
   showSystemLogs: boolean;
   showInstitutions: boolean;
@@ -101,6 +102,7 @@ export function getSidebarNavFlags(
       hasPermission('NOTIFY_ALL_MEMBERS') ||
       hasPermission('NOTIFY_REGION') ||
       hasPermission('NOTIFY_OWN_SCOPE'),
+    showMessaging: hasPermission('WHATSAPP_ACCESS'),
     showSystemSettings: hasPermission('SYSTEM_SETTINGS_VIEW'),
     showSystemLogs: hasPermission('LOG_VIEW_ALL') || hasPermission('LOG_VIEW_OWN_SCOPE'),
     showInstitutions: hasPermission('INSTITUTION_LIST'),
