@@ -64,6 +64,85 @@ export class WhatsAppWebhookController {
   }
 
   /**
+   * Payload'dan gercek telefon bazli JID'yi cikar.
+   * WAHA WEBJS yeni surumlerde @lid (Linked Identity) formatinda
+   * gonderebilir. Bu format telefon numarasi icermez.
+   * Gercek telefon JID'sini payload'daki alternatif alanlardan cikarir.
+   */
+  private resolvePhoneJid(payload: any): string | null {
+    const from = payload.from;
+
+    // @c.us veya @s.whatsapp.net ise zaten telefon bazli
+    if (from && !from.includes('@lid') && !from.includes('@g.us')) {
+      return from;
+    }
+
+    // @lid geldi - alternatif kaynaklardan telefon numarasini bul
+    // 1. payload.id.remote (raw WA message ID'deki chat/remote JID)
+    const idRemote =
+      typeof payload.id === 'object'
+        ? payload.id?.remote || payload.id?._serialized?.split('@')?.[0]
+        : null;
+    if (idRemote && this.isPhoneJid(idRemote)) {
+      return idRemote;
+    }
+
+    // 2. payload._data.id.remote
+    const dataIdRemote = payload._data?.id?.remote;
+    if (dataIdRemote && this.isPhoneJid(dataIdRemote)) {
+      return dataIdRemote;
+    }
+
+    // 3. payload._data.from (raw from field)
+    const dataFrom = payload._data?.from;
+    if (dataFrom && this.isPhoneJid(dataFrom)) {
+      return dataFrom;
+    }
+
+    // 4. payload.chatId
+    const chatId = payload.chatId;
+    if (chatId && this.isPhoneJid(chatId)) {
+      return chatId;
+    }
+
+    // 5. payload.to (our number - but we need the remote, not us)
+    // This doesn't help, skip
+
+    // 6. payload._data.chat.id._serialized
+    const chatSerialized = payload._data?.chat?.id?._serialized;
+    if (chatSerialized && this.isPhoneJid(chatSerialized)) {
+      return chatSerialized;
+    }
+
+    // Hicbir alternatif bulunamadi - @lid ile devam et
+    this.logger.warn(
+      `Could not resolve phone JID from @lid. from=${from}, ` +
+        `id=${JSON.stringify(payload.id)}, ` +
+        `_data.id=${JSON.stringify(payload._data?.id)}, ` +
+        `_data.from=${payload._data?.from}, ` +
+        `chatId=${payload.chatId}`,
+    );
+
+    return from;
+  }
+
+  /**
+   * JID telefon bazli mi? (@c.us veya @s.whatsapp.net veya saf numara)
+   */
+  private isPhoneJid(jid: string): boolean {
+    if (!jid) return false;
+    if (jid.includes('@lid') || jid.includes('@g.us') || jid.includes('@newsletter')) {
+      return false;
+    }
+    // @c.us, @s.whatsapp.net, veya saf rakam
+    return (
+      jid.includes('@c.us') ||
+      jid.includes('@s.whatsapp.net') ||
+      /^\d+$/.test(jid)
+    );
+  }
+
+  /**
    * Gelen mesajlari isle
    * WAHA payload: { id, from, to, body, fromMe, ... }
    */
@@ -75,15 +154,18 @@ export class WhatsAppWebhookController {
     }
 
     this.logger.log(
-      `Incoming message: from=${payload.from}, fromMe=${payload.fromMe}, hasBody=${!!payload.body}, id=${typeof payload.id === 'object' ? JSON.stringify(payload.id) : payload.id}`,
+      `Incoming message: from=${payload.from}, fromMe=${payload.fromMe}, ` +
+        `hasBody=${!!payload.body}, type=${payload.type || 'chat'}, ` +
+        `id=${typeof payload.id === 'object' ? JSON.stringify(payload.id) : payload.id}`,
     );
 
     // Kendi gonderdigimiz mesajlari atla
     if (payload.fromMe) return;
 
-    const remoteJid = payload.from;
+    // Telefon bazli JID'yi coz (@lid -> @c.us/@s.whatsapp.net)
+    const remoteJid = this.resolvePhoneJid(payload);
     if (!remoteJid) {
-      this.logger.warn('Incoming message: no from field');
+      this.logger.warn('Incoming message: could not resolve remote JID');
       return;
     }
 
@@ -144,7 +226,8 @@ export class WhatsAppWebhookController {
     const pushName = payload._data?.notifyName || payload.notifyName || null;
 
     this.logger.log(
-      `Processing incoming message from ${remoteJid}: messageId=${messageId}, content=${content.substring(0, 50)}`,
+      `Processing incoming message: resolved=${remoteJid}, original=${payload.from}, ` +
+        `messageId=${messageId}, content=${content.substring(0, 50)}`,
     );
 
     await this.chatService.processIncomingMessage({

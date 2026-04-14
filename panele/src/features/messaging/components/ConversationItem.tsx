@@ -46,7 +46,7 @@ function getDisplayName(conversation: WhatsAppConversation): string {
   }
   if (conversation.contactName) return conversation.contactName;
   if (conversation.contactPhone) return conversation.contactPhone;
-  return conversation.remoteJid.replace('@s.whatsapp.net', '');
+  return conversation.remoteJid.replace(/@(s\.whatsapp\.net|c\.us|lid)$/, '');
 }
 
 function getInitials(name: string): string {

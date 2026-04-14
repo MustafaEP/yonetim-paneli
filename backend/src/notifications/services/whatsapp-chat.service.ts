@@ -15,17 +15,27 @@ export class WhatsAppChatService {
   /**
    * JID'yi standart formata normalize et.
    * WAHA @c.us gonderir, biz @s.whatsapp.net olarak saklariz.
-   * Her iki format da ayni kisiye isaret eder.
    */
   private normalizeJid(jid: string): string {
     return jid.replace('@c.us', '@s.whatsapp.net');
   }
 
   /**
-   * JID'den telefon numarasini cikar (@c.us ve @s.whatsapp.net destekli)
+   * JID'den telefon numarasini cikar (@c.us, @s.whatsapp.net, @lid destekli)
    */
   private extractPhoneFromJid(jid: string): string {
-    return jid.replace(/@(s\.whatsapp\.net|c\.us)$/, '');
+    return jid.replace(/@(s\.whatsapp\.net|c\.us|lid)$/, '');
+  }
+
+  /**
+   * JID telefon bazli mi? (@lid icermez)
+   */
+  private isPhoneBasedJid(jid: string): boolean {
+    return !jid.includes('@lid') && (
+      jid.includes('@c.us') ||
+      jid.includes('@s.whatsapp.net') ||
+      /^\d+$/.test(jid)
+    );
   }
 
   /**
@@ -134,7 +144,8 @@ export class WhatsAppChatService {
   }
 
   /**
-   * Konusmaya mesaj gonder
+   * Konusmaya mesaj gonder.
+   * remoteJid @lid ise contactPhone uzerinden gonderir.
    */
   async sendMessage(
     conversationId: string,
@@ -149,16 +160,28 @@ export class WhatsAppChatService {
       throw new Error('Conversation not found');
     }
 
+    // Gonderim hedefini belirle: @lid ise contactPhone kullan
+    let sendTarget = conversation.remoteJid;
+    if (sendTarget.includes('@lid')) {
+      if (conversation.contactPhone) {
+        sendTarget = this.whatsAppService.formatChatId(conversation.contactPhone);
+        this.logger.log(
+          `Conversation ${conversationId} has @lid JID, using contactPhone: ${sendTarget}`,
+        );
+      } else {
+        this.logger.error(
+          `Conversation ${conversationId} has @lid JID but no contactPhone`,
+        );
+      }
+    }
+
     // WAHA uzerinden gonder - hata olursa mesaji FAILED olarak kaydet
     let result: { messageId: string } | null = null;
     let status: WhatsAppMessageStatus = WhatsAppMessageStatus.SENT;
     let errorMessage: string | null = null;
 
     try {
-      result = await this.whatsAppService.sendText(
-        conversation.remoteJid,
-        content,
-      );
+      result = await this.whatsAppService.sendText(sendTarget, content);
       if (!result) {
         status = WhatsAppMessageStatus.FAILED;
         errorMessage = 'WhatsApp gönderimi devre dışı';
@@ -167,7 +190,7 @@ export class WhatsAppChatService {
       status = WhatsAppMessageStatus.FAILED;
       errorMessage = error.message || 'Bilinmeyen hata';
       this.logger.error(
-        `Failed to send message to ${conversation.remoteJid}: ${error.message}`,
+        `Failed to send message to ${sendTarget}: ${error.message}`,
       );
     }
 
@@ -235,7 +258,6 @@ export class WhatsAppChatService {
   }) {
     const { message, sentById, memberFilter, memberIds } = params;
 
-    // Uyeleri filtrele
     const where: any = { isActive: true };
 
     if (memberIds?.length) {
@@ -263,7 +285,6 @@ export class WhatsAppChatService {
       error: string;
     }[] = [];
 
-    // Güvenli gönderim limiti: mesajlar arası 3-5 saniye rastgele bekleme
     for (const member of members) {
       try {
         await this.sendMessageToPhone(member.phone, message, sentById);
@@ -325,12 +346,17 @@ export class WhatsAppChatService {
 
   /**
    * Konusma bul veya olustur. Telefon numarasindan uye eslestirmesi yapar.
-   * JID normalize edilir: @c.us ve @s.whatsapp.net ayni kisi olarak islenir.
+   *
+   * Eslestirme sirasi:
+   * 1. remoteJid ile (normalize edilmis + orijinal)
+   * 2. contactPhone ile (telefon numarasi bazli - @lid durumu icin)
+   * 3. Bulunamazsa yeni olustur
    */
   async findOrCreateConversation(remoteJid: string, phone?: string) {
     const normalized = this.normalizeJid(remoteJid);
+    const isPhoneBased = this.isPhoneBasedJid(remoteJid);
 
-    // Hem normalize edilmis hem orijinal JID ile ara
+    // 1. JID ile ara (hem normalize hem orijinal)
     let conversation =
       await this.prisma.whatsAppConversation.findFirst({
         where: {
@@ -338,9 +364,43 @@ export class WhatsAppChatService {
         },
       });
 
+    // 2. JID bulunamadiysa ve telefon numarasi varsa, contactPhone ile ara
+    //    Bu @lid JID'den gelen mesajlari mevcut konusmaya eslestirmek icin kritik
+    if (!conversation && phone) {
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phoneDigits.length >= 10) {
+        conversation = await this.prisma.whatsAppConversation.findFirst({
+          where: {
+            contactPhone: { in: this.phoneSearchVariants(phoneDigits) },
+          },
+        });
+
+        if (conversation) {
+          this.logger.log(
+            `Matched conversation by phone ${phoneDigits} (JID: ${remoteJid} -> existing: ${conversation.remoteJid})`,
+          );
+        }
+      }
+    }
+
     if (conversation) {
-      // Eski @c.us formatindaki kaydi @s.whatsapp.net'e guncelle
-      if (conversation.remoteJid !== normalized) {
+      // JID guncelleme: eger mevcut JID telefon bazli degilse (@lid) ve
+      // yeni JID telefon bazliysa, guncelle
+      if (isPhoneBased && !this.isPhoneBasedJid(conversation.remoteJid)) {
+        conversation = await this.prisma.whatsAppConversation.update({
+          where: { id: conversation.id },
+          data: { remoteJid: normalized },
+        });
+        this.logger.log(
+          `Updated conversation JID from @lid to ${normalized}`,
+        );
+      }
+      // Eski @c.us formatini @s.whatsapp.net'e guncelle
+      else if (
+        isPhoneBased &&
+        conversation.remoteJid !== normalized &&
+        this.isPhoneBasedJid(conversation.remoteJid)
+      ) {
         conversation = await this.prisma.whatsAppConversation.update({
           where: { id: conversation.id },
           data: { remoteJid: normalized },
@@ -349,14 +409,21 @@ export class WhatsAppChatService {
       return conversation;
     }
 
-    // Telefon numarasindan uye eslestirmesi
+    // 3. Yeni konusma olustur
     const normalizedPhone = phone || this.extractPhoneFromJid(remoteJid);
     const member = await this.findMemberByPhone(normalizedPhone);
 
+    // @lid JID'yi DB'ye kaydetme - telefon bazli JID tercih et
+    const storedJid = isPhoneBased
+      ? normalized
+      : normalizedPhone
+        ? `${normalizedPhone}@s.whatsapp.net`
+        : normalized; // son care: @lid'i kaydet
+
     conversation = await this.prisma.whatsAppConversation.create({
       data: {
-        remoteJid: normalized,
-        contactPhone: normalizedPhone,
+        remoteJid: storedJid,
+        contactPhone: normalizedPhone || null,
         contactName: member
           ? `${member.firstName} ${member.lastName}`
           : null,
@@ -452,20 +519,37 @@ export class WhatsAppChatService {
   }
 
   /**
+   * Telefon numarasinin arama varyantlarini olustur
+   */
+  private phoneSearchVariants(phone: string): string[] {
+    const clean = phone.replace(/\D/g, '');
+    const variants = [clean];
+
+    if (clean.startsWith('90') && clean.length >= 12) {
+      variants.push('0' + clean.substring(2));    // 05XX...
+      variants.push(clean.substring(2));           // 5XX...
+      variants.push('+' + clean);                  // +90XX...
+    } else if (clean.startsWith('0') && clean.length >= 11) {
+      variants.push('90' + clean.substring(1));    // 905XX...
+      variants.push(clean.substring(1));           // 5XX...
+      variants.push('+90' + clean.substring(1));   // +905XX...
+    } else if (clean.length === 10) {
+      variants.push('90' + clean);                 // 905XX...
+      variants.push('0' + clean);                  // 05XX...
+      variants.push('+90' + clean);                // +905XX...
+    }
+
+    return [...new Set(variants)];
+  }
+
+  /**
    * Telefon numarasindan uye bul (cesitli formatlarla)
    */
   private async findMemberByPhone(phone: string) {
     const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) return null;
 
-    // Farkli formatlarda dene
-    const phoneVariants = [
-      cleanPhone,
-      cleanPhone.startsWith('90')
-        ? '0' + cleanPhone.substring(2)
-        : cleanPhone,
-      cleanPhone.startsWith('90') ? cleanPhone.substring(2) : cleanPhone,
-      '+' + cleanPhone,
-    ];
+    const phoneVariants = this.phoneSearchVariants(cleanPhone);
 
     return this.prisma.member.findFirst({
       where: {

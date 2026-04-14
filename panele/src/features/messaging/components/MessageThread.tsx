@@ -135,7 +135,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             {conversation.contactPhone ||
-              conversation.remoteJid.replace('@s.whatsapp.net', '')}
+              conversation.remoteJid.replace(/@(s\.whatsapp\.net|c\.us|lid)$/, '')}
           </Typography>
         </Box>
         {isMember && (
