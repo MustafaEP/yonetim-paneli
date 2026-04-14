@@ -45,9 +45,10 @@ export class WhatsAppController {
   @ApiOperation({ summary: 'WhatsApp session başlat ve QR kodu al' })
   async connectInstance() {
     await this.whatsAppService.createInstance();
-    // 3 deneme, 2sn arayla QR kodunu bekle
+    // Session başladıktan sonra QR'ın oluşmasını bekle
+    await new Promise((r) => setTimeout(r, 2000));
     const qrImage = await this.whatsAppService.getQrCodeImage();
-    const qrRaw = await this.whatsAppService.getQrCode(1);
+    const qrRaw = !qrImage ? await this.whatsAppService.getQrCode(2, 2000) : null;
     const status = await this.whatsAppService.getConnectionStatus();
     return {
       qr: qrImage

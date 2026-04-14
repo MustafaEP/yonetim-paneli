@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, alpha } from '@mui/material';
+import { Box, Typography, Tooltip, alpha } from '@mui/material';
 import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -31,7 +31,11 @@ function StatusIcon({ status }: { status: string }) {
     case 'READ':
       return <DoneAllIcon sx={{ ...iconSx, color: '#53bdeb' }} />;
     case 'FAILED':
-      return <ErrorOutlineIcon sx={{ ...iconSx, color: '#ff6b6b' }} />;
+      return (
+        <Tooltip title="Gönderilemedi" arrow>
+          <ErrorOutlineIcon sx={{ ...iconSx, color: '#ff6b6b' }} />
+        </Tooltip>
+      );
     default:
       return null;
   }
@@ -111,6 +115,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           </Typography>
           {isOutbound && <StatusIcon status={message.status} />}
         </Box>
+
+        {/* Hata mesaji */}
+        {message.status === 'FAILED' && message.errorMessage && (
+          <Typography
+            variant="caption"
+            sx={{
+              color: '#ff6b6b',
+              fontSize: '0.65rem',
+              display: 'block',
+              mt: 0.25,
+            }}
+          >
+            {message.errorMessage}
+          </Typography>
+        )}
       </Box>
     </Box>
   );

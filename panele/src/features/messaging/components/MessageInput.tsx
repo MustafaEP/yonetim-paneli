@@ -1,6 +1,44 @@
 import React, { useState, useRef } from 'react';
-import { Box, IconButton, TextField, alpha } from '@mui/material';
+import {
+  Box,
+  IconButton,
+  TextField,
+  Popover,
+  alpha,
+} from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import EmojiEmotionsOutlinedIcon from '@mui/icons-material/EmojiEmotionsOutlined';
+
+const EMOJI_GROUPS = [
+  {
+    label: 'Sık Kullanılan',
+    emojis: ['😀', '😂', '😊', '❤️', '👍', '🙏', '👋', '🎉', '✅', '⭐', '🔥', '💪'],
+  },
+  {
+    label: 'Yüzler',
+    emojis: [
+      '😃', '😄', '😁', '😆', '🤣', '😅', '😇', '🙂', '😉', '😍', '🥰', '😘',
+      '😋', '😜', '🤗', '🤔', '😐', '😏', '😒', '😞', '😔', '😟', '😕', '🙁',
+      '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '🤬', '😈', '🤯',
+    ],
+  },
+  {
+    label: 'El & Vücut',
+    emojis: [
+      '👋', '🤚', '✋', '🖐️', '👌', '🤌', '✌️', '🤞', '🤟', '🤙', '👈', '👉',
+      '👆', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '🤝',
+      '🙏', '💪', '🦾', '🖕', '✍️', '🤳',
+    ],
+  },
+  {
+    label: 'Semboller',
+    emojis: [
+      '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎', '🖤', '🤍', '💔', '💯', '💢',
+      '✨', '🌟', '⭐', '🔥', '💥', '🎵', '🎶', '✅', '❌', '⚠️', '🔴', '🟢',
+      '📌', '📎', '📞', '📧', '🗓️', '🕐',
+    ],
+  },
+];
 
 interface MessageInputProps {
   onSend: (content: string) => void;
@@ -9,6 +47,7 @@ interface MessageInputProps {
 
 const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled }) => {
   const [message, setMessage] = useState('');
+  const [emojiAnchor, setEmojiAnchor] = useState<HTMLButtonElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
@@ -26,6 +65,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled }) => {
     }
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    setMessage((prev) => prev + emoji);
+    inputRef.current?.focus();
+  };
+
   return (
     <Box
       sx={{
@@ -38,6 +82,75 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled }) => {
         backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.8),
       }}
     >
+      <IconButton
+        size="small"
+        onClick={(e) => setEmojiAnchor(e.currentTarget)}
+        disabled={disabled}
+        sx={{ color: 'text.secondary', mb: 0.5 }}
+      >
+        <EmojiEmotionsOutlinedIcon />
+      </IconButton>
+
+      <Popover
+        open={Boolean(emojiAnchor)}
+        anchorEl={emojiAnchor}
+        onClose={() => setEmojiAnchor(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        slotProps={{
+          paper: {
+            sx: {
+              width: 340,
+              maxHeight: 320,
+              overflow: 'auto',
+              p: 1.5,
+              borderRadius: 2,
+            },
+          },
+        }}
+      >
+        {EMOJI_GROUPS.map((group) => (
+          <Box key={group.label} sx={{ mb: 1 }}>
+            <Box
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                color: 'text.secondary',
+                mb: 0.5,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              {group.label}
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
+              {group.emojis.map((emoji) => (
+                <Box
+                  key={emoji}
+                  onClick={() => handleEmojiSelect(emoji)}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.25rem',
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: (theme) =>
+                        alpha(theme.palette.action.hover, 0.6),
+                    },
+                  }}
+                >
+                  {emoji}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        ))}
+      </Popover>
+
       <TextField
         inputRef={inputRef}
         fullWidth

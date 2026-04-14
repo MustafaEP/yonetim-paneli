@@ -13,6 +13,22 @@ export class WhatsAppChatService {
   ) {}
 
   /**
+   * JID'yi standart formata normalize et.
+   * WAHA @c.us gonderir, biz @s.whatsapp.net olarak saklariz.
+   * Her iki format da ayni kisiye isaret eder.
+   */
+  private normalizeJid(jid: string): string {
+    return jid.replace('@c.us', '@s.whatsapp.net');
+  }
+
+  /**
+   * JID'den telefon numarasini cikar (@c.us ve @s.whatsapp.net destekli)
+   */
+  private extractPhoneFromJid(jid: string): string {
+    return jid.replace(/@(s\.whatsapp\.net|c\.us)$/, '');
+  }
+
+  /**
    * Konusma listesi (paginated, searchable)
    */
   async getConversations(params: {
@@ -133,22 +149,37 @@ export class WhatsAppChatService {
       throw new Error('Conversation not found');
     }
 
-    // WAHA uzerinden gonder - chatId formatinda gonder
-    const result = await this.whatsAppService.sendText(
-      conversation.remoteJid,
-      content,
-    );
+    // WAHA uzerinden gonder - hata olursa mesaji FAILED olarak kaydet
+    let result: { messageId: string } | null = null;
+    let status: WhatsAppMessageStatus = WhatsAppMessageStatus.SENT;
+    let errorMessage: string | null = null;
 
-    // Mesaji DB'ye kaydet
+    try {
+      result = await this.whatsAppService.sendText(
+        conversation.remoteJid,
+        content,
+      );
+      if (!result) {
+        status = WhatsAppMessageStatus.FAILED;
+        errorMessage = 'WhatsApp gönderimi devre dışı';
+      }
+    } catch (error: any) {
+      status = WhatsAppMessageStatus.FAILED;
+      errorMessage = error.message || 'Bilinmeyen hata';
+      this.logger.error(
+        `Failed to send message to ${conversation.remoteJid}: ${error.message}`,
+      );
+    }
+
+    // Mesaji DB'ye kaydet (basarili veya basarisiz)
     const message = await this.prisma.whatsAppMessage.create({
       data: {
         conversationId,
         whatsappMsgId: result?.messageId || null,
         direction: MessageDirection.OUTBOUND,
         content,
-        status: result
-          ? WhatsAppMessageStatus.SENT
-          : WhatsAppMessageStatus.FAILED,
+        status,
+        errorMessage,
         sentById,
         sentAt: new Date(),
       },
@@ -294,22 +325,37 @@ export class WhatsAppChatService {
 
   /**
    * Konusma bul veya olustur. Telefon numarasindan uye eslestirmesi yapar.
+   * JID normalize edilir: @c.us ve @s.whatsapp.net ayni kisi olarak islenir.
    */
   async findOrCreateConversation(remoteJid: string, phone?: string) {
+    const normalized = this.normalizeJid(remoteJid);
+
+    // Hem normalize edilmis hem orijinal JID ile ara
     let conversation =
-      await this.prisma.whatsAppConversation.findUnique({
-        where: { remoteJid },
+      await this.prisma.whatsAppConversation.findFirst({
+        where: {
+          remoteJid: { in: [normalized, remoteJid] },
+        },
       });
 
-    if (conversation) return conversation;
+    if (conversation) {
+      // Eski @c.us formatindaki kaydi @s.whatsapp.net'e guncelle
+      if (conversation.remoteJid !== normalized) {
+        conversation = await this.prisma.whatsAppConversation.update({
+          where: { id: conversation.id },
+          data: { remoteJid: normalized },
+        });
+      }
+      return conversation;
+    }
 
     // Telefon numarasindan uye eslestirmesi
-    const normalizedPhone = phone || remoteJid.replace('@s.whatsapp.net', '');
+    const normalizedPhone = phone || this.extractPhoneFromJid(remoteJid);
     const member = await this.findMemberByPhone(normalizedPhone);
 
     conversation = await this.prisma.whatsAppConversation.create({
       data: {
-        remoteJid,
+        remoteJid: normalized,
         contactPhone: normalizedPhone,
         contactName: member
           ? `${member.firstName} ${member.lastName}`
@@ -338,7 +384,7 @@ export class WhatsAppChatService {
     });
     if (existing) return existing;
 
-    const phone = remoteJid.replace('@s.whatsapp.net', '');
+    const phone = this.extractPhoneFromJid(remoteJid);
     const conversation = await this.findOrCreateConversation(
       remoteJid,
       phone,

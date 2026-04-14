@@ -63,30 +63,51 @@ export class WhatsAppService {
   }
 
   /**
-   * WAHA session olustur ve baslat
+   * WAHA session olustur ve baslat.
+   * FAILED/STOPPED durumlarini otomatik kurtarir.
    */
   async createInstance(): Promise<void> {
     try {
-      // Önce mevcut session'i kontrol et
       const sessions = await this.httpClient.get('/api/sessions');
       const existing = sessions.data?.find(
         (s: any) => s.name === this.sessionName,
       );
 
       if (existing) {
-        // Session var ama stopped ise baslat
-        if (existing.status === 'STOPPED') {
-          await this.httpClient.post('/api/sessions/start', {
-            name: this.sessionName,
-          });
+        const st = existing.status;
+
+        // Zaten QR bekliyor veya çalışıyor - birşey yapma
+        if (st === 'SCAN_QR_CODE' || st === 'WORKING') {
           this.logger.log(
-            `WAHA session '${this.sessionName}' started`,
+            `WAHA session '${this.sessionName}' already active (status: ${st})`,
           );
-        } else {
-          this.logger.log(
-            `WAHA session '${this.sessionName}' already exists (status: ${existing.status})`,
-          );
+          return;
         }
+
+        // FAILED veya STOPPED → session'i durdur ve temiz başlat
+        if (st === 'FAILED' || st === 'STOPPED') {
+          this.logger.log(
+            `WAHA session '${this.sessionName}' is ${st}, restarting...`,
+          );
+          // Önce durdurmayı dene (hata olursa yoksay)
+          try {
+            await this.httpClient.post('/api/sessions/stop', {
+              name: this.sessionName,
+            });
+          } catch {
+            // zaten stopped olabilir
+          }
+          // Kısa bekleme
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+
+        // Session'i başlat
+        await this.httpClient.post('/api/sessions/start', {
+          name: this.sessionName,
+        });
+        this.logger.log(
+          `WAHA session '${this.sessionName}' (re)started`,
+        );
         return;
       }
 
@@ -104,7 +125,7 @@ export class WhatsAppService {
       });
       this.logger.log(`WAHA session '${this.sessionName}' created`);
     } catch (error: any) {
-      // 422 = session zaten var
+      // 422 = session zaten var/çalışıyor
       if (error.response?.status === 422) {
         this.logger.log(
           `WAHA session '${this.sessionName}' already exists`,
@@ -140,8 +161,6 @@ export class WhatsAppService {
         const data = response.data;
 
         if (data?.value) {
-          // raw format: QR string doner, bunu base64 image'a cevirebiliriz
-          // veya dogrudan base64 image olarak dondugunu varsayabiliriz
           return { base64: data.value };
         }
 
@@ -164,6 +183,10 @@ export class WhatsAppService {
           await new Promise((resolve) => setTimeout(resolve, delayMs));
           continue;
         }
+        // Session WORKING veya QR mevcut degil - normal durum
+        if (error.response?.status === 404 || error.response?.status === 422) {
+          return null;
+        }
         this.logger.error(`Failed to get QR code: ${error.message}`);
         throw error;
       }
@@ -173,7 +196,8 @@ export class WhatsAppService {
   }
 
   /**
-   * QR kodu base64 image olarak al
+   * QR kodu base64 image olarak al.
+   * Session SCAN_QR_CODE durumunda degilse null doner.
    */
   async getQrCodeImage(): Promise<string | null> {
     try {
@@ -188,6 +212,10 @@ export class WhatsAppService {
       const base64 = Buffer.from(response.data, 'binary').toString('base64');
       return `data:image/png;base64,${base64}`;
     } catch (error: any) {
+      // 404/422 = QR mevcut degil (session connected veya stopped)
+      if (error.response?.status === 404 || error.response?.status === 422) {
+        return null;
+      }
       this.logger.error(`Failed to get QR image: ${error.message}`);
       return null;
     }

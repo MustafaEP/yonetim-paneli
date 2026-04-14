@@ -96,11 +96,42 @@ export class WhatsAppWebhookController {
       return;
     }
 
-    // Mesaj icerigini cikar
-    const content = payload.body || '';
+    // Mesaj icerigini cikar (metin, emoji, medya aciklamasi vb.)
+    const msgType = payload.type || payload._data?.type || 'chat';
+    let content = payload.body || '';
+
+    // Medya/sticker/belge mesajlarinda body bos olabilir - tip bilgisi ekle
     if (!content) {
-      this.logger.warn(`Incoming message from ${remoteJid}: empty body`);
-      return;
+      switch (msgType) {
+        case 'image':
+          content = payload.caption || '📷 Fotoğraf';
+          break;
+        case 'video':
+          content = payload.caption || '🎥 Video';
+          break;
+        case 'audio':
+        case 'ptt':
+          content = '🎵 Sesli mesaj';
+          break;
+        case 'sticker':
+          content = '🏷️ Çıkartma';
+          break;
+        case 'document':
+          content = payload.caption || `📄 ${payload._data?.filename || 'Belge'}`;
+          break;
+        case 'location':
+          content = '📍 Konum';
+          break;
+        case 'contact':
+        case 'vcard':
+          content = '👤 Kişi kartı';
+          break;
+        default:
+          this.logger.warn(
+            `Incoming message from ${remoteJid}: empty body, type=${msgType}`,
+          );
+          return;
+      }
     }
 
     // messageId: WAHA string veya object donebilir

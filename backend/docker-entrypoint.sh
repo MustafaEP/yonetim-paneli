@@ -60,12 +60,23 @@ if [ -d "prisma/migrations" ]; then
 fi
 
 # Migration'ları deploy et
-npx prisma migrate deploy || {
-    echo "⚠️  İlk migration denemesi başarısız, tekrar deneniyor..."
-    sleep 3
-    npx prisma migrate deploy || {
+npx prisma migrate deploy 2>&1 || {
+    echo "⚠️  İlk migration denemesi başarısız, failed migration'ları resolve ediliyor..."
+    sleep 2
+
+    # Başarısız (failed) migration'ları bul ve rolled-back olarak işaretle
+    FAILED_MIGRATIONS=$(npx prisma migrate status 2>&1 | grep -oP '`\K[^`]+(?=`.*failed)' || true)
+    if [ -n "$FAILED_MIGRATIONS" ]; then
+        for FM in $FAILED_MIGRATIONS; do
+            echo "   Rolling back failed migration: $FM"
+            npx prisma migrate resolve --rolled-back "$FM" 2>/dev/null || true
+        done
+    fi
+
+    sleep 2
+    npx prisma migrate deploy 2>&1 || {
         echo "❌ Migration hatası! Logları kontrol edin."
-        echo "   Manuel çözüm: npx prisma migrate resolve --applied <migration_name>"
+        echo "   Manuel çözüm: npx prisma migrate resolve --rolled-back <migration_name>"
         exit 1
     }
 }

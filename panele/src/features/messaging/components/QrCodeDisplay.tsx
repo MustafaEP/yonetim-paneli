@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -14,6 +14,7 @@ import QrCode2Icon from '@mui/icons-material/QrCode2';
 import {
   useConnectionStatus,
   useConnectInstance,
+  useQrCode,
 } from '../hooks/useWhatsApp';
 
 const QrCodeDisplay: React.FC = () => {
@@ -24,24 +25,32 @@ const QrCodeDisplay: React.FC = () => {
   } = useConnectionStatus();
   const connectMutation = useConnectInstance();
 
-  const [qrBase64, setQrBase64] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   const connected = status?.connected ?? false;
+  const sessionState = status?.state ?? 'STOPPED';
+  const needsQr = sessionState === 'SCAN_QR_CODE';
 
-  const handleConnect = () => {
+  // QR polling: sadece session SCAN_QR_CODE durumundayken aktif
+  const { data: qrData } = useQrCode(needsQr);
+
+  const [initialQr, setInitialQr] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  // Connect mutation'dan gelen QR'ı sakla
+  const handleConnect = useCallback(() => {
     setError(null);
+    setInitialQr(null);
+    setConnecting(true);
     connectMutation.mutate(undefined, {
       onSuccess: (data) => {
+        setConnecting(false);
         if (data?.qr?.base64) {
-          setQrBase64(data.qr.base64);
-        } else {
-          setError(
-            'QR kodu henüz hazır değil. Birkaç saniye bekleyip tekrar deneyin.',
-          );
+          setInitialQr(data.qr.base64);
         }
+        // QR gelmese bile sorun yok - polling devralacak
       },
       onError: (err: any) => {
+        setConnecting(false);
         const msg =
           err?.response?.data?.message ||
           err?.message ||
@@ -49,7 +58,18 @@ const QrCodeDisplay: React.FC = () => {
         setError(msg);
       },
     });
-  };
+  }, [connectMutation]);
+
+  // Bağlantı kurulunca QR state'ini temizle
+  useEffect(() => {
+    if (connected) {
+      setInitialQr(null);
+      setConnecting(false);
+    }
+  }, [connected]);
+
+  // En güncel QR: polling'den gelen veya initial
+  const currentQr = qrData?.base64 || initialQr;
 
   if (statusLoading) {
     return (
@@ -59,6 +79,7 @@ const QrCodeDisplay: React.FC = () => {
     );
   }
 
+  // Bağlı
   if (connected) {
     return (
       <Paper
@@ -83,6 +104,63 @@ const QrCodeDisplay: React.FC = () => {
     );
   }
 
+  // QR gösterimi (SCAN_QR_CODE durumunda veya connect'ten sonra)
+  if (currentQr) {
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          p: 4,
+          textAlign: 'center',
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'inline-block',
+            p: 2,
+            borderRadius: 2,
+            backgroundColor: '#fff',
+            border: '1px solid',
+            borderColor: 'divider',
+            mb: 2,
+          }}
+        >
+          <img
+            src={currentQr}
+            alt="WhatsApp QR Code"
+            style={{ width: 260, height: 260, display: 'block' }}
+          />
+        </Box>
+        <Typography
+          variant="caption"
+          display="block"
+          sx={{ color: 'text.secondary', mb: 1 }}
+        >
+          WhatsApp &gt; Ayarlar &gt; Bağlı Cihazlar &gt; Cihaz Bağla
+        </Typography>
+        <Typography
+          variant="caption"
+          display="block"
+          sx={{ color: 'text.disabled', mb: 2 }}
+        >
+          QR kodu otomatik olarak yenilenir
+        </Typography>
+        <Button
+          size="small"
+          startIcon={<RefreshIcon />}
+          onClick={handleConnect}
+          disabled={connecting}
+        >
+          {connecting ? 'Yenileniyor...' : 'Yeni QR Kodu Al'}
+        </Button>
+      </Paper>
+    );
+  }
+
+  // Bağlantı başlatma ekranı (STOPPED, FAILED, veya ilk açılış)
   return (
     <Paper
       elevation={0}
@@ -105,6 +183,13 @@ const QrCodeDisplay: React.FC = () => {
         QR kodu taratarak bu paneli WhatsApp hesabınıza bağlayın.
       </Typography>
 
+      {sessionState === 'FAILED' && (
+        <Alert severity="warning" sx={{ mb: 2, textAlign: 'left' }}>
+          WhatsApp bağlantısı kopmuş. "Bağlantıyı Başlat" ile yeniden
+          bağlanabilirsiniz.
+        </Alert>
+      )}
+
       {error && (
         <Alert
           severity="warning"
@@ -122,61 +207,24 @@ const QrCodeDisplay: React.FC = () => {
         </Alert>
       )}
 
-      {qrBase64 ? (
-        <Box>
-          <Box
-            sx={{
-              display: 'inline-block',
-              p: 2,
-              borderRadius: 2,
-              backgroundColor: '#fff',
-              border: '1px solid',
-              borderColor: 'divider',
-              mb: 2,
-            }}
-          >
-            <img
-              src={qrBase64}
-              alt="WhatsApp QR Code"
-              style={{ width: 260, height: 260, display: 'block' }}
-            />
-          </Box>
-          <Typography
-            variant="caption"
-            display="block"
-            sx={{ color: 'text.secondary', mb: 2 }}
-          >
-            WhatsApp &gt; Ayarlar &gt; Bağlı Cihazlar &gt; Cihaz Bağla
-          </Typography>
-          <Button
-            size="small"
-            startIcon={<RefreshIcon />}
-            onClick={handleConnect}
-            disabled={connectMutation.isPending}
-          >
-            QR Kodu Yenile
-          </Button>
-        </Box>
-      ) : (
-        <Button
-          variant="contained"
-          startIcon={
-            connectMutation.isPending ? (
-              <CircularProgress size={18} color="inherit" />
-            ) : (
-              <QrCode2Icon />
-            )
-          }
-          onClick={handleConnect}
-          disabled={connectMutation.isPending}
-          sx={{
-            backgroundColor: '#25D366',
-            '&:hover': { backgroundColor: '#128C7E' },
-          }}
-        >
-          {connectMutation.isPending ? 'Bağlanıyor...' : 'Bağlantıyı Başlat'}
-        </Button>
-      )}
+      <Button
+        variant="contained"
+        startIcon={
+          connecting ? (
+            <CircularProgress size={18} color="inherit" />
+          ) : (
+            <QrCode2Icon />
+          )
+        }
+        onClick={handleConnect}
+        disabled={connecting}
+        sx={{
+          backgroundColor: '#25D366',
+          '&:hover': { backgroundColor: '#128C7E' },
+        }}
+      >
+        {connecting ? 'Bağlanıyor...' : 'Bağlantıyı Başlat'}
+      </Button>
     </Paper>
   );
 };

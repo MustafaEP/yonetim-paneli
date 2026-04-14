@@ -18,7 +18,12 @@ export function useConnectionStatus(enabled = true) {
   return useQuery({
     queryKey: KEYS.status,
     queryFn: whatsappApi.getConnectionStatus,
-    refetchInterval: 10000,
+    refetchInterval: (query) => {
+      const state = query.state.data?.state;
+      // QR taratma bekleniyorsa daha sık kontrol et
+      if (state === 'SCAN_QR_CODE' || state === 'STARTING') return 3000;
+      return 10000;
+    },
     enabled,
   });
 }
@@ -27,8 +32,9 @@ export function useQrCode(enabled = true) {
   return useQuery({
     queryKey: KEYS.qr,
     queryFn: whatsappApi.getQrCode,
-    refetchInterval: 20000,
+    refetchInterval: 15000,
     enabled,
+    retry: false,
   });
 }
 
