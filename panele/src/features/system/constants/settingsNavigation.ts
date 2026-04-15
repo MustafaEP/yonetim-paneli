@@ -8,6 +8,7 @@ export const getCategoryFromPath = (pathname: string): SettingsCategory => {
   if (pathname.startsWith('/system/settings/audit')) return 'AUDIT';
   if (pathname.startsWith('/system/settings/maintenance')) return 'MAINTENANCE';
   if (pathname.startsWith('/system/settings/kbs')) return 'KBS_DATA';
+  if (pathname.startsWith('/system/settings/whatsapp-messaging')) return 'WHATSAPP_MESSAGING';
   if (pathname.startsWith('/system/settings/bulk-registration')) return 'BULK_REGISTRATION';
   return 'GENERAL';
 };
@@ -20,6 +21,7 @@ export const getPathFromCategory = (category: SettingsCategory): string => {
   if (category === 'AUDIT') return '/system/settings/audit';
   if (category === 'MAINTENANCE') return '/system/settings/maintenance';
   if (category === 'KBS_DATA') return '/system/settings/kbs';
+  if (category === 'WHATSAPP_MESSAGING') return '/system/settings/whatsapp-messaging';
   if (category === 'BULK_REGISTRATION') return '/system/settings/bulk-registration';
   return '/system/settings';
 };

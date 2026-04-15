@@ -246,6 +246,15 @@ export class WhatsAppController {
     });
   }
 
+  @Get('bulk-history')
+  @Permissions(Permission.NOTIFY_ALL_MEMBERS)
+  @ApiOperation({ summary: 'Son toplu mesaj gönderim geçmişi' })
+  async getBulkHistory(@Query('limit') limit?: string) {
+    return this.chatService.getRecentBulkMessageHistory(
+      limit ? parseInt(limit, 10) : 5,
+    );
+  }
+
   // ─── Sablonlar ───
 
   @Get('templates')

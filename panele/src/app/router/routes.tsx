@@ -51,9 +51,8 @@ import ProfilePage from '../../features/profile/pages/ProfilePage';
 import InvoicesPage from '../../features/invoices/pages/InvoicesPage';
 import WhatsAppSmsPage from '../../features/messaging/pages/WhatsAppSmsPage';
 import WhatsAppChatPage from '../../features/messaging/pages/WhatsAppChatPage';
-import WhatsAppBulkPage from '../../features/messaging/pages/WhatsAppBulkPage';
-import WhatsAppTemplatesPage from '../../features/messaging/pages/WhatsAppTemplatesPage';
-import WhatsAppSettingsPage from '../../features/messaging/pages/WhatsAppSettingsPage';
+import AutoMessagingTemplatesPage from '../../features/messaging/pages/AutoMessagingTemplatesPage';
+import WhatsAppBulkMessagesPage from '../../features/messaging/pages/WhatsAppBulkMessagesPage';
 import KepPage from '../../features/kep/pages/KepPage';
 
 const AppRoutes: React.FC = () => (
@@ -185,13 +184,21 @@ const AppRoutes: React.FC = () => (
         <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
 
         <Route element={<ProtectedRoute requiredPermission="WHATSAPP_ACCESS" />}>
-          <Route path="/messaging" element={<WhatsAppSmsPage />}>
+          <Route path="/whatsapp" element={<WhatsAppSmsPage />}>
             <Route path="chat" element={<WhatsAppChatPage />} />
             <Route path="chat/:conversationId" element={<WhatsAppChatPage />} />
-            <Route path="bulk" element={<WhatsAppBulkPage />} />
-            <Route path="templates" element={<WhatsAppTemplatesPage />} />
-            <Route path="settings" element={<WhatsAppSettingsPage />} />
           </Route>
+          <Route path="/whatsapp/bulk" element={<WhatsAppBulkMessagesPage />} />
+          <Route path="/whatsapp/templates" element={<Navigate to="/whatsapp/auto-templates" replace />} />
+          <Route path="/whatsapp/auto-templates" element={<AutoMessagingTemplatesPage />} />
+
+          {/* Legacy messaging paths */}
+          <Route path="/messaging" element={<Navigate to="/whatsapp" replace />} />
+          <Route path="/messaging/chat" element={<Navigate to="/whatsapp/chat" replace />} />
+          <Route path="/messaging/chat/:conversationId" element={<Navigate to="/whatsapp/chat" replace />} />
+          <Route path="/messaging/bulk" element={<Navigate to="/whatsapp/bulk" replace />} />
+          <Route path="/messaging/templates" element={<Navigate to="/whatsapp/auto-templates" replace />} />
+          <Route path="/messaging/auto-templates" element={<Navigate to="/whatsapp/auto-templates" replace />} />
         </Route>
         <Route path="/kep" element={<KepPage />} />
 
@@ -204,6 +211,7 @@ const AppRoutes: React.FC = () => (
           <Route path="/system/settings/audit" element={<SystemSettingsPage />} />
           <Route path="/system/settings/maintenance" element={<SystemSettingsPage />} />
           <Route path="/system/settings/bulk-registration" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/whatsapp-messaging" element={<SystemSettingsPage />} />
           <Route path="/system/settings/kbs" element={<SystemSettingsPage />} />
         </Route>
 

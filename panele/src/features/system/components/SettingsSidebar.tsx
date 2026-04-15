@@ -18,11 +18,13 @@ import HistoryIcon from '@mui/icons-material/History';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 
 export type SettingsCategory =
   | 'GENERAL'
   | 'MEMBERSHIP'
   | 'BULK_REGISTRATION'
+  | 'WHATSAPP_MESSAGING'
   | 'KBS_DATA'
   | 'DASHBOARD'
   | 'REPORTS'
@@ -60,6 +62,12 @@ const categories: CategoryItem[] = [
     label: 'Toplu Veri Kayıt',
     icon: <UploadFileIcon />,
     description: 'CSV ile toplu üye kaydı',
+  },
+  {
+    id: 'WHATSAPP_MESSAGING',
+    label: 'WhatsApp Mesajlaşma',
+    icon: <WhatsAppIcon />,
+    description: 'Bağlantı ve QR ayarları',
   },
   {
     id: 'KBS_DATA',
@@ -194,9 +202,16 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                     mb: { xs: 0.5, sm: 1 },
                   }}
                 >
-                  {React.cloneElement(category.icon as React.ReactElement, {
-                    sx: { fontSize: { xs: 20, sm: 22 } }
-                  })}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      '& svg': { fontSize: { xs: 20, sm: 22 } },
+                    }}
+                  >
+                    {category.icon}
+                  </Box>
                 </Box>
               }
               label={

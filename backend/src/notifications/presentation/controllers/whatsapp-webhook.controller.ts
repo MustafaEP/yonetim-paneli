@@ -163,8 +163,12 @@ export class WhatsAppWebhookController {
         `id=${typeof payload.id === 'object' ? JSON.stringify(payload.id) : payload.id}`,
     );
 
-    // Kendi gonderdigimiz mesajlari atla
-    if (payload.fromMe) return;
+    // Telefon uygulamasindan gonderilen mesajlar (fromMe=true)
+    // API uzerinden gonderilenler zaten DB'de var - dedup check yakalar
+    if (payload.fromMe) {
+      await this.handleOutboundPhoneMessage(body);
+      return;
+    }
 
     // Telefon bazli JID'yi coz (@lid -> @c.us/@s.whatsapp.net)
     let remoteJid = this.resolvePhoneJid(payload);
@@ -255,6 +259,79 @@ export class WhatsAppWebhookController {
       messageId,
       content,
       pushName,
+    });
+  }
+
+  /**
+   * Telefondan gonderilen mesajlari isle (fromMe=true)
+   * API uzerinden gonderilenler zaten DB'de oldugundan dedup check yakalar.
+   */
+  private async handleOutboundPhoneMessage(body: any) {
+    const payload = body?.payload;
+    if (!payload) return;
+
+    // Alici JID'si payload.to veya _data.to'dan gelir
+    let remoteJid: string =
+      payload.to ||
+      payload._data?.to ||
+      payload.chatId ||
+      payload._data?.chat?.id?._serialized ||
+      '';
+
+    if (!remoteJid) {
+      this.logger.warn('Outbound phone message: no recipient JID found');
+      return;
+    }
+
+    // @lid ise coz
+    if (remoteJid.includes('@lid')) {
+      const resolvedPhone = await this.whatsAppService.resolveLidToPhone(remoteJid);
+      if (resolvedPhone) {
+        remoteJid = `${resolvedPhone}@s.whatsapp.net`;
+      }
+    }
+
+    // Grup, broadcast, newsletter mesajlarini atla
+    if (
+      remoteJid === 'status@broadcast' ||
+      remoteJid.includes('@g.us') ||
+      remoteJid.includes('@newsletter')
+    ) {
+      return;
+    }
+
+    const msgType = payload.type || payload._data?.type || 'chat';
+    let content = payload.body || '';
+
+    if (!content) {
+      switch (msgType) {
+        case 'image':   content = payload.caption || '📷 Fotoğraf'; break;
+        case 'video':   content = payload.caption || '🎥 Video'; break;
+        case 'audio':
+        case 'ptt':     content = '🎵 Sesli mesaj'; break;
+        case 'sticker': content = '🏷️ Çıkartma'; break;
+        case 'document': content = payload.caption || `📄 ${payload._data?.filename || 'Belge'}`; break;
+        case 'location': content = '📍 Konum'; break;
+        default:
+          this.logger.debug(`Outbound phone message: empty body, type=${msgType}, skipping`);
+          return;
+      }
+    }
+
+    const rawId = payload.id;
+    const messageId =
+      typeof rawId === 'string'
+        ? rawId
+        : rawId?._serialized || rawId?.id || String(rawId);
+
+    this.logger.log(
+      `Outbound phone message: to=${remoteJid}, msgId=${messageId}, content=${content.substring(0, 50)}`,
+    );
+
+    await this.chatService.processOutboundPhoneMessage({
+      remoteJid,
+      messageId,
+      content,
     });
   }
 

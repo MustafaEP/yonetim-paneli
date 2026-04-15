@@ -86,3 +86,25 @@ export interface MemberFilter {
   status?: string;
   branchId?: string;
 }
+
+export interface BulkHistoryRecipient {
+  memberId: string;
+  name: string;
+  phone: string;
+}
+
+export interface BulkMessageHistoryItem {
+  id: string;
+  createdAt: string;
+  sentBy: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  message: string;
+  sent: number;
+  failed: number;
+  total: number;
+  recipients: BulkHistoryRecipient[];
+}

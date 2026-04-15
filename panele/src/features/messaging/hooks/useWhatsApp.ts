@@ -10,6 +10,7 @@ const KEYS = {
   conversation: (id: string) => ['whatsapp', 'conversation', id] as const,
   messages: (conversationId: string) => ['whatsapp', 'messages', conversationId] as const,
   templates: ['whatsapp', 'templates'] as const,
+  bulkHistory: ['whatsapp', 'bulk-history'] as const,
 };
 
 // ─── Baglanti ───
@@ -175,12 +176,24 @@ export function useSendToPhone() {
 }
 
 export function useSendBulk() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: {
       message: string;
       memberFilter?: MemberFilter;
       memberIds?: string[];
     }) => whatsappApi.sendBulk(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.bulkHistory });
+    },
+  });
+}
+
+export function useBulkHistory(limit = 5) {
+  return useQuery({
+    queryKey: [...KEYS.bulkHistory, limit],
+    queryFn: () => whatsappApi.getBulkHistory(limit),
+    refetchInterval: 30000,
   });
 }
 

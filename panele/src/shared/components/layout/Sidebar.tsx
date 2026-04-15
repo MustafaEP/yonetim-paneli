@@ -43,6 +43,7 @@ import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FeedIcon from '@mui/icons-material/Feed';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthContext';
 import type { SxProps, Theme } from '@mui/material';
@@ -159,6 +160,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
       setOpenSection('user-management');
     } else if (path.startsWith('/system')) {
       setOpenSection('system');
+    } else if (path.startsWith('/whatsapp') || path.startsWith('/messaging')) {
+      setOpenSection('whatsapp');
     } else {
       setOpenSection(null);
     }
@@ -729,23 +732,82 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
       {showMessaging && (
         <List sx={{ px: 1 }}>
           <ListItemButton
-            component={Link}
-            to="/messaging"
-            selected={location.pathname.startsWith('/messaging')}
-            onClick={handleLinkClick}
+            onClick={() => handleSectionToggle('whatsapp')}
             sx={getNavItemSx(theme)}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>
               <WhatsAppIcon />
             </ListItemIcon>
             <ListItemText
-              primary="WhatsApp & SMS"
+              primary="Mesajlaşma"
               primaryTypographyProps={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
               }}
             />
+            {openSection === 'whatsapp' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </ListItemButton>
+          <Collapse in={openSection === 'whatsapp'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              <ListItemButton
+                component={Link}
+                to="/whatsapp"
+                selected={
+                  (location.pathname === '/whatsapp' || location.pathname.startsWith('/whatsapp/chat')) &&
+                  !location.pathname.startsWith('/whatsapp/auto-templates')
+                }
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <WhatsAppIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Sohbetler"
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                component={Link}
+                to="/whatsapp/bulk"
+                selected={location.pathname.startsWith('/whatsapp/bulk')}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <CloudDownloadIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Toplu Mesaj"
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                component={Link}
+                to="/whatsapp/auto-templates"
+                selected={location.pathname.startsWith('/whatsapp/auto-templates')}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <AutoAwesomeIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Şablonlar"
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            </List>
+          </Collapse>
         </List>
       )}
 

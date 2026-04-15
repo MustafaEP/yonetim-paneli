@@ -15,101 +15,62 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Checkbox,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
   Chip,
-  InputAdornment,
   Collapse,
-  IconButton,
+  Stack,
+  Autocomplete,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import GroupsIcon from '@mui/icons-material/Groups';
-import SearchIcon from '@mui/icons-material/Search';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useQuery } from '@tanstack/react-query';
-import { useSendBulk } from '../hooks/useWhatsApp';
+import { useBulkHistory, useSendBulk } from '../hooks/useWhatsApp';
 import { getMembers } from '../../members/services/membersApi';
+import ConnectionStatusBadge from '../components/ConnectionStatusBadge';
 import type { BulkSendResult } from '../types/whatsapp.types';
 import type { MemberListItem, MemberStatus } from '../../../types/member';
 
 const WhatsAppBulkPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState<MemberStatus | ''>('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedMembers, setSelectedMembers] = useState<MemberListItem[]>([]);
+  const [memberSearchInput, setMemberSearchInput] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [result, setResult] = useState<BulkSendResult | null>(null);
   const [failedOpen, setFailedOpen] = useState(false);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
 
   const sendBulk = useSendBulk();
+  const { data: bulkHistory = [], isLoading: bulkHistoryLoading } = useBulkHistory(5);
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ['members', statusFilter || undefined],
     queryFn: () => getMembers(statusFilter || undefined),
   });
 
-  // Search filter (client-side)
-  const filteredMembers = useMemo(() => {
-    if (!searchQuery.trim()) return members;
-    const q = searchQuery.toLowerCase();
-    return members.filter(
-      (m) =>
-        m.firstName?.toLowerCase().includes(q) ||
-        m.lastName?.toLowerCase().includes(q) ||
-        m.phone?.includes(q) ||
-        m.registrationNumber?.includes(q),
-    );
-  }, [members, searchQuery]);
-
-  // Paginated members
-  const paginatedMembers = useMemo(
+  const selectableMembers = useMemo(
     () =>
-      filteredMembers.slice(
-        page * rowsPerPage,
-        page * rowsPerPage + rowsPerPage,
-      ),
-    [filteredMembers, page, rowsPerPage],
+      members.filter((member) => !!member.phone && !selectedIds.has(member.id)),
+    [members, selectedIds],
   );
 
-  const allVisibleSelected =
-    filteredMembers.length > 0 &&
-    filteredMembers.every((m) => selectedIds.has(m.id));
-
-  const handleToggleAll = () => {
-    if (allVisibleSelected) {
-      // Deselect all filtered
-      const newSet = new Set(selectedIds);
-      filteredMembers.forEach((m) => newSet.delete(m.id));
-      setSelectedIds(newSet);
-    } else {
-      // Select all filtered
-      const newSet = new Set(selectedIds);
-      filteredMembers.forEach((m) => {
-        if (m.phone) newSet.add(m.id);
-      });
-      setSelectedIds(newSet);
-    }
+  const addMember = (member: MemberListItem | null) => {
+    if (!member || selectedIds.has(member.id)) return;
+    setSelectedIds((prev) => new Set(prev).add(member.id));
+    setSelectedMembers((prev) => [...prev, member]);
+    setMemberSearchInput('');
   };
 
-  const handleToggle = (id: string) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setSelectedIds(newSet);
+  const removeSelectedMember = (memberId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(memberId);
+      return next;
+    });
+    setSelectedMembers((prev) => prev.filter((member) => member.id !== memberId));
   };
 
   const handleSend = () => {
@@ -165,37 +126,30 @@ const WhatsAppBulkPage: React.FC = () => {
                   {result.failedMembers.length})
                 </Button>
                 <Collapse in={failedOpen}>
-                  <TableContainer sx={{ mt: 1 }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 600 }}>
-                            Üye Adı
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>
-                            Telefon
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>Hata</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {result.failedMembers.map((fm) => (
-                          <TableRow key={fm.memberId}>
-                            <TableCell>{fm.name}</TableCell>
-                            <TableCell>{fm.phone}</TableCell>
-                            <TableCell>
-                              <Typography
-                                variant="caption"
-                                color="error"
-                              >
-                                {fm.error}
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <Stack spacing={1} sx={{ mt: 1 }}>
+                    {result.failedMembers.map((fm) => (
+                      <Box
+                        key={fm.memberId}
+                        sx={{
+                          p: 1.25,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1.5,
+                          backgroundColor: (theme) => theme.palette.background.default,
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {fm.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                          {fm.phone}
+                        </Typography>
+                        <Typography variant="caption" color="error">
+                          {fm.error}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
                 </Collapse>
               </>
             )}
@@ -235,38 +189,41 @@ const WhatsAppBulkPage: React.FC = () => {
               />
             )}
           </Box>
+          <ConnectionStatusBadge />
         </Box>
 
-        {/* Filtre satırı */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <TextField
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+          <Autocomplete
+            fullWidth
             size="small"
-            placeholder="İsim, telefon veya sicil no ile ara..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setPage(0);
+            options={selectableMembers}
+            value={null}
+            inputValue={memberSearchInput}
+            onInputChange={(_, value) => setMemberSearchInput(value)}
+            onChange={(_, member) => addMember(member)}
+            getOptionLabel={(member) =>
+              `${member.firstName} ${member.lastName} - ${member.phone || 'Telefon yok'}`
+            }
+            filterOptions={(options, state) => {
+              const q = state.inputValue.toLowerCase().trim();
+              if (!q) return options;
+              return options.filter((member) =>
+                `${member.firstName} ${member.lastName} ${member.phone || ''} ${member.registrationNumber || ''}`
+                  .toLowerCase()
+                  .includes(q),
+              );
             }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              },
-            }}
-            sx={{ flex: 1 }}
+            renderInput={(params) => (
+              <TextField {...params} placeholder="Üye ara ve seç..." />
+            )}
           />
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ minWidth: 170 }}>
             <InputLabel>Üye Durumu</InputLabel>
             <Select
               value={statusFilter}
               label="Üye Durumu"
               onChange={(e) => {
                 setStatusFilter(e.target.value as MemberStatus | '');
-                setSelectedIds(new Set());
-                setPage(0);
               }}
             >
               <MenuItem value="">Tümü</MenuItem>
@@ -277,119 +234,52 @@ const WhatsAppBulkPage: React.FC = () => {
           </FormControl>
         </Box>
 
-        {/* Üye tablosu */}
         {membersLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
-        ) : filteredMembers.length === 0 ? (
-          <Typography
-            variant="body2"
-            sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}
-          >
-            Üye bulunamadı
-          </Typography>
+        ) : selectedMembers.length === 0 ? (
+          <Box sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 2, p: 2 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+              Henüz üye seçilmedi. Yukarıdaki alandan üye seçebilirsiniz.
+            </Typography>
+          </Box>
         ) : (
-          <>
-            <TableContainer sx={{ maxHeight: 400 }}>
-              <Table size="small" stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        indeterminate={
-                          selectedIds.size > 0 && !allVisibleSelected
-                        }
-                        checked={allVisibleSelected}
-                        onChange={handleToggleAll}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Ad Soyad</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Telefon</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Şube</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Durum</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedMembers.map((member) => {
-                    const hasPhone = !!member.phone;
-                    return (
-                      <TableRow
-                        key={member.id}
-                        hover
-                        onClick={() => hasPhone && handleToggle(member.id)}
-                        sx={{
-                          cursor: hasPhone ? 'pointer' : 'default',
-                          opacity: hasPhone ? 1 : 0.5,
-                        }}
-                      >
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            checked={selectedIds.has(member.id)}
-                            disabled={!hasPhone}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {member.firstName} {member.lastName}
-                        </TableCell>
-                        <TableCell>
-                          {member.phone || (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              Telefon yok
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {member.branch?.name || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={
-                              member.status === 'APPROVED'
-                                ? 'Onaylı'
-                                : member.status === 'PENDING'
-                                  ? 'Beklemede'
-                                  : member.status === 'ACTIVE'
-                                    ? 'Aktif'
-                                    : member.status
-                            }
-                            size="small"
-                            color={
-                              member.status === 'APPROVED' || member.status === 'ACTIVE'
-                                ? 'success'
-                                : member.status === 'PENDING'
-                                  ? 'warning'
-                                  : 'default'
-                            }
-                            variant="outlined"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <TablePagination
-              component="div"
-              count={filteredMembers.length}
-              page={page}
-              onPageChange={(_e, newPage) => setPage(newPage)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              labelRowsPerPage="Sayfa başına:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}-${to} / ${count}`
-              }
-            />
-          </>
+          <Stack spacing={1}>
+            {selectedMembers.map((member) => (
+              <Box
+                key={member.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 1.25,
+                  borderRadius: 1.5,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  backgroundColor: (theme) => theme.palette.background.default,
+                }}
+              >
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {member.firstName} {member.lastName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {member.phone}
+                    {member.registrationNumber ? ` • ${member.registrationNumber}` : ''}
+                    {member.memberGroup?.name ? ` • ${member.memberGroup.name}` : ''}
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => removeSelectedMember(member.id)}
+                >
+                  Kaldır
+                </Button>
+              </Box>
+            ))}
+          </Stack>
         )}
       </Paper>
 
@@ -446,6 +336,64 @@ const WhatsAppBulkPage: React.FC = () => {
             {sendBulk.isPending ? 'Gönderiliyor...' : 'Toplu Gönder'}
           </Button>
         </Box>
+      </Paper>
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          Son Toplu Mesaj Gönderimleri
+        </Typography>
+
+        {bulkHistoryLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : bulkHistory.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            Henüz toplu mesaj geçmişi bulunmuyor.
+          </Typography>
+        ) : (
+          <Stack spacing={1.5}>
+            {bulkHistory.map((item) => (
+              <Box
+                key={item.id}
+                sx={{
+                  p: 1.5,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1.5,
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Gönderen: {item.sentBy ? `${item.sentBy.firstName} ${item.sentBy.lastName}` : 'Bilinmiyor'}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.75 }}>
+                  Tarih: {new Date(item.createdAt).toLocaleString('tr-TR')} • Başarılı: {item.sent} / Toplam: {item.total}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+                  Mesaj: {item.message}
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                  {item.recipients.map((recipient) => (
+                    <Chip
+                      key={`${item.id}-${recipient.memberId}`}
+                      size="small"
+                      label={`${recipient.name} (${recipient.phone})`}
+                      variant="outlined"
+                    />
+                  ))}
+                </Box>
+              </Box>
+            ))}
+          </Stack>
+        )}
       </Paper>
 
       {/* Onay Dialog */}

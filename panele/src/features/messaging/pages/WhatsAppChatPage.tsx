@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Paper, Typography, alpha } from '@mui/material';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import ConversationList from '../components/ConversationList';
 import MessageThread from '../components/MessageThread';
@@ -15,18 +14,18 @@ const WhatsAppChatPage: React.FC = () => {
   const { data: selectedConversation } = useConversation(conversationId || '');
 
   const handleSelect = (id: string) => {
-    navigate(`/messaging/chat/${id}`);
+    navigate(`/whatsapp/chat/${id}`);
     setMobileShowChat(true);
   };
 
   const handleBack = () => {
-    navigate('/messaging/chat');
+    navigate('/whatsapp/chat');
     setMobileShowChat(false);
   };
 
   const handleConversationDeleted = (deletedId: string) => {
     if (conversationId === deletedId) {
-      navigate('/messaging/chat');
+      navigate('/whatsapp/chat');
       setMobileShowChat(false);
     }
   };
@@ -35,8 +34,8 @@ const WhatsAppChatPage: React.FC = () => {
     <Paper
       elevation={0}
       sx={{
-        height: 'calc(100vh - 200px)',
-        minHeight: 500,
+        height: 'calc(100vh - 300px)',
+        minHeight: 420,
         borderRadius: 2,
         border: '1px solid',
         borderColor: 'divider',

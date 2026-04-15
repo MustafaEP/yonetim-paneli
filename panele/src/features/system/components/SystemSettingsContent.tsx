@@ -12,6 +12,7 @@ import ReportsSettingsSection from './ReportsSettingsSection';
 import DashboardSettingsSection from './DashboardSettingsSection';
 import BulkMemberRegistrationPage from '../../members/pages/BulkMemberRegistrationPage';
 import KbsDataSettings from './KbsDataSettings';
+import WhatsAppMessagingSettings from './WhatsAppMessagingSettings';
 
 interface SystemSettingsContentProps {
   loading: boolean;
@@ -76,6 +77,7 @@ const SystemSettingsContent: React.FC<SystemSettingsContentProps> = ({
             />
           )}
           {selectedCategory === 'BULK_REGISTRATION' && <BulkMemberRegistrationPage embedded />}
+          {selectedCategory === 'WHATSAPP_MESSAGING' && <WhatsAppMessagingSettings />}
           {selectedCategory === 'KBS_DATA' && <KbsDataSettings />}
           {selectedCategory === 'DASHBOARD' && (
             <DashboardSettingsSection

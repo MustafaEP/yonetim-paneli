@@ -6,6 +6,7 @@ import { MessageDirection, WhatsAppMessageStatus } from '@prisma/client';
 @Injectable()
 export class WhatsAppChatService {
   private readonly logger = new Logger(WhatsAppChatService.name);
+  private static readonly BULK_HISTORY_ACTION = 'WHATSAPP_BULK_SEND';
 
   constructor(
     private prisma: PrismaService,
@@ -278,6 +279,11 @@ export class WhatsAppChatService {
 
     let sent = 0;
     let failed = 0;
+    const successfulMembers: {
+      memberId: string;
+      name: string;
+      phone: string;
+    }[] = [];
     const failedMembers: {
       memberId: string;
       name: string;
@@ -289,6 +295,11 @@ export class WhatsAppChatService {
       try {
         await this.sendMessageToPhone(member.phone, message, sentById);
         sent++;
+        successfulMembers.push({
+          memberId: member.id,
+          name: `${member.firstName} ${member.lastName}`,
+          phone: member.phone,
+        });
         // Rate limiting: WhatsApp anti-spam koruması (3-5 saniye rastgele)
         const delay = 3000 + Math.random() * 2000;
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -310,7 +321,61 @@ export class WhatsAppChatService {
       `Bulk WhatsApp: ${sent} sent, ${failed} failed out of ${members.length}`,
     );
 
+    await this.prisma.systemLog.create({
+      data: {
+        action: WhatsAppChatService.BULK_HISTORY_ACTION,
+        entityType: 'WHATSAPP_BULK',
+        entityId: null,
+        userId: sentById,
+        details: {
+          message,
+          sent,
+          failed,
+          total: members.length,
+          recipients: successfulMembers,
+          failedMembers,
+        },
+      },
+    });
+
     return { sent, failed, total: members.length, failedMembers };
+  }
+
+  async getRecentBulkMessageHistory(limit = 5) {
+    const logs = await this.prisma.systemLog.findMany({
+      where: { action: WhatsAppChatService.BULK_HISTORY_ACTION },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return logs.map((log) => {
+      const details = (log.details || {}) as any;
+      return {
+        id: log.id,
+        createdAt: log.createdAt,
+        sentBy: log.user
+          ? {
+              id: log.user.id,
+              firstName: log.user.firstName,
+              lastName: log.user.lastName,
+              email: log.user.email,
+            }
+          : null,
+        message: details.message || '',
+        sent: details.sent || 0,
+        failed: details.failed || 0,
+        total: details.total || 0,
+        recipients: Array.isArray(details.recipients) ? details.recipients : [],
+        failedMembers: Array.isArray(details.failedMembers)
+          ? details.failedMembers
+          : [],
+      };
+    });
   }
 
   /**
@@ -521,6 +586,59 @@ export class WhatsAppChatService {
     });
 
     this.logger.log(`Incoming WhatsApp message from ${phone}: ${messageId}`);
+
+    return message;
+  }
+
+  /**
+   * Telefondan gonderilen mesajlari isle (webhook fromMe=true).
+   * API uzerinden gonderilenler zaten DB'de oldugundan whatsappMsgId dedup yapar.
+   */
+  async processOutboundPhoneMessage(data: {
+    remoteJid: string;
+    messageId: string;
+    content: string;
+  }) {
+    const { remoteJid, messageId, content } = data;
+
+    // Dedup: API uzerinden gonderilmisse zaten kaydedilmistir
+    const existing = await this.prisma.whatsAppMessage.findUnique({
+      where: { whatsappMsgId: messageId },
+    });
+    if (existing) return existing;
+
+    const phone = this.isPhoneBasedJid(remoteJid)
+      ? this.extractPhoneFromJid(remoteJid)
+      : '';
+
+    const conversation = await this.findOrCreateConversation(
+      remoteJid,
+      phone || undefined,
+    );
+
+    const message = await this.prisma.whatsAppMessage.create({
+      data: {
+        conversationId: conversation.id,
+        whatsappMsgId: messageId,
+        direction: MessageDirection.OUTBOUND,
+        content,
+        status: WhatsAppMessageStatus.SENT,
+        sentAt: new Date(),
+        // sentById null: telefon uygulamasindan gonderildi, panel kullanicisi degil
+      },
+    });
+
+    await this.prisma.whatsAppConversation.update({
+      where: { id: conversation.id },
+      data: {
+        lastMessage: content,
+        lastMessageAt: new Date(),
+      },
+    });
+
+    this.logger.log(
+      `Outbound phone message saved: ${messageId} -> ${remoteJid}`,
+    );
 
     return message;
   }

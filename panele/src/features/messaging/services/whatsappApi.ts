@@ -7,6 +7,7 @@ import type {
   QrCodeData,
   BulkSendResult,
   MemberFilter,
+  BulkMessageHistoryItem,
 } from '../types/whatsapp.types';
 
 // ─── Baglanti ───
@@ -94,6 +95,11 @@ export const sendBulk = (payload: {
 }) =>
   httpClient
     .post<BulkSendResult>('/whatsapp/send-bulk', payload)
+    .then((r) => r.data);
+
+export const getBulkHistory = (limit = 5) =>
+  httpClient
+    .get<BulkMessageHistoryItem[]>('/whatsapp/bulk-history', { params: { limit } })
     .then((r) => r.data);
 
 // ─── Sablonlar ───
