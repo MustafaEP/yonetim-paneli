@@ -83,11 +83,28 @@ export class WhatsAppService {
       if (existing) {
         const st = existing.status;
 
-        // Zaten QR bekliyor veya çalışıyor - birşey yapma
+        const webhookConfig = {
+          webhooks: [
+            {
+              url: `${process.env.WAHA_WEBHOOK_URL || 'http://localhost:3000'}/whatsapp/webhook`,
+              events: ['message', 'message.any', 'message.ack', 'session.status'],
+            },
+          ],
+        };
+
+        // Zaten QR bekliyor veya çalışıyor → sadece webhook config'ini güncelle
         if (st === 'SCAN_QR_CODE' || st === 'WORKING') {
           this.logger.log(
-            `WAHA session '${this.sessionName}' already active (status: ${st})`,
+            `WAHA session '${this.sessionName}' already active (status: ${st}), updating webhook config`,
           );
+          try {
+            await this.httpClient.put(
+              `/api/sessions/${this.sessionName}`,
+              { config: webhookConfig },
+            );
+          } catch {
+            // Bazı WAHA sürümleri PUT desteklemeyebilir - önemsiz
+          }
           return;
         }
 
@@ -108,12 +125,13 @@ export class WhatsAppService {
           await new Promise((r) => setTimeout(r, 1000));
         }
 
-        // Session'i başlat
+        // Session'i başlat (webhook config ile)
         await this.httpClient.post('/api/sessions/start', {
           name: this.sessionName,
+          config: webhookConfig,
         });
         this.logger.log(
-          `WAHA session '${this.sessionName}' (re)started`,
+          `WAHA session '${this.sessionName}' (re)started with webhook config`,
         );
         return;
       }
@@ -125,7 +143,11 @@ export class WhatsAppService {
           webhooks: [
             {
               url: `${process.env.WAHA_WEBHOOK_URL || 'http://localhost:3000'}/whatsapp/webhook`,
-              events: ['message', 'message.ack', 'session.status'],
+              // message     : sadece gelen mesajlar
+              // message.any : tüm mesajlar (telefondan gönderilen dahil)
+              // message.ack : teslim/okundu durumu
+              // session.status : bağlantı durumu
+              events: ['message', 'message.any', 'message.ack', 'session.status'],
             },
           ],
         },

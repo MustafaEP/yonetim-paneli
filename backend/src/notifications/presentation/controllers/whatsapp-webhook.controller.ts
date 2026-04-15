@@ -43,6 +43,13 @@ export class WhatsAppWebhookController {
     try {
       switch (event) {
         case 'message':
+          // Gelen mesajlar (fromMe=false) + telefondan gönderilenler (fromMe=true)
+          await this.handleIncomingMessage(body);
+          break;
+
+        case 'message.any':
+          // Tüm mesajlar: message.any ile gelen fromMe=true olanları işle,
+          // fromMe=false olanlar 'message' event'inde zaten işlendi → dedup yakalar
           await this.handleIncomingMessage(body);
           break;
 
