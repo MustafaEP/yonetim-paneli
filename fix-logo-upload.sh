@@ -17,7 +17,8 @@ NC='\033[0m'
 # 1. Backend container'da upload klasörlerini oluştur
 echo -e "${YELLOW}[1/4] Backend container'da upload klasörleri oluşturuluyor...${NC}"
 docker compose exec backend mkdir -p uploads/logos uploads/header-paper uploads/documents
-docker compose exec backend chmod -R 755 uploads
+# chmod bind mount üzerinde node ile çoğu zaman EPERM verir; gerekirse host'ta veya:
+# docker compose exec -u root backend chown -R node:node uploads
 echo -e "${GREEN}✅ Upload klasörleri oluşturuldu${NC}"
 
 # 2. Nginx config'ini kontrol et

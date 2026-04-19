@@ -7,8 +7,11 @@ echo "========================================="
 
 # ─── 0. Uploads Klasörlerini Oluştur ───
 echo "[0/3] Uploads klasörleri kontrol ediliyor..."
-mkdir -p uploads/documents uploads/logos uploads/header-paper
-chmod -R 755 uploads
+# Volume’deki dosyalara `node` sahip değilse `chmod -R` EPERM verir; sadece mkdir yeterli.
+mkdir -p uploads/documents uploads/logos uploads/header-paper \
+  uploads/payments uploads/invoices uploads/advances uploads/tevkifat \
+  uploads/staging/documents \
+  uploads/temp/document-previews/files uploads/temp/document-previews/metadata
 echo "✅ Uploads klasörleri hazır"
 
 # ─── 1. Veritabanı Hazırlık Kontrolü ───
