@@ -7,12 +7,20 @@ echo "========================================="
 
 # ─── 0. Uploads Klasörlerini Oluştur ───
 echo "[0/3] Uploads klasörleri kontrol ediliyor..."
-# Volume’deki dosyalara `node` sahip değilse `chmod -R` EPERM verir; sadece mkdir yeterli.
-mkdir -p uploads/documents uploads/logos uploads/header-paper \
+# Volume root’u root/yanlış UID ile ve sadece okunur olabiliyor; tek mkdir hatası set -e ile
+# tüm süreci öldürüyordu — her dizin için mkdir ayrı ve hata yok sayılıyor.
+for d in \
+  uploads/documents uploads/logos uploads/header-paper \
   uploads/payments uploads/invoices uploads/advances uploads/tevkifat \
   uploads/staging/documents \
   uploads/temp/document-previews/files uploads/temp/document-previews/metadata
-echo "✅ Uploads klasörleri hazır"
+do
+  mkdir -p "$d" 2>/dev/null || true
+done
+if [ -d uploads ] && [ ! -w uploads ]; then
+  echo "⚠️  uploads dizinine (node) yazılamıyor — kalıcı çözüm: docker compose exec -u root backend chown -R node:node /app/uploads"
+fi
+echo "✅ Uploads klasörleri kontrol edildi"
 
 # ─── 1. Veritabanı Hazırlık Kontrolü ───
 echo "[1/3] Veritabanı bağlantısı kontrol ediliyor..."
