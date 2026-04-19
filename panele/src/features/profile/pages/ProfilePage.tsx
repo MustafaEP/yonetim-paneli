@@ -15,6 +15,9 @@ import {
   alpha,
   Fade,
   Zoom,
+  Button,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import BadgeIcon from '@mui/icons-material/Badge';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -23,10 +26,12 @@ import EmailIcon from '@mui/icons-material/Email';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import PlaceIcon from '@mui/icons-material/Place';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 import { useAuth } from '../../../app/providers/AuthContext';
 import UserPermissionsSection from '../../users/components/UserPermissionsSection';
 import { getUserScopes } from '../../regions/services/regionsApi';
+import { logoutAllApi } from '../../auth/services/authApi';
 import type { UserScope } from '../../../types/region';
 import type { Role } from '../../../types/user';
 import PageHeader from '../../../shared/components/layout/PageHeader';
@@ -34,10 +39,25 @@ import PageLayout from '../../../shared/components/layout/PageLayout';
 
 const ProfilePage: React.FC = () => {
   const theme = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [scopes, setScopes] = useState<UserScope[]>([]);
   const [loadingScopes, setLoadingScopes] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [logoutAllLoading, setLogoutAllLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
+
+  const handleLogoutAll = async () => {
+    setLogoutAllLoading(true);
+    try {
+      const result = await logoutAllApi();
+      setSnackbar({ open: true, message: result.message, severity: 'success' });
+      setTimeout(() => logout(), 1500);
+    } catch {
+      setSnackbar({ open: true, message: 'Oturumlar kapatılırken hata oluştu', severity: 'error' });
+    } finally {
+      setLogoutAllLoading(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -227,6 +247,22 @@ const ProfilePage: React.FC = () => {
                     </Box>
 
                     <Divider sx={{ width: '100%', mb: 3 }} />
+
+                    {/* Tüm Oturumları Kapat - Sadece Admin */}
+                    {(user.roles as string[])?.includes('ADMIN') && (
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        fullWidth
+                        startIcon={<LogoutIcon />}
+                        onClick={handleLogoutAll}
+                        disabled={logoutAllLoading}
+                        sx={{ mb: 3, borderRadius: 2, fontWeight: 600 }}
+                      >
+                        {logoutAllLoading ? 'Kapatılıyor...' : 'Tüm Oturumları Kapat'}
+                      </Button>
+                    )}
 
                     {/* Roller */}
                     <Box sx={{ width: '100%' }}>
@@ -665,6 +701,17 @@ const ProfilePage: React.FC = () => {
           </Grid>
         </Box>
       </Fade>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </PageLayout>
   );
 };

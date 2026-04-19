@@ -2,13 +2,16 @@ import {
   Controller,
   Post,
   Body,
+  Headers,
   Logger,
   HttpCode,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { Public } from '../../../auth/decorators/public.decorator';
 import { WhatsAppChatService } from '../../services/whatsapp-chat.service';
 import { WhatsAppService } from '../../services/whatsapp.service';
+import { ConfigService } from '../../../config/config.service';
 import { WhatsAppMessageStatus } from '@prisma/client';
 
 @ApiTags('WhatsApp Webhook')
@@ -19,6 +22,7 @@ export class WhatsAppWebhookController {
   constructor(
     private readonly chatService: WhatsAppChatService,
     private readonly whatsAppService: WhatsAppService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -29,7 +33,20 @@ export class WhatsAppWebhookController {
   @Public()
   @HttpCode(200)
   @ApiExcludeEndpoint()
-  async handleWebhook(@Body() body: any) {
+  async handleWebhook(
+    @Headers('x-webhook-secret') secretHeader: string | undefined,
+    @Body() body: any,
+  ) {
+    const expectedSecret = this.configService.wahaWebhookSecret;
+    if (expectedSecret) {
+      if (!secretHeader || secretHeader !== expectedSecret) {
+        this.logger.warn(
+          `Webhook rejected: invalid or missing X-Webhook-Secret header`,
+        );
+        throw new UnauthorizedException('Invalid webhook secret');
+      }
+    }
+
     const event = body?.event;
 
     this.logger.debug(

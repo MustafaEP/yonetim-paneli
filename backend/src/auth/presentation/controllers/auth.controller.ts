@@ -1,7 +1,7 @@
 /**
  * Auth Controller (Presentation Layer)
  */
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Post, Req, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -144,6 +144,26 @@ export class AuthController {
     const ipAddress = this.getIpAddress(request);
     const userAgent = request.headers['user-agent'] || 'unknown';
     return this.authApplicationService.logout(
+      user.userId,
+      ipAddress,
+      userAgent,
+    );
+  }
+
+  @Post('logout-all')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Tüm oturumları kapat',
+    description: 'Kullanıcının tüm aktif oturumlarını (refresh tokenlarını) geçersiz kılar',
+  })
+  @ApiResponse({ status: 200, description: 'Tüm oturumlar kapatıldı' })
+  async logoutAll(@CurrentUser() user: CurrentUserData, @Req() request: Request) {
+    if (!user.roles?.includes('ADMIN')) {
+      throw new ForbiddenException('Bu işlem için yönetici yetkisi gereklidir');
+    }
+    const ipAddress = this.getIpAddress(request);
+    const userAgent = request.headers['user-agent'] || 'unknown';
+    return this.authApplicationService.logoutAll(
       user.userId,
       ipAddress,
       userAgent,

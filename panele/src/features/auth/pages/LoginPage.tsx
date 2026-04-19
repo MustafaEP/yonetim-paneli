@@ -22,10 +22,7 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import LoginIcon from '@mui/icons-material/Login';
 import SecurityIcon from '@mui/icons-material/Security';
-import InfoIcon from '@mui/icons-material/Info';
-import PersonIcon from '@mui/icons-material/Person';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckIcon from '@mui/icons-material/Check';
+import BugReportIcon from '@mui/icons-material/BugReport';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../app/providers/AuthContext';
 import { getPublicSystemInfo } from '../../system/services/systemApi';
@@ -33,29 +30,6 @@ import { useDocumentHead } from '../../../shared/hooks/useDocumentHead';
 import { getApiErrorMessage } from '../../../shared/utils/errorUtils';
 import { DEFAULT_LOGO_PATH } from '../../../shared/constants/defaultLogo';
 
-// Güvenli clipboard kopyalama fonksiyonu
-const copyToClipboard = async (text: string): Promise<boolean> => {
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } else {
-      // Fallback: Eski tarayıcılar için
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      document.body.appendChild(textArea);
-      textArea.select();
-      const success = document.execCommand('copy');
-      document.body.removeChild(textArea);
-      return success;
-    }
-  } catch (error) {
-    console.error('Clipboard kopyalama hatası:', error);
-    return false;
-  }
-};
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -75,7 +49,6 @@ const LoginPage: React.FC = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedField, setCopiedField] = useState<'email-admin' | null>(null);
 
   // Public sistem bilgilerini yükle
   useEffect(() => {
@@ -147,16 +120,16 @@ const LoginPage: React.FC = () => {
     await doLogin(email, password);
   };
 
-  const handleQuickLoginAdmin = async () => {
-    const quickEmail = 'admin@sendika.local';
-    const quickPassword = '123456';
-    setEmail(quickEmail);
-    setPassword(quickPassword);
-    await copyToClipboard(quickEmail);
-    setCopiedField('email-admin');
-    setTimeout(() => setCopiedField(null), 2000);
-    await doLogin(quickEmail, quickPassword);
-  };
+  // Yalnızca geliştirme ortamında kullanılabilir
+  const handleQuickLoginAdmin = import.meta.env.DEV
+    ? async () => {
+        const quickEmail = import.meta.env.VITE_DEV_ADMIN_EMAIL || 'admin@sendika.local';
+        const quickPassword = import.meta.env.VITE_DEV_ADMIN_PASSWORD || '123456';
+        setEmail(quickEmail);
+        setPassword(quickPassword);
+        await doLogin(quickEmail, quickPassword);
+      }
+    : null;
 
   return (
     <Box
@@ -512,6 +485,36 @@ const LoginPage: React.FC = () => {
             Güvenli bağlantı ile korunmaktadır
           </Typography>
         </Box>
+
+        {/* DEV ONLY — Geliştirme ortamında hızlı giriş */}
+        {import.meta.env.DEV && handleQuickLoginAdmin && (
+          <Box
+            sx={{
+              mt: 2,
+              p: 1.5,
+              borderRadius: 2,
+              border: '1px dashed',
+              borderColor: 'warning.main',
+              backgroundColor: alpha(theme.palette.warning.main, 0.05),
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="caption" sx={{ color: 'warning.dark', display: 'block', mb: 1, fontWeight: 600 }}>
+              <BugReportIcon sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.5 }} />
+              Geliştirme Modu — Bu alan üretimde görünmez
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              color="warning"
+              onClick={handleQuickLoginAdmin}
+              disabled={submitting}
+              sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+            >
+              Admin olarak hızlı giriş yap
+            </Button>
+          </Box>
+        )}
       </Container>
     </Box>
   );

@@ -75,13 +75,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const initRef = useRef(false);
 
-  // ─── Oturumu temizle (state + localStorage) ───
+  // ─── Oturumu temizle (state + sessionStorage) ───
   const clearSession = useCallback(() => {
     setAccessToken(null);
     setUser(null);
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
   }, []);
 
   const fetchCurrentUserProfile = useCallback(async (): Promise<BackendUser | null> => {
@@ -105,15 +105,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // ─── İlk yükleme: localStorage'daki token'ları doğrula ───
+  // ─── İlk yükleme: sessionStorage'daki token'ları doğrula ───
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
 
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('accessToken');
-      const storedUser = localStorage.getItem('user');
-      const storedRefreshToken = localStorage.getItem('refreshToken');
+      const storedToken = sessionStorage.getItem('accessToken');
+      const storedUser = sessionStorage.getItem('user');
+      const storedRefreshToken = sessionStorage.getItem('refreshToken');
 
       // Token yoksa → giriş yok
       if (!storedToken || !storedUser) {
@@ -138,9 +138,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               headers: { 'Content-Type': 'application/json' },
             });
 
-            localStorage.setItem('accessToken', data.accessToken);
+            sessionStorage.setItem('accessToken', data.accessToken);
             if (data.refreshToken) {
-              localStorage.setItem('refreshToken', data.refreshToken);
+              sessionStorage.setItem('refreshToken', data.refreshToken);
             }
             if (data.user) {
               const refreshedUser: BackendUser = {
@@ -151,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 roles: (data.user.roles ?? []) as Role[],
                 permissions: data.user.permissions ?? [],
               };
-              localStorage.setItem('user', JSON.stringify(refreshedUser));
+              sessionStorage.setItem('user', JSON.stringify(refreshedUser));
               setUser(refreshedUser);
             } else {
               try {
@@ -212,7 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           permissions: data.permissions ?? profile?.permissions ?? parsedUser.permissions,
         };
         setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
       } catch {
         // /auth/me 401 döndüyse interceptor refresh deneyecek
         // Eğer o da başarısız olursa clearAuthAndRedirect çalışacak
@@ -228,8 +228,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ─── httpClient'tan gelen senkronizasyon event'lerini dinle ───
   useEffect(() => {
     const handleTokensUpdated = () => {
-      const newToken = localStorage.getItem('accessToken');
-      const newUser = localStorage.getItem('user');
+      const newToken = sessionStorage.getItem('accessToken');
+      const newUser = sessionStorage.getItem('user');
       if (newToken) {
         setAccessToken(newToken);
       }
@@ -282,16 +282,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setAccessToken(data.accessToken);
     setUser(mergedUser);
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('user', JSON.stringify(mergedUser));
+    sessionStorage.setItem('accessToken', data.accessToken);
+    sessionStorage.setItem('user', JSON.stringify(mergedUser));
     if (data.refreshToken) {
-      localStorage.setItem('refreshToken', data.refreshToken);
+      sessionStorage.setItem('refreshToken', data.refreshToken);
     }
   };
 
   const logout = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = sessionStorage.getItem('accessToken');
       if (token) {
         try {
           await logoutApi();

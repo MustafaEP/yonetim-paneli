@@ -23,6 +23,8 @@ import type { MemberMembershipPeriodRepository } from '../../domain/repositories
 import { MemberHistoryService } from '../../member-history.service';
 import { DocumentsService } from '../../../documents/documents.service';
 import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
+import { SmsTemplateService } from '../../../notifications/services/sms-template.service';
+import { EmailTemplateService } from '../../../notifications/services/email-template.service';
 import {
   MemberNotFoundException,
   MemberCannotBeApprovedException,
@@ -66,6 +68,8 @@ export class MemberApprovalApplicationService {
     private readonly memberHistoryService: MemberHistoryService,
     private readonly documentsService: DocumentsService,
     private readonly whatsAppTemplateService: WhatsAppTemplateService,
+    private readonly smsTemplateService: SmsTemplateService,
+    private readonly emailTemplateService: EmailTemplateService,
   ) {}
 
   /**
@@ -154,7 +158,7 @@ export class MemberApprovalApplicationService {
         }
       }
 
-      // 7. WhatsApp otomatik şablon gönderimi (non-blocking)
+      // 7. Otomatik şablon gönderimi - WhatsApp, SMS, Email (non-blocking)
       try {
         await this.whatsAppTemplateService.triggerAutoSend(
           'MEMBER_APPROVED',
@@ -164,6 +168,30 @@ export class MemberApprovalApplicationService {
       } catch (err: any) {
         this.logger.warn(
           `Üye ${member.id} onay WhatsApp şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      try {
+        await this.smsTemplateService.triggerAutoSend(
+          'MEMBER_APPROVED',
+          member.id,
+          command.approvedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} onay SMS şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      try {
+        await this.emailTemplateService.triggerAutoSend(
+          'MEMBER_APPROVED',
+          member.id,
+          command.approvedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} onay e-posta şablonu gönderilemedi: ${err.message}`,
         );
       }
 

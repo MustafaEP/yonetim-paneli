@@ -20,6 +20,8 @@ import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
+import { SmsTemplateService } from '../../../notifications/services/sms-template.service';
+import { EmailTemplateService } from '../../../notifications/services/email-template.service';
 import {
   MemberNotFoundException,
   MemberCannotBeActivatedException,
@@ -42,6 +44,8 @@ export class MemberActivationApplicationService {
     private readonly memberRepository: MemberRepository,
     private readonly memberHistoryService: MemberHistoryService,
     private readonly whatsAppTemplateService: WhatsAppTemplateService,
+    private readonly smsTemplateService: SmsTemplateService,
+    private readonly emailTemplateService: EmailTemplateService,
   ) {}
 
   /**
@@ -82,7 +86,7 @@ export class MemberActivationApplicationService {
         command.userAgent,
       );
 
-      // WhatsApp otomatik şablon gönderimi (non-blocking)
+      // Otomatik şablon gönderimi - WhatsApp, SMS, Email (non-blocking)
       try {
         await this.whatsAppTemplateService.triggerAutoSend(
           'MEMBER_ACTIVATED',
@@ -92,6 +96,30 @@ export class MemberActivationApplicationService {
       } catch (err: any) {
         this.logger.warn(
           `Üye ${member.id} aktifleştirme WhatsApp şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      try {
+        await this.smsTemplateService.triggerAutoSend(
+          'MEMBER_ACTIVATED',
+          member.id,
+          command.activatedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} aktifleştirme SMS şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      try {
+        await this.emailTemplateService.triggerAutoSend(
+          'MEMBER_ACTIVATED',
+          member.id,
+          command.activatedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} aktifleştirme e-posta şablonu gönderilemedi: ${err.message}`,
         );
       }
 

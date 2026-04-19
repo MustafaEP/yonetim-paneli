@@ -7,6 +7,7 @@ import NotFoundPage from './NotFoundPage';
 
 import LoginPage from '../../features/auth/pages/LoginPage';
 import MembershipInquiryPage from '../../features/members/pages/MembershipInquiryPage';
+import LegalPage from '../../features/legal/pages/LegalPage';
 import DashboardPage from '../../features/dashboard/pages/DashboardPage';
 import MembersListPage from '../../features/members/pages/MembersListPage';
 import MembersByStatusPage from '../../features/members/pages/MembersByStatusPage';
@@ -54,11 +55,16 @@ import WhatsAppChatPage from '../../features/messaging/pages/WhatsAppChatPage';
 import AutoMessagingTemplatesPage from '../../features/messaging/pages/AutoMessagingTemplatesPage';
 import WhatsAppBulkMessagesPage from '../../features/messaging/pages/WhatsAppBulkMessagesPage';
 import KepPage from '../../features/kep/pages/KepPage';
+import SmsBulkMessagesPage from '../../features/messaging/pages/SmsBulkMessagesPage';
+import SmsTemplatesMessagesPage from '../../features/messaging/pages/SmsTemplatesMessagesPage';
+import EmailBulkMessagesPage from '../../features/messaging/pages/EmailBulkMessagesPage';
+import EmailTemplatesMessagesPage from '../../features/messaging/pages/EmailTemplatesMessagesPage';
 
 const AppRoutes: React.FC = () => (
   <Routes>
     <Route path="/login" element={<LoginPage />} />
     <Route path="/uyelik-sorgula" element={<MembershipInquiryPage />} />
+    <Route path="/legal/:page" element={<LegalPage />} />
 
     <Route element={<ProtectedRoute />}>
       <Route element={<MainLayout />}>
@@ -202,6 +208,13 @@ const AppRoutes: React.FC = () => (
         </Route>
         <Route path="/kep" element={<KepPage />} />
 
+        <Route element={<ProtectedRoute requiredPermission="NOTIFY_ALL_MEMBERS" />}>
+          <Route path="/sms/bulk" element={<SmsBulkMessagesPage />} />
+          <Route path="/sms/templates" element={<SmsTemplatesMessagesPage />} />
+          <Route path="/email/bulk" element={<EmailBulkMessagesPage />} />
+          <Route path="/email/templates" element={<EmailTemplatesMessagesPage />} />
+        </Route>
+
         <Route element={<ProtectedRoute requiredPermission="SYSTEM_SETTINGS_VIEW" />}>
           <Route path="/system/settings" element={<SystemSettingsPage />} />
           <Route path="/system/settings/user" element={<SystemSettingsPage />} />
@@ -211,7 +224,10 @@ const AppRoutes: React.FC = () => (
           <Route path="/system/settings/audit" element={<SystemSettingsPage />} />
           <Route path="/system/settings/maintenance" element={<SystemSettingsPage />} />
           <Route path="/system/settings/bulk-registration" element={<SystemSettingsPage />} />
-          <Route path="/system/settings/whatsapp-messaging" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/messaging" element={<SystemSettingsPage />} />
+          <Route path="/system/settings/whatsapp-messaging" element={<Navigate to="/system/settings/messaging" replace />} />
+          <Route path="/system/settings/sms-messaging" element={<Navigate to="/system/settings/messaging" replace />} />
+          <Route path="/system/settings/email-messaging" element={<Navigate to="/system/settings/messaging" replace />} />
           <Route path="/system/settings/kbs" element={<SystemSettingsPage />} />
         </Route>
 

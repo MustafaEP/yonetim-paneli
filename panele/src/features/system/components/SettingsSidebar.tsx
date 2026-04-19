@@ -18,13 +18,13 @@ import HistoryIcon from '@mui/icons-material/History';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import ForumIcon from '@mui/icons-material/Forum';
 
 export type SettingsCategory =
   | 'GENERAL'
   | 'MEMBERSHIP'
   | 'BULK_REGISTRATION'
-  | 'WHATSAPP_MESSAGING'
+  | 'MESSAGING'
   | 'KBS_DATA'
   | 'DASHBOARD'
   | 'REPORTS'
@@ -64,10 +64,10 @@ const categories: CategoryItem[] = [
     description: 'CSV ile toplu üye kaydı',
   },
   {
-    id: 'WHATSAPP_MESSAGING',
-    label: 'WhatsApp Mesajlaşma',
-    icon: <WhatsAppIcon />,
-    description: 'Bağlantı ve QR ayarları',
+    id: 'MESSAGING',
+    label: 'Mesajlaşma',
+    icon: <ForumIcon />,
+    description: 'WhatsApp, SMS, E-posta',
   },
   {
     id: 'KBS_DATA',

@@ -1274,3 +1274,36 @@ model WhatsAppTemplate {
   @@index([triggerEvent])
   @@index([isActive])
 }
+
+model SmsTemplate {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique
+  content      String   @db.Text
+  description  String?
+  isActive     Boolean  @default(true)
+  triggerEvent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model EmailTemplate {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique
+  subject      String
+  content      String   @db.Text
+  description  String?
+  isActive     Boolean  @default(true)
+  triggerEvent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+}

@@ -192,7 +192,7 @@ export const uploadPaymentDocument = async (
 
 /** Kesinti PDF’ini uygulama içi PDF.js önizleyicide göstermek için blob alır */
 export const fetchPaymentDocumentBlob = async (paymentId: string): Promise<Blob> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/payments/${paymentId}/document/view`;
 
@@ -213,7 +213,7 @@ export const fetchPaymentDocumentBlob = async (paymentId: string): Promise<Blob>
 
 // 🔹 Kesinti belgesi indir
 export const downloadPaymentDocument = async (paymentId: string, fileName?: string): Promise<void> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/payments/${paymentId}/document/download`;
   

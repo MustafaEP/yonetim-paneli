@@ -16,3 +16,8 @@ export const logoutApi = async (): Promise<{ message: string }> => {
   const response = await httpClient.post<{ message: string }>('/auth/logout');
   return response.data;
 };
+
+export const logoutAllApi = async (): Promise<{ message: string; revokedCount: number }> => {
+  const response = await httpClient.post<{ message: string; revokedCount: number }>('/auth/logout-all');
+  return response.data;
+};

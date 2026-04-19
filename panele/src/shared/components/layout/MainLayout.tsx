@@ -13,7 +13,7 @@ import {
   useMediaQuery,
   CircularProgress,
 } from '@mui/material';
-import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, Link, useNavigate, Link as RouterLink } from 'react-router-dom';
 import Sidebar, { drawerWidth } from './Sidebar';
 import ProfileMenu from './ProfileMenu';
 import NotificationCenter from '../../../features/notifications/components/NotificationCenter';
@@ -485,43 +485,81 @@ const MainLayout: React.FC = () => {
             >
               {footerText}
             </Typography>
-            <Box 
-              sx={{ 
-                display: 'flex', 
+            <Box
+              sx={{
+                display: 'flex',
                 flexWrap: 'wrap',
+                alignItems: 'center',
                 gap: { xs: 2, sm: 3 },
               }}
             >
-              <Typography
-                variant="body2"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  whiteSpace: 'nowrap',
-                }}
+              <MuiLink
+                component={RouterLink}
+                to="/legal/aydinlatma"
+                underline="hover"
+                sx={{ color: theme.palette.text.secondary, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+              >
+                Aydınlatma Metni
+              </MuiLink>
+              <MuiLink
+                component={RouterLink}
+                to="/legal/gizlilik"
+                underline="hover"
+                sx={{ color: theme.palette.text.secondary, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
               >
                 Gizlilik
-              </Typography>
-              <Typography
-                variant="body2"
+              </MuiLink>
+              <MuiLink
+                component={RouterLink}
+                to="/legal/kullanim"
+                underline="hover"
+                sx={{ color: theme.palette.text.secondary, fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+              >
+                Kullanım Koşulları
+              </MuiLink>
+
+              {/* MEP Credit */}
+              <Box
+                component="a"
+                href="https://mustafaerhanportakal.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Mustafa Erhan Portakal"
                 sx={{
-                  color: theme.palette.text.secondary,
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  textDecoration: 'none',
+                  opacity: 0.35,
+                  transition: 'opacity 0.2s',
+                  '&:hover': { opacity: 0.7 },
+                  ml: { xs: 0, sm: 1 },
                 }}
               >
-                Koşullar
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Destek
-              </Typography>
+                <Box
+                  component="img"
+                  src="/mep-logo.svg"
+                  alt="MEP"
+                  sx={{ height: 16, width: 'auto', display: 'block' }}
+                  onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'inline';
+                  }}
+                />
+                <Typography
+                  sx={{
+                    display: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    color: theme.palette.text.secondary,
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  MEP
+                </Typography>
+              </Box>
             </Box>
           </Box>
         </Box>

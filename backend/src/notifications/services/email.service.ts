@@ -21,16 +21,10 @@ export class EmailService {
 
   private initializeClient() {
     try {
-      // Önce sistem ayarlarından oku, yoksa environment variable'lardan
-      const accessKeyId =
-        this.configService.getSystemSetting('EMAIL_AWS_ACCESS_KEY_ID') ||
-        this.configService.awsSesAccessKeyId;
-      const secretAccessKey =
-        this.configService.getSystemSetting('EMAIL_AWS_SECRET_ACCESS_KEY') ||
-        this.configService.awsSesSecretAccessKey;
-      const region =
-        this.configService.getSystemSetting('EMAIL_AWS_REGION') ||
-        this.configService.awsSesRegion;
+      // Güvenlik: AWS SES sırları yalnızca .env üzerinden okunur, DB'de tutulmaz.
+      const accessKeyId = this.configService.awsSesAccessKeyId;
+      const secretAccessKey = this.configService.awsSesSecretAccessKey;
+      const region = this.configService.awsSesRegion;
 
       if (!accessKeyId || !secretAccessKey) {
         this.logger.warn(
@@ -48,9 +42,7 @@ export class EmailService {
       }
 
       this.fromEmail =
-        this.configService.getSystemSetting('EMAIL_FROM_ADDRESS') ||
-        this.configService.awsSesFromEmail ||
-        'noreply@example.com';
+        this.configService.awsSesFromEmail || 'noreply@example.com';
     } catch (error) {
       this.logger.error('Error initializing email client:', error);
       this.sesClient = undefined;

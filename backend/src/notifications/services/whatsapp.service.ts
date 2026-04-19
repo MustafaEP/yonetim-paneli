@@ -83,11 +83,15 @@ export class WhatsAppService {
       if (existing) {
         const st = existing.status;
 
+        const webhookSecret = this.configService.wahaWebhookSecret;
         const webhookConfig = {
           webhooks: [
             {
               url: `${process.env.WAHA_WEBHOOK_URL || 'http://localhost:3000'}/whatsapp/webhook`,
               events: ['message', 'message.any', 'message.ack', 'session.status'],
+              ...(webhookSecret
+                ? { customHeaders: [{ name: 'X-Webhook-Secret', value: webhookSecret }] }
+                : {}),
             },
           ],
         };
@@ -137,17 +141,17 @@ export class WhatsAppService {
       }
 
       // Yeni session olustur
+      const newWebhookSecret = this.configService.wahaWebhookSecret;
       await this.httpClient.post('/api/sessions/start', {
         name: this.sessionName,
         config: {
           webhooks: [
             {
               url: `${process.env.WAHA_WEBHOOK_URL || 'http://localhost:3000'}/whatsapp/webhook`,
-              // message     : sadece gelen mesajlar
-              // message.any : tüm mesajlar (telefondan gönderilen dahil)
-              // message.ack : teslim/okundu durumu
-              // session.status : bağlantı durumu
               events: ['message', 'message.any', 'message.ack', 'session.status'],
+              ...(newWebhookSecret
+                ? { customHeaders: [{ name: 'X-Webhook-Secret', value: newWebhookSecret }] }
+                : {}),
             },
           ],
         },

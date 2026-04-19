@@ -94,17 +94,20 @@ RUN ls -la /app/dist/ || (echo "dist directory not found in production stage" &&
 
 # Create uploads directory with all necessary subdirectories
 RUN mkdir -p uploads/documents uploads/logos uploads/header-paper && \
+    chown -R node:node /app && \
     chmod -R 755 uploads
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Non-root user for security
+USER node
+
 EXPOSE 3000
 
-# Health check - root endpoint kullanıyoruz çünkü /health 404 dönüyor
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
 # Start script that runs migrations and starts the app
 COPY docker-entrypoint.sh ./

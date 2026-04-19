@@ -7,6 +7,7 @@ import {
   Inject,
   forwardRef,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { UsersService } from '../users/users.service';
@@ -23,6 +24,7 @@ import { SystemService } from '../system/system.service';
 import { TokenService } from './infrastructure/services/token.service';
 import { PasswordService } from './infrastructure/services/password.service';
 import { AuthBruteForceService } from './infrastructure/services/auth-brute-force.service';
+import { EmailService } from '../notifications/services/email.service';
 import type { AccessPayload } from './domain/types/token-payload.types';
 
 /** signAccess type'ı otomatik ekler; buildUserPayload type olmadan döner */
@@ -74,6 +76,8 @@ export class AuthService {
     private configService: ConfigService,
     @Inject(forwardRef(() => SystemService))
     private systemService: SystemService,
+    @Optional() @Inject(forwardRef(() => EmailService))
+    private emailService: EmailService,
   ) {}
 
   private hashRefreshToken(token: string): string {
@@ -94,6 +98,60 @@ export class AuthService {
     this.logger.log(
       `Login success | userId=${userId} | ip=${ipAddress ?? 'unknown'}`,
     );
+  }
+
+  private async recordLoginAndCheckSuspicious(
+    user: User,
+    ipAddress?: string,
+  ): Promise<void> {
+    try {
+      if (!this.systemService) return;
+
+      // Son başarılı giriş kaydını bul (mevcut girişten önceki)
+      const lastLogin = await this.prisma.systemLog.findFirst({
+        where: { userId: user.id, action: 'LOGIN' },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Yeni giriş olayını kaydet
+      await this.systemService.createLog({
+        action: 'LOGIN',
+        entityType: 'AUTH',
+        userId: user.id,
+        details: { success: true },
+        ipAddress,
+      });
+
+      // Önceki giriş varsa ve IP farklıysa uyarı e-postası gönder
+      if (
+        lastLogin?.ipAddress &&
+        ipAddress &&
+        lastLogin.ipAddress !== ipAddress &&
+        user.email &&
+        this.emailService
+      ) {
+        const loginTime = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+        await this.emailService.sendEmail({
+          to: user.email,
+          subject: 'Yeni bir konumdan giriş yapıldı',
+          html: `
+            <h2>Güvenlik Bildirimi</h2>
+            <p>Hesabınıza yeni bir IP adresinden giriş yapıldı.</p>
+            <ul>
+              <li><strong>Yeni IP:</strong> ${ipAddress}</li>
+              <li><strong>Önceki IP:</strong> ${lastLogin.ipAddress}</li>
+              <li><strong>Zaman:</strong> ${loginTime}</li>
+            </ul>
+            <p>Bu giriş size ait değilse lütfen şifrenizi hemen değiştirin ve tüm oturumları kapatın.</p>
+          `,
+        });
+        this.logger.warn(
+          `Suspicious login: userId=${user.id} previous_ip=${lastLogin.ipAddress} new_ip=${ipAddress}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error('Login kaydı oluşturulurken hata:', error);
+    }
   }
 
   private logRefresh(userId: string): void {
@@ -204,6 +262,7 @@ export class AuthService {
       const result = await this.createSession(validatedUser as UserWithRoles);
       await this.bruteForceService.recordSuccess(meta?.ipAddress ?? '');
       this.logLoginSuccess(result.user.id, meta?.ipAddress);
+      void this.recordLoginAndCheckSuspicious(validatedUser, meta?.ipAddress);
       return result;
     }
 
@@ -218,6 +277,7 @@ export class AuthService {
     const result = await this.createSession(user as UserWithRoles);
     await this.bruteForceService.recordSuccess(meta?.ipAddress ?? '');
     this.logLoginSuccess(result.user.id, meta?.ipAddress);
+    void this.recordLoginAndCheckSuspicious(user, meta?.ipAddress);
     return result;
   }
 
@@ -309,5 +369,27 @@ export class AuthService {
       console.error('Logout log kaydı oluşturulamadı:', error);
     }
     return { message: 'Logout başarılı' };
+  }
+
+  async logoutAll(userId: string, ipAddress?: string, userAgent?: string) {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    try {
+      if (this.systemService) {
+        await this.systemService.createLog({
+          action: 'LOGOUT_ALL',
+          entityType: 'AUTH',
+          userId,
+          details: { revokedCount: result.count },
+          ipAddress,
+          userAgent,
+        });
+      }
+    } catch (error) {
+      this.logger.error('Logout-all log kaydı oluşturulamadı:', error);
+    }
+    return { message: 'Tüm oturumlar kapatıldı', revokedCount: result.count };
   }
 }

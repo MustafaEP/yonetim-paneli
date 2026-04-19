@@ -14,6 +14,7 @@ import { PasswordService } from './infrastructure/services/password.service';
 import { AuthBruteForceService } from './infrastructure/services/auth-brute-force.service';
 import { AuthRateLimitGuard } from './guards/auth-rate-limit.guard';
 import { RedisModule } from '../redis/redis.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RedisModule } from '../redis/redis.module';
     ConfigModule,
     RedisModule,
     forwardRef(() => SystemModule),
+    forwardRef(() => NotificationsModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (jwtConfigService: JwtConfigService) =>

@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  BadRequestException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -10,6 +11,31 @@ import { CreateSystemSettingDto, UpdateSystemSettingDto } from './dto';
 import { SystemSettingCategory } from '@prisma/client';
 import { MemberScopeService } from '../members/member-scope.service';
 import type { CurrentUserData } from '../auth/decorators/current-user.decorator';
+
+// Bu anahtarlar .env üzerinden yönetilir. DB'de tutulmaz, API üzerinden okunmaz/yazılmaz.
+const SENSITIVE_SETTING_KEYS = new Set<string>([
+  'SMS_NETGSM_USERNAME',
+  'SMS_NETGSM_PASSWORD',
+  'SMS_NETGSM_MSG_HEADER',
+  'SMS_NETGSM_API_URL',
+  'EMAIL_AWS_ACCESS_KEY_ID',
+  'EMAIL_AWS_SECRET_ACCESS_KEY',
+  'EMAIL_AWS_REGION',
+  'EMAIL_FROM_ADDRESS',
+]);
+
+function isSensitiveKey(key: string): boolean {
+  return SENSITIVE_SETTING_KEYS.has(key);
+}
+
+function stripSensitive<T extends { key: string; value: string | null }>(
+  setting: T,
+): T {
+  if (isSensitiveKey(setting.key)) {
+    return { ...setting, value: '' };
+  }
+  return setting;
+}
 
 @Injectable()
 export class SystemService {
@@ -35,10 +61,12 @@ export class SystemService {
 
   // System Settings
   async getSettings(category?: SystemSettingCategory) {
-    return this.prisma.systemSetting.findMany({
+    const settings = await this.prisma.systemSetting.findMany({
       where: category ? { category } : undefined,
       orderBy: { category: 'asc' },
     });
+    // Hassas ayarların değerini asla dışarı sızdırma
+    return settings.map(stripSensitive);
   }
 
   async getSetting(key: string) {
@@ -50,10 +78,16 @@ export class SystemService {
       throw new NotFoundException('Ayar bulunamadı');
     }
 
-    return setting;
+    return stripSensitive(setting);
   }
 
   async createSetting(dto: CreateSystemSettingDto, userId: string) {
+    if (isSensitiveKey(dto.key)) {
+      throw new BadRequestException(
+        'Bu ayar .env dosyası üzerinden yönetilir, sistem ayarlarından değiştirilemez.',
+      );
+    }
+
     const created = await this.prisma.systemSetting.create({
       data: {
         ...dto,
@@ -72,6 +106,12 @@ export class SystemService {
     dto: UpdateSystemSettingDto,
     userId: string,
   ) {
+    if (isSensitiveKey(key)) {
+      throw new BadRequestException(
+        'Bu ayar .env dosyası üzerinden yönetilir, sistem ayarlarından değiştirilemez.',
+      );
+    }
+
     // Önce ayarın var olup olmadığını kontrol et
     const existingSetting = await this.prisma.systemSetting.findUnique({
       where: { key },

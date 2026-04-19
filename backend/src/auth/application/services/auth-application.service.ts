@@ -42,4 +42,12 @@ export class AuthApplicationService {
   ): Promise<{ message: string }> {
     return this.authService.logout(userId, ipAddress, userAgent);
   }
+
+  async logoutAll(
+    userId: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<{ message: string; revokedCount: number }> {
+    return this.authService.logoutAll(userId, ipAddress, userAgent);
+  }
 }

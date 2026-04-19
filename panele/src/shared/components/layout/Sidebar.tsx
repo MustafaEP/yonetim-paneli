@@ -39,6 +39,8 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import HistoryIcon from '@mui/icons-material/History';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
+import SmsIcon from '@mui/icons-material/Sms';
+import EmailIcon from '@mui/icons-material/Email';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -811,7 +813,113 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onDrawerToggle, d
         </List>
       )}
 
-      {/* 8.6. KEP Sistemi */}
+      {/* 8.6. SMS */}
+      {showMessaging && (
+        <List sx={{ px: 1 }}>
+          <ListItemButton
+            onClick={() => handleSectionToggle('sms')}
+            sx={getNavItemSx(theme)}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <SmsIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="SMS"
+              primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+            />
+            {openSection === 'sms' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </ListItemButton>
+          <Collapse in={openSection === 'sms'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              <ListItemButton
+                component={Link}
+                to="/sms/bulk"
+                selected={location.pathname.startsWith('/sms/bulk')}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <CloudDownloadIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Toplu Mesaj"
+                  primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                component={Link}
+                to="/sms/templates"
+                selected={location.pathname.startsWith('/sms/templates')}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <AutoAwesomeIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Şablonlar"
+                  primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+                />
+              </ListItemButton>
+            </List>
+          </Collapse>
+        </List>
+      )}
+
+      {/* 8.7. Email */}
+      {showMessaging && (
+        <List sx={{ px: 1 }}>
+          <ListItemButton
+            onClick={() => handleSectionToggle('email')}
+            sx={getNavItemSx(theme)}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <EmailIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="E-posta"
+              primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+            />
+            {openSection === 'email' ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </ListItemButton>
+          <Collapse in={openSection === 'email'} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 4 }}>
+              <ListItemButton
+                component={Link}
+                to="/email/bulk"
+                selected={location.pathname.startsWith('/email/bulk')}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <CloudDownloadIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Toplu E-posta"
+                  primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                component={Link}
+                to="/email/templates"
+                selected={location.pathname.startsWith('/email/templates')}
+                onClick={handleLinkClick}
+                sx={getNavItemSx(theme)}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <AutoAwesomeIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Şablonlar"
+                  primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+                />
+              </ListItemButton>
+            </List>
+          </Collapse>
+        </List>
+      )}
+
+      {/* 8.8. KEP Sistemi */}
       {showNotifications && (
         <List sx={{ px: 1 }}>
           <ListItemButton

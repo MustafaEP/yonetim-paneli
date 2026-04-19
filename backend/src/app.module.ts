@@ -22,6 +22,7 @@ import { MemberGroupsModule } from './member-groups/member-groups.module';
 import { PanelUserApplicationsModule } from './panel-user-applications/panel-user-applications.module';
 import { ImportsModule } from './imports/imports.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { HealthModule } from './health/health.module';
 import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -47,6 +48,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     ProfessionsModule,
     MemberGroupsModule,
     PanelUserApplicationsModule,
+    HealthModule,
   ],
   providers: [
     // 1. JWT

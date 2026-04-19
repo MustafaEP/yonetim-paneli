@@ -189,7 +189,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
     setHeaderPaperViewerOpen(true);
     setHeaderPaperBlobUrl(null);
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = sessionStorage.getItem('accessToken');
       const response = await fetch(fullUrl, {
         method: 'GET',
         headers: token ? { Authorization: `Bearer ${token}` } : {},

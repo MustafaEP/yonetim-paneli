@@ -22,22 +22,11 @@ export class SmsService {
 
   private initializeClient() {
     try {
-      // Önce sistem ayarlarından oku, yoksa environment variable'lardan
-      this.username =
-        this.configService.getSystemSetting('SMS_NETGSM_USERNAME') ||
-        this.configService.netgsmUsername ||
-        '';
-      this.password =
-        this.configService.getSystemSetting('SMS_NETGSM_PASSWORD') ||
-        this.configService.netgsmPassword ||
-        '';
-      this.msgHeader =
-        this.configService.getSystemSetting('SMS_NETGSM_MSG_HEADER') ||
-        this.configService.netgsmMsgHeader ||
-        '';
-      this.apiUrl =
-        this.configService.getSystemSetting('SMS_NETGSM_API_URL') ||
-        this.configService.netgsmApiUrl;
+      // Güvenlik: Sırlar yalnızca .env üzerinden okunur, DB'de tutulmaz.
+      this.username = this.configService.netgsmUsername || '';
+      this.password = this.configService.netgsmPassword || '';
+      this.msgHeader = this.configService.netgsmMsgHeader || '';
+      this.apiUrl = this.configService.netgsmApiUrl;
 
       if (!this.username || !this.password) {
         this.logger.warn(

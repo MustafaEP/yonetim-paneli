@@ -20,6 +20,8 @@ import { Member } from '../../domain/entities/member.entity';
 import type { MemberRepository } from '../../domain/repositories/member.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
+import { SmsTemplateService } from '../../../notifications/services/sms-template.service';
+import { EmailTemplateService } from '../../../notifications/services/email-template.service';
 import {
   MemberNotFoundException,
   MemberCannotBeRejectedException,
@@ -41,6 +43,8 @@ export class MemberRejectionApplicationService {
     private readonly memberRepository: MemberRepository,
     private readonly memberHistoryService: MemberHistoryService,
     private readonly whatsAppTemplateService: WhatsAppTemplateService,
+    private readonly smsTemplateService: SmsTemplateService,
+    private readonly emailTemplateService: EmailTemplateService,
   ) {}
 
   /**
@@ -81,7 +85,7 @@ export class MemberRejectionApplicationService {
         command.userAgent,
       );
 
-      // WhatsApp otomatik şablon gönderimi (non-blocking)
+      // Otomatik şablon gönderimi - WhatsApp, SMS, Email (non-blocking)
       try {
         await this.whatsAppTemplateService.triggerAutoSend(
           'MEMBER_REJECTED',
@@ -91,6 +95,30 @@ export class MemberRejectionApplicationService {
       } catch (err: any) {
         this.logger.warn(
           `Üye ${member.id} red WhatsApp şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      try {
+        await this.smsTemplateService.triggerAutoSend(
+          'MEMBER_REJECTED',
+          member.id,
+          command.rejectedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} red SMS şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      try {
+        await this.emailTemplateService.triggerAutoSend(
+          'MEMBER_REJECTED',
+          member.id,
+          command.rejectedByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} red e-posta şablonu gönderilemedi: ${err.message}`,
         );
       }
 

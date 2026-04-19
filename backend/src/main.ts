@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -34,6 +34,7 @@ function validateEnv(): void {
 async function bootstrap() {
   validateEnv();
 
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
 
@@ -45,6 +46,18 @@ async function bootstrap() {
     helmet({
       // Frontend (5173) -> backend static (/uploads) görselleri için CORP engelini kaldır
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          fontSrc: ["'self'", 'data:'],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          connectSrc: ["'self'"],
+          frameSrc: ["'none'"],
+          objectSrc: ["'none'"],
+        },
+      },
     }),
   );
 
@@ -63,7 +76,7 @@ async function bootstrap() {
     const dir = join(uploadsRoot, sub);
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
-      console.log(`📁 Upload dizini oluşturuldu: ${dir}`);
+      logger.log(`Upload dizini oluşturuldu: ${dir}`);
     }
   }
 
@@ -118,14 +131,12 @@ async function bootstrap() {
         persistAuthorization: true,
       },
     });
-    console.log(
-      `📚 Swagger documentation: http://localhost:${configService.port}/api`,
+    logger.log(
+      `Swagger documentation: http://localhost:${configService.port}/api`,
     );
   }
 
   await app.listen(configService.port);
-  console.log(
-    `🚀 Application is running on: http://localhost:${configService.port}`,
-  );
+  logger.log(`Application is running on: http://localhost:${configService.port}`);
 }
 bootstrap();

@@ -199,6 +199,14 @@ export class ConfigService implements OnModuleInit {
     return process.env.WAHA_SESSION_NAME || 'default';
   }
 
+  /**
+   * WAHA'nın webhook isteğiyle göndereceği paylaşılan gizli anahtar.
+   * Tanımlı değilse webhook doğrulaması atlanır (geliştirme ortamı).
+   */
+  get wahaWebhookSecret(): string | undefined {
+    return process.env.WAHA_WEBHOOK_SECRET?.trim() || undefined;
+  }
+
   // JWT Configuration
   get jwtSecret(): string {
     return process.env.JWT_SECRET || 'your-secret-key-change-in-production';

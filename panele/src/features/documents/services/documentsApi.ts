@@ -179,7 +179,7 @@ export const uploadMemberDocument = async (
 
 /** Üye dokümanı PDF’ini uygulama içi PDF.js önizleyicide göstermek için blob alır */
 export const fetchMemberDocumentBlob = async (documentId: string): Promise<Blob> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/documents/view/${documentId}`;
 
@@ -244,7 +244,7 @@ export const discardDocumentPreview = async (previewId: string) => {
 };
 
 export const viewDocumentPreview = async (previewId: string): Promise<Blob> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const response = await fetch(`${API_BASE_URL}/documents/preview/${previewId}/view`, {
     method: 'GET',
@@ -261,7 +261,7 @@ export const viewDocumentPreview = async (previewId: string): Promise<Blob> => {
 
 // PDF indir
 export const downloadDocument = async (documentId: string, fileName?: string): Promise<void> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/documents/download/${documentId}`;
   

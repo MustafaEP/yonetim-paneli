@@ -20,9 +20,9 @@ function isRefreshRequest(config: InternalAxiosRequestConfig | undefined): boole
 }
 
 function clearAuthAndRedirect(): void {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
+  sessionStorage.removeItem('accessToken');
+  sessionStorage.removeItem('refreshToken');
+  sessionStorage.removeItem('user');
   // AuthContext'i bilgilendir
   window.dispatchEvent(new Event(AUTH_EVENTS.SESSION_EXPIRED));
   if (window.location.pathname !== '/login') {
@@ -33,7 +33,7 @@ function clearAuthAndRedirect(): void {
 let refreshPromise: Promise<string> | null = null;
 
 async function doRefresh(): Promise<string> {
-  const refreshToken = localStorage.getItem('refreshToken');
+  const refreshToken = sessionStorage.getItem('refreshToken');
   if (!refreshToken) {
     throw new Error('Yenileme belirteci bulunamadı');
   }
@@ -42,12 +42,12 @@ async function doRefresh(): Promise<string> {
     { refreshToken },
     { headers: { 'Content-Type': 'application/json' } },
   );
-  localStorage.setItem('accessToken', data.accessToken);
+  sessionStorage.setItem('accessToken', data.accessToken);
   if (data.refreshToken) {
-    localStorage.setItem('refreshToken', data.refreshToken);
+    sessionStorage.setItem('refreshToken', data.refreshToken);
   }
   if (data.user) {
-    localStorage.setItem('user', JSON.stringify(data.user));
+    sessionStorage.setItem('user', JSON.stringify(data.user));
   }
   // AuthContext'i bilgilendir – state güncellensin
   window.dispatchEvent(new Event(AUTH_EVENTS.TOKENS_UPDATED));
@@ -56,7 +56,7 @@ async function doRefresh(): Promise<string> {
 
 // Request interceptor: Authorization header ve FormData desteği
 httpClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   if (token) {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
@@ -78,7 +78,7 @@ httpClient.interceptors.response.use(
       clearAuthAndRedirect();
       return Promise.reject(error);
     }
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = sessionStorage.getItem('refreshToken');
     if (!refreshToken) {
       clearAuthAndRedirect();
       return Promise.reject(error);

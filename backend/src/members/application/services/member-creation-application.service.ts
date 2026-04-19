@@ -29,6 +29,8 @@ import { MemberRegistrationDomainService } from '../../domain/services/member-re
 import { CreateMemberApplicationDto } from '../dto/create-member-application.dto';
 import { MemberScopeService } from '../../member-scope.service';
 import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
+import { SmsTemplateService } from '../../../notifications/services/sms-template.service';
+import { EmailTemplateService } from '../../../notifications/services/email-template.service';
 import { CurrentUserData } from '../../../auth/decorators/current-user.decorator';
 import { MemberSource } from '@prisma/client';
 import { NationalId } from '../../domain/value-objects/national-id.vo';
@@ -54,6 +56,8 @@ export class MemberCreationApplicationService {
     private readonly registrationDomainService: MemberRegistrationDomainService,
     private readonly scopeService: MemberScopeService,
     private readonly whatsAppTemplateService: WhatsAppTemplateService,
+    private readonly smsTemplateService: SmsTemplateService,
+    private readonly emailTemplateService: EmailTemplateService,
   ) {}
 
   /**
@@ -317,7 +321,7 @@ export class MemberCreationApplicationService {
       userAgent,
     );
 
-    // WhatsApp otomatik şablon gönderimi (non-blocking)
+    // Otomatik şablon gönderimi - WhatsApp, SMS, Email (non-blocking)
     try {
       await this.whatsAppTemplateService.triggerAutoSend(
         'MEMBER_APPLICATION',
@@ -327,6 +331,30 @@ export class MemberCreationApplicationService {
     } catch (err: any) {
       this.logger.warn(
         `Üye ${savedMember.id} başvuru WhatsApp şablonu gönderilemedi: ${err.message}`,
+      );
+    }
+
+    try {
+      await this.smsTemplateService.triggerAutoSend(
+        'MEMBER_APPLICATION',
+        savedMember.id,
+        createdByUserId || 'system',
+      );
+    } catch (err: any) {
+      this.logger.warn(
+        `Üye ${savedMember.id} başvuru SMS şablonu gönderilemedi: ${err.message}`,
+      );
+    }
+
+    try {
+      await this.emailTemplateService.triggerAutoSend(
+        'MEMBER_APPLICATION',
+        savedMember.id,
+        createdByUserId || 'system',
+      );
+    } catch (err: any) {
+      this.logger.warn(
+        `Üye ${savedMember.id} başvuru e-posta şablonu gönderilemedi: ${err.message}`,
       );
     }
 

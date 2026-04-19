@@ -102,7 +102,7 @@ export const uploadInvoiceDocument = async (
 
 /** Fatura PDF’ini uygulama içi PDF.js önizleyicide göstermek için blob alır */
 export const fetchInvoiceDocumentBlob = async (invoiceId: string): Promise<Blob> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/invoices/${invoiceId}/document/view`;
 
@@ -123,7 +123,7 @@ export const downloadInvoiceDocument = async (
   invoiceId: string,
   fileName?: string,
 ): Promise<void> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/invoices/${invoiceId}/document/download`;
 

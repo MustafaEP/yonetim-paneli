@@ -289,7 +289,7 @@ export const downloadTevkifatFile = async (
   fileId: string,
   fileName?: string,
 ): Promise<void> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const baseURL = httpClient.defaults.baseURL || '';
   const url = `${baseURL}/accounting/tevkifat-files/${fileId}/download`;
 
@@ -434,7 +434,7 @@ export const uploadAdvanceDocument = async (
 
 /** Avans PDF’ini uygulama içi PDF.js önizleyicide göstermek için blob alır */
 export const fetchAdvanceDocumentBlob = async (advanceId: string): Promise<Blob> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/accounting/advances/${advanceId}/document/view`;
 
@@ -457,7 +457,7 @@ export const downloadAdvanceDocument = async (
   advanceId: string,
   fileName?: string,
 ): Promise<void> => {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const API_BASE_URL = httpClient.defaults.baseURL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/accounting/advances/${advanceId}/document/download`;
 

@@ -23,6 +23,10 @@ import { NotificationExceptionFilter } from './presentation/filters/notification
 import { NotificationValidationPipe } from './presentation/pipes/notification-validation.pipe';
 import { WhatsAppController } from './presentation/controllers/whatsapp.controller';
 import { WhatsAppWebhookController } from './presentation/controllers/whatsapp-webhook.controller';
+import { SmsController } from './presentation/controllers/sms.controller';
+import { EmailController } from './presentation/controllers/email.controller';
+import { SmsTemplateService } from './services/sms-template.service';
+import { EmailTemplateService } from './services/email-template.service';
 
 const isRedisEnabled =
   (process.env.REDIS_ENABLED || 'false').toLowerCase() === 'true' ||
@@ -59,7 +63,7 @@ const isRedisEnabled =
         ]
       : []),
   ],
-  controllers: [NotificationsController, WhatsAppController, WhatsAppWebhookController],
+  controllers: [NotificationsController, WhatsAppController, WhatsAppWebhookController, SmsController, EmailController],
   providers: [
     NotificationsService,
     ...(isRedisEnabled ? [NotificationProcessor] : []),
@@ -69,6 +73,8 @@ const isRedisEnabled =
     WhatsAppService,
     WhatsAppChatService,
     WhatsAppTemplateService,
+    SmsTemplateService,
+    EmailTemplateService,
     NotificationApplicationService,
     {
       provide: 'NotificationRepository',
@@ -78,6 +84,14 @@ const isRedisEnabled =
     NotificationExceptionFilter,
     NotificationValidationPipe,
   ],
-  exports: [NotificationsService, NotificationQueue, WhatsAppService, WhatsAppTemplateService],
+  exports: [
+    NotificationsService,
+    NotificationQueue,
+    WhatsAppService,
+    WhatsAppTemplateService,
+    EmailService,
+    SmsTemplateService,
+    EmailTemplateService,
+  ],
 })
 export class NotificationsModule {}

@@ -21,6 +21,8 @@ import type { MemberRepository } from '../../domain/repositories/member.reposito
 import type { MemberMembershipPeriodRepository } from '../../domain/repositories/member-membership-period.repository.interface';
 import { MemberHistoryService } from '../../member-history.service';
 import { WhatsAppTemplateService } from '../../../notifications/services/whatsapp-template.service';
+import { SmsTemplateService } from '../../../notifications/services/sms-template.service';
+import { EmailTemplateService } from '../../../notifications/services/email-template.service';
 import {
   MemberNotFoundException,
   MemberCannotBeCancelledException,
@@ -50,6 +52,8 @@ export class MemberCancellationApplicationService {
     private readonly membershipPeriodRepository: MemberMembershipPeriodRepository,
     private readonly memberHistoryService: MemberHistoryService,
     private readonly whatsAppTemplateService: WhatsAppTemplateService,
+    private readonly smsTemplateService: SmsTemplateService,
+    private readonly emailTemplateService: EmailTemplateService,
   ) {}
 
   /**
@@ -115,7 +119,7 @@ export class MemberCancellationApplicationService {
         command.userAgent,
       );
 
-      // WhatsApp otomatik şablon gönderimi (non-blocking)
+      // Otomatik şablon gönderimi - WhatsApp, SMS, Email (non-blocking)
       try {
         await this.whatsAppTemplateService.triggerAutoSend(
           'MEMBER_CANCELLED',
@@ -125,6 +129,30 @@ export class MemberCancellationApplicationService {
       } catch (err: any) {
         this.logger.warn(
           `Üye ${member.id} iptal WhatsApp şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      try {
+        await this.smsTemplateService.triggerAutoSend(
+          'MEMBER_CANCELLED',
+          member.id,
+          command.cancelledByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} iptal SMS şablonu gönderilemedi: ${err.message}`,
+        );
+      }
+
+      try {
+        await this.emailTemplateService.triggerAutoSend(
+          'MEMBER_CANCELLED',
+          member.id,
+          command.cancelledByUserId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Üye ${member.id} iptal e-posta şablonu gönderilemedi: ${err.message}`,
         );
       }
 
