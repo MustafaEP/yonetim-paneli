@@ -97,6 +97,10 @@ RUN mkdir -p uploads/documents uploads/logos uploads/header-paper && \
     chown -R node:node /app && \
     chmod -R 755 uploads
 
+# chmod must run before USER node (non-root cannot chmod root-owned COPY'd files).
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -108,10 +112,6 @@ EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
-
-# Start script that runs migrations and starts the app
-COPY docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]
